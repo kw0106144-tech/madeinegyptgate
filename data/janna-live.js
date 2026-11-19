@@ -917,9 +917,9 @@
         missing or unanswered for MIC_WAIT → the SDK's own capture exactly as before (its MIC_PERMISSION_* events → the existing UI).
         Released when the call is over (sdkUi), when the widget takes over and on close();
      2) false interruptions: the persona was speaking (her text still streaming, her voice on the meter, or her message reported
-        interrupted), USER_SPEECH_STARTED fired, and the user turn after it was empty, noise-like or ≤ 2 short words (never «استنى» / "stop"
-        / her name / a question / a number / text the visitor typed). One → an offer chip (tap = noisy-room mode now); two within 90 s →
-        noisy-room mode by itself;
+        interrupted), USER_SPEECH_STARTED fired, and the user turn after it was empty, noise-like or ≤ 2 short words (never a short answer «اه» / «تمام» / "ok", never «استنى» / "stop"
+        / her name / a question / a number / text the visitor typed). Each → an offer chip (tap = noisy-room mode now); never noisy-room mode by
+        itself (owner 2026-11-19: Bassem and Janna must stay interactive);
      3) noisy-room mode (half-duplex): while the persona speaks the microphone is muted (muteInputAudio; the visitor's own mute stays his),
         it reopens ~250 ms after her voice stops (the meter; else her text timing). The chip says «🔇 المكان فيه دوشة — هكمّل كلامي، ولو عايز
         تقاطعني دوس ✋ استنى» with ✋ (interruptPersona + the microphone at once) and «↩︎ الوضع العادي». A persona_config data message
@@ -929,11 +929,13 @@
      inside the «ابدأ» tap; window.JANNA_LIVE_NOISE_METER = 0 turns it off (text timing only), = 1 turns it on for iOS / iPadOS too (off there
      by default: Web Audio on a remote WebRTC stream has not been tried on a real iPhone); window.JANNA_LIVE_MIC_WAIT (ms, 1000–60000,
      default 15000) bounds the wait for the browser's answer; JANNA_LIVE_EOS_NORMAL / _NOISY override NZ_EOS. JANNA_LIVE.noise() / .noise(true|false). */
-  var NZ_KEY = "mig-jnl-noise", MIC_WAIT = (function () { var n = parseInt(window.JANNA_LIVE_MIC_WAIT, 10); return n >= 1000 && n <= 60000 ? n : 15000; })(), NZ_TH = 0.012, NZ_EOS = [nzNum(window.JANNA_LIVE_EOS_NORMAL, 0.45), nzNum(window.JANNA_LIVE_EOS_NOISY, 0.35)];
+  var NZ_KEY = "mig-jnl-noise2", MIC_WAIT = (function () { var n = parseInt(window.JANNA_LIVE_MIC_WAIT, 10); return n >= 1000 && n <= 60000 ? n : 15000; })(), NZ_TH = 0.012, NZ_EOS = [nzNum(window.JANNA_LIVE_EOS_NORMAL, 0.45), nzNum(window.JANNA_LIVE_EOS_NOISY, 0.35)];
   var NZ = { on: false, why: "", fis: [], offerUntil: 0, ac: null, mic: null, typed: [], last: null, el: null };
   try { NZ.on = sessionStorage.getItem(NZ_KEY) === "1"; } catch (e) {}
   var NZ_STOP = /(^| )(استني|استنا|لحظه|ثانيه|ثواني|ثوان|كفايه|خلاص|وقف|وقفي|اسكت|اسكتي|بس بس|جنه|باسم|stop|wait|hold on|hang on|one sec|janna|bassem)( |$)/;
   var NZ_FILL = /^(ا+ه*|ه+|ا?م+|ه+م+|ها+|اها|اوه|يا|و|uh+|um+|hm+|mm+|ah+|oh+|eh+|er+m?|huh|ha+)$/;
+  /* owner 2026-11-19 («لما بقوله اه او اوكيه مش بيفهم»): a short answer is a real reply, never noise — checked before NZ_FILL (which matches «اه») */
+  var NZ_ANS = /^(اه|ايوه|ايوا|ايو|اوكي|اوكيه|اوك|اوكاي|تمام|ماشي|طيب|طب|نعم|لا|لاء|لاا|اكيد|صح|موافق|حاضر|ok|okay|okey|yes|yeah|yep|yup|no|nope|sure|right|fine)$/;
   function nzNum(v, d) { v = parseFloat(v); return v >= 0 && v <= 1 ? v : d; }
   function nzNew() { return { gate: false, gateT: 0, eos: null, loudT: 0, meterOk: false, lvl: null, src: null, pid: "", pon: false, pt0: 0, pn: 0, plast: 0, puntil: 0, pintT: 0, cutId: "", handT: 0, cand: null, usedPid: "", seenU: {}, hn: 0, userOn: false }; }
   function nzMicOk(me) { return !!me && !me.textOnly && !me.micDenied; }
@@ -945,6 +947,7 @@
     if (!t) return "empty";
     if (/[?\u061F]/.test(r) || /[0-9\u0660-\u0669]/.test(t) || NZ_STOP.test(t)) return "";
     w = t.split(" ");
+    if (w.some(function (x) { return NZ_ANS.test(x); })) return ""; /* «اه» / «تمام» / "ok" = a reply */
     if (w.every(function (x) { return NZ_FILL.test(x); })) return "noise";
     return w.length <= 2 && w.every(function (x) { return x.length <= 4; }) ? "short" : "";
   }
@@ -1074,7 +1077,7 @@
     NZ.fis = NZ.fis.filter(function (t) { return now - t < 90000; }); NZ.fis.push(now);
     NZ.last = { why: why, text: String(text || "").slice(0, 80), at: now };
     nzEvt("false-interruption", { why: why });
-    if (NZ.fis.length >= 2) { nzSet(true, "auto"); return; }
+    /* owner 2026-11-19 («عايزه يبقي متفاعل»): never switch to half-duplex by itself — only offer it (the chip); the visitor decides */
     NZ.offerUntil = now + 20000; nzChip(); setTimeout(nzChip, 20100);
   }
   /* the half-duplex gate: shut while she speaks, open ~250 ms after her voice stops */
