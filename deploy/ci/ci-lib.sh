@@ -4,7 +4,7 @@
 # in a shell variable that is not exported, so the build, the tests, npm and node never see it; only the commands that need
 # it get it: curl through stdin (cf_api: never argv, never the log) and wrangler through its own environment (wr_cf).
 # GitHub additionally masks every secret in the log.
-# The repository secret CLOUDFLARE_API_TOKEN was added on 2026-11-19 (template «Edit Cloudflare Workers» + Cloudflare Pages Edit + D1 Edit).
+# The repository secret CLOUDFLARE_API_TOKEN exists since 2026-11-19 19:15 UTC (template «Edit Cloudflare Workers» + Cloudflare Pages Edit + D1 Edit).
 
 CI_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$CI_LIB_DIR/../.." && pwd)"   # always the checkout this script lives in (never an inherited $REPO)
