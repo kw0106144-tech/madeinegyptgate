@@ -25,7 +25,9 @@ check    Runs the checks on an existing stage:
            the generator's own validation (build/seo-stats.json problem_count = 0) and the owner's honesty rules: no 26k /
            26,808 claim, no phone numbers (mobile, landline, hotline, any spacing) or e-mails outside the platform's own in
            generated pages, JSON-LD, sitemaps, the manifest or the CSV downloads, public-source factories labelled, no
-           VideoObject, no pages built from sample leads.
+           VideoObject, no pages built from sample leads. The installable app (check_pwa): both manifests valid, their icons
+           present at the sizes they declare, start_url and shortcuts on staged pages, and /sw.js never handling the API, the
+           private pages or the old system's paths (or it is the kill switch, a warning).
 emulate  Hard-links a stage into a copy whose _redirects keeps only the rules that production applies (requests the
          Functions do not serve), for `wrangler pages dev` tests that behave like production.
 contacts Prints the phone numbers / e-mails a file contains (same detector as the gate; used by smoke-test.sh).
@@ -64,7 +66,9 @@ STAGE_MARKER = ".migate-stage"
 # Files wrangler never uploads as assets (wrangler-dist validate(): IGNORE_LIST); the 4 config files go up separately.
 WRANGLER_TOP_IGNORE = {"_worker.js", "_redirects", "_headers", "_routes.json"}
 REQUIRED_SITE_FILES = ["index.html", "404.html", "410.html", "robots.txt", "sitemap.xml", "_routes.json", "_headers",
-                       "_redirects", "_seo/redirects.json", "_seo/pages.json", "_seo/en-paths.json", "en/index.html"]
+                       "_redirects", "_seo/redirects.json", "_seo/pages.json", "_seo/en-paths.json", "en/index.html",
+                       # the installable app (seo_build.part.py emit_pwa; check_pwa below)
+                       "manifest.webmanifest", "manifest.en.webmanifest", "sw.js", "offline/index.html"]
 SECRET_LIKE = [".env", ".env.*", ".dev.vars", "*.pem", "*.p12", "*.pfx", "id_rsa*", "id_ed25519*", "id_ecdsa*",
                "credentials*.json", "service-account*.json", "*.sqlite", "*.sqlite3", "*.db"]
 SEARCH_BOT_RX = re.compile(r"^(\*|googlebot.*|google-extended|bingbot|msnbot.*|adidxbot|yandex.*|duckduckbot|applebot|"
@@ -745,6 +749,167 @@ def check_robots(site, rep):
         rep.warn("robots_api", "robots.txt does not disallow /api/")
 
 
+# ------------------------------------------------------------------------------------------- the installable app (PWA)
+# seo_build.part.py emit_pwa writes /manifest.webmanifest (AR), /manifest.en.webmanifest (EN), /sw.js and /offline/. The
+# worker must never handle the API, the private pages or the old system's paths: every sample below must match its NEVER
+# rule, and the Worker's live overlay + the old system's /data/ files must be in NEVER_FILES (else an ERROR).
+PWA_NEVER_SAMPLES = ["/api/janna/session", "/api/seo/health", "/api/index.php", "/admin/", "/admin.html", "/login/", "/en/login/",
+                     "/login.html", "/panel.html", "/dashboard/", "/advisor/", "/meeting/", "/inbox/", "/seo-admin/",
+                     "/seo-team/", "/data-desk/", "/pay/"]
+PWA_PUBLIC_SAMPLES = ["/", "/en/", "/factories/", "/tenders/", "/contact/", "/offline/", "/payments/", "/advisory/"]
+
+
+def png_size(path):
+    try:
+        with open(path, "rb") as f:
+            head = f.read(24)
+    except OSError:
+        return None
+    if len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n":
+        return None
+    return int.from_bytes(head[16:20], "big"), int.from_bytes(head[20:24], "big")
+
+
+def headers_by_rule(site):
+    out, cur = {}, None
+    p = os.path.join(site, "_headers")
+    if not os.path.isfile(p):
+        return out
+    with open(p, encoding="utf-8") as f:
+        for line in f:
+            s = line.rstrip("\n")
+            if not s.strip() or s.lstrip().startswith("#"):
+                continue
+            if s[0] in " \t":
+                if cur is not None and ":" in s and not s.strip().startswith("!"):
+                    k, v = s.strip().split(":", 1)
+                    out.setdefault(cur, {})[k.strip().lower()] = v.strip()
+            else:
+                cur = s.strip()
+    return out
+
+
+def check_pwa(site, rep):
+    errs, warns, stats = [], [], {}
+
+    def staged_page(path):
+        f = file_for_path(site, path)
+        return os.path.isfile(f) or (not path.endswith("/") and os.path.isfile(file_for_path(site, path + "/")))
+
+    for name in ("manifest.webmanifest", "manifest.en.webmanifest"):
+        p = os.path.join(site, name)
+        if not os.path.isfile(p):
+            continue                                  # required_missing already says so
+        m = load_json_file(p)
+        if not isinstance(m, dict):
+            errs.append("%s is not valid JSON" % name)
+            continue
+        for k in ("name", "short_name", "start_url", "scope", "display", "icons", "lang", "dir"):
+            if not m.get(k):
+                errs.append("%s: no %s" % (name, k))
+        if m.get("display") not in ("standalone", "fullscreen", "minimal-ui"):
+            errs.append("%s: display %r (the app opens as a browser tab)" % (name, m.get("display")))
+        scope = url_path(urljoin(SITE_ORIGIN + "/", m.get("scope") or "/"))
+        start = urlsplit(urljoin(SITE_ORIGIN + "/", m.get("start_url") or ""))
+        if start.netloc.lower() not in SELF_HOSTS or not url_path(start.geturl()).startswith(scope):
+            errs.append("%s: start_url %s is not on this site inside the scope %s" % (name, m.get("start_url"), scope))
+        elif not staged_page(url_path(start.geturl())):
+            errs.append("%s: start_url %s has no page in this upload" % (name, m.get("start_url")))
+        sizes, maskable, n_icons = set(), False, 0
+        for ic in (m.get("icons") or []) + [x for sc in (m.get("shortcuts") or []) for x in (sc.get("icons") or [])]:
+            src = ic.get("src") or ""
+            f = file_for_path(site, url_path(urljoin(SITE_ORIGIN + "/", src)))
+            if not os.path.isfile(f):
+                errs.append("%s: icon %s is not in the upload (tools/app_icons.py → img/app/)" % (name, src))
+                continue
+            n_icons += 1
+            wh = png_size(f) if (ic.get("type") == "image/png" or f.endswith(".png")) else None
+            if wh and ic.get("sizes") and ic.get("sizes") != "%dx%d" % wh:
+                errs.append("%s: icon %s says %s but is %dx%d" % (name, src, ic.get("sizes"), wh[0], wh[1]))
+            purposes = (ic.get("purpose") or "any").split()
+            if wh and "any" in purposes:
+                sizes.add(wh)
+            maskable = maskable or "maskable" in purposes
+        if not {(192, 192), (512, 512)} <= sizes:
+            errs.append("%s: Android needs icons of 192x192 and 512x512 (purpose any)" % name)
+        if not maskable:
+            warns.append("%s: no maskable icon (Android puts the round logo on a white disc)" % name)
+        for sc in m.get("shortcuts") or []:
+            u = urlsplit(urljoin(SITE_ORIGIN + "/", sc.get("url") or ""))
+            if u.netloc.lower() not in SELF_HOSTS or not staged_page(url_path(u.geturl())):
+                errs.append("%s: shortcut %r → %s has no page in this upload" % (name, sc.get("name"), sc.get("url")))
+        stats[name] = {"lang": m.get("lang"), "start_url": m.get("start_url"), "icons": n_icons, "shortcuts": len(m.get("shortcuts") or [])}
+    sw = os.path.join(site, "sw.js")
+    if os.path.isfile(sw):
+        t = read_text(sw)
+        if 'addEventListener("fetch"' not in t:
+            stats["sw"] = "kill switch"
+            if "registration.unregister()" in t:
+                rep.warn("pwa_kill", "sw.js is the KILL SWITCH (seo/config.json \"pwa\": {\"kill\": true} or MIG_PWA_KILL=1): every "
+                         "installed copy deletes its caches and unregisters its service worker at the next visit")
+            else:
+                errs.append("sw.js has no fetch handler and does not unregister itself")
+        else:
+            m = re.search(r"var NEVER = /(.+?)/;", t)
+            if not m:
+                errs.append("sw.js: no NEVER rule (the paths it must never handle)")
+            else:
+                try:
+                    rx = re.compile(m.group(1).replace("\\/", "/"))
+                except re.error as e:
+                    rx = None
+                    errs.append("sw.js: NEVER rule does not compile (%s)" % e)
+                if rx:
+                    handled = [p for p in PWA_NEVER_SAMPLES if not rx.search(p)]
+                    if handled:
+                        errs.append("sw.js would handle the API / private pages / the old system's paths: " + ", ".join(handled))
+                    over = [p for p in PWA_PUBLIC_SAMPLES if rx.search(p)]
+                    if over:
+                        warns.append("sw.js leaves public pages alone (NEVER is broader than the private pages): " + ", ".join(over))
+            m = re.search(r"var NEVER_FILES = (\{.*?\});", t)
+            nf = {}
+            try:
+                nf = json.loads(m.group(1)) if m else {}
+            except ValueError:
+                errs.append("sw.js: NEVER_FILES is not valid JSON")
+            want = ["/data/overlay.js"] + [x for x, pre in load_legacy_live(None) if x.startswith("/data/") and not pre]
+            miss = [x for x in want if x not in nf]
+            if miss:
+                errs.append("sw.js would store files that must always come live (the Worker's overlay, the old system): " + ", ".join(miss))
+            # the precache list itself (a mention of /offline/ in a comment is not enough): /offline/ in it, every entry staged
+            # (one missing file and the worker never installs)
+            m = re.search(r"PRECACHE = (\[.*?\]);", t)
+            try:
+                pre = json.loads(m.group(1)) if m else []
+            except ValueError:
+                pre = []
+            if "/offline/" not in pre or 'OFFLINE = "/offline/"' not in t:
+                errs.append("sw.js does not precache the offline page /offline/")
+            miss = [u for u in pre if not (isinstance(u, str) and staged_page(u))]
+            if miss:
+                errs.append("sw.js precaches files this upload does not have (the worker would never install): " + ", ".join(map(str, miss)))
+            stats["sw"] = "active"
+    hb = headers_by_rule(site)
+    if os.path.isfile(sw):
+        h = hb.get("/sw.js", {})
+        if not re.search(r"no-cache|max-age=0", h.get("cache-control", "")):
+            warns.append("_headers: /sw.js has no 'Cache-Control: no-cache' (a new worker could wait in caches)")
+        if h.get("service-worker-allowed") != "/":
+            warns.append("_headers: /sw.js has no 'Service-Worker-Allowed: /'")
+    for name in ("manifest.webmanifest", "manifest.en.webmanifest"):
+        if os.path.isfile(os.path.join(site, name)) and "application/manifest+json" not in hb.get("/" + name, {}).get("content-type", ""):
+            warns.append("_headers: /%s is not served as application/manifest+json" % name)
+    inc, exc = routes_rules(site)
+    via_fn = [p for p in ("/sw.js", "/manifest.webmanifest", "/manifest.en.webmanifest") if os.path.isfile(os.path.join(site, p[1:])) and served_by_functions(p, inc, exc)]
+    if via_fn:
+        warns.append("_routes.json sends %s through the Functions, where Pages does not apply _headers" % ", ".join(via_fn))
+    rep.stats["pwa"] = stats
+    if errs:
+        rep.error("pwa", "the installable app (seo_build.part.py emit_pwa: manifests, icons, /sw.js)", errs)
+    if warns:
+        rep.warn("pwa_review", "the installable app: worth a look", warns)
+
+
 def read_text(path, limit=None):
     with open(path, "rb") as f:
         b = f.read() if limit is None else f.read(limit)
@@ -1069,6 +1234,7 @@ def run_checks(out, a, rep):
     check_headers(site, rep)
     check_redirects(site, rep)
     check_robots(site, rep)
+    check_pwa(site, rep)
 
     # --- the build manifest: which pages this build wrote ---------------------------------------------------------------
     man = load_json_file(os.path.join(site, "_seo", "pages.json"), {}) or {}
@@ -1197,7 +1363,8 @@ def run_checks(out, a, rep):
             if ext not in ("xml", "json", "csv", "webmanifest", "txt", "js"):
                 continue
             text = read_text(os.path.join(d, fn))
-            strict = rel.startswith(("sitemaps/", "_seo/", "downloads/")) or rel in ("sitemap.xml", "manifest.webmanifest", "robots.txt")
+            strict = rel.startswith(("sitemaps/", "_seo/", "downloads/")) or rel in ("sitemap.xml", "manifest.webmanifest",
+                                                                                     "manifest.en.webmanifest", "sw.js", "robots.txt")
             span = find_claim(text)                       # the figure itself: an error in every file
             if span:
                 text_hits_err.append("%s: claim …%s…" % (rel, snippet(text, span, 25)))

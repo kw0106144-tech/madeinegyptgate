@@ -7,7 +7,8 @@ What it builds (all server-rendered, self-canonical, trailing slash, AR at the r
   /governorates/<gov>/, /industrial-zones/<id>/, /free-zones/, /products/, /tenders/, /tenders/category/<cat>/, /tenders/entity/<slug>/,
   /rfq/, /awards/, /news/, /events/, /projects/, /offers/, /export/<market>/, /site-map/
   plus sitemaps (index + children, real lastmod), robots.txt, _headers, _routes.json, _redirects, /_seo/{redirects,pages,en-paths}.json,
-  /_seo/hash/<type>.json and the hash shims (company.html#N → clean URL).
+  /_seo/hash/<type>.json and the hash shims (company.html#N → clean URL), and the installable app (PWA, emit_pwa): /manifest.webmanifest,
+  /manifest.en.webmanifest, /sw.js, /offline/, /favicon.ico, /apple-touch-icon.png (+ the app tags in every <head>: pwa_head).
 
 Use from site.py (after seo.part.py and after the pages loop):
     exec(open(B + 'seo_build.part.py', encoding='utf-8').read())
@@ -2131,8 +2132,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         h.append('<meta name="twitter:title" content="%s">' % esc(og_t))
         h.append('<meta name="twitter:description" content="%s">' % esc(og_d))
         h.append('<meta name="twitter:image" content="%s">' % esc(og_abs))
-        h.append('<meta name="theme-color" content="#8E0B20">')
-        h.append('<link rel="icon" href="/img/logo-site.png"><link rel="apple-touch-icon" href="/img/logo-site.png"><link rel="manifest" href="/manifest.webmanifest">')
+        # the installable app (PWA, emit_pwa): manifest in the page's language, theme colour, iOS home-screen tags, icons, data/pwa.js
+        h.append(pwa_head(L))
         if S['cfg'].get('fonts') != 'self':
             h.append('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
                      '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&amp;display=swap" media="print" onload="this.media=\'all\'">'
@@ -5515,17 +5516,25 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         txt = sec + ('/data/*\n  Cache-Control: %s\n/fonts/*\n  Cache-Control: public, max-age=31536000, immutable\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n'
                '/img/*\n  Cache-Control: public, max-age=2592000\n/_seo/*\n  X-Robots-Tag: noindex\n  Cache-Control: public, max-age=300\n/downloads/*\n  X-Robots-Tag: noindex\n'
                '/sitemaps/*\n  Cache-Control: public, max-age=3600\n/data/overlay.js\n  ! Cache-Control\n  Cache-Control: public, max-age=60\n') % data_cc
+        # the installable app (emit_pwa): the service worker is always revalidated (a new deploy reaches every phone at its next visit)
+        # and may control the whole site; the manifests are JSON of their own type. These paths skip the Functions (emit_routes), so
+        # Pages applies these lines to them.
+        txt += ('/sw.js\n  Cache-Control: no-cache\n  Service-Worker-Allowed: /\n'
+                '/manifest.webmanifest\n  Content-Type: application/manifest+json; charset=utf-8\n  Cache-Control: public, max-age=3600\n'
+                '/manifest.en.webmanifest\n  Content-Type: application/manifest+json; charset=utf-8\n  Cache-Control: public, max-age=3600\n')
         open(OUT + '_headers', 'w', encoding='utf-8').write(txt)
         return {'data_immutable': False, 'data_cache': data_cc, 'unversioned_data_refs': bad[:20]}
 
     def emit_routes(OUT):
         R = {"version": 1, "include": ["/*"],
-             "exclude": ["/data/*", "/img/*", "/media/*", "/fonts/*", "/assets/*", "/downloads/*", "/_seo/*", "/sitemaps/*", "/sitemap.xml", "/manifest.webmanifest", "/favicon.ico"]}
+             "exclude": ["/data/*", "/img/*", "/media/*", "/fonts/*", "/assets/*", "/downloads/*", "/_seo/*", "/sitemaps/*", "/sitemap.xml", "/manifest.webmanifest",
+                         "/manifest.en.webmanifest", "/sw.js", "/favicon.ico", "/apple-touch-icon.png"]}
         open(OUT + '_routes.json', 'w', encoding='utf-8').write(json.dumps(R, indent=1))
         return R
 
     ERR_TPL = ('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
                '<meta name="robots" content="noindex"><title>%(title)s – صنع في مصر</title>'
+               '<meta name="theme-color" content="#8E0B20"><link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48"><link rel="apple-touch-icon" sizes="180x180" href="/img/app/apple-touch-icon.png">'
                '<style>body{font:16px/1.8 Tahoma,"Segoe UI",sans-serif;max-width:640px;margin:48px auto;padding:0 16px;color:#0F172A;background:#fff}a{color:#C8102E;font-weight:700}h1{line-height:1.4}</style></head>'
                '<body><main><h1>%(h1)s</h1><p>%(p)s</p><ul><li><a href="/factories/">دليل المصانع</a></li><li><a href="/tenders/">المناقصات</a></li>'
                '<li><a href="/rfq/">اطلب عرض سعر</a></li><li><a href="/site-map/">خريطة الموقع</a></li><li><a href="/">الصفحة الرئيسية</a></li></ul>'
@@ -5539,6 +5548,314 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             if os.path.exists(B + 'seo/' + f):
                 with open(B + 'seo/' + f, 'rb') as a, open(OUT + '_seo/' + f, 'wb') as b:
                     b.write(a.read())
+
+    # ------------------------------------------------------------------ the installable app (PWA)
+    # Android (Chrome «تثبيت») and iPhone («شارك ← أضف إلى الشاشة الرئيسية») install the live site as an app: /manifest.webmanifest (AR)
+    # + /manifest.en.webmanifest (EN), the icons in img/app/ (tools/app_icons.py, committed), /sw.js (network first for pages, the
+    # offline page /offline/ when the network fails, stale-while-revalidate for this site's static files; never the API, the private
+    # pages, other sites or media streams), the tags in every <head> (pwa_head) and data/pwa.js (registration + install invitation).
+    # seo/config.json "pwa" may add to the never-lists (never remove: PWA_DEF is the floor) and holds the kill switch "kill": true
+    # (or MIG_PWA_KILL=1 at build time) → a sw.js that deletes the app's caches and unregisters itself, and pages that unregister it.
+    PWA_DEF = {'kill': False, 'theme_color': '#8E0B20', 'background_color': '#FFFFFF',
+               'never': ['api', 'admin', 'login', 'dashboard', 'advisor', 'meeting', 'inbox', 'seo-admin', 'seo-team', 'data-desk', 'pay', 'panel'],
+               'never_files': ['/data/overlay.js'], 'cache_max': {'code': 80, 'img': 250}, 'max_bytes': 12 * 1048576}
+    PWA_ICONS = ('icon-192.png', 'icon-512.png', 'maskable-192.png', 'maskable-512.png', 'monochrome-512.png', 'apple-touch-icon.png', 'favicon-32.png',
+                 'favicon.ico', 'sc-factories.png', 'sc-tenders.png', 'sc-rfq.png', 'sc-janna.png')
+    PWA_PRECACHE = ['/offline/', '/img/app/icon-192.png']
+
+    def pwa_conf():
+        # once per build phase (S is reset by _init): pwa_head() asks for it on every one of the ~7,500 pages
+        key = (id(S.get('cfg')), os.environ.get('MIG_PWA_KILL'))
+        if S.get('pwa_conf_key') != key:
+            S['pwa_conf'], S['pwa_conf_key'] = _pwa_conf(), key
+        return S['pwa_conf']
+
+    def _pwa_conf():
+        c = dict(PWA_DEF)
+        own = (S.get('cfg') or {}).get('pwa') or {}
+        for k in ('kill', 'theme_color', 'background_color', 'max_bytes'):
+            if k in own:
+                c[k] = own[k]
+        c['kill'] = c['kill'] is True or os.environ.get('MIG_PWA_KILL') == '1'     # only a JSON true (a string "false" is no kill)
+        for k in ('theme_color', 'background_color'):
+            if not re.match(r'^#[0-9A-Fa-f]{6}$', str(c[k])):
+                c[k] = PWA_DEF[k]
+        if not isinstance(c['max_bytes'], int) or not 1048576 <= c['max_bytes'] <= 25 * 1048576:
+            c['max_bytes'] = PWA_DEF['max_bytes']
+        c['cache_max'] = dict(PWA_DEF['cache_max'])
+        for k, v in (own.get('cache_max') or {}).items():
+            if k in c['cache_max'] and isinstance(v, int) and 10 <= v <= 2000:
+                c['cache_max'][k] = v
+        c['never'] = sorted(set(PWA_DEF['never']) | set(x for x in (own.get('never') or []) if isinstance(x, str) and re.match(r'^[a-z0-9][a-z0-9-]{0,40}$', x)))
+        files = set(PWA_DEF['never_files']) | set(x for x in (own.get('never_files') or []) if isinstance(x, str) and re.match(r'^/[\w./-]+$', x))
+        # the old system's own files on this domain (deploy/legacy-live.txt: /data/auth.js, /data/me.js, /data/egadm.js …) are never stored
+        lf = B + 'deploy/legacy-live.txt'
+        if os.path.exists(lf):
+            for line in open(lf, encoding='utf-8'):
+                p = line.strip()
+                if p.startswith('/') and not p.startswith('#') and not p.endswith('*') and re.match(r'^/[\w./-]+$', p):
+                    files.add(p)
+        c['never_files'] = sorted(files)
+        return c
+
+    def pwa_never_js(c):
+        """the JS regex of the paths the worker never touches: /api/…, /admin/, /login/ … (also /en/x/, /x and /x.html)"""
+        return '/^\\/(?:en\\/)?(?:%s)(?:[\\/.?#]|$)/' % '|'.join(c['never'])
+
+    def pwa_head(L):
+        c = pwa_conf()
+        if S.get('pwa_src') is None:
+            f = B + 'data/pwa.js'
+            S['pwa_src'] = ('/data/pwa.js?v=%s' % hashlib.md5(open(f, 'rb').read()).hexdigest()[:8]) if os.path.exists(f) else ''
+        en = L == 'en'
+        t = ('<meta name="theme-color" content="%s"><link rel="manifest" href="/manifest%s.webmanifest">' % (c['theme_color'], '.en' if en else '')
+             + '<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">'
+             + '<meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="%s">' % X(L, 'صنع في مصر', 'Made in Egypt')
+             + '<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48"><link rel="icon" type="image/png" sizes="32x32" href="/img/app/favicon-32.png">'
+             + '<link rel="icon" type="image/png" sizes="192x192" href="/img/app/icon-192.png"><link rel="apple-touch-icon" sizes="180x180" href="/img/app/apple-touch-icon.png">')
+        if S['pwa_src']:
+            t += '<script src="%s" defer%s></script>' % (S['pwa_src'], ' data-pwa="off"' if c['kill'] else '')
+        return t
+
+    def pwa_link(u):
+        """the shortcut / start URLs carry ?source=pwa (analytics can count the app's visits); the fragment stays last"""
+        base, _, frag = u.partition('#')
+        return base + ('&' if '?' in base else '?') + 'source=pwa' + ('#' + frag if frag else '')
+
+    def pwa_manifest(L, c):
+        en = L == 'en'
+
+        def ico(n, size, purpose=None):
+            d = {'src': '/img/app/' + n, 'sizes': size, 'type': 'image/png'}
+            if purpose:
+                d['purpose'] = purpose
+            return d
+
+        def hub(p):
+            if not en:
+                return p
+            return ('/en' + p) if ('/en' + p) in S['en_paths'] else p + '?lang=en'
+        # Janna's live call (data/janna-live.js, ?live=1) runs on the app pages: the Arabic home is one; the English home /en/ is a
+        # generated page without her, so the English shortcut opens her on the contact page in English (it has no /en/ twin)
+        janna = '/?live=1' if not en else static_url('contact', 'en') + ('&' if '?' in static_url('contact', 'en') else '?') + 'live=1'
+        sc = [(X(L, 'دليل المصانع', 'Factory directory'), X(L, 'المصانع', 'Factories'),
+               X(L, 'ابحث في دليل المصانع والموردين المصريين', 'Search the directory of Egyptian manufacturers and suppliers'), hub('/factories/'), 'sc-factories.png'),
+              (X(L, 'المناقصات', 'Tenders'), X(L, 'المناقصات', 'Tenders'),
+               X(L, 'مناقصات الجهات الحكومية والهيئات من مصادرها الرسمية', 'Tenders of government bodies and authorities from their official sources'), hub('/tenders/'), 'sc-tenders.png'),
+              (X(L, 'اطلب عرض سعر', 'Request a quote'), X(L, 'عرض سعر', 'Get a quote'),
+               X(L, 'أرسل طلب عرض سعر للمصانع المسجّلة على المنصة', 'Send a request for quotation to the factories registered on the platform'), static_url('contact', L, '#rfq-form'), 'sc-rfq.png'),
+              (X(L, 'كلّم جنة', 'Talk to Janna'), X(L, 'جنة', 'Janna'),
+               X(L, 'مكالمة فيديو مع جنة، مساعِدة المنصة بالذكاء الاصطناعي', 'A video call with Janna, the platform’s AI assistant'), janna, 'sc-janna.png')]
+        return {'id': '/en/' if en else '/', 'name': X(L, 'منصة صنع في مصر', 'Made in Egypt Gate'), 'short_name': X(L, 'صنع في مصر', 'Made in Egypt'),
+                'description': X(L, 'منصة صنع في مصر: المنصة الوطنية B2B لربط المصانع والموردين المصريين بالمشترين المحليين والدوليين — دليل المصانع والمنتجات والمناقصات وطلبات عروض الأسعار.',
+                                 'Made in Egypt Gate: the B2B platform that connects Egyptian factories and suppliers with local and international buyers — the factory directory, products, tenders and requests for quotation.'),
+                'lang': 'en' if en else 'ar', 'dir': 'ltr' if en else 'rtl', 'start_url': pwa_link('/en/' if en else '/'), 'scope': '/', 'display': 'standalone',
+                'theme_color': c['theme_color'], 'background_color': c['background_color'], 'categories': ['business', 'productivity'],
+                'icons': [ico('icon-192.png', '192x192', 'any'), ico('icon-512.png', '512x512', 'any'), ico('maskable-192.png', '192x192', 'maskable'),
+                          ico('maskable-512.png', '512x512', 'maskable'), ico('monochrome-512.png', '512x512', 'monochrome')],
+                'shortcuts': [{'name': n, 'short_name': s, 'description': d, 'url': pwa_link(u), 'icons': [ico(i, '96x96')]} for n, s, d, u, i in sc]}
+
+    OFFLINE_TPL = r'''<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex"><title>غير متصل – صنع في مصر</title><meta name="theme-color" content="__THEME__">
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<style>html,body{margin:0;background:#F8FAFC;color:#0F172A}body{font:16px/1.8 Cairo,Tahoma,"Segoe UI",sans-serif;min-height:100vh;display:flex;flex-direction:column}
+.bar{background:__THEME__;height:6px;padding-top:env(safe-area-inset-top,0px)}main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 16px;max-width:560px;margin:0 auto;box-sizing:border-box}
+img{width:96px;height:96px;margin:0 0 12px}h1{font-size:1.45rem;line-height:1.5;margin:0 0 6px}p{margin:0 0 16px;color:#475569}
+button{font:800 1rem Cairo,Tahoma,"Segoe UI",sans-serif;background:#C8102E;color:#fff;border:0;border-radius:999px;padding:12px 28px;min-height:48px;cursor:pointer}
+button:focus-visible{outline:3px solid __THEME__;outline-offset:3px}.alt{font-size:.92rem;color:#64748B;border-top:1px solid #E2E8F0;padding-top:12px;margin:18px 0 0}
+@media (prefers-color-scheme:dark){html,body{background:#120708;color:#F2E8E9}p{color:#A8989A}.alt{color:#A8989A;border-color:#35201F}}</style></head>
+<body><div class="bar"></div><main><img src="/img/app/icon-192.png" alt="منصة صنع في مصر" width="96" height="96">
+<h1 id="t">أنت غير متصل بالإنترنت</h1><p id="m">الصفحة دي محتاجة اتصال بالإنترنت. اتأكد من الشبكة وجرّب تاني — هتتفتح لوحدها أول ما الاتصال يرجع.</p>
+<button type="button" id="retry">🔄 حاول مرة أخرى</button>
+<p class="alt" id="alt" lang="en" dir="ltr">You are offline. This page needs an internet connection — check your network and try again; it opens by itself as soon as you are back online.</p></main>
+<script>(function(){var b=document.getElementById("retry"),en=false;function go(){location.reload();}if(b)b.onclick=go;window.addEventListener("online",go);
+try{en=/^\/en(\/|$)/.test(location.pathname)||/[?&]lang=en(&|$)/.test(location.search)||localStorage.getItem("mig-lang")==="en";}catch(e){}
+if(!en)return;var d=document.documentElement,a=document.getElementById("alt");d.lang="en";d.dir="ltr";document.title="Offline – Made in Egypt Gate";
+document.getElementById("t").textContent="You are offline";document.getElementById("m").textContent="This page needs an internet connection. Check your network and try again — it opens by itself as soon as you are back online.";
+if(b)b.textContent="🔄 Try again";if(a){a.lang="ar";a.dir="rtl";a.textContent="أنت غير متصل بالإنترنت. الصفحة دي محتاجة اتصال بالإنترنت — اتأكد من الشبكة وجرّب تاني.";}})();</script>
+</body></html>
+'''
+
+    SW_TPL = r'''/* /sw.js - the service worker of the installable app (PWA) of madeinegyptgate.com. GENERATED by seo_build.part.py emit_pwa() on every
+   build: change the template there, never this file. ES5 (CLAUDE.md 2.1).
+   - Pages (top-level navigations): the network first, always; only when the network fails, the offline page /offline/ (stored at
+     install). HTML is never stored: every page a visitor sees is the live one.
+   - This site's static files (/data/*.js|css|json with ?v=, the pictures under /img/ and /assets/, scripts, styles and fonts under
+     /assets/ and /fonts/): stale-while-revalidate (the stored copy at once, a fresh one fetched behind it) in two capped caches,
+     but only while the stored copy is fresh by its own headers (Date + max-age: /data/ one hour, as _headers says — data/janna.js
+     loads data files under ITS version, so one URL can change at a deploy; /img/ 30 days; /assets/ /fonts/ a year). An older copy
+     waits for the network and answers only when the network fails: a returning visitor never gets an earlier visit's data.
+   - Never touched (the request goes to the network exactly as without this worker): other sites (Anam's SDK and its calls, analytics,
+     Google Fonts), anything but GET, byte ranges and media (audio, video), frames (Janna's / Bassem's shared screen), the API and the
+     private pages (NEVER), the Worker's live files and the old system's (NEVER_FILES), and every file a private page loads.
+   - Versioned caches: a build with a new offline page or new rules installs a new worker, which deletes the old caches.
+   - Kill switch: seo/config.json "pwa": {"kill": true} (or MIG_PWA_KILL=1 at build time) writes a worker that removes itself. */
+(function () {
+  "use strict";
+  var V = __MIG_PWA_VER__, RT = __MIG_PWA_RT__, PRE = "mig-pwa-", CORE = PRE + "core-" + V, CODE = PRE + "code-" + RT, IMG = PRE + "img-" + RT;
+  var KEEP = [CORE, CODE, IMG], OFFLINE = "/offline/", PRECACHE = __MIG_PWA_PRECACHE__;
+  var MAX = { code: __MIG_PWA_MAX_CODE__, img: __MIG_PWA_MAX_IMG__ }, MAX_BYTES = __MIG_PWA_MAX_BYTES__;
+  var NEVER = __MIG_PWA_NEVER__;
+  var NEVER_FILES = __MIG_PWA_NEVER_FILES__;
+  var IMG_RX = /\.(?:png|jpe?g|webp|gif|svg|avif|ico)$/i, CODE_RX = /\.(?:js|css|json|woff2?|ttf|otf)$/i;
+  var own = Object.prototype.hasOwnProperty, ORIGIN = self.location.origin;
+  function noop() { return null; }
+
+  self.addEventListener("install", function (e) {
+    e.waitUntil(caches.open(CORE).then(function (c) {
+      return Promise.all(PRECACHE.map(function (u) {
+        return fetch(new Request(u, { cache: "reload", credentials: "same-origin" })).then(function (r) {
+          if (!r.ok) throw new Error("precache " + u + ": HTTP " + r.status);
+          /* a redirected answer cannot answer a navigation: it is stored as a plain one */
+          return c.put(u, r.redirected ? new Response(r.body, { status: r.status, statusText: r.statusText, headers: r.headers }) : r);
+        });
+      }));
+    }).then(function () { return self.skipWaiting(); }));
+  });
+
+  self.addEventListener("activate", function (e) {
+    e.waitUntil(caches.keys().then(function (ks) {
+      return Promise.all(ks.filter(function (k) { return k.indexOf(PRE) === 0 && KEEP.indexOf(k) < 0; }).map(function (k) { return caches["delete"](k); }));
+    }).then(function () { return self.clients.claim(); }));
+  });
+
+  function never(p) { return NEVER.test(p) || own.call(NEVER_FILES, p); }
+  /* a file loaded by a private page (its referrer): left alone too */
+  function fromPrivate(ref) {
+    if (!ref) return false;
+    try { var r = new URL(ref); return r.origin === ORIGIN && never(r.pathname); } catch (x) { return false; }
+  }
+  function kind(p, q) {
+    if (p.indexOf("/data/") === 0) return CODE_RX.test(p) && /[?&]v=/.test(q) ? "code" : "";
+    if (p.indexOf("/img/") === 0) return IMG_RX.test(p) ? "img" : "";
+    if (p.indexOf("/assets/") === 0) return IMG_RX.test(p) ? "img" : (CODE_RX.test(p) ? "code" : "");
+    if (p.indexOf("/fonts/") === 0) return CODE_RX.test(p) ? "code" : "";
+    return "";
+  }
+  function storable(r) {
+    if (!r || r.status !== 200 || r.type !== "basic") return false;
+    var cc = r.headers.get("Cache-Control") || "", n = +(r.headers.get("Content-Length") || 0);
+    return !/no-store|private/i.test(cc) && (r.headers.get("Vary") || "") !== "*" && !(n > MAX_BYTES);
+  }
+  /* the size cap: the oldest entries go first (Cache keys come in the order they were stored) */
+  function trim(c, max) {
+    return c.keys().then(function (ks) { var out = [], i; for (i = 0; i < ks.length - max; i++) out.push(c["delete"](ks[i])); return Promise.all(out); });
+  }
+  /* fresh by its own headers: the server's Date + Cache-Control max-age (no max-age or no Date: not fresh) */
+  function fresh(r) {
+    var m = /max-age=(\d+)/.exec(r.headers.get("Cache-Control") || ""), d = Date.parse(r.headers.get("Date") || "");
+    return !!m && !isNaN(d) && new Date().getTime() - d < +m[1] * 1000;
+  }
+  function offline() {
+    return caches.open(CORE).then(function (c) { return c.match(OFFLINE); }).then(function (r) { return r || Response.error(); }, function () { return Response.error(); });
+  }
+  function page(e, req) {
+    e.respondWith(fetch(req).then(null, offline));
+  }
+  function swr(e, req, k) {
+    var name = k === "img" ? IMG : CODE;
+    var hit = caches.match(req).then(null, noop);
+    var net = fetch(req).then(function (r) { var copy = null; try { if (storable(r)) copy = r.clone(); } catch (x) { copy = null; } return { r: r, copy: copy }; });
+    e.waitUntil(net.then(function (o) {
+      if (!o.copy) return null;
+      return caches.open(name).then(function (c) { return c.put(req, o.copy).then(function () { return trim(c, MAX[k]); }); });
+    }).then(null, noop));
+    /* a fresh stored copy at once; else the network, and the stale copy only when the network fails */
+    e.respondWith(hit.then(function (h) {
+      if (h && fresh(h)) return h;
+      return net.then(function (o) { return o.r; }, function (x) { if (h) return h; throw x; });
+    }));
+  }
+
+  self.addEventListener("fetch", function (e) {
+    var req = e.request, u, d, k;
+    if (req.method !== "GET") return;
+    try { u = new URL(req.url); } catch (x) { return; }
+    if (u.origin !== ORIGIN || never(u.pathname)) return;
+    if (req.headers.has("range")) return;
+    d = req.destination || "";
+    if (d === "audio" || d === "video" || d === "track" || d === "iframe" || d === "frame" || d === "embed" || d === "object") return;
+    if (req.mode === "navigate") { if (d === "" || d === "document") page(e, req); return; }
+    if (req.cache === "no-store" || req.cache === "reload" || req.cache === "no-cache" || req.cache === "only-if-cached") return;
+    if (fromPrivate(req.referrer)) return;
+    k = kind(u.pathname, u.search);
+    if (k) swr(e, req, k);
+  });
+})();
+'''
+
+    SW_KILL_TPL = r'''/* /sw.js - KILL SWITCH of the installable app of madeinegyptgate.com (seo/config.json "pwa": {"kill": true}, or MIG_PWA_KILL=1 at build
+   time; GENERATED by seo_build.part.py emit_pwa()). It takes over from the previous worker at once, deletes the app's caches
+   (mig-pwa-*) and unregisters itself: the site then runs exactly as without a service worker. data/pwa.js registers nothing while
+   the pages carry data-pwa="off". ES5. */
+(function () {
+  "use strict";
+  var PRE = "mig-pwa-";
+  self.addEventListener("install", function () { self.skipWaiting(); });
+  self.addEventListener("activate", function (e) {
+    e.waitUntil(caches.keys().then(function (ks) {
+      return Promise.all(ks.filter(function (k) { return k.indexOf(PRE) === 0; }).map(function (k) { return caches["delete"](k); }));
+    }).then(function () { return self.registration.unregister(); }));
+  });
+})();
+'''
+
+    def pwa_hash(*parts):
+        """a version without digits (a run of digits in a public file looks like a phone number to the privacy gate)"""
+        h = hashlib.sha256()
+        for p in parts:
+            h.update(p if isinstance(p, bytes) else str(p).encode('utf-8'))
+        return ''.join('ghijklmnop'[int(ch)] if ch.isdigit() else ch for ch in h.hexdigest()[:12])
+
+    def emit_pwa(OUT):
+        """the installable app's root files: /manifest.webmanifest, /manifest.en.webmanifest, /sw.js, /offline/, /favicon.ico,
+        /apple-touch-icon.png (icons: img/app/, tools/app_icons.py). Problems (a missing icon, a shortcut without a page) stop the build."""
+        c = pwa_conf()
+        probs = []
+        for n in PWA_ICONS:
+            if not os.path.isfile(B + 'img/app/' + n):
+                probs.append('pwa: img/app/%s is missing (run python3 tools/app_icons.py and commit img/app/)' % n)
+        mans = {}
+        for L in ('ar', 'en'):
+            m = pwa_manifest(L, c)
+            mans[L] = m
+            with open(OUT + ('manifest.en.webmanifest' if L == 'en' else 'manifest.webmanifest'), 'w', encoding='utf-8') as f:
+                f.write(json.dumps(m, ensure_ascii=False, indent=1) + '\n')
+            for u in [m['start_url']] + [s['url'] for s in m['shortcuts']]:
+                p = unquote(urlparse(u).path)
+                if not page_on_disk(p):
+                    probs.append('pwa: %s manifest links %s, which this build does not have' % (L, u))
+        off = OFFLINE_TPL.replace('__THEME__', c['theme_color'])
+        os.makedirs(OUT + 'offline', exist_ok=True)
+        with open(OUT + 'offline/index.html', 'w', encoding='utf-8') as f:
+            f.write(off)
+        for n in ('favicon.ico', 'apple-touch-icon.png'):
+            if os.path.isfile(B + 'img/app/' + n):
+                with open(B + 'img/app/' + n, 'rb') as a, open(OUT + n, 'wb') as b:
+                    b.write(a.read())
+        # the version follows what the worker holds and does (template, rules, the precached files): an unchanged build leaves the
+        # visitors' worker as it is, a changed one replaces it (and its caches) at their next visit
+        pre = [off.encode('utf-8')]
+        if os.path.isfile(B + 'img/app/icon-192.png'):
+            pre.append(open(B + 'img/app/icon-192.png', 'rb').read())
+        ver = pwa_hash(SW_TPL, json.dumps(c, sort_keys=True), json.dumps(PWA_PRECACHE), *pre)
+        rt = pwa_hash(SW_TPL)[:6]
+        if c['kill']:
+            js = SW_KILL_TPL
+        else:
+            js = (SW_TPL.replace('__MIG_PWA_VER__', json.dumps(ver)).replace('__MIG_PWA_RT__', json.dumps(rt))
+                  .replace('__MIG_PWA_PRECACHE__', json.dumps(PWA_PRECACHE)).replace('__MIG_PWA_MAX_CODE__', str(c['cache_max']['code']))
+                  .replace('__MIG_PWA_MAX_IMG__', str(c['cache_max']['img'])).replace('__MIG_PWA_MAX_BYTES__', str(int(c['max_bytes'])))
+                  .replace('__MIG_PWA_NEVER__', pwa_never_js(c)).replace('__MIG_PWA_NEVER_FILES__', json.dumps(dict((p, 1) for p in c['never_files']), sort_keys=True)))
+        if '__MIG_PWA_' in js:
+            probs.append('pwa: sw.js template placeholder left unfilled')
+        with open(OUT + 'sw.js', 'w', encoding='utf-8') as f:
+            f.write(js)
+        S['pwa_problems'] = probs
+        return {'version': ver, 'kill': c['kill'], 'never': c['never'], 'never_files': c['never_files'], 'precache': PWA_PRECACHE,
+                'cache_max': c['cache_max'], 'start_url': {L: mans[L]['start_url'] for L in mans},
+                'shortcuts': {L: [s['url'] for s in mans[L]['shortcuts']] for L in mans}, 'problems': probs}
 
     def emit_manifest(OUT):
         os.makedirs(OUT + '_seo', exist_ok=True)
@@ -5964,7 +6281,7 @@ location.replace(%s);})();'''
 
     GEN_DIRS = ('factories', 'industrial_products', 'tender-item', 'rfq', 'governorates', 'industrial-zones', 'free-zones', 'products', 'tenders', 'awards',
                 'news', 'events', 'projects', 'offers', 'export', 'site-map', 'en')
-    NOT_PAGES = ('_seo', 'sitemaps', 'assets', 'downloads', 'data', 'img', 'media', 'fonts')
+    NOT_PAGES = ('_seo', 'sitemaps', 'assets', 'downloads', 'data', 'img', 'media', 'fonts', 'offline')   # offline/: the app's offline page (emit_pwa)
 
     def static_candidates(OUT):
         """index.html pages written by site.py: "/", every directory outside the generated trees, and the app pages inside them (app_paths)"""
@@ -6288,7 +6605,7 @@ location.replace(%s);})();'''
         return {k: len(v) for k, v in S['hash_maps'].items()}
 
     def build_static_seo(OUT, today=None, dump=True, save_lastmod=True, validate_sample=400):
-        """generate every data page (AR + gated EN), shims, sitemaps, robots, redirects, headers, routes and the manifest into OUT"""
+        """generate every data page (AR + gated EN), shims, sitemaps, robots, redirects, headers, routes, the manifest and the app (PWA) files into OUT"""
         t0 = time.time()
         OUT = _init(OUT, today, dump)
         cfg = S['cfg']
@@ -6352,6 +6669,7 @@ location.replace(%s);})();'''
         hdr = emit_headers(OUT)
         emit_routes(OUT)
         emit_error_pages(OUT)
+        pwa = emit_pwa(OUT)               # the installable app: manifests, /sw.js, /offline/, root icons
         emit_manifest(OUT)
         if save_lastmod:
             pages = dict(S['lastmod_new'])
@@ -6372,6 +6690,7 @@ location.replace(%s);})();'''
         tm['emit'] = round(time.time() - t1, 1)
         t1 = time.time()
         problems, dups = validate(OUT, validate_sample)
+        problems += S.get('pwa_problems') or []
         tm['validate'] = round(time.time() - t1, 1)
         total_files = 0
         total_bytes = 0
@@ -6388,7 +6707,7 @@ location.replace(%s);})();'''
                'stale_removed': {'generated_pages': stale_pages, 'flat_html': stale_flat}, 'stale_static_not_scanned': S['stale_static'],
                'static_thin_noindex': dict(sorted((PERSIST.get('static_thin') or {}).items())), 'static_h1_not_1': dict(sorted((PERSIST.get('static_h1') or {}).items())),
                'en_fail': stats['en_fail'], 'by_type': stats['by_type'], 'warnings': S['warnings'][:50],
-               'problems': problems[:50], 'problem_count': len(problems), 'dup_titles': len(dups), 'dup_title_examples': list(dups.items())[:5],
+               'pwa': pwa, 'problems': problems[:50], 'problem_count': len(problems), 'dup_titles': len(dups), 'dup_title_examples': list(dups.items())[:5],
                'seconds': round(time.time() - t0, 1), 'timing': tm, 'today': S['today'].isoformat()}
         S['stats'] = out
         PERSIST.pop('t_start', None)

@@ -291,5 +291,15 @@
   "elec": "electrical",
   "glass": "glass-ceramics"
  },
- "_admin": "The Admin Control Center (deploy 2): key «admin» → /admin/ (static_paths), a standalone page written by panel.part.py through PAGE_WRITERS (noindex,nofollow, never in a sitemap; /admin.html → /admin/ 301 from the build). Team boards: «seo-team» → /seo-team/, «data-desk» → /data-desk/."
+ "_admin": "The Admin Control Center (deploy 2): key «admin» → /admin/ (static_paths), a standalone page written by panel.part.py through PAGE_WRITERS (noindex,nofollow, never in a sitemap; /admin.html → /admin/ 301 from the build). Team boards: «seo-team» → /seo-team/, «data-desk» → /data-desk/.",
+ "_pwa": "The installable app (PWA, seo_build.part.py emit_pwa): /manifest.webmanifest (AR) + /manifest.en.webmanifest (EN), /sw.js, /offline/, the app tags in every page head (pwa_head) and data/pwa.js; icons in img/app/ (tools/app_icons.py). kill: true (or MIG_PWA_KILL=1 at build time) ships a sw.js that deletes the app's caches and unregisters itself, and pages that unregister it: the kill switch. never / never_files only ADD to the built-in lists of paths the worker never touches (api, admin, login, dashboard, advisor, meeting, inbox, seo-admin, seo-team, data-desk, pay, panel; /data/overlay.js and the old system's files of deploy/legacy-live.txt). cache_max: entries per runtime cache (code: /data/ ?v= scripts, /assets/ and /fonts/ code; img: pictures).",
+ "pwa": {
+  "kill": false,
+  "never": [],
+  "never_files": [],
+  "cache_max": {
+   "code": 80,
+   "img": 250
+  }
+ }
 }
