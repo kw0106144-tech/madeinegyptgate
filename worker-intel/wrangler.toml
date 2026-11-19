@@ -34,6 +34,7 @@ binding = "AI"
 AI_DAILY_LIMIT = "400"   # hard cap on Workers AI enrichment calls per Cairo day
 AI_PER_RUN = "60"
 AI_TITLES_SHARE = "0.67" # share of a run's AI units for the titles pass (9 titles per call, 1 unit per 3 titles); the rest: full enrichment
+AI_DOC_RESERVE = "25"    # the last 25 units of AI_DAILY_LIMIT are left for Bassem's document reads (src/doc.js, 1 unit per PDF / DOCX)
 TOOL_RATE_PER_MIN = "30"
 
 [observability]

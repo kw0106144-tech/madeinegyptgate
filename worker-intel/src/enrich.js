@@ -56,11 +56,17 @@ export function sanitise(o, it) {
 }
 
 async function counter(env, day) { try { return +(await env.KV.get("ai:" + day)) || 0; } catch (e) { return 0; } }
+/* adds to the day's counter as it is NOW (a document read charged during a long enrichment run is not overwritten) */
 async function charge(env, day, add) { if (!add) return; try { await env.KV.put("ai:" + day, String((await counter(env, day)) + add), { expirationTtl: 3 * 86400 }); } catch (e) {} }
+export const chargeAi = charge;
 export async function aiBudget(env, nowMs = Date.now()) {
   const limit = Math.max(0, +(env.AI_DAILY_LIMIT ?? 400) || 0), day = cairoDay(nowMs), used = await counter(env, day);
-  return { day, limit, used, left: Math.max(0, limit - used) };
+  return { day, limit, used, left: Math.max(0, limit - used), doc_reserve: docReserve(env) };
 }
+/* the last AI_DOC_RESERVE units of the daily cap are kept for Bassem's document reads (doc.js, one unit each): the enrichment and the
+   titles pass stop that far below AI_DAILY_LIMIT (they spend the whole cap by 08:00 Cairo most days), the reads may use them; the
+   cap itself never moves. Unset = 0 (no reserve). */
+export function docReserve(env) { return Math.max(0, Math.floor(+(env.AI_DOC_RESERVE ?? 0) || 0)); }
 
 export async function enrichOne(env, it, src = {}) {
   const payload = src.ai_title_only ? { title: it.title_orig, kind: it.kind, market: it.market } :
@@ -74,12 +80,12 @@ export async function enrichOne(env, it, src = {}) {
    their ai / hidden / status (an admin re-enrichment) */
 export async function enrichPending(env, opts = {}) {
   const now = opts.now || Date.now();
-  const b = await aiBudget(env, now);
+  const b = await aiBudget(env, now), left = Math.max(0, b.left - docReserve(env));
   const ids = Array.isArray(opts.ids) ? opts.ids.filter(Boolean).slice(0, 50) : null;
   const perRun = Math.max(0, +(opts.limit ?? env.AI_PER_RUN ?? 60) || 0);
-  const n = Math.min(b.left, ids ? Math.min(perRun || ids.length, ids.length) : perRun);
+  const n = Math.min(left, ids ? Math.min(perRun || ids.length, ids.length) : perRun);
   const stats = { day: b.day, cap: b.limit, used_before: b.used, calls: 0, ok: 0, failed: 0, rejected_fields: 0, prompt_tokens: 0, completion_tokens: 0 };
-  if (n <= 0) { stats.skipped = b.left <= 0 ? "daily cap reached" : "per-run limit 0"; return stats; }
+  if (n <= 0) { stats.skipped = left <= 0 ? (b.left > 0 ? "daily cap reached (the rest is kept for document reads)" : "daily cap reached") : "per-run limit 0"; return stats; }
   const rows = (ids
     ? await env.DB.prepare(`SELECT i.*, s.mapping AS src_mapping FROM intel_items i JOIN intel_sources s ON s.id=i.source_id WHERE i.id IN (${ids.map(() => "?").join(",")}) LIMIT ?`).bind(...ids, n).all()
     : await env.DB.prepare("SELECT i.*, s.mapping AS src_mapping FROM intel_items i JOIN intel_sources s ON s.id=i.source_id WHERE i.ai IN (0,3) AND i.hidden=0 AND i.dup_of IS NULL AND i.status!='closed' ORDER BY i.relevance DESC, i.first_seen_at DESC LIMIT ?").bind(n).all()).results || [];
@@ -106,7 +112,7 @@ export async function enrichPending(env, opts = {}) {
     }
   };
   await Promise.all([worker(), worker(), worker(), worker()]);
-  try { await env.KV.put("ai:" + b.day, String(b.used + stats.calls), { expirationTtl: 3 * 86400 }); } catch (e) {}
+  await charge(env, b.day, stats.calls);
   return stats;
 }
 
@@ -135,10 +141,10 @@ export function titleNeeds(it) {
   return need;
 }
 export async function translateTitles(env, opts = {}) {
-  const now = opts.now || Date.now(), b = await aiBudget(env, now), db = env.DB;
-  const maxUnits = Math.min(b.left, Math.max(0, Math.floor(+(opts.units ?? 0) || 0)));
+  const now = opts.now || Date.now(), b = await aiBudget(env, now), db = env.DB, left = Math.max(0, b.left - docReserve(env));
+  const maxUnits = Math.min(left, Math.max(0, Math.floor(+(opts.units ?? 0) || 0)));
   const stats = { day: b.day, cap: b.limit, used_before: b.used, calls: 0, units: 0, rows: 0, title_ar: 0, title_en: 0, rejected: 0, failed: 0 };
-  if (!env.AI || maxUnits <= 0) { stats.skipped = !env.AI ? "no AI binding" : b.left <= 0 ? "daily cap reached" : "no units for titles"; return stats; }
+  if (!env.AI || maxUnits <= 0) { stats.skipped = !env.AI ? "no AI binding" : left <= 0 ? "daily cap reached" : "no units for titles"; return stats; }
   const cap = maxUnits * TITLES_PER_UNIT;
   const W = "i.ai=0 AND i.hidden=0 AND i.dup_of IS NULL AND i.status!='closed' AND (i.title_ar IS NULL OR i.title_en IS NULL)";
   const sel = order => db.prepare(`SELECT i.id, i.kind, i.lang, i.title_orig, i.title_ar, i.title_en, i.entity FROM intel_items i WHERE ${W} ORDER BY ${order} LIMIT ?`).bind(cap);

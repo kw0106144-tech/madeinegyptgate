@@ -11,7 +11,11 @@
                                                                   screen to show the result and reads it
         bassem_open_item {section, ref?, title?, index?}          NEW, run here: opens THAT tender / RFQ / factory / supplier / product /
                                                                   project / award on the shared screen (its own page or dialog), scrolls to
-                                                                  it and points at the key fields one after the other
+                                                                  it and points at the key fields one after the other; section "intel" (or
+                                                                  an /intel/ page link, an intel id, the official link of one of his
+                                                                  bassem_intel results) opens that Information Center item's own page and
+                                                                  reads its real fields (owner 2026-11-19: «لما بقوله افتح الفرصة بيقولي
+                                                                  مش لاقي التفاصيل»)
         bassem_screen {action, target?}                           NEW, run here: scroll_down · scroll_up · next_result · prev_result · back ·
                                                                   highlight — Bassem drives the page while he talks
    2) Every action is visibly animated: a pointer labelled «باسم» glides to what he talks about (ripple on "clicks"), a pulsing ring
@@ -453,12 +457,158 @@
     });
   }
 
+  /* ---------- the Information Center results Bassem got: bassem_intel is a SERVER tool, so its answer arrives only as TOOL_CALL_COMPLETED
+     (janna-live.js re-dispatches it as "anam-agent:tool-call-completed"); «افتحلي التانية» / «اللي في جنوب أفريقيا» opens one of THESE ---------- */
+  var INTEL = { t: 0, items: [], one: null };
+  var ISEC = { key: "intel", noun: ["مركز المعلومات", "Information Center"] };
+  function intelParse(r) {
+    for (var n = 0; n < 3 && r != null; n++) {
+      if (typeof r === "string") { try { r = JSON.parse(r); } catch (e) { return null; } continue; }
+      if (typeof r !== "object") return null;
+      if (r.results && typeof r.results.length === "number") return r;
+      r = r.result != null ? r.result : r.data != null ? r.data : r.body;
+    }
+    return null;
+  }
+  /* an item's page on the Information Center (/intel/[en/]<seg>/<slug>-<id>/, on this site) → {path, id} */
+  function intelPath(u) {
+    var m = /^(?:https?:\/\/(?:www\.)?madeinegyptgate\.com)?(\/intel\/(?:en\/)?(?:tenders|projects|news|rfq)\/(?:[^\s"'<>\\?#\/]*-)?([0-9a-z]{11})\/?)(?:[?#][^\s"'<>\\]*)?$/i.exec(String(u || "").replace(/^\s+|\s+$/g, ""));
+    return m ? { path: m[1], id: m[2].toLowerCase() } : null;
+  }
+  function intelLang(p) { p = String(p || ""); return EN() ? p.replace(/^\/intel\/(?!en\/)/, "/intel/en/") : p.replace(/^\/intel\/en\//, "/intel/"); }
+  function intelRow(x) {
+    var ip = intelPath((x && (x.page || x.open_url)) || ""); if (!ip) return null;
+    return { id: String(x.id || ip.id), title: cut(x.title || x.title_ar || "", 160), entity: cut(x.entity || "", 120), place: cut(x.market_name || "", 60), deadline: cut(x.deadline || "", 25), url: String(x.url || ""), path: ip.path };
+  }
+  D.addEventListener("anam-agent:tool-call-completed", function (e) {
+    var d = (e && e.detail) || {}; if ((d.toolName || d.name) !== "bassem_intel" || !isBassem()) return;
+    var r = intelParse(d.result); if (!r) return;
+    var list = []; for (var i = 0; i < r.results.length && list.length < 10; i++) { var x = intelRow(r.results[i]); if (x) list.push(x); }
+    if (!list.length) return;
+    /* one item (action item / doc): the item being talked about — the search list behind «التانية» stays as it was */
+    if (r.action === "item" || r.action === "doc") { INTEL.one = list[0]; if (r.action === "item") tourIntel(list[0]); return; }
+    INTEL.items = list; INTEL.t = now();
+  }, true);
+  function regById(id) { var all = INTEL.items.concat(INTEL.one ? [INTEL.one] : []); for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i]; return null; }
+  function bareUrl(u) { return String(u || "").replace(/^\s*https?:\/\/(?:www\.)?/i, "").replace(/[\/#?]+$/, "").toLowerCase(); }
+  function regByUrl(u) { var b = bareUrl(u), all = INTEL.items.concat(INTEL.one ? [INTEL.one] : []); if (!b) return null; for (var i = 0; i < all.length; i++) if (all[i].url && bareUrl(all[i].url) === b) return all[i]; return null; }
+  function curIntel() { var d = fdoc(); try { var ip = ready(d) ? intelPath(d.location.pathname) : null; return ip ? (regById(ip.id) || { id: ip.id, path: ip.path, title: titleOf(d) }) : null; } catch (e) { return null; } }
+  /* the Information Center item an open asks for → {path, id, …} | null (null: not an intel item, the platform's own sections take it) */
+  function intelTarget(a, s) {
+    var u = String(a.url || a.open_url || a.page || ""), ref = String(a.ref || a.id || "").replace(/^\s+|\s+$/g, ""), q = cut(a.title, 120), idx = parseInt(a.index, 10);
+    var ip = intelPath(u) || intelPath(ref); if (ip) return regById(ip.id) || { id: ip.id, path: ip.path };
+    if (/^https?:\/\//i.test(u)) { var k = regByUrl(u); if (k) return k; } /* the official link of one of his results (url instead of page) */
+    /* the platform's own address (janna_lookup's open_url): exactly that item, never an Information Center result that looks like it */
+    if (s !== "intel" && /^(?:https?:\/\/(?:www\.)?madeinegyptgate\.com)?\/(?![\/\\])/i.test(u)) return null;
+    var rl = ref.toLowerCase();
+    if (/^[0-9a-z]{11}$/.test(rl)) { var r1 = regById(rl); if (r1) return r1; if (s === "intel") return { id: rl, path: "/intel/tenders/" + rl + "/" }; } /* the Worker redirects it to the item's own page */
+    var c = curIntel(), fresh = INTEL.items.length > 0 && now() - INTEL.t < 3600000;
+    /* the title of one of his results, (nearly) as the tool gave it: that result, wherever the screen is (call 2026-11-19 20:18: the
+       Kenyan school-furniture tender was looked for on the platform's Egyptian list and «ما لقيتش بند مطابق») */
+    if (fresh && q && !(ref && SEC[s])) { var sq = strongIntel(q); if (sq) return sq; }
+    /* «افتحلي التانية» right after an Information Center search, while its result is on the screen: his results, not the platform's list */
+    if (s === "intel" || (fresh && c && !(ref && SEC[s]))) {
+      if (idx > 0) return INTEL.items[idx - 1] || null;
+      if (q || ref) { var b = best(INTEL.items.concat(INTEL.one ? [INTEL.one] : []).map(function (x) { return { title: x.title, entity: x.entity + " " + x.place, ref: x.id, x: x }; }), q || ref); if (b && (s === "intel" || covers(b.x, q || ref))) return b.x; }
+      if (s === "intel" && !q && !ref) return c || INTEL.one || INTEL.items[0] || null;
+    }
+    return null;
+  }
+  /* a platform section named: the words asked must be mostly (≥ 60 % of their letters) in that result's title / buyer / place —
+     «بتاعة Rand Water» is that result, one shared «توريد» is not (a platform tender opened while an Information Center page is shown) */
+  function covers(x, q) { var ws = words(q), h = norm(x.title + " " + x.entity + " " + x.place + " " + x.id), n = 0, all = 0; for (var i = 0; i < ws.length; i++) { all += ws[i].length; if (h.indexOf(ws[i]) > -1) n += ws[i].length; } return all > 0 && n / all >= 0.6; }
+  /* a title that is one of his results' titles (contained either way, ≥ 12 letters) or has 80 % of its words in one */
+  function strongIntel(q) {
+    var nq = norm(q), wq = words(q), all = INTEL.items.concat(INTEL.one ? [INTEL.one] : []), bestX = null, bs = 0;
+    if (nq.length < 12 && wq.length < 3) return null;
+    for (var i = 0; i < all.length; i++) {
+      var nt = norm(all[i].title); if (!nt) continue;
+      if (nt.indexOf(nq) > -1 || (nt.length >= 12 && nq.indexOf(nt) > -1)) return all[i];
+      var hit = 0; for (var k = 0; k < wq.length; k++) if (nt.indexOf(wq[k]) > -1) hit++;
+      var r = wq.length ? hit / wq.length : 0; if (r > bs) { bs = r; bestX = all[i]; }
+    }
+    return wq.length >= 3 && bs >= 0.8 ? bestX : null;
+  }
+  /* the item's own page on the Information Center (worker-intel pages.js itemHtml): title, summary, the facts list, status, official link */
+  function intelRead(d) {
+    var o = detail(d), main = d.querySelector("main") || d.body, ip = intelPath(d.location.pathname);
+    o.id = ip ? ip.id : ""; o.page = ip ? ip.path : ""; o.ok = !!main.querySelector(".sx-facts"); o.summary = ""; o.sumOrig = false;
+    var st = main.querySelector(".sx-chips .sx-st:not(.sx-orig)"); if (st && shown(st)) o.status = tx(st); /* not the «بلغة المصدر» chip */
+    var card = main.querySelector(".sx-main .card2"), ps = card ? card.querySelectorAll("p") : [];
+    for (var i = 0; i < ps.length; i++) {
+      var p = ps[i], t = tx(p); if (/(^|\s)note(\s|$)/.test(p.className) || p.querySelector("a") || t.length < 20) continue;
+      var pv = p.previousElementSibling; o.sumOrig = !!(pv && /(^|\s)note(\s|$)/.test(pv.className) && /(مقتطف|excerpt)/i.test(tx(pv)));
+      o.summary = cut(t, 600); o.sumEl = p; break;
+    }
+    var off = main.querySelector("a.btn-gold[href]"); o.official = off || null; o.url = off ? String(off.href || "") : "";
+    var notes = card ? card.querySelectorAll("p.note") : [];
+    for (var j = 0; j < notes.length; j++) if (/(مصدر رسمي|Official source|خبر عن طرح|News about a tender)/i.test(tx(notes[j]))) { o.source = cut(tx(notes[j]), 160); break; }
+    /* the walk: the item, what is requested, who, where, the deadline, the value, the official document */
+    var fk = function (re) { for (var k = 0; k < o.facts.length; k++) if (re.test(o.facts[k].k)) return o.facts[k]; return null; };
+    var mk = [], h = main.querySelector("h1");
+    if (h && shown(h)) mk.push({ el: h, lab: T("الفرصة", "Opportunity") });
+    if (o.sumEl && shown(o.sumEl)) mk.push({ el: o.sumEl, lab: o.sumOrig ? T("من نص المصدر", "From the source") : T("المطلوب", "What is requested") });
+    [[/^(الجهة|Entity)/i, "entity", ["الجهة", "Buyer"]], [/^(السوق|Market)/i, "place", ["البلد", "Country"]], [/(آخر موعد|Deadline)/i, "deadline", ["آخر موعد", "Deadline"]], [/(القيمة|Value)/i, "amount", ["القيمة", "Value"]]].forEach(function (K) { var f = fk(K[0]); if (f && f.el && shown(f.el)) mk.push({ el: f.el, lab: T(K[2][0], K[2][1]), key: K[1] }); });
+    if (off && shown(off)) mk.push({ el: off, lab: T("المستند الرسمي", "Official document"), key: "docs" });
+    o.marks = mk;
+    return o;
+  }
+  function intelText(o) {
+    var L = [T("مفتوح دلوقتي على الشاشة", "Now open on the shared screen") + " (" + T("مركز المعلومات", "Information Center") + "): " + o.title];
+    if (o.status) L.push(T("الحالة: ", "Status: ") + o.status);
+    if (o.summary) L.push((o.sumOrig ? T("من نص المصدر: ", "From the source's text: ") : T("المطلوب: ", "What is requested: ")) + o.summary);
+    o.facts.forEach(function (p) { L.push(p.k + ": " + p.v); });
+    if (o.source) L.push(o.source);
+    if (!o.facts.some(function (p) { return AMT_RE.test(p.k) && !p.none; })) L.push(T("(القيمة مش منشورة في المصدر: لو سأل «كام؟» قول كده بصراحة، وماتخمّنش رقم)", "(no value is published at the source: if asked, say so — never guess a figure)"));
+    if (o.id) L.push(T("(id الفرصة: " + o.id + " — شروطها ومستنداتها والتأمين من مستندها الرسمي نفسه: bassem_intel بـ action=\"doc\" و id=\"" + o.id + "\")", "(item id: " + o.id + " — its requirements, documents and bid bond from its own official document: bassem_intel with action=\"doc\" and id=\"" + o.id + "\")"));
+    L.push(T("(بيانات حقيقية من الشاشة — اذكر منها بس، بإيجاز: الجهة والبلد وآخر ميعاد والمطلوب)", "(real data from the screen — mention only these, briefly: buyer, country, deadline, what is requested)"));
+    return L.join("\n").slice(0, 2000);
+  }
+  /* open one Information Center item on the shared screen and read it (bassem_open_item) */
+  function openIntel(it) {
+    var path = intelLang(it.path), d0 = fdoc(), here = false;
+    try { var ip0 = ready(d0) && d0.readyState === "complete" ? intelPath(d0.location.pathname) : null; here = !!ip0 && ip0.id === it.id; } catch (e) { here = false; }
+    if (!here) go(path);
+    var wait = here ? Promise.resolve(d0) : until(function () { var d = fdoc(); if (!ready(d) || d.readyState !== "complete" || d === d0) return null; var ip = intelPath(d.location.pathname); return ip && ip.id === it.id && d.querySelector("h1") ? d : null; }, 10000, 220);
+    return wait.then(function (d) {
+      var known = (it.title ? "«" + it.title + "»" : "") + (it.entity ? T(" — الجهة: ", " — buyer: ") + it.entity : "") + (it.deadline ? T(" — آخر ميعاد: ", " — deadline: ") + it.deadline : "");
+      if (!d) return T("صفحة الفرصة لسه ما اتفتحتش على الشاشة. ", "The item's page has not opened on the screen yet. ") + (known ? T("اللي معايا من نتيجة البحث: ", "From the search result: ") + known + "\n" : "") + T("(قول ده بصراحة؛ تفاصيلها كلها من bassem_intel بـ action=\"item\" و id=\"" + it.id + "\")", "(say so; all its details: bassem_intel with action=\"item\" and id=\"" + it.id + "\")");
+      return settleText(d).then(function () {
+        var o = intelRead(d);
+        if (!o.ok) return T("الفرصة دي مبقتش موجودة في مركز المعلومات (اتشالت أو اتقفلت صفحتها). قول ده بصراحة ودوّر تاني بـ bassem_intel.", "This item is no longer on the Information Center (removed). Say so and search again with bassem_intel.");
+        LAST = { d: d, o: o, t: now() };
+        tour(o.marks, 1500);
+        holoFacts(o, ISEC);
+        var fv = function (re) { for (var k = 0; k < o.facts.length; k++) if (re.test(o.facts[k].k)) return o.facts[k].v; return ""; };
+        emitRes("bassem_open_item", o.title, 1, [{ title: o.title, entity: fv(/^(الجهة|Entity)/i), deadline: fv(/(آخر موعد|Deadline)/i), ref: o.id, url: o.page ? "https://madeinegyptgate.com" + o.page : o.url }]);
+        return intelText(o);
+      });
+    });
+  }
+  /* action "item" of bassem_intel: data/bassem-intel-view.js opens the item's page on the screen; Bassem's pointer walks it here */
+  function tourIntel(it) {
+    until(function () { var d = fdoc(); if (!ready(d) || d.readyState !== "complete") return null; var ip = intelPath(d.location.pathname); return ip && ip.id === it.id && d.querySelector("h1") ? d : null; }, 9000, 250).then(function (d) {
+      if (!d) return;
+      settleText(d).then(function () { var o = intelRead(d); if (!o.ok) return; LAST = { d: d, o: o, t: now() }; showScreen(); tour(o.marks, 1500); });
+    });
+  }
+  function intelNone() {
+    var L = [T("مش عارف أنهي فرصة من مركز المعلومات تقصد. افتحها بـ url = الـ page بتاعتها، أو ref = الـ id بتاعها، أو index = ترتيبها في نتايج bassem_intel.", "Not sure which Information Center item is meant. Open it with url = its page, ref = its id, or index = its position in the bassem_intel results.")];
+    if (INTEL.items.length) L.push(T("آخر نتايج مركز المعلومات: ", "Latest Information Center results: ") + INTEL.items.slice(0, 5).map(function (x, i) { return (i + 1) + ") " + x.title + (x.entity ? " — " + x.entity : "") + " [id " + x.id + "]"; }).join(" ؛ "));
+    return L.join("\n");
+  }
+
   /* ---------- tool: bassem_open_item {section, ref?, title?, index?} ---------- */
   function openItem(a) {
-    var s = String(a.section || "").toLowerCase(); if (!SEC[s]) s = "tenders"; if (s === "market") s = "products"; if (s === "awards") s = "winners";
+    var s0 = String(a.section || "").toLowerCase();
+    var s = s0; if (!SEC[s]) s = "tenders"; if (s === "market") s = "products"; if (s === "awards") s = "winners";
     var S = SEC[s], ref = cut(a.ref, 80), q = cut(a.title, 120), idx = parseInt(a.index, 10);
     if (!fr()) return Promise.resolve(T("شاشة باسم مش مفتوحة دلوقتي، افتح المكالمة الأول.", "Bassem's screen is not open."));
     showScreen();
+    /* an Information Center item (bassem_intel's results): its own page there — never the platform's Egyptian lists */
+    var iT = intelTarget(a, s0);
+    if (iT) return openIntel(iT);
+    if (s0 === "intel") return Promise.resolve(intelNone());
     var d0 = fdoc(), cur = ready(d0) ? pageOf(d0) : "";
     /* the item's own address from janna_lookup / janna_item (open_url): this site only, never another one */
     var u = String(a.url || a.open_url || ""), um = /^(?:https?:\/\/(?:www\.)?madeinegyptgate\.com)?(\/[^\s"'<>\\]*)$/i.exec(u);
@@ -754,21 +904,22 @@
 
   /* the client tools' definitions as Anam takes them (POST /v1/tools; copy in anam/bassem-client-tools.json) */
   var DEFS = [
-    { name: "bassem_open_item", type: "CLIENT", description: "Open ONE specific item on the shared screen (its own page or dialog), scroll to it and point at its key fields (entity, amount, deadline, documents) while you talk. Use right after janna_search / janna_lookup results. Best: url = the result's open_url; else index = its number on the screen; a tender id (eg-tnd-003) also works. Tender list numbers are NOT unique (OFF:1, OFF:6/2026/2027 are shared by several tenders): with a ref always pass the title too. Returns the item's real details as shown on screen (or the candidates when a number is shared) — say the most important 2-3 facts, never invent missing ones.",
+    { name: "bassem_open_item", type: "CLIENT", description: "Open ONE specific item on the shared screen (its own page or dialog) and point at its key fields (entity, amount, deadline, documents) while you talk. Use it after janna_lookup / janna_search / platform_item / bassem_intel results, or when the member says «افتحلي دي» or «التانية». Best: url = the result's open_url; else index = its number in the list on the screen; a tender id (eg-tnd-003) also works as ref. A bassem_intel result: section=intel and url = its open_url (or ref = its id, or index = its position in those results). Tender list numbers are NOT unique (OFF:1 is shared by several tenders): with a ref pass the title too. The call waits for the screen and returns the item's real details as shown: say the 2-3 facts that matter, never invent a missing one. If it says not found or still loading, say so honestly and never claim it is open. While it runs you may say «ثواني، بفتحلك التفاصيل».",
       config: { awaitResult: true, toolTimeoutSeconds: 12, parameters: { type: "object", properties: {
-        section: { type: "string", enum: ["tenders", "rfqs", "factories", "suppliers", "products", "projects", "winners"], description: "Which platform section the item is in." },
-        ref: { type: "string", description: "The item's reference as returned by janna_search / janna_lookup (tender id like eg-tnd-003, tender number like OFF:6/2026/2027 — not unique, add the title —, RFQ number, company id like x0, project id like r015)." },
+        section: { type: "string", enum: ["tenders", "rfqs", "factories", "suppliers", "products", "projects", "winners", "intel"], description: "Which section the item is in (awards / الترسيات = winners, a company = factories, a bassem_intel result = intel)." },
+        ref: { type: "string", description: "The item's reference as returned by janna_search / janna_lookup (tender id like eg-tnd-003, tender number like OFF:6/2026/2027 — not unique, add the title —, RFQ number, company id like x0, project id like r015), or a bassem_intel result's id. Never make one up." },
         title: { type: "string", description: "The item's title or company name when there is no ref." },
-        index: { type: "integer", minimum: 1, description: "Position (1 = first) in the results list currently on the shared screen." },
-        url: { type: "string", description: "The item's open_url from janna_lookup (this site only) — the most direct way to open it." } }, required: ["section"] } } },
+        index: { type: "integer", minimum: 1, description: "Position (1 = first) in the results list currently on the shared screen (section=intel: in the last bassem_intel results), e.g. «التانية» = 2." },
+        url: { type: "string", description: "The item's open_url from janna_lookup or bassem_intel (this site only) — the most direct way to open it." } }, required: ["section"] } } },
     { name: "bassem_screen", type: "CLIENT", description: "Drive the shared screen while talking: scroll_down / scroll_up the page, next_result / prev_result to walk through the results list one by one (highlighted), back to close the open details or go to the previous page, highlight to point at a word or field on screen (target = the text, e.g. 'آخر موعد', 'الجهة'). Returns what is visible after the action.",
       config: { awaitResult: true, toolTimeoutSeconds: 10, parameters: { type: "object", properties: {
         action: { type: "string", enum: ["scroll_down", "scroll_up", "next_result", "prev_result", "back", "highlight"] },
         target: { type: "string", description: "For highlight: the text on screen to point at." } }, required: ["action"] } } }
   ];
 
-  W.MIG_LIVE_TOOLS = { __v: 2, attach: attach, take: take, busy: busy, screenText: screenText, follow: follow, defs: DEFS,
-    /* test / debug hooks */ _t: { detail: detail, pageSummary: pageSummary, cards: cards, cardFacts: cardFacts, SEC: SEC, tour: tour, showScreen: showScreen } };
+  W.MIG_LIVE_TOOLS = { __v: 3, attach: attach, take: take, busy: busy, screenText: screenText, follow: follow, defs: DEFS,
+    /* test / debug hooks */ _t: { detail: detail, pageSummary: pageSummary, cards: cards, cardFacts: cardFacts, SEC: SEC, tour: tour, showScreen: showScreen,
+      intelPath: intelPath, intelTarget: intelTarget, intelRead: intelRead, intelText: intelText, intelLang: intelLang, INTEL: INTEL } };
   /* clients that started before this file arrived (janna-live.js queues them) */
   var Q = W.__migLTQ || []; W.__migLTQ = null;
   for (var qi = 0; qi < Q.length; qi++) { try { attach(Q[qi][0], Q[qi][1]); } catch (e) {} }

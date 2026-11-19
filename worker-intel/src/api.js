@@ -1,5 +1,6 @@
 /* migate-intel — public JSON API (/api/intel/*), Bassem's Anam SERVER_WEBHOOK (/api/intel/tool) and admin endpoints. */
-import { KIND_GROUPS, KINDS, KIND_LABEL, SITE, timingSafeEqual, cairoDay, addDays, fmtDay, fmtCairo, ID_RE, normText, sqlLit, clip, stripUrls, dayOf } from "./util.js";
+import { KIND_GROUPS, KINDS, KIND_LABEL, SITE, timingSafeEqual, cairoDay, addDays, fmtDay, fmtCairo, ID_RE, normText, sqlLit, clip, stripUrls, dayOf, canonicalUrl, stripContacts, hash53 } from "./util.js";
+import { readItemDoc, TOPIC_AR } from "./doc.js";
 import { sectorIndex, sectorName, SECTORS } from "./sectors.js";
 import { marketFilter, marketsFilter, marketName, PLAN_SCOPE } from "./markets.js";
 import { itemPath, shownTitle } from "./pages.js";
@@ -206,17 +207,157 @@ export function toolText(action, total, results, p = {}) {
   }
   return (head + items + (items ? "." : "") + tail).replace(/https?:\/\/\S+/g, "").replace(/\s{2,}/g, " ").trim();
 }
+/* one result as the tool gives it: `page` / `open_url` = its page on the Information Center (the screen opens it), `url` = the official
+   link (never read aloud). open_url is the name the screen tool (bassem_open_item url=…) already knows from janna_lookup. */
 function toolItem(r, sm) {
   const pi = publicItem(r, "ar", sm && sm.get(r.source_id));
-  return { id: r.id, kind: r.kind, kind_label: pi.kind_label, title: pi.title, title_ar: pi.title, entity: r.entity || null, market: r.market, market_name: pi.market_name, deadline: dayOf(r.deadline), status: r.status, url: r.url, page: pi.page };
+  return { id: r.id, kind: r.kind, kind_label: pi.kind_label, title: pi.title, title_ar: pi.title, entity: r.entity || null, market: r.market, market_name: pi.market_name, country: r.country || null,
+    deadline: dayOf(r.deadline), status: r.status, value: r.value ?? null, currency: r.value != null ? r.currency || null : null, url: r.url, page: pi.page, open_url: pi.page };
 }
 async function toolSearch(db, o, nowMs) {
   const p = { kind: o.kind, q: o.q, days: o.days, sector: o.sector, per: 50 };
   const r = await queryItems(db, p, nowMs, 600, true, { mf: o.mf, boostSector: o.boostSector, strictWindow: !!o.strictWindow });
   return { rows: r.ranked || [], total: r.total };
 }
-export async function tool(env, body = {}, nowMs = Date.now()) {
-  const db = env.DB, action = String(body.action || "").toLowerCase() === "brief" ? "brief" : "search";
+
+/* ---------- one result: action "item" (all its details, and the screen opens its page) and "doc" (its own official document) ----------
+   Owner 2026-11-19: «لما بقوله افتح الفرصة بيقولي مش لاقي التفاصيل» — the results came from here, but nothing could give ONE of them in
+   full (platform_item knows only the platform's own Egyptian data, bassem_open_opportunity only the advisor page's cards). The item is
+   named by its id (11 characters, exactly as the search returned it), its page on the Information Center (/intel/…/<slug>-<id>/), or its
+   official link; a hidden item is not found; a duplicate answers with the notice it duplicates. "doc": doc.js reads ONLY the item's
+   own stored official link (and at most one document it links to on the same official site), never an address from the caller. */
+const ACTIONS = { search: "search", brief: "brief", item: "item", details: "item", detail: "item", open: "item", get: "item", doc: "doc", document: "doc", pdf: "doc", read: "doc", requirements: "doc" };
+const PAGE_ID = /\/intel\/(?:en\/)?(?:tenders|projects|news|rfq)\/(?:[^\/?#\s]*-)?([0-9a-z]{11})(?:[\/?#]|$)/i;
+export function itemRef(body = {}) {
+  for (const k of ["id", "item_id", "ref", "page", "open_url", "url", "link", "query"]) {
+    const v = String(body[k] == null ? "" : body[k]).trim();
+    if (!v) continue;
+    if (ID_RE.test(v.toLowerCase())) return { id: v.toLowerCase() };
+    const m = PAGE_ID.exec(v);
+    if (m) return { id: m[1].toLowerCase() };
+    if (/^https?:\/\//i.test(v) && !/^https?:\/\/(?:[^\/]*\.)?madeinegyptgate\.com(?:[\/?#]|$)/i.test(v)) return { url: v.slice(0, 2000) };
+  }
+  return null;
+}
+async function findItem(db, ref) {
+  let r = null;
+  if (ref.id) r = await db.prepare("SELECT * FROM intel_items WHERE id=?").bind(ref.id).first();
+  else if (ref.url) r = await db.prepare("SELECT * FROM intel_items WHERE url_norm=? OR url=? ORDER BY hidden, CASE WHEN dup_of IS NULL THEN 0 ELSE 1 END LIMIT 1").bind(canonicalUrl(ref.url), ref.url).first();
+  if (r && r.dup_of) { const p = await db.prepare("SELECT * FROM intel_items WHERE id=?").bind(r.dup_of).first(); if (p && !p.hidden) r = p; }
+  return r && !(r.hidden && r.hidden !== 2) ? r : null;
+}
+const CUR_AR = { EGP: "جنيه", USD: "دولار", EUR: "يورو", GBP: "جنيه إسترليني", SAR: "ريال سعودي", AED: "درهم إماراتي", QAR: "ريال قطري", KWD: "دينار كويتي", OMR: "ريال عماني", BHD: "دينار بحريني", JOD: "دينار أردني", MAD: "درهم مغربي", TND: "دينار تونسي", DZD: "دينار جزائري", LYD: "دينار ليبي", IQD: "دينار عراقي",
+  ZAR: "راند", KES: "شلن كيني", UGX: "شلن أوغندي", TZS: "شلن تنزاني", GHS: "سيدي غاني", NGN: "نايرا", ETB: "بر إثيوبي", XOF: "فرنك أفريقي", XAF: "فرنك أفريقي", RWF: "فرنك رواندي", PKR: "روبية باكستانية", INR: "روبية هندية", CNY: "يوان صيني", TRY: "ليرة تركية" };
+export function moneyAr(v, cur) {
+  if (v == null || v === "" || !Number.isFinite(+v) || +v <= 0) return "";
+  const c = String(cur || "").toUpperCase();
+  return arDigits(Math.round(+v).toLocaleString("en-US")) + (c ? " " + (CUR_AR[c] || c) : "");
+}
+const STATUS_AR = { open: "سارية", closing_soon: "بتقفل قريب", closed: "منتهية" };
+const DOC_WORD = { pdf: "مستند PDF", docx: "ملف Word", html: "صفحة الإعلان", text: "نص الإعلان" };
+const officialKind = u => (/\.pdf(?:$|[?#&])|=[^&]*\.pdf(?:$|&)/i.test(String(u || "")) ? "pdf" : /\.docx(?:$|[?#&])|=[^&]*\.docx(?:$|&)/i.test(String(u || "")) ? "docx" : "page");
+/* where, for speaking: the country's Arabic name; a group market (Africa, Asia, Europe, international) with the source's country */
+function placeOf(r, pi) {
+  if (r.market === "intl") return "على مستوى دولي" + (r.country ? " (" + clip(r.country, 30) + ")" : "");
+  const group = /^(?:africa|asia|eu|gcc)$/.test(r.market);
+  return "في " + pi.market_name + (group && r.country ? " (" + clip(r.country, 30) + ")" : "");
+}
+/* the item as the tool gives it in full (what the persona may say: only these fields) */
+function itemFull(r, src) {
+  const pi = publicItem(r, "ar", src), srcName = src ? src.name_ar || src.name : "";
+  return { id: r.id, kind: r.kind, kind_label: pi.kind_label, title: pi.title, title_orig: r.title_orig, entity: r.entity || null, market: r.market, market_name: pi.market_name, country: r.country || null,
+    sector: pi.sector, published: dayOf(r.published_at), deadline: dayOf(r.deadline), status: r.status, value: r.value ?? null, currency: r.value != null ? r.currency || null : null,
+    summary: r.summary_ar ? stripContacts(stripUrls(r.summary_ar)) : null, summary_original: r.summary_orig ? clip(stripContacts(stripUrls(r.summary_orig)), 600) : null,
+    source: srcName || null, page: pi.page, open_url: pi.page, url: r.url, official_link: officialKind(r.url) };
+}
+/* short Egyptian Arabic for the avatar: what, who, where, the deadline, the value, what is requested, the source — nothing else */
+export function itemText(r, src, nowMs = Date.now()) {
+  const it = itemFull(r, src);
+  let s = (KIND_SPOKEN[r.kind] || "فرصة") + " «" + clip(stripUrls(it.title || ""), 90) + "»" + (it.entity ? " من " + clip(stripUrls(it.entity), 60) : "") + " " + placeOf(r, it);
+  const facts = [];
+  if (r.deadline) facts.push("آخر ميعاد " + spokenDay(r.deadline, nowMs) + (STATUS_AR[r.status] ? " (" + STATUS_AR[r.status] + ")" : ""));
+  else if (/^tender_|^rfq$/.test(r.kind)) facts.push("ميعاد التقديم مش منشور في المصدر");
+  const money = moneyAr(r.value, r.currency);
+  facts.push(money ? "القيمة التقديرية " + money : "القيمة مش منشورة في المصدر");
+  s += "، " + facts.join("، ") + ".";
+  if (it.summary) s += " المطلوب: " + clip(it.summary, 260) + ".";
+  else if (it.summary_original) s += " من نص المصدر: " + clip(it.summary_original, 240) + ".";
+  else s += " المصدر مانشرش وصف أكتر من العنوان.";
+  s += (it.source ? " المصدر الرسمي: " + clip(it.source, 60) + "." : "") + " التفاصيل والرابط الرسمي على صفحتها في مركز المعلومات.";
+  return s.replace(/https?:\/\/\S+/g, "").replace(/\s{2,}/g, " ").replace(/\.\./g, ".").trim();
+}
+const DOC_FLAG = {
+  unreachable: "مقدرتش أفتح المستند الرسمي دلوقتي: موقع الجهة مش بيرد",
+  timeout: "موقع الجهة اتأخر في الرد، ومقدرتش أجيب المستند في الوقت",
+  login: "المستند الرسمي ورا تسجيل دخول على بوابة الجهة، فمقدرتش أقراه؛ لازم حضرتك تسجّل على البوابة دي علشان تحمّله",
+  forbidden: "موقع الجهة رفض إننا نقرا المستند آلياً",
+  robots: "موقع الجهة مابيسمحش بالقراءة الآلية، فماقريتش المستند",
+  gone: "رابط المستند الرسمي مبقاش موجود على موقع الجهة",
+  busy: "موقع الجهة عليه ضغط ومارَدّش دلوقتي",
+  too_large: "المستند الرسمي كبير قوي عن اللي أقدر أقراه في المكالمة",
+  unsupported: "الرابط الرسمي مش مستند PDF أو Word أو صفحة إعلان أقدر أقراها",
+  not_https: "رابط المستند مش آمن (مش https)، فمفتحتوش",
+  unsafe_url: "رابط المستند مش لموقع عام آمن، فمفتحتوش",
+  too_many_redirects: "رابط المستند بيحوّل على صفحات كتير ورا بعض، فوقفت",
+  scanned: "المستند صورة متصوّرة (سكان) ومفيهوش نص أقدر أقراه",
+  unreadable: "مقدرتش أطلع نص مفهوم من المستند",
+  encrypted: "المستند مقفول بكلمة سر",
+  empty: "صفحة المصدر مافيهاش نص أقدر أقراه",
+  no_document: "مفيش مستند رسمي مربوط بالفرصة دي غير صفحة المصدر",
+};
+const joinAr = list => (list.length < 2 ? list[0] || "" : list.slice(0, -1).join("، ") + " و" + list[list.length - 1]);
+const TRANSIENT = new Set(["unreachable", "timeout", "busy"]);
+async function itemTool(env, body, nowMs, action, o = {}) {
+  const db = env.DB, ref = itemRef(body);
+  const r = ref ? await findItem(db, ref) : null;
+  if (!r) {
+    /* no id: the closest results to the words given, so the persona can ask which one (never a guess at one of them) */
+    const words = clip(String(body.title || (ref ? "" : body.query) || ""), 100);
+    let cand = [];
+    if (words) { const s = await toolSearch(db, { q: words, days: 90 }, nowMs); cand = dedupe(s.rows).slice(0, 3); }
+    const sm = cand.length ? await sourcesMap(db) : null;
+    return { action, found: false, count: 0, results: [], candidates: cand.map(x => toolItem(x, sm)),
+      text: cand.length ? "مش متأكد أنهي فرصة تقصد. الأقرب لكلامك: " + cand.map(x => "«" + clip(stripUrls(x.title_ar || x.title_orig || ""), 50) + "»" + (x.entity ? " من " + clip(stripUrls(x.entity), 30) : "")).join("؛ ") + ". قولّي أنهي واحدة."
+        : ref ? "الفرصة دي مش موجودة في مركز المعلومات (يمكن اتشالت أو الرقم مش مظبوط). دوّر تاني بالبحث وخد الـ id من النتيجة." : "محتاج الـ id بتاع الفرصة زي ما رجع في نتايج البحث علشان أفتحها." };
+  }
+  const src = await db.prepare("SELECT id, name, name_ar FROM intel_sources WHERE id=?").bind(r.source_id).first();
+  const sm = new Map(src ? [[src.id, src]] : []), it = itemFull(r, src), res = [toolItem(r, sm)];
+  if (action === "item") {
+    return { action, found: true, id: r.id, count: 1, results: res, item: it, text: itemText(r, src, nowMs),
+      note: "Say only what `text` and `item` contain (a missing field is not published at the source: say so). In Bassem's calls its page opens on the shared screen by itself. Its own official document (requirements, documents, bid bond): bassem_intel action=doc with this id. Never read links aloud." };
+  }
+  /* action "doc": cached per item and link (12 h; a failure 30 min, a timeout / an unreachable site 5 min) */
+  const key = "doc:v1:" + r.id + ":" + hash53(String(r.url || "")).toString(36);
+  let d = null;
+  if (env.KV && !o.noCache) { try { d = await env.KV.get(key, "json"); } catch (e) { d = null; } }
+  if (!d) {
+    d = await readItemDoc(env, r, { fetch: o.fetch, now: nowMs, fetchMs: o.fetchMs, convertMs: o.convertMs });
+    if (env.KV) { try { await env.KV.put(key, JSON.stringify(d), { expirationTtl: d.ok ? 43200 : TRANSIENT.has(d.flags[0]) ? 300 : 1800 }); } catch (e) {} }
+  }
+  const head = { action, found: true, id: r.id, count: 1, results: res, item: { id: it.id, kind_label: it.kind_label, title: it.title, entity: it.entity, market_name: it.market_name, country: it.country, deadline: it.deadline, status: it.status, value: it.value, currency: it.currency, page: it.page, url: it.url } };
+  const facts = [it.entity ? "الجهة " + clip(stripUrls(it.entity), 60) : "", r.deadline ? "آخر ميعاد " + spokenDay(r.deadline, nowMs) : ""].filter(Boolean).join("، ");
+  if (!d.ok) {
+    const f = d.flags.find(x => DOC_FLAG[x]) || "unreadable";
+    const why = DOC_FLAG[f] + (d.ai_skip === "cap" && (f === "unreadable" || f === "scanned") ? " (وتحويل المستندات بالذكاء الاصطناعي خلص النهارده)" : "");
+    return { ...head, ok: false, flags: d.flags, doc: d.doc ? { type: d.doc.type || null, url: d.doc.url || null } : null,
+      text: why + "." + (facts ? " اللي عندي من صفحة الفرصة في مركز المعلومات: " + facts + "." : "") + " المستند نفسه على الرابط الرسمي في صفحتها.",
+      note: "The document was NOT read: say the reason in `text` honestly, then only the facts in `item`. Never guess its requirements, documents, bid bond or dates." };
+  }
+  const lang = d.doc && d.doc.lang, found = d.found.map(k => TOPIC_AR[k]), missing = d.missing.map(k => TOPIC_AR[k]);
+  const pages = d.doc && d.doc.pages > 0 ? d.doc.pages : 0;
+  const what = DOC_WORD[d.doc && d.doc.type] || "المستند";
+  const text = "قريت " + what + " الرسمي بتاع «" + clip(stripUrls(it.title || ""), 60) + "»" + (pages ? " (" + countAr(pages, ["صفحة واحدة", "صفحتين", "صفحات", "صفحة"]) + ")" : "") + (d.doc && d.doc.from === "linked" ? "، من صفحة الإعلان الرسمية" : "") + ". " +
+    (found.length ? "فيه كلام عن: " + joinAr(found) + "." : "مالقيتش فيه كلام واضح عن الشروط أو المستندات المطلوبة.") +
+    (found.length && missing.length ? " ومالقيتش فيه كلام عن: " + joinAr(missing) + "." : "") +
+    " اللي تحت (excerpt) من نص المستند نفسه" + (lang === "en" ? " بالإنجليزي" : lang === "fr" ? " بالفرنساوي" : "") + ".";
+  return { ...head, ok: true, flags: d.flags, doc: { type: d.doc.type, pages: pages || null, lang: lang || null, via: d.doc.via, from: d.doc.from, url: d.doc.url },
+    sections: { found, missing }, key_lines: d.key_lines, excerpt: d.excerpt, text,
+    note: "excerpt / key_lines = the document's own text" + (lang && lang !== "ar" ? " (" + lang + "): explain it in Egyptian Arabic, never word by word" : "") + ". Say ONLY what they contain: the 2-3 points he asked about (scope, eligibility, documents, bid bond, deadline, submission, briefing). Anything not in them: «مالقيتهاش في المستند». Never add a requirement, figure or date; never read links, e-mail addresses or phone numbers aloud." };
+}
+
+export async function tool(env, body = {}, nowMs = Date.now(), o = {}) {
+  const db = env.DB, action = ACTIONS[String(body.action || "").toLowerCase().trim()] || "search";
+  if (action === "item" || action === "doc") return itemTool(env, body, nowMs, action, o);
   const plan = planOf(body.plan || body.member_plan), scope = plan ? PLAN_SCOPE[plan] : null;
   const query = String(body.query || "").slice(0, 100), parsed = parseQuery(query);
   /* no product word: a code / number is matched literally; stop-words alone add no text; a bare size is not a product */
@@ -264,9 +405,9 @@ export async function tool(env, body = {}, nowMs = Date.now()) {
     toolText("search", list.length, results, { query: q || "", partial, sectorName: !q && sec >= 0 ? sectorName(sec, "ar") : "", days, olderOpen, where: unknown ? "" : askedWhere, widenedTo: widened ? scopeWords(plan) : "", newsOnly, newsAsked, inMarket, nowMs });
   return { count: list.length, results, text, days, market: markets.length ? markets.join(",") : scope ? "plan" : "all", widened: widened === true ? (scope ? scope.join(",") : "all") : null, ...(plan ? { plan } : {}) };
 }
-async function rateLimited(env, req, perMin = 30) {
+async function rateLimited(env, req, perMin = 30, prefix = "rl:") {
   if (!env.KV) return false;
-  const ip = req.headers.get("CF-Connecting-IP") || "0", key = "rl:" + ip + ":" + Math.floor(Date.now() / 60000);
+  const ip = req.headers.get("CF-Connecting-IP") || "0", key = prefix + ip + ":" + Math.floor(Date.now() / 60000);
   try { const n = +(await env.KV.get(key)) || 0; if (n >= perMin) return true; await env.KV.put(key, String(n + 1), { expirationTtl: 120 }); } catch (e) {}
   return false;
 }
@@ -356,6 +497,9 @@ export async function handleApi(req, env, ctx) {
       if (env.TOOL_KEY && !timingSafeEqual(req.headers.get("X-Intel-Key") || "", env.TOOL_KEY)) return json(req, { error: "unauthorized" }, 401);
       if (await rateLimited(env, req, +(env.TOOL_RATE_PER_MIN || 30))) return json(req, { error: "rate limited", text: "لحظة واحدة، طلبات كتير ورا بعض. جرّب تاني بعد دقيقة." }, 429);
       let b = p; if (req.method === "POST") { try { b = Object.assign({}, p, await req.json()); } catch (e) { return json(req, { error: "bad json" }, 400); } }
+      /* reading a document fetches from the official site: its own, smaller budget (DOC_RATE_PER_MIN, default 10 a minute) */
+      if (ACTIONS[String(b.action || "").toLowerCase().trim()] === "doc" && await rateLimited(env, req, +(env.DOC_RATE_PER_MIN || 10), "rld:"))
+        return json(req, { error: "rate limited", action: "doc", ok: false, flags: ["busy"], text: "لحظة واحدة، طلبات قراءة مستندات كتير ورا بعض. جرّب تاني بعد دقيقة." }, 429);
       return json(req, await tool(env, b));
     }
     const m = /^\/api\/intel\/admin\/(hide|unhide|source-enable|source-disable|run|reenrich)$/.exec(path);

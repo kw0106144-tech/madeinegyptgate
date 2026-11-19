@@ -1307,21 +1307,33 @@
       }
       /* data/bassem-live-tools.js: Bassem opens ONE item on the shared screen; its real key facts arrive with MIGHOLO.result */
       case "bassem_open_item": {
-        var isec = { tenders: ["مناقصة", "tender"], rfqs: ["طلب عرض سعر", "RFQ"], factories: ["مصنع", "factory"], suppliers: ["مورد", "supplier"], products: ["منتج", "product"], projects: ["مشروع", "project"], winners: ["ترسية", "award"] }[String(a.section || "")] || ["بند", "item"];
+        var isec = { tenders: ["مناقصة", "tender"], rfqs: ["طلب عرض سعر", "RFQ"], factories: ["مصنع", "factory"], suppliers: ["مورد", "supplier"], products: ["منتج", "product"], projects: ["مشروع", "project"], winners: ["ترسية", "award"], intel: ["فرصة من مركز المعلومات", "Information Center item"] }[String(a.section || "")] || ["بند", "item"];
         var iwhat = str(a.title, 60) || str(a.ref, 40) || (a.index ? T("رقم " + a.index, "no. " + a.index) : "");
         sp.kind = "search"; sp.title = T(N + " " + V(w, "بيفتحلك", "بتفتحلك") + " " + isec[0] + (iwhat ? ": " + iwhat : ""), N + " is opening the " + isec[1] + (iwhat ? ": " + iwhat : ""));
         sp.main = { type: "results" };
         /* what he points at, per section (QA L2) */
         var istep = { rfqs: ["بعلّملك على المطلوب والكمية ومكان التسليم والموعد", "Pointing at the request, quantity, delivery place and deadline"], factories: ["بعلّملك على النشاط والمكان والمنتجات وطلب عرض السعر", "Pointing at the activity, location, products and the quote button"],
           suppliers: ["بعلّملك على النشاط والمكان والمنتجات وطلب عرض السعر", "Pointing at the activity, location, products and the quote button"], products: ["بعلّملك على المنتج والمصنع وطلب عرض السعر", "Pointing at the product, its maker and the quote button"],
-          projects: ["بعلّملك على المالك والمقاول والقيمة والمرحلة", "Pointing at the owner, contractor, value and stage"], winners: ["بعلّملك على الفايز والجهة والقيمة والتاريخ", "Pointing at the winner, entity, value and date"] }[String(a.section || "")] || ["بعلّملك على الجهة والمبلغ والموعد والمستندات", "Pointing at the entity, amount, deadline and documents"];
+          projects: ["بعلّملك على المالك والمقاول والقيمة والمرحلة", "Pointing at the owner, contractor, value and stage"], winners: ["بعلّملك على الفايز والجهة والقيمة والتاريخ", "Pointing at the winner, entity, value and date"],
+          intel: ["بعلّملك على المطلوب والجهة والبلد وآخر ميعاد والقيمة", "Pointing at what is requested, the buyer, country, deadline and value"] }[String(a.section || "")] || ["بعلّملك على الجهة والمبلغ والموعد والمستندات", "Pointing at the entity, amount, deadline and documents"];
         sp.plan = [P(T("بفتح الصفحة على الشاشة", "Opening the page on the screen"), 900), P(T("بدوّر على البند", "Finding the item"), 1000), P(T(istep[0], istep[1]), 1600)];
         break;
       }
       /* data/bassem-live-tools.js: scrolling / pointing on the screen is shown by its own pointer, not as a new hologram scene */
       case "bassem_screen": { sp.skip = true; break; }
       case "bassem_intel": {
-        var iq = str(a.query, 40), imk = codeName(a.market, "markets", MK);
+        var iq = str(a.query, 40), imk = codeName(a.market, "markets", MK), iact = String(a.action || "").toLowerCase();
+        /* one result: its details (the screen opens its page) / its own official document (worker-intel src/doc.js) */
+        if (/^(?:item|details?|open|get)$/.test(iact)) {
+          sp.kind = "search"; sp.title = T(N + " " + V(w, "بيفتحلك", "بتفتحلك") + " تفاصيل الفرصة من مركز المعلومات", N + " is opening the item's details from the Information Center");
+          sp.plan = [P(T("بجيب الفرصة من مركز المعلومات", "Fetching the item"), 800), P(T("بفتح صفحتها على الشاشة", "Opening its page on the screen"), 1000), P(T("الجهة والبلد وآخر ميعاد والقيمة والمطلوب", "Buyer, country, deadline, value and what is requested"), 900)];
+          break;
+        }
+        if (/^(?:doc|document|pdf|read|requirements)$/.test(iact)) {
+          sp.kind = "search"; sp.title = T(N + " " + V(w, "بيقرالك", "بتقرالك") + " المستند الرسمي للفرصة", N + " is reading the item's official document");
+          sp.plan = [P(T("بفتح المستند الرسمي من موقع الجهة", "Opening the official document on the buyer's site"), 1200), P(T("بقرا الشروط والمستندات والتأمين والميعاد", "Reading the requirements, documents, bid bond and deadline"), 2200), P(T("بقولك اللي مكتوب فيه بس", "Telling you only what it says"), 800)];
+          break;
+        }
         sp.kind = "search"; sp.title = a.action === "search" ? T(N + " بيدوّر في المصادر الرسمية: " + (iq || "فرص لقطاعك") + (imk ? " · " + imk : ""), N + " is searching official sources: " + (iq || "opportunities for your sector") + (imk ? " · " + imk : ""))
           : T(N + " بيجهّزلك الجديد النهارده من المصادر الرسمية", N + " is preparing today's news from official sources");
         sp.plan = [P(T("بفتح مركز المعلومات اليومي", "Opening the daily information center"), 900), P(T("بدوّر في المناقصات وطلبات الأسعار والمشاريع", "Scanning tenders, RFQs and projects"), 1300), P(T("بفلتر على نطاق باقتك", "Filtering to your plan's markets"), 1000), P(T("النتيجة معايا — بقولهالك دلوقتي", "Got it — telling you now"), 600)];
