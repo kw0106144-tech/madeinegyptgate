@@ -49,9 +49,9 @@ jobs:
     name: test, index, deploy (Worker janna-lookup)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # Optional hardening (needs GitHub Pro / Team for a private repository): Settings → Environments → New environment
-    # «production», Deployment branches: main only; move the secret CLOUDFLARE_API_TOKEN into it (delete the repository secret),
-    # then uncomment the next line in all four workflows. A branch whose workflow file was edited then cannot read the token.
+    # Optional hardening (needs GitHub Pro / Team for a private repository), in this order: uncomment the next line in all four
+    # workflows; then Settings → Environments → «production» → Deployment branches: main only, add the secret CLOUDFLARE_API_TOKEN
+    # there and delete the repository secret. A branch whose workflow file was edited can then no longer read the token.
     # environment: production
     env:
       CLOUDFLARE_ACCOUNT_ID: 88c77c2b7595dd0ce510270175f69143

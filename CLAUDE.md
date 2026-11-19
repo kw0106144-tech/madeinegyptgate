@@ -30,7 +30,8 @@ The owner's own guide is `OWNER-GUIDE-AR.md`.
    instruction (2.7).
 9. **Never deploy from a coding session.** No `wrangler deploy`, `wrangler pages deploy`, `wrangler secret …`, `wrangler rollback`,
    `deploy/deploy.sh production|preview|release|worker|db|domains|dns|cutover|rollback|secrets --set`. CI deploys; the owner holds
-   the keys.
+   the keys. Never change a workflow so that a branch, a tag or a pull request gets `CLOUDFLARE_API_TOKEN` or deploys (no new
+   `on:` branches or `pull_request` triggers on the four workflows; `ci_ref_guard` and the `refs/heads/main` token condition stay).
 10. **The owner's old system is untouchable.** `/panel.html`, `/login.html`, `/api/index.php*`, `/data/auth.js`, `/data/me.js`,
     `/data/egadm.js` (`deploy/legacy-live.txt`) are answered by the Worker `mis-egypt` from Hostinger. Never build them, route them
     or "fix" them here (2.8).
@@ -281,6 +282,8 @@ conversational UI (Janna, Bassem, dashboards, the Control Center) is Egyptian Ar
   `BRAVE_SEARCH_KEY`, `GOOGLE_CSE_KEY`/`GOOGLE_CSE_CX`, `BREVO_API_KEY`, `JANNA_KEY`; Pages `ADVISOR_SECRET` (same value as the
   Worker), `SEO_PLATFORM_KEY`, `INDEXNOW_KEY`; `migate-intel` `PLATFORM_KEY`, `TOOL_KEY`; `migate-shield` `CF_LISTS_TOKEN`.
   Lists and meaning: `deploy/README-DEPLOY.md` section 4, `worker/README.md`.
+- `.gitignore` ignores `build/` and `site/` at every depth, except `worker-intel/test/fixtures/site/` (a saved copy of live pages the
+  intel tests read): a new test folder named `site` or `build` needs its own `!` line, or it never reaches GitHub and CI fails.
 - `.gitignore` already blocks `.env*`, `.dev.vars`, `*.pem`, `*.key`, `deploy-secrets/`, `*d1-backup*.sql`. Tests use dummy values;
   `[vars]` holds only non-secret settings (`stage.py` refuses secret-like names in the Pages config). If you ever see a real value in
   the tree or the history, stop and tell the user: it must be rotated at its provider, not just deleted.
@@ -496,8 +499,8 @@ source of truth for the steps. Read both before you change anything related.
 
 | Workflow | Starts on | Script | Deploys |
 |---|---|---|---|
-| `deploy-site.yml` | push to `main`, every path EXCEPT `worker/**`, `worker-intel/**`, `docs/**`, `**.md` and the other pipelines' own files; or «Run workflow» (optional dry run) | `deploy/ci/ci-site.sh` (+ `ci-post-stage.py`, `carry-redirects.txt`) | Pages project `madeinegyptgate` |
-| `deploy-worker.yml` | push to `main` touching `worker/**` (not `.md`), the data files Janna's index reads (`data/mig-overlay.js`, `regions.js`, `factories.js`, `facx.js`, `oldfac.js`, `oldfacd.js`, `oldprod.js`, `oldtend.js`, `oldrfq.js`, `offers.js`, `zones.js`, `real.js`, `videos.js`, `projects.js`) or its own CI files; or «Run workflow» | `deploy/ci/ci-worker.sh` | Worker `janna-lookup` (code; its secrets, D1, R2 stay as they are) |
+| `deploy-site.yml` | push to `main`, every path EXCEPT `worker/**`, `worker-intel/**`, `docs/**`, `**.md` and the other pipelines' own files; or «Run workflow» (optional dry run) | `deploy/ci/ci-site.sh` (+ `ci-overlay.py`, `ci-post-stage.py`, `carry-redirects.txt`) | Pages project `madeinegyptgate` |
+| `deploy-worker.yml` | push to `main` touching `worker/**` (not `.md`), the data files Janna's index reads (`data/mig-overlay.js`, `regions.js`, `factories.js`, `facx.js`, `oldfac.js`, `oldfacd.js`, `oldprod.js`, `oldtend.js`, `oldrfq.js`, `offers.js`, `zones.js`, `real.js`, `videos.js`, `projects.js`) or its own CI files; or «Run workflow» | `deploy/ci/ci-worker.sh` (+ `ci-overlay.py`) | Worker `janna-lookup` (code; its secrets, D1, R2 stay as they are) |
 | `deploy-intel.yml` | push to `main` touching `worker-intel/**` (not `.md`) or its own CI files; or «Run workflow» | `deploy/ci/ci-intel.sh` | Worker `migate-intel` (code only) |
 | `d1-migrate.yml` | manual only («Run workflow» with inputs, 4.4) | `deploy/ci/ci-d1-migrate.sh` | D1 `migate-db`: backup first, then ONE chosen migration file |
 
@@ -508,7 +511,12 @@ statuses and the tenders-hub date are computed on the build day). Until the owne
 or a manual «Run workflow».
 
 Common to all: the repository secret `CLOUDFLARE_API_TOKEN` (never printed; without a working token a run does every check and then
-fails or exits 3 = "checked, NOT deployed"), account `88c77c2b7595dd0ce510270175f69143`, wrangler pinned to 4.164.0
+fails or exits 3 = "checked, NOT deployed"). Only a run for `refs/heads/main` that is not a dry run gets it (the workflows' `env`
+condition), and the scripts refuse any other non-dry run at once (`ci_ref_guard` in `ci-lib.sh`): «Run workflow» on a branch can only
+check it. `ci-lib.sh` takes the token out of the environment as soon as it is sourced, so the build, the tests, npm and node never
+see it; only `wrangler deploy` / `pages deploy` / `deployments` / `rollback` / `d1 …` (`wr_cf`) and the Cloudflare API calls (`cf_api`,
+token on stdin) get it. No file downloaded from the live site is ever executed in CI (4.1 step 2). Account
+`88c77c2b7595dd0ce510270175f69143`, wrangler pinned to 4.164.0
 (`worker/package-lock.json`), Node 22, Python 3.13 + Pillow 12.3.0 (site), `permissions: contents: read` (CI cannot push). Helpers in
 `deploy/ci/ci-lib.sh`. Every run writes a job summary and keeps its logs as a workflow artifact (`site-reports`, `worker-reports`,
 `intel-reports`, `d1-migrate-logs`, 14 days); `deploy-site` also keeps the build's updated `seo/lastmod.json` as the artifact
@@ -518,9 +526,13 @@ has a `dry_run` box: everything except the deploy.
 ### 4.1 `deploy-site` (`deploy/ci/ci-site.sh`)
 
 1. Tools: Python 3 + Pillow, Node 22.12+, wrangler 4.164.0, the token.
-2. Build: `deploy/deploy.sh build` into the work dir with `MIG_FPROF_MEDIA_REBUILD=0`; `seo/lastmod.json` is updated in a copy
-   (`MIG_SEO_LASTMOD=<work>/lastmod.json`), so the checkout stays exactly as committed. The run stops when the published overlay could
-   not be pulled (`CI_ALLOW_NO_OVERLAY=1` overrides). Must print `generator validation: 0 problem(s)`.
+2. Build: the published Control Center overlay is pulled (GET `/data/overlay.js`) and reduced to data by `deploy/ci/ci-overlay.py`:
+   it must come from the Worker (header `X-Overlay-V`; the static Pages fallback is refused) and its first line must be exactly
+   `window.MIGOVL_DATA=<JSON>;`; a new file with the re-serialised JSON is written, so `tools/dump-data.mjs` (Node `vm`, not a sandbox)
+   never runs downloaded code. Then `deploy/deploy.sh build` into the work dir with `MIG_FPROF_MEDIA_REBUILD=0` bakes that copy in
+   (`_seo/overlay-baked.json` must name the same version); `seo/lastmod.json` is updated in a copy
+   (`MIG_SEO_LASTMOD=<work>/lastmod.json`), so the checkout stays exactly as committed. The run stops when the overlay is not usable
+   (`CI_ALLOW_NO_OVERLAY=1` overrides). Must print `generator validation: 0 problem(s)`.
 3. Stage: `deploy/stage.py stage`; `STAGE-REPORT.json` must have 0 errors.
 4. CI patches, `deploy/ci/ci-post-stage.py --stage <stage>` (changes `<stage>/site` only, reads the live site with GET only, safe to
    re-run, report in `<stage>/CI-POST-STAGE.json`):
@@ -531,7 +543,8 @@ has a `dry_run` box: everything except the deploy.
       `<script src="/data/link-fix.js?v=<md5[:8] of data/link-fix.js>" defer></script>` goes right before `</body>`, where the live page
       has it. (`site.py` writes `janna.html` without it; adding it there would make this patch a no-op.)
    3. **Live SEO bundles kept**: the `assets/seo-<hash>.css|.js` files that the LIVE pages reference are fetched read-only from
-      `https://madeinegyptgate.com/assets/<name>` into the stage when it lacks them, so pages held by browsers and caches keep working.
+      `https://madeinegyptgate.com/assets/<name>?ci=<time>` (past the edge cache, which can hold different copies of one name per
+      location) into the stage when it lacks them, so pages held by browsers and caches keep working.
 5. Checks: `functions` tests, `wrangler pages project validate`, the Functions compile.
 6. Deploy: `cd <stage> && wrangler pages deploy site --project-name madeinegyptgate --branch main` (the stage holds `site/`,
    `functions/` and `wrangler.toml`).
@@ -545,7 +558,7 @@ is unavailable and a deploy cannot wait, run `deploy/ci/ci-site.sh` itself with 
 ### 4.2 `deploy-worker` (`deploy/ci/ci-worker.sh`)
 
 Tools → `deploy/deploy.sh worker-config` (read-only) → `npm ci` in `worker/` → tests (`worker` and `functions`) → Janna's index: GET of
-the live overlay and the live clean-URL maps (`/_seo/hash/*.json` → `MIG_SITE_DIR`), then `node worker/build-index.js &&
+the live overlay (reduced to data by `ci-overlay.py`, as in 4.1) and the live clean-URL maps (`/_seo/hash/*.json` → `MIG_SITE_DIR`), then `node worker/build-index.js &&
 node worker/build-items.js` from the root (refused when a data file failed to load or a list shrank by more than half;
 `CI_ALLOW_INDEX_DROP=1` overrides) → `wrangler deploy --dry-run` → `wrangler deploy` in `worker/` → health of `/api/<service>/health`:
 `janna`, `advisor`, `meetings`, `auth` or `inquiries` failing → automatic rollback to the version live before. Routes, cron and bindings
