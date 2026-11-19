@@ -138,6 +138,7 @@ describe("websearch connect: the tool definition", () => {
     assert.deepEqual(toolIdsOf({ toolIds: ORIG, tools: [] }), ORIG);
     assert.deepEqual(toolIdsOf({ tools: [{ _toolId: ORIG[0] }, { id: ORIG[1] }] }), ORIG.slice(0, 2));
     for (const bad of [null, [], {}, { toolIds: [ORIG[0], 7] }, { tools: [{ name: "no id" }] }]) assert.equal(toolIdsOf(bad), null, JSON.stringify(bad));
+    assert.equal(toolIdsOf({ toolIds: ORIG.slice(0, 2), tools: [{ _toolId: ORIG[0] }, { _toolId: ORIG[1] }, { name: "inline, no id" }] }), null, "more tools than ids: a tool would be lost");
     const t = (id, createdAt) => ({ id, createdAt });
     assert.equal(pickTool([t(fake(9), "2026-01-02"), t(fake(8), "2026-01-01")], [fake(9)], null).id, fake(9), "the one on Bassem first");
     assert.equal(pickTool([t(fake(9), "2026-01-02"), t(fake(8), "2026-01-01")], [], fake(9)).id, fake(9), "then the one this button wrote");
@@ -145,6 +146,10 @@ describe("websearch connect: the tool definition", () => {
     assert.equal(pickTool([], [], null), null);
     assert.match(refusedMsg(403, "tool_create")[0], /Tools/); assert.match(refusedMsg(403, "persona_update")[1], /Personas.*403/);
     assert.match(refusedMsg(401, "persona_read")[1], /401/); assert.match(refusedMsg(503, "tools_list")[0], /503/);
+    // the advice keeps what the calls and meetings.js need, and says where the new key goes (the Worker secret wins over the panel)
+    for (const src of ["panel", "env"]) { const m = refusedMsg(403, "tool_create", src); assert.match(m[0], /Read على Sessions/); assert.match(m[1], /Read on Sessions and session tokens/); }
+    assert.match(refusedMsg(403, "tool_create", "panel")[1], /save it in «Anam key» here/);
+    assert.match(refusedMsg(403, "tool_create", "env")[1], /ANAM_API_KEY Worker secret/); assert.match(refusedMsg(403, "tool_create", "env")[0], /ANAM_API_KEY/);
   });
 });
 
@@ -344,6 +349,8 @@ describe("websearch connect: keys, secret, refusals", () => {
     r = await press(env2, o2);
     assert.deepEqual([r.status, r.data.code, r.data.anam_status, r.data.step, r.data.tool_done], [502, "anam_refused", 403, "persona_update", "created"]);
     assert.ok(r.data.tool_id); assert.match(r.data.msg_en, /Personas/); assert.match(r.data.msg_ar, /Personas/);
+    assert.match(r.data.msg_en, /ANAM_API_KEY Worker secret/, "the key in use is the Worker secret: a key saved in the panel would change nothing");
+    assert.ok(r.data.error.includes(r.data.msg_ar) && r.data.error.includes(r.data.msg_en));
     noSecrets(r.text, UPSTREAM, ANAMK, SECRET);
     const aud2 = await audits(env2, "websearch.connect");
     assert.deepEqual(aud2.map(a => [JSON.parse(a.after_json).ok, JSON.parse(a.after_json).anam_status, JSON.parse(a.after_json).tool_id, a.target_id]), [[false, 403, r.data.tool_id, r.data.tool_id]]);
@@ -368,6 +375,12 @@ describe("websearch connect: keys, secret, refusals", () => {
     assert.match(r.data.msg_en, /persona/);
     assert.deepEqual(shape(), ["GET personas/" + BASSEM_PERSONA]);
     assert.equal(A.tools.length, 0);
+  });
+  test("a persona showing more tools than toolIds (a tool without an id) → 502 anam_shape, nothing written in Anam", async () => {
+    const env = env0({ ANAM_API_KEY: ANAMK, TOOL_SECRET: SECRET }), o = await owner(env);
+    A.persona.tools = [...A.persona.tools, { type: "client", name: "inline_without_id" }];
+    const r = await press(env, o);
+    assert.deepEqual([r.status, r.data.code, r.data.step, writes().length, A.tools.length], [502, "anam_shape", "persona_read", 0, 0]);
   });
   test("non-owner → 403 owner_only (admin / editor / support / X-Platform-Key), team roles → their page, signed out → 401; nothing reaches Anam", async () => {
     const env = env0({ ANAM_API_KEY: ANAMK, TOOL_SECRET: SECRET });

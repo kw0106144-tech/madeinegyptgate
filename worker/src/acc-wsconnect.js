@@ -76,12 +76,15 @@ export function toolBody(secret) {
 export const headerSafe = s => typeof s === "string" && /^[\x21-\x7e]{16,4096}$/.test(s) && !/\{\{|\}\}/.test(s);
 export const isUuid = s => typeof s === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 /* the persona's attached tool ids as Anam returns them: `toolIds` (the list a PUT replaces), else ids from `tools`; null = cannot be read
-   safely (then nothing is written: a PUT with a guessed list could drop a tool) */
+   safely (then nothing is written: a PUT with a guessed list could drop a tool). More `tools` than ids (a tool without an id) → null too,
+   as bassem-context.js ephemeralFrom refuses it ("a tool would be lost") */
 export function toolIdsOf(p) {
   if (!p || typeof p !== "object" || Array.isArray(p)) return null;
-  if (Array.isArray(p.toolIds)) return p.toolIds.every(x => typeof x === "string" && x) ? [...p.toolIds] : null;
-  if (Array.isArray(p.tools)) { const ids = p.tools.map(t => (t && typeof t === "object" ? t._toolId || t.toolId || t.id : null)); return ids.every(x => typeof x === "string" && x) ? ids : null; }
-  return null;
+  const tools = Array.isArray(p.tools) ? p.tools : null;
+  let ids = null;
+  if (Array.isArray(p.toolIds)) ids = p.toolIds.every(x => typeof x === "string" && x) ? [...p.toolIds] : null;
+  else if (tools) { const t = tools.map(x => (x && typeof x === "object" ? x._toolId || x.toolId || x.id : null)); ids = t.every(x => typeof x === "string" && x) ? t : null; }
+  return ids && (!tools || tools.length <= ids.length) ? ids : null;
 }
 
 /* ---------- messages (Egyptian Arabic first, English twin) ---------- */
@@ -101,12 +104,18 @@ const MSG = {
   secret_not_saved: ["السر الجديد ماتحفظش صح — ماحصلش أي تغيير في Anam؛ جرّب تاني", "The new secret was not stored correctly — nothing was changed in Anam; try again"],
 };
 const READS = ["persona_read", "tools_list"];
-/* Anam said no (status only — its body is never read on an error) → the owner's next step */
-export function refusedMsg(status, step) {
+/* Anam said no (status only — its body is never read on an error) → the owner's next step. src = anamKeySource: the ANAM_API_KEY Worker
+   secret wins over the panel slot, so a wider key saved here would change nothing; the same key serves the calls (session tokens,
+   Personas read) and meetings.js (Sessions read: transcripts, recordings), so the advice keeps those */
+export function refusedMsg(status, step, src) {
   const persona = /^persona/.test(step), what = persona ? ["الشخصيات (Personas)", "Personas"] : ["الأدوات (Tools)", "Tools"], read = READS.includes(step);
   if (status === 401) return ["Anam رفض المفتاح (401) — اتأكد إن «مفتاح Anam» صح ولسه شغّال", "Anam refused the key (401) — check that the Anam key is right and still active"];
-  if (status === 403) return [`مفتاح Anam ده مالوش صلاحية ${read ? "قراءة" : "تعديل"} ${what[0]} (403). من Anam Lab ← API keys اعمل مفتاح Full access، أو Restricted فيه Write على Tools و Personas ومعاه إنشاء session tokens (علشان المكالمات تفضل شغّالة)، وحطّه في «مفتاح Anam» هنا، وبعدين دوس الزرار تاني`,
-    `This Anam key may not ${read ? "read" : "change"} ${what[1]} (403). In Anam Lab → API keys create a Full access key, or a Restricted one with Write on Tools and Personas plus session tokens (so the calls keep working), save it in «Anam key» here, then press the button again`];
+  if (status === 403) {
+    const put = src === "env" ? ["المفتاح الشغّال دلوقتي هو سر الـ Worker ANAM_API_KEY (بيكسب على «مفتاح Anam» هنا): المطوّر يحط المفتاح الجديد مكانه في Cloudflare", "the key in use is the ANAM_API_KEY Worker secret (it wins over «Anam key» here): the developer puts the new key there in Cloudflare"]
+      : ["حطّه في «مفتاح Anam» هنا", "save it in «Anam key» here"];
+    return [`مفتاح Anam ده مالوش صلاحية ${read ? "قراءة" : "تعديل"} ${what[0]} (403). من Anam Lab ← API keys اعمل مفتاح Full access، أو Restricted فيه Write على Tools و Personas و Read على Sessions ومعاه إنشاء session tokens (علشان المكالمات والاجتماعات تفضل شغّالة)، و${put[0]}، وبعدين دوس الزرار تاني`,
+      `This Anam key may not ${read ? "read" : "change"} ${what[1]} (403). In Anam Lab → API keys create a Full access key, or a Restricted one with Write on Tools and Personas, Read on Sessions and session tokens (so the calls and meetings keep working); ${put[1]}, then press the button again`];
+  }
   if (status === 429) return ["Anam بيقول طلبات كتير (429) — استنى دقيقة وجرّب تاني", "Anam says too many requests (429) — wait a minute and try again"];
   if (status >= 500) return [`Anam عنده مشكلة دلوقتي (${status}) — جرّب تاني بعد شوية`, `Anam has a problem right now (${status}) — try again shortly`];
   if (status === 400 || status === 422) return [`Anam رفض ${persona ? "تحديث شخصية باسم" : "تعريف الأداة"} (${status}) — ماتغيّرش حاجة؛ بلّغ المطوّر`, `Anam refused the ${persona ? "persona update" : "tool definition"} (${status}) — nothing was changed; tell the developer`];
@@ -267,9 +276,9 @@ export async function connectWebSearch(req, env, ctx, adm) {
   if (!(await rateOk(env, "ccwsc|" + adm.actor.actor_id, CONNECT.per_hour, 3600))) failMsg(429, "rate_limited", { limit: CONNECT.per_hour, window_s: 3600, retry_s: 3600 - Math.floor(Date.now() / 1000) % 3600 });
   const lock = await lockTake(env);
   if (!lock) failMsg(409, "connect_busy", { retry_s: 60 });
-  try { return await connect(env, adm, key, cfg); } finally { await lockFree(env, lock); }
+  try { return await connect(env, adm, key, cfg, anamKeySource(env)); } finally { await lockFree(env, lock); }
 }
-async function connect(env, adm, key, cfg) {
+async function connect(env, adm, key, cfg, src) {
   const by = line((adm.actor && (adm.actor.actor_email || adm.actor.actor_id)) || "owner", 254), prev = await readState(env);
   const auditId = await adm.audit("websearch.connect", "anam_tool", WS_TOOL_NAME, { tool_id: prev ? prev.tool_id : null }, { status: "started" }, "«🔗 وصّل البحث بباسم»: started");
   const out = { tool_id: "", created: false, updated: false, unchanged: false, attached: false, already_attached: false, header_source: cfg.tool_source, duplicates: 0 };
@@ -308,6 +317,7 @@ async function connect(env, adm, key, cfg) {
     // the tool may be written already (e.g. the persona update was refused): the answer says so, the next press attaches it
     if (e instanceof HttpErr && out.tool_id && !(e.extra && e.extra.tool_id)) e.extra = { ...(e.extra || {}), tool_id: out.tool_id, tool_done: doneOf(out) };
     const x = (e && e.extra) || {};
+    if (e instanceof HttpErr && e.code === "anam_refused" && x.anam_status === 403 && src === "env") { const m = refusedMsg(403, x.step, src); e.message = m[0] + " / " + m[1]; x.msg_ar = m[0]; x.msg_en = m[1]; }
     await adm.auditDone(auditId, { ...(out.tool_id || x.tool_id ? { target_id: out.tool_id || x.tool_id } : {}), after: { ok: false, code: line((e && e.code) || "server", 40), step: line(x.step || "", 40),
       anam_status: Number(x.anam_status) || 0, tool_id: out.tool_id || x.tool_id || null, tool_done: x.tool_done || null, header_source: out.header_source },
       summary: `${WS_TOOL_NAME}: not connected — ${(e && e.code) || "server"}${x.anam_status ? " " + x.anam_status : ""}${x.step ? " at " + x.step : ""}` });

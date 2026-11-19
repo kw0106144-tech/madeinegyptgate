@@ -22,7 +22,7 @@ These follow MERGE-NOTES §7, MEMORY §9 and NOISE §4.
 
 1. **D1.** Back up, then apply `0007_member_profile.sql` → `0008_advisor_memory.sql` → `0009_memory_upgrades.sql`.
 2. **Worker.**
-   - Set the secret `TOOL_SECRET` (`openssl rand -hex 24`), or the owner's slot «سر أدوات باسم».
+   - The tool secret: nothing to set by hand. «🔗 وصّل البحث بباسم» (§2, step 2) makes it and seals it in «سر أدوات باسم», so nobody sees it (owner decision 2026-11-19); a `TOOL_SECRET` Worker secret, if one exists, is used instead.
    - Optionally add a web-search key in «مفاتيح الخدمات» → «بحث الإنترنت (باسم)». Without it, `bassem_web_search` answers `websearch_off`, and Bassem says web search isn't switched on yet.
    - Deploy the consolidated `cons/repo/worker`.
 3. **Pages.** Deploy these together, then rebuild advisor (advisor.part.py 3970ee83):
@@ -52,7 +52,7 @@ These follow MERGE-NOTES §7, MEMORY §9 and NOISE §4.
 ## 1. Re-read (read-only) and compare with `live-read.json`
 
 - **Tools.** Run `anam_tool_list perPage 100`.
-  - None of the 13 names may exist yet. The `@bassem` keys are copies that reuse the names `janna_search`, `janna_navigate`, `janna_follow` and `janna_lookup`; each of those 4 names must exist exactly once (the shared tool).
+  - None of the 13 names may exist yet, except `bassem_web_search`: the owner's button «🔗 وصّل البحث بباسم» (§2, step 2) may have made it, and then it exists exactly once and stays. The `@bassem` keys are copies that reuse the names `janna_search`, `janna_navigate`, `janna_follow` and `janna_lookup`; each of those 4 names must exist exactly once (the shared tool).
   - The 3 tools to update must still have the `updatedAt` in `tools.update.json`.
 - **Personas.** Run `anam_persona_get` for each of the 3.
   - If `updatedAt` equals the `expectedUpdatedAt` in its persona file, the prompt is the one this proposal was built on. Use `put_body_if_unchanged_since_read`.
@@ -61,10 +61,9 @@ These follow MERGE-NOTES §7, MEMORY §9 and NOISE §4.
 ## 2. Create the 13 tools, then note their ids
 
 1. Run `anam_tool_create` once per entry of `tools.create.json`, in file order, sending `body` exactly.
-2. **`bassem_web_search`:** replace `REPLACE_WITH_TOOL_SECRET` with the TOOL_SECRET value only inside this one create call.
-   - Never write the value in a file, a log or a chat.
-   - Write it literally, never inside `{{ }}`: Anam treats that as a template placeholder, the header arrives empty, and every call gets 401.
-   - `anam_tool_get` shows it masked as ••••.
+2. **`bassem_web_search`: never create it by hand, and never handle the TOOL_SECRET value.** Skip its entry in step 1.
+   - The owner presses «🔗 وصّل البحث بباسم» in «مفاتيح الخدمات» → «بحث الإنترنت (باسم)» (`POST /api/admin/cc/keys/websearch/connect`, `worker/src/acc-wsconnect.js`, so that Worker must be deployed). The Worker creates the tool from this same body with the secret written literally (never inside `{{ }}`), or updates the one that exists, and adds it to Bassem's `toolIds`.
+   - Then write its id (`anam_tool_list` search `bassem_web_search`) into `ids.json` in step 3, like the others.
 3. Write each returned `id` into `ids.json` (a copy of `ids.template.json`) under its key.
 4. Run `python3 -I _work/fill_ids.py`. It writes `ready/<persona>.put.json`, the exact persona bodies with `NEW:<key>` resolved. It refuses if an id is missing, is not a UUID, or is used twice.
 
