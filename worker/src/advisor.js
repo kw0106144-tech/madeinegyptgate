@@ -15,6 +15,12 @@
    DELETE /api/advisor/deals/:id               → {ok}
    GET    /api/advisor/deals/:id/messages      → {messages}
    POST   /api/advisor/deals/:id/email         {to, subject, body, cc?} → {message, sent, error?}
+   POST   /api/advisor/send                    {to, subject, body, cc?, deal_id? | opportunity?:{ref,title,entity,market,country,source_url,
+                                                closing_date,kind} | market?, via?, to_source?} → {message, sent, error?, code?, deal, deal_created}
+                                                Bassem's «ابعت» in the live call (bassem_send_email) and the call's e-mail draft: the same
+                                                checks and limits as /deals/:id/email, on the deal of that opportunity — started here when the
+                                                member has none yet (an Information Center notice too, market codes like africa:ke), or the
+                                                e-mail's own deal (kind "direct", one per recipient) when it is about no opportunity
    Inbound: mail to deal-<id>@<REPLY_DOMAIN> → stored as an "in" message (with envelope sender + verification label) + copy
    to the member while the member's plan is still eligible.
 
@@ -194,6 +200,7 @@ export async function handleAdvisor(req, env, ctx) {
     if (member === LINK_ONLY) return err(403, "sign in with an e-mail code to open Bassem", { code: "full_login_required", login: "code" });
     if (!member) return err(401, "unauthorized", env.PLATFORM_KEY || env.ADVISOR_OPEN_MODE !== "1" ? { login: "activation" } : undefined);
     if (path === "/notify") return req.method === "POST" ? await notifyMember(req, env, member) : err(405, "method not allowed");
+    if (path === "/send") return req.method === "POST" ? await sendFromCall(req, env, member) : err(405, "method not allowed");
     if (path === "/refresh") return req.method === "POST" ? (isV2((req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "")) ? err(400, "platform sessions are renewed by signing in again", { code: "platform_session" }) : json(await issue(env, member))) : err(405, "method not allowed");
     if (path === "/deals") {
       if (req.method === "GET") return await listDeals(env, member);
@@ -455,47 +462,54 @@ async function listMessages(env, member, id) {
   return json({ messages: (results || []).map(msgOut) });
 }
 
-async function sendDealEmail(req, env, member, id) {
-  const d = await getDeal(env, id, member.id);
-  if (!d) return err(404, "deal not found");
-  const b = await readJson(req);
-  if (b.tooLarge) return err(413, "request too large");
-  if (b.bad) return err(400, "bad json");
-  if (!PLAN_MARKETS[member.plan].includes(d.market || "local")) return err(403, "market not in plan", { markets: PLAN_MARKETS[member.plan] }); // e.g. after strategic → partner
+/* ---------- a member's e-mail to another party ----------
+   Two doors, ONE path: the deal room's «ابعت من المنصة» (POST /deals/:id/email) and Bassem's «ابعت» in the live call / the call's e-mail
+   draft (POST /send, which first finds or starts the deal of the opportunity the e-mail is about). The same safeguards on both:
+   mailIn() — ≤ 5 recipients, valid addresses, a one-line subject (no header injection), a body; mailRoom() — the member's limits over a
+   rolling 24 h (MAX_EMAILS_PER_DAY, opted-out recipients refused, MAX_NEW_RECIPIENTS_PER_DAY for addresses he never wrote to and never
+   got a verified reply from, so the shared sender cannot be used for cold mass mailing); mailOut() — an unverified member never goes
+   through the provider, the platform's one sender as «<company> via Made in Egypt Gate», the member in Cc, Reply-To the deal address
+   (Email Routing on) or his own mailbox, the footer with the opt-out / abuse lines, List-Unsubscribe when replies come back to the
+   platform, then the message, the contacts and the events are stored. "sent" only when the provider answered with an id
+   (email-center.js deliver). Every refusal carries a `code` the call's page turns into words for the member and for Bassem. */
+function mailIn(b) {
   const to = addrList(b.to), cc = addrList(b.cc);
-  if (to.bad.length || !to.list.length) return err(400, "invalid or missing to", to.bad.length ? { invalid: to.bad } : undefined);
-  if (cc.bad.length) return err(400, "invalid cc", { invalid: cc.bad });
-  if (to.list.length + cc.list.length > LIM.recipients) return err(400, "too many recipients", { max: LIM.recipients });
+  if (to.bad.length || !to.list.length) return { error: err(400, "invalid or missing to", { code: "invalid_to", ...(to.bad.length ? { invalid: to.bad } : {}) }) };
+  if (cc.bad.length) return { error: err(400, "invalid cc", { code: "invalid_cc", invalid: cc.bad }) };
+  if (to.list.length + cc.list.length > LIM.recipients) return { error: err(400, "too many recipients", { code: "too_many_recipients", max: LIM.recipients }) };
   const subject = line(b.subject, LIM.subject + 1);
-  if (!subject) return err(400, "subject required");
-  if (subject.length > LIM.subject) return err(413, "subject too long", { max: LIM.subject });
+  if (!subject) return { error: err(400, "subject required", { code: "subject_required" }) };
+  if (subject.length > LIM.subject) return { error: err(413, "subject too long", { code: "subject_too_long", max: LIM.subject }) };
   const body = scalar(b.body).replace(/\u0000/g, "").replace(/\r\n/g, "\n");
-  if (!body.trim()) return err(400, "body required");
-  if (body.length > LIM.body) return err(413, "body too long", { max: LIM.body });
-
+  if (!body.trim()) return { error: err(400, "body required", { code: "body_required" }) };
+  if (body.length > LIM.body) return { error: err(413, "body too long", { code: "body_too_long", max: LIM.body }) };
+  return { to, cc, subject, body };
+}
+async function mailRoom(env, member, m) {
   const limit = dailyLimit(env);
   const since = new Date(Date.now() - 86400000).toISOString();
   const c = await env.DB.prepare("SELECT COUNT(*) AS n FROM messages WHERE member_id = ? AND direction = 'out' AND at >= ?").bind(member.id, since).first();
-  if (c && c.n >= limit) return err(429, "daily email limit reached", { limit });
-
+  if (c && c.n >= limit) return { error: err(429, "daily email limit reached", { code: "daily_limit", limit }) };
   // recipients: opted-out addresses are refused; addresses this member never wrote to before (and never got a verified reply
   // from) are "new" and capped per rolling 24 h, so the shared sender cannot be used for cold mass mailing
-  const ext = [...new Set([...to.list, ...cc.list])].filter(a => a !== member.email);
-  let fresh = [];
+  const ext = [...new Set([...m.to.list, ...m.cc.list])].filter(a => a !== member.email);
   if (ext.length) {
     const { results: known } = await env.DB.prepare(`SELECT addr, opted_out_at FROM contacts WHERE member_id = ? AND addr IN (${ext.map(() => "?").join(", ")})`).bind(member.id, ...ext).all();
     const optedOut = (known || []).filter(k => k.opted_out_at).map(k => k.addr);
-    if (optedOut.length) return err(403, "recipient opted out", { addresses: optedOut });
+    if (optedOut.length) return { error: err(403, "recipient opted out", { code: "opted_out", addresses: optedOut }) };
     const seen = new Set((known || []).map(k => k.addr));
-    fresh = ext.filter(a => !seen.has(a));
+    const fresh = ext.filter(a => !seen.has(a));
     if (fresh.length) {
       const newLimit = intEnv(env.MAX_NEW_RECIPIENTS_PER_DAY, LIM.newRecipientsPerDay, 1, 100);
       const nn = await env.DB.prepare("SELECT COUNT(*) AS n FROM contacts WHERE member_id = ? AND source = 'out' AND first_at >= ?").bind(member.id, since).first();
       const used = (nn && nn.n) || 0;
-      if (used + fresh.length > newLimit) return err(429, "new recipient limit reached", { limit: newLimit, remaining: Math.max(0, newLimit - used), new_recipients: fresh });
+      if (used + fresh.length > newLimit) return { error: err(429, "new recipient limit reached", { code: "new_recipient_limit", limit: newLimit, remaining: Math.max(0, newLimit - used), new_recipients: fresh }) };
     }
   }
-
+  return { ext };
+}
+async function mailOut(env, member, d, m, ext, audit) {
+  const id = d.id, to = m.to, cc = m.cc, subject = m.subject, body = m.body;
   const msgId = hex(12), fromEmail = mailFrom(env), name = displayName(member.company), foot = footer(member.company, inboundOn(env) ? "" : team(env) || SUPPORT);
   const memberCc = isEmail(member.email) && !to.list.includes(member.email) && !cc.list.includes(member.email) ? [member.email] : [];
   const msg = { id: msgId, from: { email: fromEmail, name }, to: to.list, cc: [...cc.list, ...memberCc], replyTo: dealReplyTo(env, id, member), subject, text: `${body}\n\n—\n${foot.ar}\n${foot.en}\n${foot.optout_ar}\n${foot.optout_en}`, html: toHtml(body, foot),
@@ -515,9 +529,136 @@ async function sendDealEmail(req, env, member, id) {
   if (!d.contact_email) upd.contact_email = to.list[0];
   const cols = Object.keys(upd);
   await env.DB.prepare(`UPDATE deals SET ${cols.map(k => k + " = ?").join(", ")} WHERE id = ? AND member_id = ?`).bind(...cols.map(k => upd[k]), id, member.id).run();
-  await event(env, id, member.id, res.sent ? "email_sent" : status === "draft" ? "email_draft" : "email_failed", { message_id: msgId, to: to.list, ...(res.sent ? {} : { error: row.error }) });
+  await event(env, id, member.id, res.sent ? "email_sent" : status === "draft" ? "email_draft" : "email_failed", { message_id: msgId, to: to.list, ...(audit || {}), ...(res.sent ? {} : { error: row.error }) });
   if (upd.stage) await event(env, id, member.id, "stage_changed", { from: d.stage, to: upd.stage, auto: true });
-  return json({ message: msgOut(row), sent: !!res.sent, ...(res.sent ? {} : { error: row.error }), deal: dealOut(await getDeal(env, id, member.id), env) });
+  return { message: msgOut(row), sent: !!res.sent, ...(res.sent ? {} : { error: row.error }), deal: dealOut(await getDeal(env, id, member.id), env) };
+}
+async function sendDealEmail(req, env, member, id) {
+  const d = await getDeal(env, id, member.id);
+  if (!d) return err(404, "deal not found", { code: "deal_not_found" });
+  const b = await readJson(req);
+  if (b.tooLarge) return err(413, "request too large");
+  if (b.bad) return err(400, "bad json");
+  if (!PLAN_MARKETS[member.plan].includes(d.market || "local")) return err(403, "market not in plan", { code: "market_not_in_plan", markets: PLAN_MARKETS[member.plan] }); // e.g. after strategic → partner
+  const m = mailIn(b);
+  if (m.error) return m.error;
+  const room = await mailRoom(env, member, m);
+  if (room.error) return room.error;
+  return json(await mailOut(env, member, d, m, room.ext));
+}
+
+/* ---------- the deal an e-mail from the call goes out on (POST /send) ----------
+   The call's opportunities are mostly Information Center notices (bassem_intel): worker-intel's market codes (eg · sa ae qa kw om bh … ·
+   africa:<cc> · asia:<cc> · gcc · arab · eu · intl) become the deal markets of the plans (local · gulf = «الخليج والدول العربية» ·
+   africa · asia · europe); a country name or the recipient's country domain («go.ke») is used when the notice names none («intl»). */
+const MK_SET = (...lists) => new Set(lists.join(" ").split(/\s+/).filter(Boolean));
+const MK_GULF = MK_SET("gcc arab sa ae qa kw om bh jo iq lb ye ps sy");
+const MK_AFRICA = MK_SET("ly sd ma tn dz mr dj so ke ng et gh tz ug rw sn ci za cm ao mz zm mw mg cd ss ml bf ne td bj tg zw na bw er sl lr gn ga cg bi sc mu km cv gm ls sz cf gq gw st");
+const MK_ASIA = MK_SET("in pk bd id my vn cn jp tr uz kz ph lk np af mn kg tj az ge am kh la th kr mm ir hk sg tw");
+const MK_EUROPE = MK_SET("eu uk gb at be bg hr cy cz dk ee fi fr de gr hu ie it lv lt lu mt nl pl pt ro sk si es se no is ch li");
+const MK_NAME = {
+  egypt: "local", "مصر": "local", gulf: "gulf", "الخليج": "gulf", "الدول العربية": "gulf", "أفريقيا": "africa", "افريقيا": "africa", "آسيا": "asia", "اسيا": "asia", "أوروبا": "europe", "اوروبا": "europe",
+  "saudi arabia": "gulf", saudi: "gulf", ksa: "gulf", "السعودية": "gulf", "السعوديه": "gulf", uae: "gulf", "united arab emirates": "gulf", "الإمارات": "gulf", "الامارات": "gulf", dubai: "gulf", "دبي": "gulf",
+  "abu dhabi": "gulf", "أبوظبي": "gulf", "ابوظبي": "gulf", qatar: "gulf", "قطر": "gulf", kuwait: "gulf", "الكويت": "gulf", oman: "gulf", "عمان": "gulf", "عُمان": "gulf", bahrain: "gulf", "البحرين": "gulf",
+  jordan: "gulf", "الأردن": "gulf", "الاردن": "gulf", iraq: "gulf", "العراق": "gulf", lebanon: "gulf", "لبنان": "gulf", yemen: "gulf", "اليمن": "gulf", palestine: "gulf", "فلسطين": "gulf", syria: "gulf", "سوريا": "gulf",
+  libya: "africa", "ليبيا": "africa", sudan: "africa", "السودان": "africa", morocco: "africa", "المغرب": "africa", tunisia: "africa", "تونس": "africa", algeria: "africa", "الجزائر": "africa",
+  kenya: "africa", "كينيا": "africa", nigeria: "africa", "نيجيريا": "africa", ghana: "africa", "غانا": "africa", "south africa": "africa", "جنوب أفريقيا": "africa", "جنوب افريقيا": "africa",
+  ethiopia: "africa", "إثيوبيا": "africa", "اثيوبيا": "africa", tanzania: "africa", "تنزانيا": "africa", uganda: "africa", "أوغندا": "africa", "اوغندا": "africa", senegal: "africa", "السنغال": "africa",
+  "cote d'ivoire": "africa", "côte d'ivoire": "africa", "ivory coast": "africa", "كوت ديفوار": "africa", "ساحل العاج": "africa", cameroon: "africa", "الكاميرون": "africa", rwanda: "africa", "رواندا": "africa",
+  china: "asia", "الصين": "asia", india: "asia", "الهند": "asia", turkey: "asia", "türkiye": "asia", turkiye: "asia", "تركيا": "asia", pakistan: "asia", "باكستان": "asia", indonesia: "asia", "إندونيسيا": "asia",
+  germany: "europe", "ألمانيا": "europe", "المانيا": "europe", france: "europe", "فرنسا": "europe", italy: "europe", "إيطاليا": "europe", "ايطاليا": "europe", spain: "europe", "إسبانيا": "europe", "اسبانيا": "europe",
+  "united kingdom": "europe", britain: "europe", england: "europe", "بريطانيا": "europe", "المملكة المتحدة": "europe", netherlands: "europe", "هولندا": "europe", greece: "europe", "اليونان": "europe",
+};
+export function dealMarket(v) {
+  const s = line(v, 60).toLowerCase().replace(/^the\s+/, "").replace(/[\u064b-\u0652\u0640]/g, "");
+  if (!s) return "";
+  if (MARKETS.includes(s)) return s;
+  if (s === "eg" || s === "egy") return "local";
+  const g = /^(africa|asia):[a-z]{2}$/.exec(s);
+  if (g) return g[1];
+  if (MK_GULF.has(s)) return "gulf";
+  if (MK_AFRICA.has(s)) return "africa";
+  if (MK_ASIA.has(s)) return "asia";
+  if (MK_EUROPE.has(s)) return "europe";
+  return Object.hasOwn(MK_NAME, s) ? MK_NAME[s] : "";
+}
+/* the recipient's country domain («tenders@lamuwest.go.ke» → africa, «info@x.com.eg» → local); "" for .com / .org / .io … */
+export function tldMarket(addr) {
+  const tld = String(addr || "").toLowerCase().split("@").pop().split(".").pop();
+  return /^[a-z]{2}$/.test(tld) ? dealMarket(tld) : "";
+}
+/* worker-intel kinds → the deal kinds the advisor page names (gov / pvt / rfq / project; "direct" = an e-mail with no opportunity) */
+const KIND_OF = { tender_gov: "gov", tender_semi: "gov", tender_private: "pvt", rfq: "rfq", project: "project", project_news: "project", news: "project", tender: "gov", order: "pvt" };
+const TRIVIAL_REF = /^(\d{1,2}|null|undefined|n\/?a|-+)$/i;
+function oppDeal(o) {
+  const kind = line(o.kind, 20).toLowerCase();
+  const d = { ref: line(o.ref, 120), title: line(o.title, LIM.field), entity: line(o.entity, LIM.field), market: dealMarket(o.market) || dealMarket(o.country), country: line(o.country, 80),
+    source_url: line(o.source_url, 1000), closing_date: line(o.closing_date, 40), kind: Object.hasOwn(KIND_OF, kind) ? KIND_OF[kind] : kind };
+  if (d.source_url && !isUrl(d.source_url)) d.source_url = "";
+  return d;
+}
+/* the member's deal for the same opportunity: same title + official link (+ market), else a meaningful ref, else title + buyer */
+async function oppDealOf(env, member, d) {
+  if (d.source_url) {
+    const x = await env.DB.prepare("SELECT * FROM deals WHERE member_id = ? AND market = ? AND title = ? AND source_url = ? ORDER BY updated_at DESC LIMIT 1").bind(member.id, d.market, d.title, d.source_url).first();
+    if (x) return x;
+  }
+  if (d.ref && !TRIVIAL_REF.test(d.ref)) {
+    const x = await env.DB.prepare("SELECT * FROM deals WHERE member_id = ? AND ref = ? AND market = ? AND title = ? AND source_url = ? ORDER BY updated_at DESC LIMIT 1").bind(member.id, d.ref, d.market, d.title, d.source_url).first();
+    if (x) return x;
+  }
+  if (!d.source_url && !d.ref && d.entity) return await env.DB.prepare("SELECT * FROM deals WHERE member_id = ? AND market = ? AND title = ? AND entity = ? AND source_url = '' ORDER BY updated_at DESC LIMIT 1").bind(member.id, d.market, d.title, d.entity).first();
+  return null;
+}
+/* → {deal (a stored row, or the fields of a deal to start), source} | {error}; nothing is written here */
+async function dealToSend(env, member, b, m) {
+  if (b.deal_id != null && b.deal_id !== "") {
+    const id = line(b.deal_id, 40).toLowerCase(), d = /^[a-f0-9]{16}$/.test(id) ? await getDeal(env, id, member.id) : null;
+    return d ? { deal: d, source: "deal" } : { error: err(404, "deal not found", { code: "deal_not_found" }) };
+  }
+  const o = b.opportunity && typeof b.opportunity === "object" && !Array.isArray(b.opportunity) ? b.opportunity : null;
+  const noMarket = () => ({ error: err(400, "the buyer's market or country is needed", { code: "market_required", markets: MARKETS }) });
+  if (o) {
+    const d = oppDeal(o);
+    if (!d.title && !d.ref) return { error: err(400, "opportunity.title or opportunity.ref required", { code: "opportunity_required" }) };
+    if (!d.market) d.market = dealMarket(b.market) || tldMarket(m.to.list[0]); // an «intl» notice names no country
+    if (!d.market) return noMarket();
+    return { deal: (await oppDealOf(env, member, d)) || d, source: "opportunity" };
+  }
+  // no opportunity behind the e-mail (an introduction to a company): its own deal, titled by its subject — one per recipient
+  const market = dealMarket(b.market) || tldMarket(m.to.list[0]);
+  if (!market) return noMarket();
+  const dup = await env.DB.prepare("SELECT * FROM deals WHERE member_id = ? AND kind = 'direct' AND contact_email = ? ORDER BY updated_at DESC LIMIT 1").bind(member.id, m.to.list[0]).first();
+  return { deal: dup || { ref: "", title: line(m.subject, LIM.field), entity: "", market, country: line(b.country, 80), source_url: "", closing_date: "", kind: "direct" }, source: "direct" };
+}
+/* audit only (never a permission): who asked for the send, and where the page says the recipient came from — the opportunity's data, the
+   deal, a tender document, the member's dictation (confirmed on his screen), his own typing, or an address already e-mailed in that call */
+const VIA = ["bassem", "button"], TO_SOURCE = ["opportunity", "deal", "document", "dictated", "typed", "repeat"];
+/* POST /send — see the header. Order: the message → the deal (found, or the fields of a new one) → the plan's markets → the member's
+   sending limits → only then a new deal is stored → the e-mail goes out on it. A refused send therefore starts no deal. */
+async function sendFromCall(req, env, member) {
+  const b = await readJson(req);
+  if (b.tooLarge) return err(413, "request too large");
+  if (b.bad) return err(400, "bad json");
+  const m = mailIn(b);
+  if (m.error) return m.error;
+  const r = await dealToSend(env, member, b, m);
+  if (r.error) return r.error;
+  let d = r.deal, created = false;
+  if (!PLAN_MARKETS[member.plan].includes(d.market || "local")) return err(403, "market not in plan", { code: "market_not_in_plan", market: d.market, markets: PLAN_MARKETS[member.plan] });
+  const room = await mailRoom(env, member, m);
+  if (room.error) return room.error;
+  if (!d.id) {
+    const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM deals WHERE member_id = ?").bind(member.id).first();
+    if (n && n.n >= LIM.deals) return err(429, "deal limit reached", { code: "deal_limit", limit: LIM.deals });
+    const id = hex(8), t = now();
+    await env.DB.prepare("INSERT INTO deals (id, member_id, ref, title, entity, market, country, source_url, closing_date, kind, stage, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'discover', '', ?, ?)")
+      .bind(id, member.id, d.ref, d.title, d.entity, d.market, d.country, d.source_url, d.closing_date, d.kind, t, t).run();
+    await event(env, id, member.id, "deal_created", { stage: "discover", ref: d.ref, market: d.market, via: "send", source: r.source });
+    d = await getDeal(env, id, member.id); created = true;
+  }
+  const audit = { via: VIA.includes(b.via) ? b.via : "bassem", ...(TO_SOURCE.includes(b.to_source) ? { to_source: b.to_source } : {}) };
+  return json({ ...(await mailOut(env, member, d, m, room.ext, audit)), deal_created: created });
 }
 
 /* POST /notify {message, channel: whatsapp|email|both} — Bassem tells the member something (his own address / number only).

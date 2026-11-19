@@ -262,7 +262,7 @@ function inPlan(m) { return PMK.indexOf(m) > -1; }
 function mName(m) { return MKT[m] ? T(MKT[m][0], MKT[m][1]) : (m || ""); }
 var ISO = { "Egypt": "EG", "Mozambique": "MZ", "Eswatini": "SZ", "Niger": "NE", "Morocco": "MA", "Madagascar": "MG", "Cameroon": "CM", "Seychelles": "SC", "Ethiopia": "ET", "Congo, Democratic Republic of": "CD", "Rwanda": "RW", "Djibouti": "DJ", "Uganda": "UG", "Pakistan": "PK", "Mongolia": "MN", "Syrian Arab Republic": "SY", "Uzbekistan": "UZ", "Bangladesh": "BD", "Lebanon": "LB", "China": "CN", "Indonesia": "ID", "Spain": "ES", "Norway": "NO", "Romania": "RO", "Luxembourg": "LU", "Netherlands": "NL", "Cyprus": "CY", "Sweden": "SE", "France": "FR", "Malta": "MT", "Finland": "FI", "Czechia": "CZ", "Germany": "DE", "Bahrain": "BH", "Oman": "OM", "Saudi Arabia": "SA", "United Arab Emirates": "AE", "Kuwait": "KW", "Qatar": "QA", "Kenya": "KE", "Nigeria": "NG", "Ghana": "GH", "Tanzania": "TZ", "India": "IN", "Viet Nam": "VN", "Vietnam": "VN", "Italy": "IT", "United Kingdom": "GB", "Turkey": "TR", "Türkiye": "TR", "Jordan": "JO", "Iraq": "IQ", "Algeria": "DZ", "Tunisia": "TN", "Libya": "LY", "Sudan": "SD", "Senegal": "SN", "South Africa": "ZA", "Zambia": "ZM", "Malawi": "MW", "Philippines": "PH", "Nepal": "NP", "Sri Lanka": "LK", "Belgium": "BE", "Poland": "PL", "Portugal": "PT", "Greece": "GR", "Austria": "AT", "Denmark": "DK", "Ireland": "IE", "Tunisia ": "TN" };
 function flag(o) { var c = ISO[o.country_en || ""]; if (!c) return MKT[o.market] ? MKT[o.market][2] : "🌐"; try { return String.fromCodePoint(127397 + c.charCodeAt(0), 127397 + c.charCodeAt(1)); } catch (e) { return "🌐"; } }
-var KIND = { gov: ["مناقصة حكومية", "Government tender"], pvt: ["طلب قطاع خاص", "Private buyer"], rfq: ["طلب عرض سعر", "RFQ"] };
+var KIND = { gov: ["مناقصة حكومية", "Government tender"], pvt: ["طلب قطاع خاص", "Private buyer"], rfq: ["طلب عرض سعر", "RFQ"], project: ["مشروع", "Project"], direct: ["تواصل مباشر", "Direct contact"] }; /* project / direct: deals Bassem's «ابعت» starts from the call (worker/src/advisor.js POST /send) */
 function kName(k) { return KIND[k] ? T(KIND[k][0], KIND[k][1]) : (k || ""); }
 var STG = [["discover", "اكتشاف", "Discover", "🔎"], ["contact", "تواصل", "Contact", "✉️"], ["offer", "تقديم عرض", "Offer", "📄"], ["negotiation", "تفاوض", "Negotiation", "🤝"], ["contract", "تعاقد", "Contract", "✍️"], ["delivery", "توريد وتنفيذ", "Delivery", "🚚"], ["won", "تمّت بنجاح", "Won", "🏆"], ["lost", "لم تكتمل", "Lost", "✖️"]];
 function sName(s) { for (var i = 0; i < STG.length; i++) if (STG[i][0] === s) return STG[i][3] + " " + T(STG[i][1], STG[i][2]); return s || ""; }
@@ -383,7 +383,7 @@ function api(method, path, body, retry) {
   return tfetch(API + path, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined }, 20000).then(function (r) {
     if (r.status === 401 && PLATFORM) { TOKEN = null; LIVE = false; PLATFORM = false; NEEDLINK = true; renderWarn(); renderHero(); try { if (window.MIGAPI) MIGAPI.me(true).catch(function () {}); } catch (x) {} var e0 = new Error(T("انتهت جلستك على المنصة — ادخل تاني بكود على بريدك", "Your platform session ended — sign in again with an e-mail code")); e0.status = 401; throw e0; }
     if (r.status === 401 && !retry) { TOKEN = null; try { sessionStorage.removeItem(TK); } catch (e) {} if (HEALTH && HEALTH.login === "activation") { NEEDLINK = true; LIVE = false; renderWarn(); renderHero(); var e1 = new Error(T("انتهت جلستك — اطلب رابط دخول جديد", "Your session ended — ask for a new sign-in link")); e1.status = 401; throw e1; } return session().then(function () { return api(method, path, body, true); }); }
-    return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) { var er = new Error((j && j.error) || ("HTTP " + r.status)); er.status = r.status; throw er; } return j; });
+    return r.json().catch(function () { return {}; }).then(function (j) { if (!r.ok) { var er = new Error((j && j.error) || ("HTTP " + r.status)); er.status = r.status; er.code = (j && j.code) || ""; er.limit = (j && j.limit) || ""; throw er; } return j; });
   });
 }
 var PLATFORM = false, LINKSESS = false;
@@ -891,22 +891,25 @@ function loadThread(d) {
   }, function (e) { if ($("#mThr")) el.innerHTML = '<p style="color:#B42318">' + T("تعذّر تحميل المراسلات: ", "Could not load the thread: ") + esc(e.message) + "</p>"; });
 }
 var EMRE = /^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/;
+/* every outcome of «ابعت» is also told on window "mig:advisor-mail" {deal, sent, code?, error?, limit?, to?, mailto?}: the live call's
+   bassem_send_email waits for it (data/janna-live.js roomSend), so Bassem says «اتبعت» only when the platform answered sent */
+function mailDone(o) { try { window.dispatchEvent(new CustomEvent("mig:advisor-mail", { detail: o })); } catch (e) {} }
 function sendMail(d, o) {
   var m = { to: $("#mTo").value.trim(), cc: $("#mCc").value.trim(), subject: $("#mSub").value.trim(), body: $("#mBody").value }, er = $("#mErr"), canLive = LIVE && !(HEALTH && HEALTH.email === false);
   er.textContent = "";
-  if (!EMRE.test(m.to)) { er.textContent = T("اكتب بريد صحيح للمرسَل إليه (من صفحة الإعلان الرسمية).", "Enter a valid recipient email (from the official notice)."); $("#mTo").focus(); return; }
-  if (m.cc && !m.cc.split(/[,;\s]+/).filter(Boolean).every(function (x) { return EMRE.test(x); })) { er.textContent = T("بريد النسخة مش صحيح.", "The Cc email is not valid."); $("#mCc").focus(); return; }
-  if (!m.subject || !m.body.trim()) { er.textContent = T("الموضوع ونص الرسالة مطلوبين.", "Subject and message are required."); return; }
-  if (/\[[^\]\n]{2,40}\]/.test(m.subject + m.body) && !$("#advMail").dataset.warned) { $("#advMail").dataset.warned = "1"; er.textContent = T("لسه فيه بيانات بين [ ] محتاجة تتكمّل. لو عايز تبعت كده اضغط إرسال تاني.", "Some [placeholders] are still empty. Press send again to send anyway."); return; }
+  if (!EMRE.test(m.to)) { er.textContent = T("اكتب بريد صحيح للمرسَل إليه (من صفحة الإعلان الرسمية).", "Enter a valid recipient email (from the official notice)."); $("#mTo").focus(); mailDone({ deal: d.id, sent: false, code: "invalid_to" }); return; }
+  if (m.cc && !m.cc.split(/[,;\s]+/).filter(Boolean).every(function (x) { return EMRE.test(x); })) { er.textContent = T("بريد النسخة مش صحيح.", "The Cc email is not valid."); $("#mCc").focus(); mailDone({ deal: d.id, sent: false, code: "invalid_cc" }); return; }
+  if (!m.subject || !m.body.trim()) { er.textContent = T("الموضوع ونص الرسالة مطلوبين.", "Subject and message are required."); mailDone({ deal: d.id, sent: false, code: m.subject ? "body_required" : "subject_required" }); return; }
+  if (/\[[^\]\n]{2,40}\]/.test(m.subject + m.body) && !$("#advMail").dataset.warned) { $("#advMail").dataset.warned = "1"; er.textContent = T("لسه فيه بيانات بين [ ] محتاجة تتكمّل. لو عايز تبعت كده اضغط إرسال تاني.", "Some [placeholders] are still empty. Press send again to send anyway."); mailDone({ deal: d.id, sent: false, code: "placeholders" }); return; }
   if (!m.cc) delete m.cc;
   var after = function () { if (!d.contact_email) patchDeal(d.id, { contact_email: m.to }).catch(function () {}); var go = d.stage === "discover" ? patchDeal(d.id, { stage: "contact" }).then(function () { ev(d.id, "اتنقلت الصفقة تلقائياً لمرحلة التواصل بعد أول رسالة", "Moved to Contact after the first email"); }) : Promise.resolve(); return go.catch(function () {}).then(function () { var sg = $("#advStg"), nd = getDeal(d.id); if (sg && nd) sg.value = nd.stage; return loadThread(getDeal(d.id) || d); }).then(function () { renderReminders(); renderBrief(); renderPipeline(); }); };
   var btn = $("#mSend"); btn.disabled = true;
   if (canLive) {
     api("POST", "/deals/" + encodeURIComponent(d.id) + "/email", m).then(function (j) {
       btn.disabled = false;
-      if (j && j.sent) { ev(d.id, "اتبعتت رسالة «" + m.subject + "» إلى " + m.to, "Email “" + m.subject + "” sent to " + m.to); say(T("اتبعتت الرسالة ✓ الرد هيوصلك هنا", "Email sent ✓ The reply will arrive here")); after(); }
-      else { er.textContent = T("الخادم ما قدرش يبعت الرسالة", "The server could not send the email") + (j && j.error ? ": " + j.error : "") + T(". تقدر تبعتها من بريدك:", ". You can send it from your own mail app:"); $("#mLink").innerHTML = '<div class="mlink"><a class="btn btn-gold btn-sm" href="' + esc(mailto(m)) + '">📧 ' + T("افتح في بريدي", "Open in my mail app") + "</a></div>"; }
-    }, function (e) { btn.disabled = false; er.textContent = T("تعذّر الاتصال بالخادم: ", "Could not reach the server: ") + e.message; $("#mLink").innerHTML = '<div class="mlink"><a class="btn btn-gold btn-sm" href="' + esc(mailto(m)) + '">📧 ' + T("ابعتها من بريدي بدلاً من كده", "Send from my mail app instead") + "</a></div>"; });
+      if (j && j.sent) { ev(d.id, "اتبعتت رسالة «" + m.subject + "» إلى " + m.to, "Email “" + m.subject + "” sent to " + m.to); say(T("اتبعتت الرسالة ✓ الرد هيوصلك هنا", "Email sent ✓ The reply will arrive here")); mailDone({ deal: d.id, sent: true, to: m.to }); after(); }
+      else { er.textContent = T("الخادم ما قدرش يبعت الرسالة", "The server could not send the email") + (j && j.error ? ": " + j.error : "") + T(". تقدر تبعتها من بريدك:", ". You can send it from your own mail app:"); $("#mLink").innerHTML = '<div class="mlink"><a class="btn btn-gold btn-sm" href="' + esc(mailto(m)) + '">📧 ' + T("افتح في بريدي", "Open in my mail app") + "</a></div>"; mailDone({ deal: d.id, sent: false, stored: true, error: (j && j.error) || "", to: m.to }); }
+    }, function (e) { btn.disabled = false; er.textContent = T("تعذّر الاتصال بالخادم: ", "Could not reach the server: ") + e.message; $("#mLink").innerHTML = '<div class="mlink"><a class="btn btn-gold btn-sm" href="' + esc(mailto(m)) + '">📧 ' + T("ابعتها من بريدي بدلاً من كده", "Send from my mail app instead") + "</a></div>"; mailDone({ deal: d.id, sent: false, code: (e && e.code) || (e && e.status ? "http_" + e.status : "offline"), error: (e && e.message) || "", limit: (e && e.limit) || "", to: m.to }); });
     return;
   }
   var msg = { id: "m" + Date.now().toString(36), direction: "out", from: PROF.email || "", to: m.to, cc: m.cc || "", subject: m.subject, body: m.body, at: new Date().toISOString(), demo: true }, a = LG(KM + d.id, []); a.push(msg); LS(KM + d.id, a);
@@ -915,6 +918,7 @@ function sendMail(d, o) {
   $("#mLink").innerHTML = '<div class="mlink"><span>✅ ' + T("اتسجّلت في المحادثة. لو برنامج البريد ما اتفتحش:", "Logged in the thread. If your mail app did not open:") + '</span><a class="btn btn-gold btn-sm" id="mOpen" href="' + esc(href) + '">📧 ' + T("افتح الرسالة في بريدي", "Open the email in my mail app") + "</a></div>";
   btn.disabled = false; say(T("اتسجّلت الرسالة ✓ كمّل الإرسال من بريدك", "Logged ✓ Finish sending from your mail app"));
   try { if (!window.ADVISOR_NO_MAILTO) { var x = document.createElement("a"); x.href = href; x.style.display = "none"; document.body.appendChild(x); x.click(); x.remove(); } } catch (e2) {}
+  mailDone({ deal: d.id, sent: false, mailto: true, to: m.to });
   after();
 }
 

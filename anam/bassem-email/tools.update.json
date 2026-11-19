@@ -1,0 +1,192 @@
+{
+ "_what": "PREPARED — NOT APPLIED. One anam_tool_update (PUT https://api.anam.ai/v1/tools/{id}) per entry, sending `body` exactly ({id, ...body}); `config` REPLACES the whole stored config; expectedUpdatedAt = the tool's updatedAt read today → a 409 means someone changed it since: read it again (anam_tool_get) and re-check before retrying. `rollback_body` puts back today's definition.",
+ "read_at": "2026-11-19 (anam_persona_get 19ef9078-5252-42a4-bbdf-9a3c4a38a4be: updatedAt 2026-11-19T15:46:58.139Z; anam_tool_get ×2)",
+ "order": "AFTER the Worker (POST /api/advisor/send) and the site (data/janna-live.js with the two awaitResult handlers, data/holo.js, advisor.part.py) of branch fix/bassem-email are live. With awaitResult ON and the OLD page the engine would wait for a result nobody sends (a 12 s / 25 s silence). The new page also works with today's tools (awaitResult off): the e-mail goes out, Bassem just does not hear the result.",
+ "tools": [
+  {
+   "id": "9286b2c5-b52c-44d1-8572-4fd4b9d47b1a",
+   "name": "bassem_draft_email",
+   "currentUpdatedAt": "2026-11-19T15:18:17.124Z",
+   "used_by": [
+    "bassem"
+   ],
+   "why": "The owner (2026-11-19): «باسم كتب الايميل بس مش بيقراه» and a Swahili e-mail to a Kenyan government buyer signed «Dr. Mohamed». Now: the call ANSWERS (awaitResult) with what is on the screen, the recipient and its source, and «قوله ملخصه في جملتين أو تلاتة، واسأله تحب أبعته؟»; the buyer's business language by default; the member block's full signature; `to` accepts spoken forms. Same parameters and enum values.",
+   "description_length": 898,
+   "body": {
+    "description": "Write an e-mail for the member and put it ON THE SCREEN (not sent yet): the deal room of an open deal (or `deal`), else the e-mail draft on the shared screen. Subject and full body in `language` = the buyer's business language: English for buyers outside Egypt and the Arab world (Kenya, South Africa, Ghana, Nigeria, international banks…), French for francophone Africa, Arabic for Egypt and Arab/Gulf buyers; Chinese or a local language (Swahili…) only if the member asked for it himself. Sign with the signature line of «بيانات العضو» exactly (title, FULL name, company), never the first name alone. WAIT for the result: it says what is on the screen and the recipient. Then tell him in Egyptian Arabic, in 2-3 sentences, what it says (to whom, what it asks, the key point) and ask «تحب أبعته؟»; read it in full only when he asks. No recipient → ask once «أبعته لمين؟», never say you don't know.",
+    "config": {
+     "awaitResult": true,
+     "toolTimeoutSeconds": 12,
+     "parameters": {
+      "type": "object",
+      "required": [
+       "subject",
+       "body"
+      ],
+      "properties": {
+       "to": {
+        "type": "string",
+        "description": "The recipient's e-mail ONLY from the opportunity / deal / tender-document data your tools returned, or exactly as the member dictated it — spoken forms are fine (info at company dot com · آت · دوت · أندرسكور): the screen writes it letter by letter for him to confirm. Never invent one or use an example address; leave it out when unknown (the screen offers a guessed address only, never fills it in)."
+       },
+       "body": {
+        "type": "string",
+        "description": "Complete professional e-mail text in `language`, signed with the signature line of «بيانات العضو» (title, full name, company). Shown on the screen; read aloud only when he asks."
+       },
+       "deal": {
+        "type": "string",
+        "description": "Words identifying one of his deals; empty = the deal open on screen, or the e-mail draft when no deal room is open"
+       },
+       "purpose": {
+        "enum": [
+         "intro",
+         "request_documents",
+         "clarification",
+         "quotation",
+         "follow_up",
+         "negotiation",
+         "other"
+        ],
+        "type": "string"
+       },
+       "subject": {
+        "type": "string",
+        "description": "Subject line in `language`"
+       },
+       "language": {
+        "enum": [
+         "ar",
+         "en",
+         "fr",
+         "zh",
+         "es",
+         "de",
+         "tr",
+         "ru",
+         "pt",
+         "it"
+        ],
+        "type": "string",
+        "description": "The language the subject and body are actually written in — the buyer's business language: en for buyers outside Egypt and the Arab world (Kenya, Ghana, Nigeria, South Africa, Asia, Europe, international banks), fr for francophone Africa, ar for Egypt and the Arab / Gulf countries; zh or another language only if the member asked for it himself. ar Arabic, en English, fr French, zh Chinese, es Spanish, de German, tr Turkish, ru Russian, pt Portuguese, it Italian"
+       }
+      }
+     }
+    },
+    "disableInterruptions": false,
+    "expectedUpdatedAt": "2026-11-19T15:18:17.124Z"
+   },
+   "rollback_body": {
+    "description": "Write an e-mail for the member and put it ON THE SCREEN - it is NOT sent. For a deal (its deal room open, or `deal` = one of his deals) it fills that deal room; with no deal it opens in the e-mail composer on the shared screen, where he reviews, edits or copies it and sends it himself with its «ابعت» button (his own mail app). Subject and full body in `language`, signed with the member's title, name and company exactly as the platform gives them («بيانات العضو») or as he said them - the company keeps its own name in every language; products and sizes exactly as he said. Never read the body aloud, nor translate or summarise it aloud. Then one short sentence: deal room → «كتبتلك الإيميل وهو قدامك على الشاشة، تحب أبعته؟» and bassem_send_email only after his explicit OK; composer → tell him to review it and press ابعت himself (never call bassem_send_email for it, never say it was sent). For a Saudi/Gulf reader write language ar in formal Gulf-friendly Arabic; your own speech stays Egyptian.",
+    "config": {
+     "parameters": {
+      "type": "object",
+      "required": [
+       "subject",
+       "body"
+      ],
+      "properties": {
+       "to": {
+        "type": "string",
+        "description": "ONLY an e-mail address that appears in the opportunity / deal data or that the member dictated himself; otherwise leave it out. Never invent one or use an example address (the screen offers a guessed address only, never fills it in)."
+       },
+       "body": {
+        "type": "string",
+        "description": "Complete professional e-mail text in `language` (shown on screen, never spoken)"
+       },
+       "deal": {
+        "type": "string",
+        "description": "Words identifying one of his deals; empty = the deal open on screen, or the composer when no deal room is open"
+       },
+       "purpose": {
+        "enum": [
+         "intro",
+         "request_documents",
+         "clarification",
+         "quotation",
+         "follow_up",
+         "negotiation",
+         "other"
+        ],
+        "type": "string"
+       },
+       "subject": {
+        "type": "string",
+        "description": "Subject line in `language`"
+       },
+       "language": {
+        "enum": [
+         "ar",
+         "en",
+         "fr",
+         "zh",
+         "es",
+         "de",
+         "tr",
+         "ru",
+         "pt",
+         "it"
+        ],
+        "type": "string",
+        "description": "The language the subject and body are actually written in: ar Arabic, en English, fr French, zh Chinese, es Spanish, de German, tr Turkish, ru Russian, pt Portuguese, it Italian"
+       }
+      }
+     },
+     "awaitResult": false
+    },
+    "disableInterruptions": false
+   }
+  },
+  {
+   "id": "a00e4d99-df41-4a43-8c66-39bdfa3d2495",
+   "name": "bassem_send_email",
+   "currentUpdatedAt": "2026-11-17T22:23:45.882Z",
+   "used_by": [
+    "bassem"
+   ],
+   "why": "The owner (2026-11-19): «كل ما اديله اوردر انه يبعت ايميل بيقولي معرفش» — the e-mail draft could only go out from the member's own mail app. Now the send goes FROM THE PLATFORM (POST /api/advisor/send starts or reuses the opportunity's deal) and the call ANSWERS: «اتبعت» only on the platform's sent, else the reason and the next step. `deal` kept; `to` and `market` are new and optional.",
+   "description_length": 752,
+   "body": {
+    "description": "Send the e-mail now on the screen FROM THE PLATFORM, in the member's company name, as soon as he explicitly says so («ابعته», «ابعت», «تمام ابعت», \"send it\"). It goes out from the deal room of an open deal, or from the e-mail draft: the platform then starts or reuses the deal of the opportunity it is about (Information Center notices too), so the reply is tracked. WAIT for the result and say only what it says: «اتبعت» only when it says sent; otherwise the reason and its next step (no recipient → ask «أبعته لمين؟» and call again with `to`; a dictated address not confirmed yet → ask him to check it on the screen, then call again; the buyer's country unknown → ask it and call again with `market`). Never say it was sent unless the result says so.",
+    "config": {
+     "awaitResult": true,
+     "toolTimeoutSeconds": 25,
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "deal": {
+        "type": "string",
+        "description": "Words identifying the deal; empty = where the last draft is (its deal room, or the e-mail draft on the screen)"
+       },
+       "to": {
+        "type": "string",
+        "description": "Only when the member just dictated or corrected the recipient: the address as he said it (spoken forms are fine: info at x dot com · آت · دوت · أندرسكور). Never invent one."
+       },
+       "market": {
+        "type": "string",
+        "description": "Only when the result asked for it: the buyer's country or market as the member said it (e.g. Kenya, UAE, السعودية)"
+       }
+      }
+     }
+    },
+    "disableInterruptions": false,
+    "expectedUpdatedAt": "2026-11-17T22:23:45.882Z"
+   },
+   "rollback_body": {
+    "description": "Send the email you drafted from the platform and track replies in the same deal. ONLY after the member explicitly approved («ابعته», «تمام ابعت», \"send it\").",
+    "config": {
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "deal": {
+        "type": "string",
+        "description": "Words identifying the deal; empty = the deal open on screen"
+       }
+      }
+     },
+     "awaitResult": false
+    },
+    "disableInterruptions": false
+   }
+  }
+ ],
+ "not_changed": "Every other tool of the persona (21 of 23), the persona's toolIds (the same two ids are updated in place), its voice, avatar, LLM and voiceDetectionOptions."
+}

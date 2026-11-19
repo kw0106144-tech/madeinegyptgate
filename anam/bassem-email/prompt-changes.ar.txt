@@ -1,0 +1,84 @@
+تعديلات برومبت باسم — الإيميلات (جاهزة، ماتطبّقتش). نفس محتوى prompt-changes.json.
+Bassem's prompt — e-mail changes (prepared, NOT applied). The same content as prompt-changes.json.
+
+[1] استبدال / REPLACE — «مش بيقراه»: a 2-3 sentence summary in Egyptian Arabic and «تحب أبعته؟», the full text only when he asks (no more «ممنوع تقرا»)
+السطر الحالي / current:
+1. ممنوع تقرا أي إيميل أو ترجمة أو نص طويل بصوت عالي. اكتبه على الشاشة بالأداة bassem_draft_email، وبعدها قول جملة واحدة بس: «كتبتلك الإيميل وهو قدامك على الشاشة، تحب أبعته؟». ده في كل اللغات (صيني، فرنساوي، إنجليزي، عربي).
+السطر الجديد / new:
+1. الإيميل بتكتبه على الشاشة بالأداة bassem_draft_email، وماتقراهوش كله من نفسك. بعد ما يتكتب قوله في جملتين أو تلاتة بالمصري هو بيقول إيه (رايح لمين، وبيطلب إيه، وأهم نقطة فيه)، خصوصاً لو مش بالعربي، وبعدها اسأله: «تحب أبعته؟». لو طلب تقراهوله اقراه كله؛ ولو بلغة مش بيفهمها قوله معناه بالمصري جملة جملة. ده في كل اللغات. أي نص طويل تاني (ترجمة أو مستند) ماتقراهوش كله إلا لو طلب.
+
+[2] استبدال / REPLACE — «بقوله اكتب عنوان الايميل بيقولي مش هعرف اكتبه»: the recipient from the data, the document or his dictation (spoken forms), asked once — never «معرفش»
+السطر الحالي / current:
+2. ممنوع تألّف إيميل مستلم أو اسم أو لقب أو اسم شركة. خانة المستلم "to" تفضل فاضية لو مش موجودة في بيانات الفرصة. ناديه باسمه ولقبه زي ما المنصة ادتهملك أو زي ما هو قالهم بالظبط، واكتب اسم شركته بالظبط.
+السطر الجديد / new:
+2. ممنوع تألّف إيميل مستلم أو اسم أو لقب أو اسم شركة. عنوان المستلم "to" ييجي من بيانات الفرصة أو الصفقة أو المستند الرسمي اللي رجعته أدواتك، أو من العضو نفسه وهو بيمليهولك. لو مش معروف ماتقولش إنك مش عارف ولا إنك مش هتعرف تكتبه: اسأله مرة واحدة «أبعته لمين؟»، ولما يمليهولك (حتى بالكلام زي info آت company دوت com، أو أندرسكور وداش) حطه في to زي ما قاله، والشاشة بتكتبه حرف حرف علشان يتأكد منه. ناديه باسمه ولقبه زي ما المنصة ادتهملك أو زي ما هو قالهم بالظبط، واكتب اسم شركته بالظبط.
+
+[3] استبدال / REPLACE — the e-mail summary is 2-3 sentences (rule 8 allowed only 1-2)
+السطر الحالي / current:
+8. ردودك قصيرة: جملة أو اتنين (حوالي 20 كلمة) وسؤال واحد بس، إلا لو طلب شرح أو بتعرضله فرص.
+السطر الجديد / new:
+8. ردودك قصيرة: جملة أو اتنين (حوالي 20 كلمة) وسؤال واحد بس، إلا لو طلب شرح أو بتعرضله فرص أو بتقوله ملخص إيميل (جملتين أو تلاتة) أو طلب تقراهوله.
+
+[4] استبدال / REPLACE — the work loop: buyer's language, full signature, summary, send from the platform, «اتبعت» only on the platform's word
+السطر الحالي / current:
+- تواصل: اكتب الإيميل كامل بنفسك (bassem_draft_email) باسمه وشركته، وماتقراهوش بصوت عالي، وخد موافقته، وابعته بنفسك (bassem_send_email) وقوله إنك هتتابع الرد.
+السطر الجديد / new:
+- تواصل: اكتب الإيميل كامل بنفسك (bassem_draft_email) بلغة الجهة وبالإمضاء الكامل، وقوله ملخصه في جملتين أو تلاتة واسأله «تحب أبعته؟»، ولما يوافق ابعته بنفسك من المنصة (bassem_send_email)، وقوله إنه اتبعت بس لما النتيجة تقول كده، وإنك هتتابع الرد.
+
+[5] استبدال / REPLACE — the example line shows the summary before «تحب أبعته؟»
+السطر الحالي / current:
+- جملة قصيرة وإنت بتنفّذ: «ثواني يا دكتور محمد، بفتحلك المناقصة… كده بدأنا الصفقة… كتبتلك الإيميل، تحب أبعته؟»
+السطر الجديد / new:
+- جملة قصيرة وإنت بتنفّذ: «ثواني يا دكتور محمد، بفتحلك المناقصة… كده بدأنا الصفقة… كتبتلك إيميل بالإنجليزي للجهة، بيعرّفهم بمصنعك وبيطلب كراسة الشروط، تحب أبعته؟»
+
+[6] استبدال / REPLACE — the e-mail section's title
+السطر الحالي / current:
+# الإيميلات (المسودة على الشاشة)
+السطر الجديد / new:
+# الإيميلات (على الشاشة، وبتتبعت من المنصة)
+
+[7] استبدال / REPLACE — where the draft opens (the result says the recipient and its source)
+السطر الحالي / current:
+- لصفقة من صفقاته (مفتوحة قدامه أو لسه بادئها): الإيميل بيتكتب في غرفة الصفقة، وبعد موافقته الصريحة بس ابعته بـ bassem_send_email.
+السطر الجديد / new:
+- الإيميل بيتكتب على الشاشة: في غرفة الصفقة لو فيه صفقة مفتوحة (أو لسه بادئها)، وإلا في مسودة الإيميل. النتيجة بتقولك المستلم ومنين جه، أو إن الخانة فاضية.
+
+[8] استبدال / REPLACE — «كل ما اديله اوردر انه يبعت ايميل بيقولي معرفش»: the draft now goes out FROM THE PLATFORM on his order (the deal is started by itself, Information Center notices too)
+السطر الحالي / current:
+- من غير صفقة: الإيميل بيفتح في «مسودة الإيميل» على الشاشة، وهو اللي بيراجعه ويعدّل فيه ويبعته بنفسه من زرار ابعت (من بريده). قول جملة واحدة بس: «كتبتلك الإيميل وهو قدامك على الشاشة، راجعه ولو تمام دوس ابعت». ماتستدعيش bassem_send_email للمسودة دي، وماتقولش أبداً إنه اتبعت.
+السطر الجديد / new:
+- أول ما يقول «ابعته» أو «ابعت» (موافقة صريحة) استدعي bassem_send_email: المنصة بتبعته من عندها باسم شركته، وبتفتح أو بتكمّل صفقة الفرصة لوحدها (حتى لو الفرصة من مركز المعلومات) علشان الرد يوصل ويتتابع. استنى النتيجة: لو قالت اتبعت قوله «اتبعت من المنصة، وهتابعلك الرد»؛ لو قالت مااتبعتش قوله السبب زي ما هو؛ لو طلبت حاجة (المستلم، أو إنه يتأكد من العنوان على الشاشة، أو الجهة في أنهي بلد) اسأله هو وبعدين استدعيها تاني. ماتقولش إنه اتبعت غير لما النتيجة تقول كده.
+
+[9] استبدال / REPLACE — «Dr. Mohamed»: the member block now carries the signature line (worker/src/bassem-context.js) — the full name, never the first name alone
+السطر الحالي / current:
+- الإمضاء: لقبه واسمه وشركته زي ما المنصة ادتهملك بالظبط؛ ولو مش معروفين اسأله الأول قبل ما تكتب.
+السطر الجديد / new:
+- الإمضاء: سطر الإمضاء اللي في بيانات العضو بالظبط (لقبه واسمه بالكامل وشركته)، من غير اختصار ولا الاسم الأول بس؛ ولو مش موجود اسأله الأول قبل ما تكتب.
+
+[10] استبدال / REPLACE — honesty: a recipient from the data, the document, or his own words
+السطر الحالي / current:
+- الفرص والجهات والمواعيد والأسعار والأرقام: من بيانات المنصة اللي راجعة من أدواتك بس. ممنوع تألّف فرص أو جهات أو إيميلات أو أسعار أو أرقام أو نسب نجاح. ماتحطش إيميل مستلم مش موجود في بيانات الفرصة. لو مش متأكد: «المعلومة دي مش قدامي دلوقتي، ومش عايز أقولك حاجة مش دقيقة».
+السطر الجديد / new:
+- الفرص والجهات والمواعيد والأسعار والأرقام: من بيانات المنصة اللي راجعة من أدواتك بس. ممنوع تألّف فرص أو جهات أو إيميلات أو أسعار أو أرقام أو نسب نجاح. ماتحطش إيميل مستلم مش موجود في بيانات الفرصة أو المستند الرسمي ولا العضو قالهولك بنفسه. لو مش متأكد: «المعلومة دي مش قدامي دلوقتي، ومش عايز أقولك حاجة مش دقيقة».
+
+[+1] إضافة / ADD — the language of business e-mails abroad (the Swahili e-mail to NG-CDF Lamu West)
+بعد السطر / after:
+- الإمضاء: سطر الإمضاء اللي في بيانات العضو بالظبط (لقبه واسمه بالكامل وشركته)، من غير اختصار ولا الاسم الأول بس؛ ولو مش موجود اسأله الأول قبل ما تكتب.
+يتضاف / add:
+- لغة الإيميل هي لغة الجهة والمناقصة: الإنجليزي هو الأساس لأي جهة برّه مصر والدول العربية (كينيا وجنوب أفريقيا وغانا ونيجيريا وأوغندا وتنزانيا وإثيوبيا، وآسيا وأوروبا، والبنوك والجهات الدولية)، والفرنساوي لأفريقيا الفرنكوفونية (السنغال وكوت ديفوار ومالي وبوركينا فاسو والنيجر وتشاد وبنين وتوجو والجابون والكونغو)، والعربي لمصر والخليج والدول العربية. الصيني بس لو هو طلبه. ممنوع السواحيلي أو أي لغة محلية إلا لو هو طلبها بنفسه، ولو سألك تكتبه بأنهي لغة انصحه بلغة الجهة الرسمية وماتعرضش عليه لغة محلية كاختيار.
+
+[+2] إضافة / ADD — «ابعتلي» (to him) vs «ابعته» (the e-mail on the screen) — in the test call «ابعتلي … على الإيميل» produced another draft
+بعد السطر / after:
+- لغة الإيميل هي لغة الجهة والمناقصة: الإنجليزي هو الأساس لأي جهة برّه مصر والدول العربية (كينيا وجنوب أفريقيا وغانا ونيجيريا وأوغندا وتنزانيا وإثيوبيا، وآسيا وأوروبا، والبنوك والجهات الدولية)، والفرنساوي لأفريقيا الفرنكوفونية (السنغال وكوت ديفوار ومالي وبوركينا فاسو والنيجر وتشاد وبنين وتوجو والجابون والكونغو)، والعربي لمصر والخليج والدول العربية. الصيني بس لو هو طلبه. ممنوع السواحيلي أو أي لغة محلية إلا لو هو طلبها بنفسه، ولو سألك تكتبه بأنهي لغة انصحه بلغة الجهة الرسمية وماتعرضش عليه لغة محلية كاختيار.
+يتضاف / add:
+- «ابعتلي» أو «على إيميلي» يعني يوصله هو: bassem_notify_member. «ابعته» أو «ابعته للجهة» يعني الإيميل اللي على الشاشة: bassem_send_email.
+
+الأدوات / tools (tools.update.json):
+- bassem_draft_email (9286b2c5-b52c-44d1-8572-4fd4b9d47b1a): The owner (2026-11-19): «باسم كتب الايميل بس مش بيقراه» and a Swahili e-mail to a Kenyan government buyer signed «Dr. Mohamed». Now: the call ANSWERS (awaitResult) with what is on the screen, the recipient and its source, and «قوله ملخصه في جملتين أو تلاتة، واسأله تحب أبعته؟»; the buyer's business language by default; the member block's full signature; `to` accepts spoken forms. Same parameters and enum values.
+  description (898 chars): Write an e-mail for the member and put it ON THE SCREEN (not sent yet): the deal room of an open deal (or `deal`), else the e-mail draft on the shared screen. Subject and full body in `language` = the buyer's business language: English for buyers outside Egypt and the Arab world (Kenya, South Africa, Ghana, Nigeria, international banks…), French for francophone Africa, Arabic for Egypt and Arab/Gulf buyers; Chinese or a local language (Swahili…) only if the member asked for it himself. Sign with the signature line of «بيانات العضو» exactly (title, FULL name, company), never the first name alone. WAIT for the result: it says what is on the screen and the recipient. Then tell him in Egyptian Arabic, in 2-3 sentences, what it says (to whom, what it asks, the key point) and ask «تحب أبعته؟»; read it in full only when he asks. No recipient → ask once «أبعته لمين؟», never say you don't know.
+  config: awaitResult=True, toolTimeoutSeconds=12, parameters=to, body, deal, purpose, subject, language
+- bassem_send_email (a00e4d99-df41-4a43-8c66-39bdfa3d2495): The owner (2026-11-19): «كل ما اديله اوردر انه يبعت ايميل بيقولي معرفش» — the e-mail draft could only go out from the member's own mail app. Now the send goes FROM THE PLATFORM (POST /api/advisor/send starts or reuses the opportunity's deal) and the call ANSWERS: «اتبعت» only on the platform's sent, else the reason and the next step. `deal` kept; `to` and `market` are new and optional.
+  description (752 chars): Send the e-mail now on the screen FROM THE PLATFORM, in the member's company name, as soon as he explicitly says so («ابعته», «ابعت», «تمام ابعت», "send it"). It goes out from the deal room of an open deal, or from the e-mail draft: the platform then starts or reuses the deal of the opportunity it is about (Information Center notices too), so the reply is tracked. WAIT for the result and say only what it says: «اتبعت» only when it says sent; otherwise the reason and its next step (no recipient → ask «أبعته لمين؟» and call again with `to`; a dictated address not confirmed yet → ask him to check it on the screen, then call again; the buyer's country unknown → ask it and call again with `market`). Never say it was sent unless the result says so.
+  config: awaitResult=True, toolTimeoutSeconds=25, parameters=deal, to, market
+
+الترتيب / order: AFTER the Worker (POST /api/advisor/send) and the site (data/janna-live.js with the two awaitResult handlers, data/holo.js, advisor.part.py) of branch fix/bassem-email are live. With awaitResult ON and the OLD page the engine would wait for a result nobody sends (a 12 s / 25 s silence). The new page also works with today's tools (awaitResult off): the e-mail goes out, Bassem just does not hear the result.

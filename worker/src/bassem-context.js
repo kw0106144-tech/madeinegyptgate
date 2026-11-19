@@ -18,7 +18,9 @@
    (phone numbers, ids) scrubbed, ≤ 80 characters. Never sent: e-mail, phone, ids, tokens, notes.
    The title must be one of the dashboard's titles (or a usual written form of one) and the first name letters only: no name, or no
    known title (the dashboard's «الاسم واللقب», used by Bassem and Janna; its free «لقب تاني…» text is never spoken) → null = today's
-   behaviour exactly. Bassem speaks Arabic on every page (his persona's languageCode is "ar"; PERSONAS.bassem.en is the same persona),
+   behaviour exactly. The block also carries the signature of the e-mails he writes for the member: the title, the FULL name
+   (fullName: the same cleaning) and the company — never only the first name (owner 2026-11-19: «Dr. Mohamed»).
+   Bassem speaks Arabic on every page (his persona's languageCode is "ar"; PERSONAS.bassem.en is the same persona),
    so the first sentence and the block are Arabic on the English page too. */
 import { effPlan, scopeOf, PLAN_NAME, prefsOf, cairoDay } from "./common.js";
 
@@ -98,6 +100,17 @@ export function firstName(n) {
   const f = ctxField(w.length > 1 && JOIN.test(w[0]) ? w[0] + " " + w[1] : w[0], 40);
   return (f.match(LETTER) || []).length > 1 && NAME.test(f) && !isTitle(f) ? f : "";
 }
+/* the FULL name, for the signature of the e-mails Bassem writes (owner 2026-11-19: a business e-mail signed «Dr. Mohamed» — the block
+   gave him only the first name, so the signature was a truncation of «محمد الحسيني»): the same cleaning as firstName (honorifics and a
+   leading initial dropped, letters only), every other word kept, ≤ 60 characters; "" when nothing name-like is left */
+export function fullName(n) {
+  let s = ctxField(n, FIELD_MAX);
+  for (let i = 0; i < 3 && (ABBR.test(s) || WORD.test(s) || LATIN_ABBR.test(s)); i++) s = s.replace(ABBR, "").replace(WORD, "").replace(LATIN_ABBR, "").trim();
+  const w = s.split(" ").filter(Boolean);
+  while (w.length > 1 && INITIAL.test(w[0])) w.shift();
+  const f = ctxField(Array.from(w.filter(x => (NAME.test(x) || INITIAL.test(x)) && !isTitle(x)).join(" ")).slice(0, 60).join(""), 60);
+  return (f.match(LETTER) || []).length > 1 ? f : "";
+}
 
 const MK_AR = { local: "مصر", gulf: "الخليج والدول العربية", africa: "أفريقيا", asia: "آسيا", europe: "أوروبا" };
 export function marketsAr(m) {
@@ -139,6 +152,8 @@ export function memberContext(m, lang, o = {}) {
   if (company) { L.push("- الشركة: " + company); known.push("شركته"); }
   if (sector) { L.push("- القطاع: " + sector); known.push("قطاعه"); }
   if (plan) { L.push("- الباقة: " + plan + (markets ? "، والأسواق في نطاقها: " + markets : "")); known.push("باقته"); }
+  /* the signature of every e-mail he writes for the member: the title, the FULL name and the company as the platform has them */
+  if (named) L.push("- الإمضاء في أي إيميل بتكتبه له: " + h.ar + " " + (fullName(m.name) || first) + (company ? " — " + company : "") + ". الاسم بالكامل والشركة زي ما هم هنا بالظبط ومن غير اختصار؛ وفي إيميل مش بالعربي: " + (h.en || h.ar) + " والاسم نفسه بالحروف اللاتيني.");
   if (o.continued) L.push("- المكالمة دي استكمال لنفس المكالمة بعد ما اتقطعت: ماترحّبش تاني ولا تقول إنك باسم ولا تسأله عن حاله، وكمّل من آخر كلام بينكم المكتوب تحت.");
   else L.push(named ? "- إنت فتحت المكالمة بترحيب باسمه وقلتله إنك باسم وسألته عن حاله: ماتكرّرش الترحيب ولا إنك باسم، واسمع رده وكمّل الخطوة 1."
     : "- إنت فتحت المكالمة بترحيب وقلتله إنك باسم وسألته عن الأخبار: ماتكرّرش الترحيب ولا إنك باسم، واسمع رده وكمّل الخطوة 1.");

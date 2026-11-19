@@ -1280,9 +1280,8 @@
         break;
       }
       case "bassem_send_email": {
-        /* the draft in the call's composer (no deal): nothing is sent by Bassem — no «sending» scene (data/janna-live.js draftWaiting) */
-        var dw = false; try { dw = !!(W.JANNA_LIVE && W.JANNA_LIVE.draftWaiting && W.JANNA_LIVE.draftWaiting(a)); } catch (e) {}
-        if (dw) { sp.skip = true; break; }
+        /* the call's draft and the deal room both go out FROM THE PLATFORM (data/janna-live.js mailTool): «اتبعت» only on its confirmation
+           ("mig:agent-action" ok), «مااتبعتش» on its refusal ("mig:tool-outcome" failed / refused, failTool) */
         sp.kind = "send"; sp.title = T(N + " " + V(w, "بيبعت", "بتبعت") + " الإيميل", N + " is sending the e-mail");
         sp.main = { type: "sent", line: T("إرسال الإيميل", "Sending the e-mail"), sub: str(a.to || a.subject, 50) };
         sp.plan = [P(T("براجع المسودة", "Reviewing the draft"), 800), P(T("ببعت", "Sending"), 900), confirmStep(sp)];
@@ -1379,6 +1378,12 @@
   function confirmTool(tool) {
     if (S.sc && S.sc.spec && (!tool || S.sc.tool === tool)) onConfirm(S.sc.spec);
     for (var i = 0; i < S.q.length; i++) if (!tool || S.q[i].tool === tool) S.q[i].ok = true;
+  }
+  /* the platform said no (or did not answer): the running / queued scene of that tool ends «مااتبعتش» — never «اتبعت» */
+  function failTool(tool, why) {
+    if (!tool) return;
+    if (S.sc && S.sc.spec && S.sc.tool === tool) onFail(S.sc.spec, why);
+    for (var i = 0; i < S.q.length; i++) if (S.q[i].tool === tool && !S.q[i].ok) S.q[i].bad = String(why || "-").slice(0, 90);
   }
   function restoreFocus() {
     var t = S.prevFocus; S.prevFocus = null;
@@ -1486,6 +1491,11 @@
     var d = e && e.detail || {}, tool = d.tool || d.toolName;
     if (d.ok === true || /^(done|ok|sent|success|delivered|completed)$/i.test(String(d.status || d.phase || ""))) { confirmTool(tool); return; }
     if (tool) api.act(tool, d.args || d.arguments || {}, { who: d.who, anchor: d.anchor, title: d.title });
+  });
+  /* data/janna-live.js outcome(): a send the platform refused or did not do shows as such on the send scene */
+  W.addEventListener("mig:tool-outcome", function (e) {
+    var d = e && e.detail || {};
+    if (d.tool === "bassem_send_email" && /^(refused|failed)$/.test(String(d.outcome || ""))) failTool(d.tool, String(d.text || "").replace(/^[⚠️⏳\s]+/, "").replace(/^(مااتبعتش|Not sent):\s*/, ""));
   });
   /* Escape hides the hologram (not when the key belongs to an open dialog) */
   D.addEventListener("keydown", function (e) {
