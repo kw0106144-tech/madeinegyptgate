@@ -597,6 +597,30 @@ PY
     esac
   done
 
+  # the installable app (seo_build.part.py emit_pwa): both manifests, the service worker, the offline page and the icons. With --stage
+  # of a build that has them, a missing file is a FAIL (this deployment must serve it); without it (an older live build) a WARN.
+  # Content types and Cache-Control come from _headers: WARN only.
+  section "installable app (PWA)"
+  PWA_REQ=0; [ -n "$STAGE" ] && [ -f "$STAGE/site/sw.js" ] && PWA_REQ=1
+  for p in /manifest.webmanifest /manifest.en.webmanifest /sw.js /offline/ /img/app/icon-512.png /img/app/maskable-512.png /img/app/apple-touch-icon.png /favicon.ico; do
+    fetch "$BASE$p"
+    if [ "$CODE" = 200 ]; then
+      case "$p" in
+        *.webmanifest)
+          if [ -n "$PY" ]; then
+            if "$PY" -c 'import json, sys; m = json.load(open(sys.argv[1], encoding="utf-8")); sys.exit(0 if m.get("start_url") and m.get("icons") and m.get("display") == "standalone" else 1)' "$TMP/body" 2>/dev/null; then pass "$p: an app manifest ($CTYPE)"; else fail "$p: not a valid app manifest"; fi
+          elif grep -q '"start_url"' "$TMP/body"; then pass "$p → 200"; else fail "$p: not an app manifest"; fi
+          printf '%s' "$CTYPE" | grep -qi 'application/manifest+json' || warn "$p served as '$CTYPE' (expected application/manifest+json, _headers)" ;;
+        /sw.js)
+          if printf '%s' "$CTYPE" | grep -qi javascript; then pass "/sw.js: $CTYPE"; else fail "/sw.js served as '$CTYPE' (a service worker must be JavaScript)"; fi
+          if ! grep -q 'var NEVER = ' "$TMP/body" && ! grep -q 'registration.unregister' "$TMP/body"; then fail "/sw.js is not the platform's service worker"; fi
+          hdr Cache-Control | grep -qiE 'no-cache|max-age=0' || warn "/sw.js: Cache-Control '$(hdr Cache-Control)' (expected no-cache, _headers)" ;;
+        *) pass "$p → 200" ;;
+      esac
+    elif [ "$PWA_REQ" = 1 ]; then fail "$p → $CODE (this build has it: seo_build.part.py emit_pwa)"
+    else warn "$p → $CODE (a build from before the installable app?)"; fi
+  done
+
   if [ "$HOST" = "madeinegyptgate.com" ]; then
     section "host canonicalisation"
     fetch "https://www.madeinegyptgate.com/about/"

@@ -72,18 +72,18 @@ responses).
 | `site.py` | The site generator, the entry point of every build |
 | `*.part.py`, `home2.part.html`, `market.part.html`, `dash.part.html` | One file per page or section (table in 1.3) |
 | `factory-profile.html` | Read by `site.py` (base CSS + the old sample profile). Not a content source |
-| `seo_build.part.py` | The static SEO generator (about 520 KB): data pages, hubs, Arabic pages + `/en/` twins, sitemaps, `robots.txt`, `_headers`, `_routes.json`, `_redirects`, `/_seo/*.json`, hash shims, and its own validation |
+| `seo_build.part.py` | The static SEO generator (about 520 KB): data pages, hubs, Arabic pages + `/en/` twins, sitemaps, `robots.txt`, `_headers`, `_routes.json`, `_redirects`, `/_seo/*.json`, hash shims, the installable app's files and head tags (1.11), and its own validation |
 | `seo_fprof.part.py` / `seo_pprof.part.py` | Rich factory profile pages / product pages (hooks of the SEO build) |
 | `seo.part.py` | Per-page meta (`SEO` dict: description, keywords, schema type, breadcrumb, change frequency, priority) and the Organization/WebSite JSON-LD |
 | `seo/` | `config.json` (clean URLs `static_paths`, `app_paths`, `shim_keys`, `noindex_static`, thresholds, `en` gate), `sectors.json`, `governorates.json`, `keywords.json`, `tender-cats.json`, `company-media.json` (photo index of the profiles), `lastmod.json` (build state, 2.9) |
 | `data/` | Everything the browser loads: data files (`window.*` globals) and scripts. Served to the public as they are |
-| `img/`, `media/` | Images and videos, served from the tree (`img/fprof/` is generated, 2.9) |
+| `img/`, `media/` | Images and videos, served from the tree (`img/fprof/` is generated, 2.9; `img/app/` = the app icons, made by `tools/app_icons.py`, 1.11) |
 | `functions/` | Pages Functions: `_middleware.js` (edge SEO layer), `api/seo/[[path]].js` → `_lib/seo-api.js` (SEO admin API), `_lib/seo-auth.js` (read-only port of the Worker's login), `_lib/seo-privacy.js`, `_lib/seo-edge.js`, `_lib/seo-score.js`, `_tests/` |
 | `worker/` | Worker `janna-lookup`: `src/` (router `src/index.js`, one module per area), `schema.sql`, `migrations/`, `test/`, `build-index.js`, `build-items.js`, `tools/` |
 | `worker-intel/` | Worker `migate-intel`: `src/`, `migrations/0001_init.sql`, `seeds/`, `site-snippets/`, `test/`, `INTEGRATION.md` |
 | `worker-shield/`, `worker-site/` | Not deployed by CI (1.1) |
 | `deploy/` | `deploy.sh` (manual commands, `deploy/deploy.sh --help`), `stage.py` (staging + the pre-deploy gate), `smoke-test.sh`, `d1_migrate.py`, `wrangler-pages.toml` (Pages config, copied into the stage as `wrangler.toml`), `stage-exclude.txt`, `legacy-live.txt`, `legacy-urls.txt`, `privacy-allow.txt`, `README-DEPLOY.md`; `deploy/ci/` = the CI pipelines and the CI-only stage patches (section 4) |
-| `tools/` | `dump-data.mjs` (data files → `build/data.json` for the generator), `i18n_subset.py` (per-page English parts), `company_media.py` + `test_company_media.py`, `partner_logos.py`. The `gen_*.py`, `rebrand_*.py`, `make_handoff.py`, `import_registry.py`, `rename_persona.py` scripts are one-off history with hard-coded scratch paths: do not run them |
+| `tools/` | `dump-data.mjs` (data files → `build/data.json` for the generator), `i18n_subset.py` (per-page English parts), `company_media.py` + `test_company_media.py`, `partner_logos.py`, `app_icons.py` (the app icons from the logo, 1.11). The `gen_*.py`, `rebrand_*.py`, `make_handoff.py`, `import_registry.py`, `rename_persona.py` scripts are one-off history with hard-coded scratch paths: do not run them |
 | `docs/janna/` | Specs and contracts (section 8); `kb/` + `kb-upload/` = Janna's Anam knowledge-base files; `reports/` = past work reports |
 | `anam/` | Prepared Anam persona and tool changes (not applied) |
 | `.github/workflows/` | CI (section 4) |
@@ -159,6 +159,7 @@ too.
 | `janna*.js`, `bassem*.js`, `holo.js`, `captions.js`, `bot.js`, `bot-en.js`, `advisor-guides.js` | Janna (visitor assistant), Bassem (advisor of partner plans), holo screens, captions, the scripted bot |
 | `link-fix.js` | Rewrites legacy `x.html#…` links to clean URLs in place (no redirect screen) |
 | `seo.js` | Analytics loader (IDs empty until the owner sets them) |
+| `pwa.js` | The installable app on every page: registers `/sw.js`, the install invitation, the English manifest on app pages in English (1.11) |
 | `auth.js`, `me.js`, `egadm.js` | On the live domain these URLs are answered by the OLD system (2.8). `egadm.js` is still used by the map pages; editing it here does not change the live file |
 
 ### 1.5 Edge layer (`functions/`)
@@ -235,6 +236,35 @@ tools live in Anam, not here; `anam/` holds prepared changes that only the owner
 changes nothing live. The build writes its own `index.html`.
 
 ---
+
+### 1.11 The installable app (PWA)
+
+The live site installs as an app on Android (Chrome: «تثبيت») and on iPhone / iPad (Safari: «شارك ← أضف إلى الشاشة الرئيسية»).
+Everything is generated by the site build; nothing runs on a server of its own.
+
+| Piece | Source | What |
+|---|---|---|
+| `/manifest.webmanifest` (AR) and `/manifest.en.webmanifest` (EN) | `seo_build.part.py` `pwa_manifest` / `emit_pwa` | «منصة صنع في مصر» / "Made in Egypt Gate", short «صنع في مصر» / "Made in Egypt"; `lang` + `dir` per language; `start_url` `/?source=pwa` and `/en/?source=pwa`, `scope` `/`, `id` `/` and `/en/` (two apps), standalone, `theme_color` `#8E0B20` (the header red), white background; icons 192/512 `any` + `maskable` + `monochrome`; shortcuts: factory directory, tenders, the RFQ form (`/contact/#rfq-form`), Janna's live call (`?live=1` on an app page: the Arabic home, the contact page in English) |
+| The `<head>` of every page (app pages through `seo_static_head`, generated pages, `/login/` + `/en/login/`) | `pwa_head`, called by `head_html` | the manifest of the page's language, `theme-color`, `mobile-web-app-capable`, `apple-mobile-web-app-capable` / `-status-bar-style` (default) / `-title`, `/favicon.ico`, the PNG icons, `apple-touch-icon`, `<script src="/data/pwa.js?v=…" defer>` |
+| `/sw.js` | `SW_TPL` in `seo_build.part.py` (ES5) | Pages: network first, the cached `/offline/` only when the network fails; HTML is never stored. This site's static files (`/data/*.js\|css\|json` with `?v=`, pictures under `/img/` and `/assets/`, code under `/assets/` and `/fonts/`): stale-while-revalidate in two capped caches. Never touched: other origins (Anam, analytics, Google Fonts), anything but GET, ranges, audio / video, frames, the `NEVER` paths (`/api/`, `/admin/`, `/login/`, `/dashboard/`, `/advisor/`, `/meeting/`, `/inbox/`, `/seo-admin/`, `/seo-team/`, `/data-desk/`, `/pay/`, `/panel.html`; also their `/en/`, bare and `.html` forms), `NEVER_FILES` (`/data/overlay.js` and the old system's files of `deploy/legacy-live.txt`) and every file those pages load (referrer). Caches `mig-pwa-core-<version>`, `mig-pwa-code-…`, `mig-pwa-img-…`: the version follows the template, the rules and the precached files, so an unchanged build leaves phones alone and a changed one replaces the worker and its old caches |
+| `/offline/` | `OFFLINE_TPL` | Arabic with an English line (all English when the URL is `/en/…` or the visitor chose English), «حاول مرة أخرى», reloads itself when the connection is back. noindex; not a static page of the manifest (`NOT_PAGES`) |
+| `data/pwa.js` | ES5 | registers `/sw.js` after the page has loaded, only on https or localhost, only in the top window (never in Janna's / Bassem's shared screen), never in the native app (user agent contains `MIGApp`); the install invitation (below); on app pages in English it switches the manifest link to the English one |
+| `img/app/*` | `tools/app_icons.py` (Pillow, from `img/logo-site.png`; committed, 2.9) | the icons; the build copies `favicon.ico` and `apple-touch-icon.png` to the site root and stops (`pwa:` problems) when one is missing |
+| `_headers`, `_routes.json` | `emit_headers`, `emit_routes` | `/sw.js`: `Cache-Control: no-cache`, `Service-Worker-Allowed: /`; the manifests: `application/manifest+json`. These paths are excluded from the Functions, so Pages applies `_headers` to them |
+
+The install invitation: phones and tablets only (desktops keep the browser's own install button), never on the staff and
+members' pages (the `NEVER` list, the kiosk), never when the site already runs as the app (`display-mode: standalone`,
+`navigator.standalone`), never during a live call (`html.jnl-on`; a call that starts hides it), from the second page of a visit
+(or after 25 s on the first one): a slim bar above the header, in the page flow (it never covers Janna's figure or box, the
+WhatsApp button or the captions). Android: «📲 نزّل التطبيق» + «تثبيت» (the browser's own dialog, from the held
+`beforeinstallprompt`); iPhone Safari: «شارك ← أضف إلى الشاشة الرئيسية» with the share icon. ✕ or a declined dialog → not again for
+30 days (`localStorage` `mig-pwa-x`); installed → never (`mig-pwa-in`). In the console, `MIGPWA.state()` says what happened.
+
+Kill switch: `seo/config.json` `"pwa": {"kill": true}` (or `MIG_PWA_KILL=1` at build time) → the build writes a `/sw.js` that deletes
+the `mig-pwa-*` caches and unregisters itself, and gives every page's `pwa.js` tag `data-pwa="off"` (nothing registered, an existing
+registration removed). It reaches each phone at its next visit; the stage warns `pwa_kill` while it is on. `never` / `never_files`
+in the same block only ADD paths (`PWA_DEF` in `seo_build.part.py` is the floor). `deploy/stage.py` `check_pwa` refuses a build whose
+worker would handle a private path or store the overlay, or whose manifests name a missing icon or page.
 
 ## 2. Golden rules in detail
 
@@ -378,6 +408,7 @@ Do not hand-edit these; regenerate them:
 |---|---|---|
 | `worker/src/data.json`, `worker/src/items.json` | `node worker/build-index.js`, `node worker/build-items.js` (repo root) | `build-items.js` gives clean URLs only with a built site: `MIG_SITE_DIR=<build dir> node worker/build-items.js` (else it falls back to `company.html#N`-style shim URLs). Both read `build/overlay.js` when present. `deploy-worker` regenerates both (with the live overlay and the live clean-URL maps) before every Worker deploy, so the committed copies only matter for tests |
 | `seo/company-media.json`, `img/fprof/` | Every build, unless `MIG_FPROF_MEDIA_REBUILD=0` | CI builds with `MIG_FPROF_MEDIA_REBUILD=0` (reads the committed index). After a data change, build once locally WITHOUT it and commit both together with the data |
+| `img/app/*` (the app icons: `icon-192/512`, `maskable-*`, `monochrome-512`, `apple-touch-icon`, `favicon*`, `sc-*` shortcuts) | `python3 tools/app_icons.py` (from `img/logo-site.png`; `--check` says whether they are current) | Committed. Re-run and commit after a logo change. `/favicon.ico`, `/apple-touch-icon.png`, `/sw.js`, `/manifest*.webmanifest` and `/offline/` exist only in build output (`emit_pwa`) |
 | `seo/lastmod.json` | Every build | Sitemap `<lastmod>` history and the memory of published URLs: an `/en/` page that a later build no longer makes gets its 301 to the Arabic page only if this file remembers it. CI updates a copy and never commits it (every CI build starts from the committed file; the updated copy is the `seo-lastmod` artifact of the run). Commit it in a PR that intentionally changes which pages exist; otherwise `git checkout seo/lastmod.json` after a local build |
 | `build/`, `site/`, `assets/i18n/*`, `assets/seo-*` | The build | `build/` and `site/` are git-ignored; `assets/` exists only in build output |
 
@@ -465,7 +496,7 @@ JS
 node /tmp/es5/inline.js /tmp/mig/site
 ```
 
-Also check generated script assets with the same `acorn --ecma5` loop over `/tmp/mig/site/assets` (`find … -name '*.js'`). A file
+Also check the service worker `/tmp/mig/site/sw.js` (made from `SW_TPL` in `seo_build.part.py`) and generated script assets with the same `acorn --ecma5` loop over `/tmp/mig/site/assets` (`find … -name '*.js'`). A file
 that is not ES5 is a bug to fix in its source (the part file string or the data file), never by a transpiler.
 
 ### 3.6 Look at it locally
@@ -685,6 +716,7 @@ done by the owner or a developer with Cloudflare access; a coding session propos
 | The API Worker is broken | Dashboard → Workers & Pages → `janna-lookup` → Deployments → roll back (or `cd worker && npx wrangler rollback`), then revert in git. Note from README-DEPLOY 11.5: an older version may not know newer routes such as `/data/overlay.js` / `/media/u/*` |
 | `migate-intel` is broken | Same, Worker `migate-intel` |
 | A migration went wrong | Stop. Migrations are additive, so the old code ignores new tables: usually nothing needs undoing. A full restore (the Time Travel bookmark in the run's `BACKUP.json`, or the exported `.sql`) rewinds the WHOLE database and loses every write since; only a developer, with the owner's OK. Never `DROP` on production |
+| The app's service worker misbehaves (stale files on phones, something stored that should not be) | `seo/config.json` `"pwa": {"kill": true}` in a PR, merge: `deploy-site` ships the kill worker, which empties its caches and unregisters itself at each phone's next visit (1.11). Set it back to `false` once fixed |
 | A Control Center edit | Undo it in the Control Center (the audit log «سجل العمليات» shows the before/after); SEO overrides: «استرجاع» in `/seo-admin/` |
 | WhatsApp misbehaves | «إيقاف» in «مفاتيح الخدمات» (instant); hard stop: `WA_DRY_RUN = "1"` in `worker/wrangler.toml` + a deploy |
 
@@ -714,6 +746,7 @@ done by the owner or a developer with Cloudflare access; a coding session propos
 | `/api/<x>/health` 404 after a deploy | The family has no route on that host in `worker/wrangler.toml` |
 | `/api/seo/health` 503 `auth_off` / `kv_off` | Pages secret `ADVISOR_SECRET` missing (owner sets it; it applies from the next deploy) / `SEO_KV` binding missing because the stage did not ship `wrangler.toml` |
 | CI fails with 10000 / authentication errors from wrangler | The `CLOUDFLARE_API_TOKEN` secret is missing, expired, or lacks Pages / Workers / D1 edit on the account: the owner replaces it in GitHub → Settings → Secrets and variables → Actions |
+| Stage error `pwa` / build problem `pwa: …` | The installable app (1.11): a missing icon → `python3 tools/app_icons.py` and commit `img/app/`; a worker that would handle a private path or store `/data/overlay.js` → `PWA_DEF` / `SW_TPL` in `seo_build.part.py`; a shortcut without a page → `pwa_manifest` |
 | `Pages only supports up to 20,000 files` | Free plan limit (today about 10,000 files are uploaded) |
 
 Read-only health checks of the live system: `curl -s https://madeinegyptgate.com/api/janna/health` (same for `advisor`, `auth`,
