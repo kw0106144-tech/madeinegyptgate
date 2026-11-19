@@ -265,10 +265,10 @@ describe("WhatsApp: the test message and the live switch (fail-closed)", () => {
     const n0 = calls.length;
     const r = await api(env, "POST", K + "/wa-test", { token: o.token, body: { to: "01009998887", phone: "+201009998887" } });
     assert.equal(r.status, 200, r.text);
-    assert.deepEqual([r.data.sent, r.data.to, r.data.mode, r.data.next], [true, "01279188996", "text", "confirm_delivery"]);
+    assert.deepEqual([r.data.sent, r.data.to, r.data.mode, r.data.next], [true, "01062531295", "text", "confirm_delivery"]);
     const s = respondSends();
     assert.equal(s.length, 1); assert.equal(calls.length, n0 + 1);
-    assert.equal(s[0].url, "https://api.respond.io/v2/contact/phone%3A%2B201279188996/message");
+    assert.equal(s[0].url, "https://api.respond.io/v2/contact/phone%3A%2B201062531295/message");
     assert.deepEqual([s[0].auth, s[0].body.channelId, s[0].body.message.type], ["Bearer " + TOK, 580384, "text"]);
     assert.ok((await loadServiceKeys(env)).wa_test_sent_at);
     const a = await audits(env, "wa.test");

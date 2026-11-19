@@ -571,7 +571,7 @@ Owner only (`keys.manage` ∈ OWNER_ONLY: admin / editor / support / X-Platform-
 | PUT | `/api/admin/cc/keys/:slot` | `{value}` ("" deletes) | `{ok, slot, item:{set, tail, set_at, set_by, readable}, wa_reset}` · 503 `config_secret_missing` · 422 `invalid` · 404 `unknown_slot` · 400 `use_payments` / `use_email` |
 | DELETE | `/api/admin/cc/keys/:slot` | — | `{ok, slot, item:{set:false}, env_in_force, wa_reset}` |
 | POST | `/api/admin/cc/keys/:slot/test` | — | `{ok, status, detail, source, at}` (+ respond.io: `channel, channel_found, token_ok, wa_test_ok_at`) · 409 `not_set` / `unreadable` · 429 (10/hour) |
-| POST | `/api/admin/cc/keys/wa-test` | `{mode?: "text"\|"template"}` | `{ok, sent, to:"01279188996", mode, provider_id\|error, next, hint?}` · 409 `not_set` / `dry_run_env` / `token_test_required` · 429 (3/hour, 5/day) |
+| POST | `/api/admin/cc/keys/wa-test` | `{mode?: "text"\|"template"}` | `{ok, sent, to:"01062531295", mode, provider_id\|error, next, hint?}` · 409 `not_set` / `dry_run_env` / `token_test_required` · 429 (3/hour, 5/day) |
 | POST | `/api/admin/cc/keys/wa-live` | `{on, confirm_delivered}` | `{ok, switch, live, dry_run, dry_run_env, reason}` · 409 `not_set` / `token_test_required` / `test_message_required` / `delivery_confirmation_required` with `need` |
 Slots: `respondio.token`, `anam.api_key` (cc_secrets, AES-GCM with `CONFIG_SECRET`, AAD per slot) and `respondio.channel` (a plain setting).
 Settings (cc_settings scope `system`, reserved prefixes — never a custom setting): `respondio.channel`, `wa.live` (default off), `wa.test_ok_at`,

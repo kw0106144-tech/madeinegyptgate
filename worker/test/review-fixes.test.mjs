@@ -96,12 +96,12 @@ describe("F1 — the payee text and the WhatsApp test target", () => {
     assert.equal(sent.filter(x => x.to === OWNER && /بيانات التحويل/.test(x.subject)).length, 2);
     assert.ok(await env.DB.prepare("SELECT 1 AS x FROM cc_audit WHERE action = 'settings.save' AND actor_email = ?").bind(OWNER).first("x"));
   });
-  test("the owner's WhatsApp test goes to the platform's own number 01279188996, never to the editable public whatsapp_number", async () => {
+  test("the owner's WhatsApp test goes to the owner's fixed test number 01062531295, never to the editable public whatsapp_number", async () => {
     const env = mkEnv({ RESPONDIO_TOKEN: "rio_test_token_4f7a9c2e1b8d6a3f5e0c", WA_DRY_RUN: "0", RESPONDIO_CHANNEL_ID: "580384" }), owner = await mkMember(env, OWNER), admin = await mkMember(env, "adm@mig.test", { staff: "admin", role: "admin" });
     const ot = await tok(env, owner);
     assert.equal((await api(env, "PUT", "/api/admin/cc/settings", { token: await tok(env, admin), body: { public: { whatsapp_number: "201000000001" } } })).status, 200);
     const k = await api(env, "GET", "/api/admin/cc/keys", { token: ot });
-    assert.deepEqual([k.data.wa.own_number, k.data.wa.own_display], ["201279188996", "01279188996"]);
+    assert.deepEqual([k.data.wa.own_number, k.data.wa.own_display], ["201062531295", "01062531295"]);
     const calls = []; const f0 = globalThis.fetch;
     globalThis.fetch = async (u, init = {}) => {
       const url = String(u.url || u);
@@ -111,8 +111,8 @@ describe("F1 — the payee text and the WhatsApp test target", () => {
     };
     assert.equal((await api(env, "POST", "/api/admin/cc/keys/respondio.token/test", { token: ot, body: {} })).data.ok, true);
     const r = await api(env, "POST", "/api/admin/cc/keys/wa-test", { token: ot, body: {} });
-    assert.deepEqual([r.status, r.data.sent, r.data.to], [200, true, "01279188996"]);
-    assert.deepEqual(calls, ["https://api.respond.io/v2/contact/phone%3A%2B201279188996/message"]);
+    assert.deepEqual([r.status, r.data.sent, r.data.to], [200, true, "01062531295"]);
+    assert.deepEqual(calls, ["https://api.respond.io/v2/contact/phone%3A%2B201062531295/message"]);
   });
 });
 

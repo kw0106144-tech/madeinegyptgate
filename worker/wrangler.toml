@@ -97,7 +97,7 @@ ADMIN_EMAILS = "info@madeinegyptgate.com"      # admin console access (they sign
 RESPONDIO_CHANNEL_ID = "580384"                # respond.io WhatsApp channel ("Whatsapp Business"); a channel saved in «مفاتيح الخدمات» wins
 WA_DRY_RUN = "0"                               # deploy 2: the PANEL switch «تشغيل إرسال واتساب الحقيقي» decides (Control Center → «مفاتيح الخدمات»,
                                                # owner only, OFF by default). It stays OFF until the owner's respond.io token test passes AND one
-                                               # test message to the platform's own number 01279188996 is delivered (and the templates are
+                                               # test message to the owner's test number 01062531295 is delivered (and the templates are
                                                # Meta-approved); until then nothing goes by WhatsApp — e-mail instead. "1" = hard kill switch:
                                                # nothing is ever sent by WhatsApp, whatever the panel says (needs a deploy).
 INBOUND_REPLY_ENABLED = "0"                    # Email Routing stays OFF (owner decision): Reply-To no-reply + «رد من هنا» links.

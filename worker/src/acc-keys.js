@@ -10,7 +10,7 @@
      POST   /keys/:slot/test              ONE read-only call to the provider with the key the Worker uses → {ok, status, detail, source, at}
                                           (respond.io: GET /v2/space/channel and the configured channel must be in the list; Anam:
                                           GET /v1/personas?perPage=1) — 10 per hour per owner
-     POST   /keys/wa-test {mode?}         ONE WhatsApp message to the platform's own number 01279188996 (fixed in the code: never the public
+     POST   /keys/wa-test {mode?}         ONE WhatsApp message to the owner's test number 01062531295 (fixed in the code: never the public
                                           setting whatsapp_number, which an admin may edit — review F1)
                                           — only after a passed token test, never while WA_DRY_RUN=1; 3/hour and 5/day per owner
      POST   /keys/wa-live {on, confirm_delivered}   the switch «تشغيل إرسال واتساب الحقيقي»: on → 409 until a passed token test, a sent test
@@ -47,7 +47,7 @@ const PANEL = { "respondio.token": ["respondio_token", "respondio_state"], "anam
 export const LIMITS = Object.freeze({ tests_per_hour: 10, wa_tests_per_hour: 3, wa_tests_per_day: 5, timeout_ms: 10000 });
 export const RESPONDIO_CHANNELS_URL = "https://api.respond.io/v2/space/channel"; // read-only (verified 2026-11-18, whatsapp.js header)
 export const ANAM_PERSONAS_URL = "https://api.anam.ai/v1/personas?perPage=1";      // read-only
-const OWN_NUMBER = "201279188996";                                                   // the platform's own WhatsApp — the go-live test goes here only
+const OWN_NUMBER = "201062531295";                                                   // the owner's mobile (owner decision 2026-11-19, was the platform's 01279188996) — the go-live test goes here only
 const TEST_TEXT = "رسالة تجربة من لوحة تحكم منصة صنع في مصر ✅ لو وصلتك، ارجع لصفحة «مفاتيح الخدمات» واضغط «الرسالة وصلت».\nTest message from the Made in Egypt Gate control panel — if it reached you, confirm it on the «Service keys» page.";
 const TEST_TEMPLATE = { template: "bassem_morning", params: ["فريق منصة صنع في مصر"] };
 const WA_SETTINGS = ["wa.live", "wa.test_ok_at", "wa.test_sent_at", "wa.test_msg_id", "wa.live_at", "wa.live_by"];
