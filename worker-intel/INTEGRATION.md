@@ -48,7 +48,24 @@ Optional attributes: `data-market` (eg, sa, gcc, arab, africa, eu, …), `data-s
 
 ## 4. Bassem (Anam SERVER_WEBHOOK tool)
 `POST https://madeinegyptgate.com/api/intel/tool` (JSON) body `{action:"search"|"brief", query?, kind?, market?, sector?, days?}` →
-`{count, results:[{title_ar, entity, market, deadline, url, kind}], text}`; `text` is short Egyptian Arabic, no URLs, digits.
+`{count, results:[{id, title_ar, entity, market, market_name, country, deadline, value, currency, url, page, open_url, kind}], text}`;
+`text` is short Egyptian Arabic, no URLs, digits. `page` = `open_url` = the item's own page on the Information Center (the screen opens it);
+`url` = the official link (never read aloud).
+One result (owner 2026-11-19: «لما بقوله افتح الفرصة بيقولي مش لاقي التفاصيل» / «مش قادر اقرء الملف ال بي دي اف»):
+- `{action:"item", id}` → `{found, id, item:{…every field…}, results:[the item], text, note}`: buyer, country, deadline, status, value or
+  «القيمة مش منشورة في المصدر», what is requested (the Arabic summary, else the source's excerpt), source. `id` = the 11-character id,
+  its `/intel/…-<id>/` page or its official link; no id + a `title` → `found:false` with up to 3 `candidates`. Hidden items are not found;
+  a duplicate answers with its primary.
+- `{action:"doc", id}` → `src/doc.js` reads ONLY that item's own stored `url` (+ at most one document that page / OCDS release links to on
+  the same official site): https, port 443, public DNS names only (no IP literals, localhost, .local/.internal/…, nor this zone), every
+  redirect re-checked (≤ 3; a sign-in page → `login`), robots.txt respected, one 12 s deadline for all its fetches, size caps (PDF 10 MB,
+  DOCX 8 MB, HTML 3 MB). PDF / DOCX → Workers AI `env.AI.toMarkdown` (images not converted), 1 unit of `AI_DAILY_LIMIT`; the enrichment
+  and the titles pass leave the last `AI_DOC_RESERVE` units (wrangler.toml: 25) for these reads; without AI a local reader (simple-font
+  PDF text, DOCX XML; a scanned / CID-font PDF is flagged, never guessed); HTML is read locally. → `{ok, doc:{type, pages, lang, via, from},
+  sections:{found, missing}, key_lines, excerpt (≤ 6,000 characters, contacts and links removed), flags, text, note}`; `ok:false` + a flag
+  (unreachable, timeout, login, forbidden, robots, gone, busy, too_large, unsupported, not_https, unsafe_url, scanned, unreadable,
+  encrypted, empty, no_document) with an honest Arabic `text`. Cached in KV `doc:v1:<id>:<hash of url>` 12 h (a failure 30 min, a timeout 5 min).
+  Its own rate limit: `DOC_RATE_PER_MIN` (default 10) per IP.
 Rate limit 30/min/IP. Optional: `wrangler secret put TOOL_KEY` and send header `X-Intel-Key` from the Anam tool.
 Suggested tool description: «ابحث في مركز معلومات المنصة (مناقصات، طلبات أسعار، مشاريع، أخبار من المصادر الرسمية). استخدم action=brief لملخص آخر 24 ساعة».
 

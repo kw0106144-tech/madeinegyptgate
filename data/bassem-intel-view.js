@@ -10,6 +10,10 @@
           work (the deal room / an edited form: JANNA_LIVE.show refuses); then, and on phones, a results card under the video offers it.
       Only when no outcome arrives within 8 s (an engine that does not report it, the widget) the public feed is read instead, and it
       is labelled as the Information Center's list, with no count and no «باسم لقى» claim.
+      ONE result (owner 2026-11-19: «لما بقوله افتح الفرصة بيقولي مش لاقي التفاصيل»): action "item" → its own page on the screen (unless
+      it is there already) and its facts on the hologram; action "doc" (its official document, read by worker-intel src/doc.js — it can
+      take 5–20 s) → the hologram says what was read or why not, and the screen stays where it is (or goes to that item's page). Neither
+      ever falls back to the feed: a list would not be the item he named.
    2) bassem_save_profile — a client tool with awaitResult: janna-live.js registers it with the SDK (registerToolCallHandler) and
       saveProfile() returns the Promise of the short result Bassem is given: «اتسجّل في ملف مصنعك: …» only after POST
       /api/advisor/profile answered that it saved; else «ماتسجّلش: <why>» or «مش متأكد إنه اتسجّل …». The hologram shows the same.
@@ -93,7 +97,12 @@
   /* an item's own page on the Information Center as a same-site path ("" when it has none — or while the owner switched the links to the
      Information Center off: «🛠️ المطوّر» → intel_pages, data/flags.js; then the screen opens nothing and a line links its official source only) */
   function intelOff() { var F = W.MIGFLAGS; return !!(F && F.on && F.on("intel_pages") === false); }
-  function pagePath(it) { if (intelOff()) return ""; var m = /^(?:https?:\/\/[^\/]*madeinegyptgate\.com)?(\/intel\/[^\s"'<>\\]*)$/i.exec(String((it && it.page) || "")); return m ? m[1] : ""; }
+  function pagePath(it) {
+    if (intelOff()) return "";
+    var m = /^(?:https?:\/\/[^\/]*madeinegyptgate\.com)?(\/intel\/[^\s"'<>\\]*)$/i.exec(String((it && it.page) || ""));
+    /* the tool gives the Arabic page; an English call shows the item's English twin (/intel/en/…) */
+    return m ? (EN ? m[1].replace(/^\/intel\/(?!en\/)/, "/intel/en/") : m[1]) : "";
+  }
   /* one result line: title · «الجهة · السوق · آخر ميعاد …» · the official link (else its page on the Information Center) */
   function item(it) {
     var sub = [str(it.entity, 60), str(it.market_name, 30), it.deadline ? T("آخر ميعاد ", "deadline ") + fmtDay(it.deadline) : str(it.kind_label, 30)].filter(Boolean).join(" · ");
@@ -110,10 +119,13 @@
 
   /* ---------- bassem_intel: the tool's own answer; the feed only as a labelled fallback ---------- */
   var RUN = 0, PEND = [];
+  /* the tool's one-result actions (worker-intel api.js ACTIONS) */
+  var ONE = /^(item|details?|open|get|doc|document|pdf|read|requirements)$/;
   function pendFind(id) { for (var i = 0; i < PEND.length; i++) if (id ? PEND[i].id === id : true) return i; return -1; }
   function onStarted(d) {
     var a = d.arguments || d.args || {};
     if (typeof a === "string") { try { a = JSON.parse(a); } catch (x) { a = {}; } }
+    if (ONE.test(String((a && a.action) || "").toLowerCase())) return; /* one item / its document: no feed fallback */
     var id = String(d.toolCallId || ""), k = ""; try { k = JSON.stringify(a); } catch (x) {}
     for (var i = 0; i < PEND.length; i++) if ((id && PEND[i].id === id) || (PEND[i].k === k && Date.now() - PEND[i].at < 1500)) return; /* one call reported twice */
     var p = { id: id, k: k, a: a, at: Date.now(), t: 0 };
@@ -133,7 +145,10 @@
   }
   /* TOOL_CALL_COMPLETED of bassem_intel → exactly what Bassem got */
   function toolResult(d) {
-    d = d || {}; var p = take(d), r = parseResult(d.result);
+    d = d || {}; var r = parseResult(d.result);
+    /* one item / its document (it has no pending fallback of its own: never take a search's) */
+    if (r && ONE.test(String(r.action || "").toLowerCase())) { RUN++; showOne(r); return true; }
+    var p = take(d);
     if (!r) { if (p) intel(p.a); return false; } /* an answer the page cannot read: the labelled feed list instead */
     RUN++; /* a fallback feed query still on its way must not overwrite the tool's own answer */
     var a = (p && p.a) || {}, brief = String(a.action || "").toLowerCase() === "brief", mk = String(r.market || "");
@@ -202,6 +217,37 @@
     if (shown) flashScreenButton();
     /* phones (the screen sits under the video) and a screen that holds work (the e-mail draft stays): the card offers the page */
     if (stacked() || (url && !shown)) card({ title: title, count: n, items: items, note: [note, !items.length ? T("مفيش نتايج مطابقة في المصادر الرسمية", "No matching results in the official sources") : "", busy ? T("سيبت الشاشة زي ما هي علشان شغلك اللي عليها", "I left the screen as it is so your work on it stays") : ""].filter(Boolean).join(" · "), more: url, busy: busy });
+  }
+
+  /* ---------- one result: action "item" (its details) / "doc" (its official document) ---------- */
+  function idOf(path) { var m = /\/intel\/(?:en\/)?(?:tenders|projects|news|rfq)\/(?:[^\/?#]*-)?([0-9a-z]{11})\/?(?:[?#]|$)/i.exec(String(path || "")); return m ? m[1].toLowerCase() : ""; }
+  /* the item's page is already on the call's shared screen (never reloaded under his eyes) */
+  function onScreen(path) {
+    var f = D.querySelector(".jnl .jnl-scr iframe"), cur = ""; if (!f) return false;
+    try { cur = String(f.contentWindow.location.pathname || ""); } catch (e) { return false; }
+    var a = idOf(cur), b = idOf(path); return !!a && a === b;
+  }
+  function firstSentence(s) { s = str(s, 220); var i = s.search(/[.؟!]\s/); return i > 20 ? s.slice(0, i) : s; }
+  function showOne(r) {
+    var H = holo(), L = live(), doc = String(r.action || "") === "doc";
+    var items = (r.results || []).map(item).filter(function (x) { return x.title; }), it = items[0];
+    if (!r.found || !it) {
+      if (H) try { H.step(doc ? T("مالقيتش الفرصة دي علشان أقرا مستندها", "Could not find that item to read its document") : T("مالقيتش الفرصة دي في مركز المعلومات", "That item is not on the Information Center"), "fail"); } catch (e) {}
+      return;
+    }
+    var found = r.sections && isArr(r.sections.found) ? r.sections.found : [];
+    var what = { pdf: "PDF", docx: "Word", html: T("صفحة الإعلان", "the notice page"), text: T("نص الإعلان", "the notice text") }[(r.doc && r.doc.type) || ""] || T("المستند", "the document");
+    var steps = doc
+      ? [T("بفتح المستند الرسمي للفرصة من موقع الجهة", "Opening the item's official document on the buyer's site"),
+         r.ok ? { text: T("قريت ", "Read ") + what + (found.length ? T(" — فيه: ", " — it covers: ") + found.join(T("، ", ", ")) : ""), state: "done" } : { text: firstSentence(r.text) || T("مقدرتش أقرا المستند", "Could not read the document"), state: "fail" }]
+      : [T("بفتح تفاصيل الفرصة من مركز المعلومات", "Opening the item's details from the Information Center"), { text: it.sub || it.title, state: "done" }];
+    if (H && H.show) try { H.show({ who: "bassem", kind: "results", title: doc ? T("مستند الفرصة الرسمي", "The item's official document") : T("تفاصيل الفرصة", "Item details"), steps: steps, items: [it], count: null, done: true }); } catch (e) {}
+    else if (H) try { H.result({ count: null, items: [it] }); } catch (e) {}
+    if (!L || !it.page || onScreen(it.page)) return;
+    var shown = false, busy = false;
+    if (W.JANNA_LIVE && W.JANNA_LIVE.show) { try { shown = !!W.JANNA_LIVE.show(it.page); busy = !shown && !!(W.JANNA_LIVE.screenBusy && W.JANNA_LIVE.screenBusy()); } catch (e) {} }
+    if (shown) flashScreenButton();
+    if (stacked() || !shown) card({ title: doc ? T("مستند الفرصة الرسمي", "The item's official document") : T("تفاصيل الفرصة", "Item details"), items: [it], note: busy ? T("سيبت الشاشة زي ما هي علشان شغلك اللي عليها", "I left the screen as it is so your work on it stays") : "", more: it.page, busy: busy, cls: doc && !r.ok ? "er" : "" });
   }
 
   /* ---------- the results card under the video (phones; on desktop only when the screen was left as it is) ---------- */
@@ -338,5 +384,5 @@
   D.addEventListener("anam-agent:tool-call-started", function (e) { var d = (e && e.detail) || {}; if ((d.toolName || d.name) === "bassem_intel") onStarted(d); }, true);
   D.addEventListener("anam-agent:tool-call-completed", function (e) { var d = (e && e.detail) || {}; if ((d.toolName || d.name) === "bassem_intel") toolResult(d); }, true);
   D.addEventListener("anam-agent:tool-call-failed", function (e) { var d = (e && e.detail) || {}; if ((d.toolName || d.name) === "bassem_intel") toolFailed(d); }, true);
-  W.BASSEM_VIEW = { saveProfile: saveProfile, intel: intel, showIntel: showIntel, toolResult: toolResult, feedParams: feedParams, screenUrl: screenUrl, mkName: mkName, v: 2 };
+  W.BASSEM_VIEW = { saveProfile: saveProfile, intel: intel, showIntel: showIntel, showOne: showOne, toolResult: toolResult, feedParams: feedParams, screenUrl: screenUrl, mkName: mkName, v: 3 };
 })();

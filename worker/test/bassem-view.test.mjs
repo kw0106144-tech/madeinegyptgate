@@ -17,14 +17,16 @@ function el(tag) {
   return e;
 }
 /* a fake page: {win, shown: hologram scenes, steps, screen: JANNA_LIVE.show calls, fetches, timers} */
-function page({ fetchMap = {}, busy = false, stackedLayout = false, liveCall = true, tokens = ["tok-1"] } = {}) {
+function page({ fetchMap = {}, busy = false, stackedLayout = false, liveCall = true, tokens = ["tok-1"], framePath = "", lang = "ar" } = {}) {
   const shown = [], steps = [], screen = [], fetches = [], timers = [];
   const me = el("div"), jnl = el("div"); jnl.querySelector = sel => (sel === ".jnl-me" ? me : null);
   const listeners = {};
+  /* the call's shared screen (an iframe showing framePath) */
+  const frame = framePath ? { contentWindow: { location: { pathname: framePath } } } : null;
   const doc = { addEventListener(n, f) { (listeners[n] = listeners[n] || []).push(f); }, getElementById: () => null, createElement: el, head: el("head"), documentElement: el("html"),
-    querySelector: sel => (sel === ".jnl:not([hidden])" ? (liveCall ? jnl : null) : null) };
+    querySelector: sel => (sel === ".jnl:not([hidden])" ? (liveCall ? jnl : null) : sel === ".jnl .jnl-scr iframe" ? frame : null) };
   const store = { "mig-tok": tokens[0] || "" }, sess = { "mig-adv-token": tokens[1] ? JSON.stringify({ t: tokens[1] }) : "null" };
-  const win = { MIGLANG: "ar", matchMedia: () => ({ matches: stackedLayout }), addEventListener() {}, dispatchEvent() {}, open() {},
+  const win = { MIGLANG: lang, matchMedia: () => ({ matches: stackedLayout }), addEventListener() {}, dispatchEvent() {}, open() {},
     MIGHOLO: { result() {}, show(o) { shown.push(o); }, step(t, s) { steps.push([t, s]); } },
     JANNA_LIVE: { show(u, o) { screen.push([u, o || null]); return !busy || !!(o && o.force); }, screenBusy: () => busy },
     fetch: async (url, init = {}) => {
@@ -112,6 +114,49 @@ describe("bassem_intel: the tool's own answer is what the member sees", () => {
     P.V.toolResult({ toolName: "bassem_intel", result: TOOL });
     assert.ok(P.me.children.find(c => c.className === "bv-card"));
     assert.equal(P.timers.find(t => !t.done).ms, 12000);
+  });
+});
+
+/* one result (owner 2026-11-19: «لما بقوله افتح الفرصة بيقولي مش لاقي التفاصيل»): worker-intel answers action item / doc with action set */
+const ITEM = { action: "item", found: true, id: "rw0000000a1", count: 1, text: "طلب عرض أسعار «توريد كيماويات» من Rand Water في جنوب أفريقيا …",
+  results: [{ id: "rw0000000a1", kind: "rfq", kind_label: "طلب عرض أسعار", title: "توريد كيماويات معالجة المياه", entity: "Rand Water", market: "africa:za", market_name: "جنوب أفريقيا", deadline: "2026-11-24", url: "https://www.etenders.gov.za/home/Download?blobName=a.pdf", page: "https://madeinegyptgate.com/intel/rfq/supply-of-chemicals-rw0000000a1/", open_url: "https://madeinegyptgate.com/intel/rfq/supply-of-chemicals-rw0000000a1/" }] };
+const DOC = { ...ITEM, action: "doc", ok: true, doc: { type: "pdf", pages: 3, lang: "en", via: "ai", from: "official" }, sections: { found: ["شروط التأهيل", "آخر ميعاد"], missing: [] }, excerpt: "Bidders must be registered on the CSD…", text: "قريت مستند PDF الرسمي بتاع «توريد كيماويات» (٣ صفحات). فيه كلام عن: شروط التأهيل وآخر ميعاد." };
+describe("bassem_intel one result: action item / doc", () => {
+  test("item → its own page on the screen and its facts on the hologram; no feed fallback is ever armed", async () => {
+    const P = page();
+    P.fire("tool-call-started", { toolName: "bassem_intel", toolCallId: "i1", arguments: { action: "item", id: "rw0000000a1" } });
+    assert.equal(P.timers.length, 0, "no 8 s feed fallback for one item");
+    P.fire("tool-call-completed", { toolName: "bassem_intel", toolCallId: "i1", result: JSON.stringify(ITEM) });
+    assert.deepEqual(P.screen, [["/intel/rfq/supply-of-chemicals-rw0000000a1/", null]]);
+    assert.equal(P.shown[0].title, "تفاصيل الفرصة"); assert.equal(P.shown[0].count, null);
+    assert.deepEqual([...P.shown[0].items].map(x => x.title), ["توريد كيماويات معالجة المياه"]); /* spread: the array was made inside the sandbox */
+    assert.match(P.shown[0].items[0].sub, /Rand Water · جنوب أفريقيا · آخر ميعاد/);
+    P.runTimers(60000); await tick();
+    assert.equal(P.fetches.length, 0, "never the feed");
+  });
+  test("doc → the hologram says what was read; the page already on the screen is never reloaded; a failure says why", async () => {
+    const P = page({ framePath: "/intel/rfq/supply-of-chemicals-rw0000000a1/" });
+    P.fire("tool-call-started", { toolName: "bassem_intel", toolCallId: "d1", arguments: { action: "doc", id: "rw0000000a1" } });
+    P.runTimers(60000); await tick();
+    assert.equal(P.fetches.length, 0, "a slow document read (> 8 s) never brings the feed list");
+    P.fire("tool-call-completed", { toolName: "bassem_intel", toolCallId: "d1", result: DOC });
+    assert.deepEqual(P.screen, [], "the item's page is already there");
+    assert.equal(P.shown[0].title, "مستند الفرصة الرسمي");
+    assert.deepEqual([P.shown[0].steps[1].text, P.shown[0].steps[1].state], ["قريت PDF — فيه: شروط التأهيل، آخر ميعاد", "done"]);
+    const Q = page();
+    Q.V.toolResult({ toolName: "bassem_intel", result: { ...DOC, ok: false, flags: ["login"], text: "المستند الرسمي ورا تسجيل دخول على بوابة الجهة، فمقدرتش أقراه؛ لازم حضرتك تسجّل. اللي عندي من صفحة الفرصة…" } });
+    assert.equal(Q.shown[0].steps[1].state, "fail"); assert.match(Q.shown[0].steps[1].text, /^المستند الرسمي ورا تسجيل دخول/);
+    assert.deepEqual(Q.screen, [["/intel/rfq/supply-of-chemicals-rw0000000a1/", null]], "not on the screen yet: its page opens");
+  });
+  test("not found → a failure step, no screen change; an English call opens the item's English twin", async () => {
+    const P = page();
+    P.V.toolResult({ toolName: "bassem_intel", result: { action: "item", found: false, count: 0, results: [], text: "مش موجودة" } });
+    assert.deepEqual([P.screen.length, P.shown.length, P.steps[0][1]], [0, 0, "fail"]);
+    const E = page({ lang: "en" });
+    E.V.toolResult({ toolName: "bassem_intel", result: ITEM });
+    assert.deepEqual(E.screen, [["/intel/en/rfq/supply-of-chemicals-rw0000000a1/", null]]);
+    E.V.toolResult({ toolName: "bassem_intel", result: TOOL });
+    assert.deepEqual(E.screen[1], ["/intel/en/projects/steel-x1/", null], "search results too");
   });
 });
 
