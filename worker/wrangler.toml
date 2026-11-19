@@ -81,6 +81,10 @@ bucket_name = "migate-media"
 binding = "SEO_KV"
 id = "b321fb348f3447179c99b4380952e5ac"
 
+# «🛠️ المطوّر» → «صحة الموقع»: the running version's id / tag / time (src/acc-dev.js getHealth; read-only, no secret)
+[version_metadata]
+binding = "CF_VERSION_METADATA"
+
 # ---- non-secret settings ----
 # Secrets (npx wrangler secret put <NAME>; README "Secrets"): ADVISOR_SECRET · MEETINGS_SECRET · WA_WEBHOOK_SECRET · PLATFORM_KEY ·
 #   RESEND_API_KEY · ANAM_API_KEY · RESPONDIO_TOKEN (both may instead be saved by the owner in the Control Center «مفاتيح الخدمات»;
@@ -107,6 +111,9 @@ LEGACY_ORIGIN = "https://mindful-mediumslateblue-okapi-21.hostingersite.com/egyp
 MAX_EMAILS_PER_DAY = "30"                      # Bassem deal emails per member, rolling 24 h
 MAX_NEW_RECIPIENTS_PER_DAY = "10"              # per member, rolling 24 h: addresses never emailed before (cold-mail brake)
 MAX_INBOUND_PER_DEAL_DAY = "20"                # replies accepted per deal address per 24 h (only with INBOUND_REPLY_ENABLED=1)
+DEV_PANEL = "1"                                # MARKER, keep it: a version WITH this var has the developer panel «🛠️ المطوّر» and honours its
+                                               # feature switches. src/cf-api.js reads it from each version's bindings: a rollback to a
+                                               # version WITHOUT it (older than the panel) needs the owner's extra, server-checked confirmation
 # Optional (defaults in code): NOREPLY_EMAIL (default = MAIL_FROM's address) · DIGEST_TIME "07:00" · TEAM_NOTICES "0" ·
 #   MAX_ROUTES_PER_MEMBER_DAY "30" · EV_ORIGINS · WA_TPL_BUYER_UPDATE (approved buyer template) · INBOUND_AUTHSERV_ID.
 # NEVER set ADVISOR_OPEN_MODE in production (local testing only).

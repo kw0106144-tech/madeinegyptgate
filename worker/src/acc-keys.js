@@ -19,6 +19,10 @@
                                           «اختبار» = ONE real search) · websearch.cap (setting 0–10000 calls per Cairo day, default 300, 0 = off)
                                           · bassem.tool_secret (secret, the X-MIG-Tool header value in the Anam tool; no test) — GET /keys
                                           returns them in `websearch`, the WhatsApp/Anam `slots` stay as they were
+   «Cloudflare — لوحة المطوّر» (the developer panel «🛠️ المطوّر», acc-dev.js / cf-api.js): cloudflare.dev_token (secret; the Worker
+                                          secret CF_DEV_TOKEN wins) — NO tail is kept or shown, only «متسجّل ✓»; its «اختبار» = read-only
+                                          calls (token verify, the Pages project, the janna-lookup deployments) — GET /keys returns it in
+                                          `cloudflare`, the other blocks stay as they were
    A new / deleted respond.io token or channel switches WhatsApp off and clears the test state (fail-closed: prove it again).
    A new provider clears the web-search key's last test (it was a test of another provider).
    Every change and test leaves one cc_audit row WITHOUT any value (keys.set, keys.delete, keys.test, wa.test, wa.live); a failing audit
@@ -26,11 +30,14 @@
 import { now, line, rateOk } from "./common.js";
 import { configSecretOk, seal, maskTail, secretInfo } from "./crypto.js";
 import { fail, first, all, hasTable, needTables, batch, body as readBody, jget } from "./acc-base.js";
-import { sendOwnerTest, waOn, waLive, waSwitch, waDryEnv, waDryReason } from "./whatsapp.js";
+import { sendOwnerTest, waOn, waLive, waSwitch, waDryEnv, waDryReason, waFeature } from "./whatsapp.js";
+import { featureOn } from "./flags.js"; // «🛠️ المطوّر» whatsapp_send OFF: not even the owner's test message leaves
 import { SVC_SLOTS, loadServiceKeys, forgetServiceKeys, channelOk, respondioChannel, respondioChannelSource, DEFAULT_CHANNEL } from "./service-keys.js";
 // ---- Bassem web search («بحث الإنترنت») ----
 import { WS_SLOTS, WS_PROVIDERS, WS_DEFAULT_CAP, WS_MAX_CAP, wsProviderOk, wsCapOk, webSearchConfig } from "./service-keys.js";
 import { testWebSearch, usedToday, WS_HEADER } from "./websearch.js";
+// ---- «Cloudflare — لوحة المطوّر» (the developer panel's token) ----
+import { CF_SLOT, devToken, testToken as testCfToken, accountOf, PAGES_PROJECT, WORKERS } from "./cf-api.js";
 
 export const SLOTS = Object.freeze({
   "respondio.token": { kind: "secret", env: "RESPONDIO_TOKEN", test: "respondio", wa: true, label_ar: "توكن respond.io (إرسال واتساب)", label_en: "respond.io API token (WhatsApp sending)" },
@@ -41,7 +48,11 @@ export const SLOTS = Object.freeze({
   "bassem.tool_secret": { kind: "secret", env: "TOOL_SECRET", test: "", wa: false, ws: true, label_ar: "سر أدوات باسم (هيدر X-MIG-Tool في أداة Anam)", label_en: "Bassem's tool secret (the X-MIG-Tool header of the Anam tool)" },
   "websearch.provider": { kind: "setting", env: "WEBSEARCH_PROVIDER", wa: false, ws: true, label_ar: "بحث الإنترنت — مزود الخدمة: Tavily / Serper / Brave", label_en: "Web search — provider: Tavily / Serper / Brave" },
   "websearch.cap": { kind: "setting", env: "WEBSEARCH_CAP", wa: false, ws: true, label_ar: "بحث الإنترنت — الحد اليومي لعمليات البحث", label_en: "Web search — daily search cap" },
+  // ---- «🛠️ المطوّر» (acc-dev.js): the Cloudflare API token for the deploys list + rollback — write-only, no tail ----
+  "cloudflare.dev_token": { kind: "secret", env: "CF_DEV_TOKEN", test: "cloudflare", wa: false, cf: true, notail: true, label_ar: "Cloudflare — لوحة المطوّر", label_en: "Cloudflare — developer panel" },
 });
+export const CF_PERMISSIONS = Object.freeze({ ar: "توكن من Cloudflare (My Profile ← API Tokens ← Create Token ← Custom) على الحساب ده بصلاحيتين: Account ← Cloudflare Pages: Edit و Account ← Workers Scripts: Edit (القراءة بتكفي لعرض النشرات، والـ Edit لازم للرجوع).",
+  en: "A Cloudflare API token (My Profile → API Tokens → Create Token → Custom) on this account with two permissions: Account → Cloudflare Pages: Edit and Account → Workers Scripts: Edit (Read is enough to list the deploys; Edit is needed to roll back)." });
 /* the panel value / state of each sealed slot in the service-keys memo */
 const PANEL = { "respondio.token": ["respondio_token", "respondio_state"], "anam.api_key": ["anam_key", "anam_state"], "websearch.key": ["ws_key", "ws_state"], "bassem.tool_secret": ["tool_secret", "tool_state"] };
 export const LIMITS = Object.freeze({ tests_per_hour: 10, wa_tests_per_hour: 3, wa_tests_per_day: 5, timeout_ms: 10000 });
@@ -122,7 +133,8 @@ export async function getKeys(env, adm) {
   const own = ownNumber(), live = waLive(env), sentOk = !!(v.wa_test_sent_at && v.wa_test_ok_at && v.wa_test_sent_at >= v.wa_test_ok_at);
   const wa = { switch: v.wa_switch, live, dry_run: !live, dry_run_env: waDryEnv(env), reason: waDryReason(env) || "live", token: waOn(env),
     test_ok_at: v.wa_test_ok_at, test_sent_at: v.wa_test_sent_at, live_at: sys.has("wa.live_at") ? String(sys.get("wa.live_at").v) : "", live_by: sys.has("wa.live_by") ? String(sys.get("wa.live_by").v) : "",
-    own_number: own, own_display: ownDisplay(own), can_send_test: waOn(env) && !waDryEnv(env) && !!v.wa_test_ok_at, can_go_live: waOn(env) && !!v.wa_test_ok_at && sentOk,
+    own_number: own, own_display: ownDisplay(own), can_send_test: waOn(env) && !waDryEnv(env) && !!v.wa_test_ok_at && waFeature(env), can_go_live: waOn(env) && !!v.wa_test_ok_at && sentOk,
+    feature_off: !waFeature(env), // «🛠️ المطوّر» → «المزايا» → whatsapp_send switched off: nothing leaves (the test message included)
     steps: { token: waOn(env), token_test: !!v.wa_test_ok_at, test_message: sentOk, switch: v.wa_switch } };
   let payments = null;
   const P = adm && adm.CC && adm.CC.payments;
@@ -133,7 +145,18 @@ export async function getKeys(env, adm) {
     payments = { read_only: true, section: "payments", slots: out, gateway: ready };
   }
   const websearch = await wsView(env, store, sys);
-  return { config_secret: configSecretOk(env), store, slots, wa, payments, limits: LIMITS, websearch };
+  const cloudflare = await cfView(env, store, sys);
+  return { config_secret: configSecretOk(env), store, slots, wa, payments, limits: LIMITS, websearch, cloudflare };
+}
+/* «Cloudflare — لوحة المطوّر» — presence only: never a value, never a tail */
+async function cfView(env, store, sys) {
+  let info = {}; try { info = store ? await secretInfo(env, [CF_SLOT]) : {}; } catch (e) { info = {}; }
+  const d = SLOTS[CF_SLOT], i = info[CF_SLOT] || {}, envSet = !!(env && env[d.env]);
+  const r = sys.get("keys.test." + CF_SLOT), o = r ? jget(r.v, null) : null;
+  const last_test = o && typeof o === "object" ? { at: String(o.at || ""), ok: !!o.ok, status: Number(o.status) || 0, detail: line(o.detail || "", 300), source: String(o.source || ""), by: String(o.by || "") } : null;
+  return { token: { kind: "secret", label_ar: d.label_ar, label_en: d.label_en, set: !!i.set, set_at: i.set ? String(i.set_at || "") : "", set_by: i.set ? String(i.set_by || "") : "",
+      readable: !!(i.set && i.readable), env: envSet, env_name: d.env, effective: envSet ? "env" : i.set && i.readable ? "panel" : "none", testable: true, last_test },
+    account_id: accountOf(env), pages_project: PAGES_PROJECT, workers: [...WORKERS], permissions_ar: CF_PERMISSIONS.ar, permissions_en: CF_PERMISSIONS.en };
 }
 /* «بحث الإنترنت» — presence and settings only, never a value */
 async function wsView(env, store, sys) {
@@ -181,14 +204,14 @@ export async function putKey(req, env, ctx, adm, slot) {
   if (!configSecretOk(env)) fail(503, "config_secret_missing", "لازم سر CONFIG_SECRET على الـ Worker قبل حفظ أي مفتاح / the Worker secret CONFIG_SECRET is required before any key can be saved");
   if (!keyShapeOk(value)) fail(422, "invalid", "المفتاح لازم يكون 16 حرف أو أكتر من غير مسافات / the key must be 16+ printable characters without spaces", { errors: [{ field: "value", msg: "16–4096 printable characters, no spaces", code: "invalid_key" }] });
   const prev = await first(env, "SELECT set_at FROM cc_secrets WHERE name = ?", slot), t = now(), by = byOf(adm);
-  const sealed = await seal(env, slot, value);
+  const sealed = await seal(env, slot, value), tail = d.notail ? "" : maskTail(value); // the Cloudflare token: not even its last characters
   const stmts = [env.DB.prepare("INSERT INTO cc_secrets (name, sealed, tail, set_by, set_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT(name) DO UPDATE SET sealed = excluded.sealed, tail = excluded.tail, set_by = excluded.set_by, set_at = excluded.set_at")
-    .bind(slot, sealed, maskTail(value), by, t), delStmt(env, "keys.test." + slot)];
+    .bind(slot, sealed, tail, by, t), delStmt(env, "keys.test." + slot)];
   if (d.wa) stmts.push(...waResetStmts(env, by, t));
   stmts.push(adm.auditStmt("keys.set", "service_key", slot, { set: !!prev }, { set: true, ...(d.wa ? { wa_switch: "off_until_tested" } : {}) }, `${slot}: ${prev ? "replaced" : "saved"} (value not logged)${d.wa ? " — WhatsApp off until a new test" : ""}`));
   await batch(env, stmts);
   await fresh(env);
-  return { body: { ok: true, slot, item: { set: true, tail: maskTail(value), set_at: t, set_by: by, readable: true }, wa_reset: !!d.wa } };
+  return { body: { ok: true, slot, item: { set: true, ...(d.notail ? {} : { tail }), set_at: t, set_by: by, readable: true }, wa_reset: !!d.wa } };
 }
 async function putChannel(env, adm, raw) {
   await needTables(env, "cc_settings", "cc_audit");
@@ -230,13 +253,15 @@ export async function testKey(req, env, ctx, adm, slot) {
   if (!d.test) fail(400, "no_test", "السر ده مالوش اختبار: بيتأكد لما أداة باسم تتنادى بنفس القيمة / this secret has no test: it is checked when Bassem's tool calls with the same value");
   await needTables(env, "cc_settings", "cc_audit");
   const v = await fresh(env), envKey = env && env[d.env] ? String(env[d.env]) : "";
-  const panelKey = v[PANEL[slot][0]] || "", state = v[PANEL[slot][1]];
+  let panelKey = "", state = "none";
+  if (d.cf) { const tk = await devToken(env); panelKey = tk.source === "panel" ? tk.token : ""; state = tk.set && !tk.readable ? "unreadable" : tk.set ? "ok" : "none"; }
+  else { panelKey = v[PANEL[slot][0]] || ""; state = v[PANEL[slot][1]]; }
   const key = envKey || panelKey, source = envKey ? "env" : panelKey ? "panel" : "none";
   if (!key) fail(409, state === "unreadable" ? "unreadable" : "not_set", state === "unreadable" ? "المفتاح المحفوظ مش مقروء (CONFIG_SECRET اتغيّر؟) — دخّله تاني / the saved key cannot be read (CONFIG_SECRET changed?) — enter it again" : "مفيش مفتاح متضاف / no key is set");
   // the limit counts real provider calls only (10 per hour per owner)
   if (!(await rateOk(env, "cckt|" + adm.actor.actor_id, LIMITS.tests_per_hour, 3600))) fail(429, "rate_limited", "اختبارات كتير في ساعة — استنى شوية / too many tests this hour", { limit: LIMITS.tests_per_hour, window_s: 3600 });
   const channel = respondioChannel(env);
-  const res = d.test === "respondio" ? await testRespondio(key, channel) : d.test === "websearch" ? await testWebSearch(env, await webSearchConfig(env)) : await testAnam(key);
+  const res = d.test === "respondio" ? await testRespondio(key, channel) : d.test === "websearch" ? await testWebSearch(env, await webSearchConfig(env)) : d.test === "cloudflare" ? await testCfToken(env, key) : await testAnam(key);
   const t = now(), by = byOf(adm), rec = { at: t, ok: res.ok, status: res.status, detail: res.detail, source, by };
   // audit first (a failing audit = nothing recorded); the result row and, for respond.io, the "test passed" mark in the same batch
   const stmts = [adm.auditStmt("keys.test", "service_key", slot, null, { ok: res.ok, status: res.status, source, ...(d.wa ? { channel, channel_found: !!res.channel_found } : {}) }, `${slot} test: ${res.ok ? "ok" : "failed"} (${res.status || "no answer"}, ${source})`),
@@ -244,7 +269,8 @@ export async function testKey(req, env, ctx, adm, slot) {
   if (d.wa && res.ok) stmts.push(setStmt(env, "wa.test_ok_at", t, by, t));
   await batch(env, stmts);
   const after = await fresh(env);
-  return { body: { ok: res.ok, status: res.status, detail: res.detail, source, at: t, ...(d.wa ? { channel: String(channel), channel_found: !!res.channel_found, token_ok: !!(res.ok || res.token_ok), wa_test_ok_at: after.wa_test_ok_at } : {}) } };
+  return { body: { ok: res.ok, status: res.status, detail: res.detail, source, at: t, ...(d.wa ? { channel: String(channel), channel_found: !!res.channel_found, token_ok: !!(res.ok || res.token_ok), wa_test_ok_at: after.wa_test_ok_at } : {}),
+    ...(d.cf ? { checks: res.checks || { token: false, pages: false, workers: false } } : {}) } };
 }
 
 /* ---------- POST /keys/wa-test ---------- */
@@ -255,6 +281,8 @@ export async function waTest(req, env, ctx, adm) {
   if (!waOn(env)) fail(409, "not_set", "مفيش توكن respond.io / no respond.io token is set");
   if (waDryEnv(env)) fail(409, "dry_run_env", "WA_DRY_RUN = \"1\" على الـ Worker بيقفل كل الإرسال — لازم يبقى \"0\" الأول / WA_DRY_RUN=\"1\" on the Worker stops all sending — it must be \"0\" first");
   if (!v.wa_test_ok_at) fail(409, "token_test_required", "اختبر توكن respond.io الأول (لازم ينجح والقناة تكون موجودة) / test the respond.io token first (it must pass with the channel found)");
+  // the developer panel's emergency OFF holds for the test message too (re-read fresh: switched off a second ago in another tab counts)
+  if (!(await featureOn(env, "whatsapp_send", { fresh: true }))) fail(409, "feature_off", "«إرسال واتساب» متوقف من «🛠️ المطوّر» ← «المزايا» — شغّله هناك الأول / WhatsApp sending is switched off in «🛠️ Developer» → «Features» — switch it on there first", { feature: "whatsapp_send" });
   if (!(await rateOk(env, "ccwth|" + adm.actor.actor_id, LIMITS.wa_tests_per_hour, 3600)) || !(await rateOk(env, "ccwtd|" + adm.actor.actor_id, LIMITS.wa_tests_per_day, 86400)))
     fail(429, "rate_limited", "رسايل تجربة كتير — استنى شوية / too many test messages", { limit_hour: LIMITS.wa_tests_per_hour, limit_day: LIMITS.wa_tests_per_day });
   const own = ownNumber(), mode = b.mode === "template" ? "template" : "text", by = byOf(adm);

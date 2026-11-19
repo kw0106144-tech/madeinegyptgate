@@ -557,6 +557,8 @@ cannot be written, nothing changes (500 audit_failed). CORS only for https://mad
 * `CONFIG_SECRET` — REQUIRED before any gateway / mail / Anam key is saved in the panel (AES-GCM key store, crypto.js; 503 `config_secret_missing`
   otherwise); `openssl rand -base64 32`. Rotating it makes stored keys unreadable (`readable:false`; the panel then asks for them again).
   Optional: `BREVO_API_KEY` (used when the Control Center provider is Brevo and no key is saved in the panel).
+* `CF_DEV_TOKEN` — optional: the Cloudflare API token of the developer panel «🛠️ المطوّر» (deploys + rollback). Normally the owner saves it in
+  «مفاتيح الخدمات» → slot `cloudflare.dev_token` instead; the Worker secret, if set, wins.
 ## Routes (deploy 2 additions)
 /api/plans*, /api/settings*, /api/pay/*, /api/ev/*, /api/team/*, /data/overlay.js*, /media/u/* on both hosts. /api/index.php* is NOT a route of this
 Worker in deploy 2 (the owner's mis-egypt Worker keeps proxying it); handleOldApi is ready for the day it is retired.
@@ -585,6 +587,63 @@ one test message to the platform's own number (public setting `whatsapp_number`)
 deleted token, or a changed channel, switches it off again. `loadServiceKeys(env)` (ccBoot, memo per `env.DB`, 60 s) feeds the sync
 `svc(env)` view; decrypted values never leave that memo. Every real send re-reads the switch from D1 (`waSwitchNow`) right before the
 provider call, so «إيقاف» stops all isolates at once. Audit: `keys.set`, `keys.delete`, `keys.test`, `wa.test`, `wa.live` — no values.
+Slot `cloudflare.dev_token` («Cloudflare — لوحة المطوّر», the developer panel below): a secret slot WITHOUT a tail; `GET /keys` → `cloudflare:
+{token:{set, set_at, set_by, readable, env, env_name:"CF_DEV_TOKEN", effective, testable, last_test}, account_id, pages_project, workers,
+permissions_ar, permissions_en}`; its test = token verify + the Pages project + the janna-lookup deployments (GET only) → `checks:{token, pages, workers}`.
+
+## Developer panel «🛠️ المطوّر» — src/acc-dev.js, src/flags.js, src/cf-api.js (owner request 2026-11-19)
+The owner changes features, sees / rolls back deploys and checks the platform's health without us. Owner only: permission `dev.manage` ∈
+OWNER_ONLY (admin / editor / support / `X-Platform-Key` → 403 `owner_only`, seo / data → 403 team page) — same Bearer session, origin-only CORS,
+120 writes/min and audit rules as every Control Center endpoint. `whoami.features.dev` (show the section) and `dev_token` (a token is saved).
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/api/admin/cc/dev/features` | — | `{features:[{key, label_ar, label_en, desc_ar, desc_en, default, scope, value, overridden, effective, locked, needs, enforced_by, updated_at, updated_by}], policies, updated_at, updated_by, public}` |
+| PUT | `/api/admin/cc/dev/features` | `{features:{key: true\|false\|null}, reason?}` | the same + `ok, changed` (`unchanged:true` when nothing differs) · 422 `invalid` (`unknown_feature` / `not_boolean` / `policy`) · 409 `feature_locked` / `conflict` |
+| GET | `/api/admin/cc/dev/deploys?limit=` | — | `{account_id, ready, reason, token:{set, source, readable}, pages:{project, ok, error, current_id, items}, workers:[{script, ok, error, current, items}], fetched_at}` — 30 / 10 min; each rollback candidate of Pages / janna-lookup carries `panel` (true · false = older than the panel · null = could not be checked) |
+| POST | `/api/admin/cc/dev/deploys/rollback` | `{target: pages\|janna-lookup\|migate-intel, id, confirm:"ارجع", reason?, force?, ack?}` | `{ok, target, id, previous_id, result, pre_panel?, note_ar, note_en}` · 400 `confirm_required` (a string, exactly «ارجع») · 404 `not_found` · 409 `already_current` / `not_production` / `no_token` / `token_unreadable` / `pre_panel` / `secrets_changed` / `ack_required` / `confirm_expired` · 502 `upstream` · 429 `rate_limited` (3 per rolling hour, 10 per rolling day; `retry_s` = the real wait) |
+| GET | `/api/admin/cc/dev/health` | — | `{ok, checked_at, ms, checks:[{id, group, label_ar, label_en, url, ok, status, ms, detail}], tables:[{name, rows, ok}], worker}` — 12 / 10 min |
+| GET | `/api/admin/cc/dev/audit?limit=&before=` | — | `{items:[{id, at, actor_email, actor_role, action, target_type, target_id, summary, before, after}], next_before}` (dev.* + the `cloudflare.dev_token` key rows) |
+**Feature switches** (registry `FEATURES` in src/flags.js — the panel renders it from the API): stored in `cc_settings` k=`features` (scope
+`system`, JSON `{v:1, values:{key:bool}, changed:{key:{at,by}}}`, compare-and-swap writes, audit `dev.features` in the same batch; the name and
+`dev.*` / `cloudflare.*` are reserved — never a custom setting). A key without a stored value = its default; setting a value equal to the current
+one stores nothing. Reader `loadFeatures` (ccBoot, memo per `env.DB`, 30 s; no tables → defaults; a read error → the last good view):
+| key | default | scope | enforced |
+|---|---|---|---|
+| `janna_live` / `bassem_live` | on | both | `POST /api/janna/session` (agent janna / bassem) → 503 `feature_off` (meetings are not affected) |
+| `janna_welcome`, `standing_figures`, `intel_pages` | on | client | the site hides the UI (`intel_pages`: links to /intel/ on the site's pages and Bassem's call screen; the /intel/ pages themselves — migate-intel — keep all their links and stay served) |
+| `noise_mode_default` | off | client | the site starts live calls in «وضع الدوشة» |
+| `registrations` | on | both | `POST /api/auth/verify` for an e-mail without an account → 503 (after the right code, before it is used up); `POST /api/inquiries` kind `signup` → 503 (staff entries still work) |
+| `rfq_autoroute` | on | server | no automatic routing (new requests, cron retries, re-match): the request goes to the team (`in_progress`, teamFlow «التوزيع التلقائي مقفول», honest buyer texts); the console's «إعادة الإرسال» still routes |
+| `bassem_morning` | on | server | bassemCron skips the morning message («كلّمني الساعة» still works) |
+| `daily_digest` | on | server | dailyJobs skips digests + deadline reminders (the item sync and housekeeping run) |
+| `whatsapp_send` | on | server | `waLive()` false (reason `feature_off`; `sendWA` re-reads it fresh before every provider call) — LOCKED (cannot be switched on) without a respond.io token / passed token test / with `WA_DRY_RUN=1`; going live stays in «مفاتيح الخدمات» |
+| `bassem_web_search` | on | server | `POST /api/advisor/web` → 503 `feature_off` (after the tool-secret check) — LOCKED without a web-search key / tool secret |
+Permanent policies (shown, never switches): `visitor_links_signed_in`, `knowledge_team_approved`. Public: `GET /api/settings` →
+`features` (scope client / both, effective values) + `features_v`; the overlay does not carry them. The public `feature_off` answer:
+`503 {error:"feature_off", code:"feature_off", feature, message}`.
+**Deploys**: the Cloudflare API with the owner's token (`cloudflare.dev_token` in «مفاتيح الخدمات», sealed, NO tail kept or shown; `CF_DEV_TOKEN`
+wins) — account `88c77c2b7595dd0ce510270175f69143`, Pages project `madeinegyptgate`, Workers `janna-lookup` and `migate-intel` (shapes as used
+by wrangler 4.164). Token permissions: Account → Cloudflare Pages: Edit, Workers Scripts: Edit. A rollback re-reads the list (the id must be
+one of the last 25, not in force; Pages: a successful production deployment), is audited FIRST (`dev.rollback`, status sending → ok / failed)
+and Cloudflare messages are cut and scrubbed of the token. Two steps the owner confirms AGAIN, checked on the server (review 2026-11-19):
+(1) a build / version OLDER than the developer panel → 409 `pre_panel` `{panel, changed_features, ack}` before anything is sent: after it
+the panel (and its roll-forward) is gone and the switches stop applying — the way forward is then the Cloudflare dashboard. The marker
+(src/cf-api.js `panelAware`): a Pages deployment whose own URL serves `/data/flags.js` with `MIGFLAGS`; a janna-lookup version whose
+bindings carry the plain-text var `DEV_PANEL` (wrangler.toml — keep it); migate-intel is not concerned; unknown = like older. (2)
+Cloudflare's 10220 (secrets changed since that version) → 409 `secrets_changed` `{secrets, ack}`. `ack` = HMAC-signed (secretOf, else
+CONFIG_SECRET), 10 minutes, bound to the owner, the target and the id, carrying the steps confirmed so far; `force:true` counts only with an
+ack holding the secrets step (else 409 `ack_required`; a stale / foreign ack → 409 `confirm_expired`). The limits are rolling windows counted
+from the owner's `dev.rollback` rows (one conditional INSERT, so two requests at once cannot both pass); a 10220 refusal is not counted.
+**Health**: key pages on the Pages production URL (`DEV_PAGES_ORIGIN`, default https://madeinegyptgate.pages.dev — a Worker cannot reach its own
+zone's front door), this Worker's health / public APIs IN-PROCESS (index.js `CC.self`), `/api/intel/health` + `/intel/` of migate-intel (a
+service binding `INTEL` if configured, else `INTEL_ORIGIN`, default its workers.dev URL), D1 `SELECT 1` + `COUNT(*)` of a fixed table list
+(read-only; a missing table = `rows:null`, red), the worker version from a `CF_VERSION_METADATA` binding when configured (informative).
+wrangler.toml (2026-11-19 review): `[version_metadata] binding = "CF_VERSION_METADATA"` (the health page shows the running version) and
+`[vars] DEV_PANEL = "1"` (the panel marker above). Optional, not made: `[[services]] binding = "INTEL", service = "migate-intel"`.
+`whatsapp_send` OFF also refuses the owner's test message (`POST /keys/wa-test` → 409 `feature_off`; `wa.can_send_test` false, `wa.feature_off`).
+`POST /api/janna/session` with the switch off: 503 `{error:"feature_off", code:"feature_off"}` for pages that send `ff:1` (data/janna-live.js);
+older pages (cached, or a Pages rollback) get `code:"daily_cap"`, which they show WITHOUT falling back to Anam's public widget.
+Tests: `test/dev-panel.test.mjs` (Cloudflare API, probes and D1 stubbed).
 
 ## E-mail center — src/email-center.js (ACC-CONTRACT §6)
 Every e-mail goes through `src/email-center.js` (`deliver()`): provider = the Control Center settings when «البريد» is enabled with a key

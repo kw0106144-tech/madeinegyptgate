@@ -9,6 +9,7 @@
 import DATA from "./data.json";
 import { now, iso, mail, notify, site, cairoDay, cairoHM, addDays, prefsOf, effPlan, PLAN_LV, PLAN_SCOPE, line, planCan, gulfCountry, gulfCovers } from "./common.js";
 import { norm, tokens } from "./text.js";
+import { featureOn } from "./flags.js"; // «🛠️ المطوّر» daily_digest: off → no digests / deadline reminders (sync + housekeeping still run)
 
 const NONE = norm("غير محددة");
 /* x[11] = the ids the PAGES use for the same item (opportunity.html#ET003 / IN4, tenders.html OT-<ref>, rfqs.html OR-<ref>) */
@@ -88,9 +89,11 @@ export async function dailyJobs(env, nowMs = Date.now()) {
   if (!(await claimDay(env, "daily", day))) return out;
   out.ran = true;
   const list = items();
-  out.synced = await syncSeen(env, list, nowMs);
+  out.synced = await syncSeen(env, list, nowMs); // kept in sync while switched off: switching back on never sends a pile of old items
+  const on = await featureOn(env, "daily_digest");
+  if (!on) out.skipped = "feature_off";
   // members with follows and an alerts-capable plan
-  const { results: users } = await env.DB.prepare("SELECT DISTINCT m.* FROM members m JOIN follows f ON f.user_id = m.id WHERE m.email != '' AND m.email_verified_at != '' LIMIT 5000").all();
+  const { results: users } = !on ? { results: [] } : await env.DB.prepare("SELECT DISTINCT m.* FROM members m JOIN follows f ON f.user_id = m.id WHERE m.email != '' AND m.email_verified_at != '' LIMIT 5000").all();
   const fresh = await newSince(env, iso(nowMs - 26 * 3600e3), list);
   const d7 = addDays(day, 7), d1 = addDays(day, 1);
   for (const m of users || []) {

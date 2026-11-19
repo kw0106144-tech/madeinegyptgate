@@ -163,9 +163,10 @@ export const PERMS = ["stats.read", "members.read", "members.write", "members.co
   "orders.read", "orders.reply", "orders.note", "orders.close", "orders.rfq", "orders.resend", "orders.block", "content.read", "content.write", "content.publish", "content.toggle",
   "media.upload", "media.delete", "plans.read", "plans.write", "plans.sync", "pay.read", "pay.invoice", "pay.mark_paid", "pay.config",
   "email.read", "email.templates", "email.test", "email.config", "settings.read", "settings.write", "seo", "staff.read", "staff.write",
-  "audit.read", "audit.export", "reports.read", "reports.export", "wa.read", "bassem.read", "import.run", "keys.manage", ...DESK_PERMS];
-/* keys.manage = «مفاتيح الخدمات» (respond.io token, Anam key, the WhatsApp live switch — owner decision 2026-11-18): owner only */
-export const OWNER_ONLY = new Set(["members.delete", "content.toggle", "pay.config", "email.config", "audit.export", "import.run", "keys.manage"]);
+  "audit.read", "audit.export", "reports.read", "reports.export", "wa.read", "bassem.read", "import.run", "keys.manage", "dev.manage", ...DESK_PERMS];
+/* keys.manage = «مفاتيح الخدمات» (respond.io token, Anam key, the WhatsApp live switch — owner decision 2026-11-18): owner only
+   dev.manage = «🛠️ المطوّر» (feature switches, deploys + rollback, health, its audit — owner request 2026-11-19, acc-dev.js): owner only */
+export const OWNER_ONLY = new Set(["members.delete", "content.toggle", "pay.config", "email.config", "audit.export", "import.run", "keys.manage", "dev.manage"]);
 const ADMIN_P = PERMS.filter(p => !OWNER_ONLY.has(p));
 export const ROLE_PERMS = {
   owner: PERMS,

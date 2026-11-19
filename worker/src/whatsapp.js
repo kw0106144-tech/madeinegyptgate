@@ -17,6 +17,7 @@ import { line, str, now, iso, hmac, safeEq, json, err, preflight, jparse, prefsO
 import { waNumber } from "./meetings.js";
 import { advisorCallLink } from "./advisor.js";
 import { respondioToken, respondioChannel, svc, waSwitchNow } from "./service-keys.js";
+import { featureOn, featureSync } from "./flags.js"; // «🛠️ المطوّر»: whatsapp_send (an extra OFF) · bassem_morning (the morning message)
 
 const API = "https://api.respond.io/v2";
 export const TEMPLATES = { // body text exactly as submitted on respond.io (sent along as the body component's text)
@@ -31,10 +32,13 @@ export const waOn = env => !!(env && waToken(env));
 export const waDryEnv = env => { const v = String(env && env.WA_DRY_RUN != null ? env.WA_DRY_RUN : "").trim(); return v !== "" && v !== "0"; };
 /* the panel switch «تشغيل إرسال واتساب الحقيقي»: on only when it was loaded and is on after a passed test (fail-closed) */
 export const waSwitch = env => !!(env && svc(env).wa_live === true);
-/* WhatsApp really goes out: a token AND not the env kill switch AND the panel switch on (deploy 2: WA_DRY_RUN = "0", the panel decides) */
-export const waLive = env => waOn(env) && !waDryEnv(env) && waSwitch(env);
+/* the developer panel's extra OFF («🛠️ المطوّر» → whatsapp_send, flags.js; default on = the switch below decides) */
+export const waFeature = env => featureSync(env || {}, "whatsapp_send");
+/* WhatsApp really goes out: a token AND not the env kill switch AND the panel switch on (deploy 2: WA_DRY_RUN = "0", the panel decides)
+   AND the developer panel's whatsapp_send not switched off */
+export const waLive = env => waOn(env) && !waDryEnv(env) && waSwitch(env) && waFeature(env);
 /* why nothing would leave right now ("" = live) */
-export const waDryReason = env => (!waOn(env) ? "no_token" : waDryEnv(env) ? "env_dry_run" : !waSwitch(env) ? "switch_off" : "");
+export const waDryReason = env => (!waOn(env) ? "no_token" : waDryEnv(env) ? "env_dry_run" : !waSwitch(env) ? "switch_off" : !waFeature(env) ? "feature_off" : "");
 const channelId = env => respondioChannel(env || {});
 const maskPhone = p => { const d = String(p || "").replace(/\D/g, ""); return d.length > 4 ? "•••" + d.slice(-3) : "•••"; };
 export const e164 = phone => { const d = waNumber(phone); return d ? "+" + d : ""; };
@@ -61,16 +65,19 @@ export async function sendWA(env, phone, msg) {
   if (!waOn(env)) return { sent: false, error: "whatsapp not configured" };
   const r0 = buildSend(env, phone, msg);
   if (!r0) return { sent: false, error: "no valid phone" };
-  // the memo decides what is attempted; the switch is re-read from D1 right before the provider call (switched off elsewhere → stops at once)
-  const live = waLive(env) && await waSwitchNow(env);
+  // the memo decides what is attempted; the switch (and the developer panel's whatsapp_send) is re-read from D1 right before the provider
+  // call (switched off elsewhere → stops at once)
+  const live = waLive(env) && await waSwitchNow(env) && await featureOn(env, "whatsapp_send", { fresh: true });
   if (!live) { console.log("WA dry run", JSON.stringify({ reason: waDryReason(env) || "switch_off", kind: msg.template || "text", to: maskPhone(phone) })); return { sent: false, error: "dry run" }; }
   return postWA(env, phone, r0, msg);
 }
 /* ONE owner-initiated test message to the platform's OWN WhatsApp number (Control Center «مفاتيح الخدمات», acc-keys.js): it skips only the
-   panel switch (that is what it proves before the switch may be turned on) — never the WA_DRY_RUN kill switch, never a typed number. */
+   panel switch (that is what it proves before the switch may be turned on) — never the WA_DRY_RUN kill switch, never the developer panel's
+   whatsapp_send OFF («🛠️ المطوّر»: no WhatsApp message leaves, re-read fresh), never a typed number. */
 export async function sendOwnerTest(env, ownNumber, msg) {
   if (!waOn(env)) return { sent: false, error: "whatsapp not configured" };
   if (waDryEnv(env)) return { sent: false, error: "dry run (WA_DRY_RUN)" };
+  if (!(await featureOn(env, "whatsapp_send", { fresh: true }))) return { sent: false, error: "switched off (developer panel: whatsapp_send)" };
   const r0 = buildSend(env, ownNumber, msg);
   if (!r0) return { sent: false, error: "no valid phone" };
   const r = await postWA(env, ownNumber, r0, msg);
@@ -280,6 +287,9 @@ export async function bassemCron(env, nowMs = Date.now(), newCount) {
   if (!env.DB) return out;
   const live = waLive(env), mailOk = emailOn(env);
   if (!live && !mailOk) return out;
+  // «🛠️ المطوّر» bassem_morning off: no morning message on any channel («كلّمني الساعة» below keeps working)
+  const morningOn = await featureOn(env, "bassem_morning");
+  if (!morningOn) out.morning_skipped = "feature_off";
   const day = cairoDay(nowMs), hm = cairoHM(nowMs), dow = cairoDow(nowMs);
   const bp = plansWith("bassem"); // the plans matrix decides who has Bassem (default: partner, strategic)
   const { results } = await env.DB.prepare(`SELECT * FROM members WHERE plan IN (${bp.map(() => "?").join(", ") || "''"}) AND verified = 1 AND (phone != '' OR email != '') LIMIT 1000`).bind(...bp).all();
@@ -295,7 +305,7 @@ export async function bassemCron(env, nowMs = Date.now(), newCount) {
     // morning message
     const mt = /^\d{2}:\d{2}$/.test(p.morning_time) ? p.morning_time : "09:00";
     const days = Array.isArray(p.days) && p.days.length ? p.days : [0, 1, 2, 3, 4, 5, 6];
-    if (m.morning_sent_day !== day && days.includes(dow) && hm >= mt && hm <= "22:00") {
+    if (morningOn && m.morning_sent_day !== day && days.includes(dow) && hm >= mt && hm <= "22:00") {
       const claim = await env.DB.prepare("UPDATE members SET morning_sent_day = ? WHERE id = ? AND morning_sent_day != ?").bind(day, m.id, day).run();
       if (claim.meta && claim.meta.changes) {
         const n = typeof newCount === "function" ? await newCount(m) : null; // REAL new items in the member's scope (digest.js)

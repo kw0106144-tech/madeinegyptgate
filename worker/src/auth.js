@@ -21,6 +21,7 @@
    The same token is accepted by /api/advisor/* (Bassem) when the member's plan is partner / strategic (checked on the server). */
 import { json, err, preflight, readJson, bodyErr, line, now, iso, hex, sha256, hmac, safeEq, b64url, unb64url, enc, isEmail, emailKey, ipHash, rateOk, rateCount, isBlocked, human, mail, emailOn, secretOf, userOut, effPlan, membersByMailbox, isGmail, site, isAdmin } from "./common.js";
 import { respondioToken } from "./service-keys.js"; // the WhatsApp token: RESPONDIO_TOKEN or the Control Center slot (leaf module, no cycle)
+import { featureOn, offMessage } from "./flags.js";   // «🛠️ المطوّر»: registrations off → a NEW mailbox gets 503 feature_off (members sign in)
 
 const CODES_GLOBAL_HOUR = 300, LINK_SESSION_HOURS = 24;
 const CODE_MIN = 10, MAX_ATTEMPTS = 5, TOKEN_DAYS = 30, CODES_PER_EMAIL_HOUR = 5, CODES_PER_EMAIL_DAY = 10, CODES_PER_IP_HOUR = 20, FAILS_PER_EMAIL_DAY = 15, LINK_DAYS = 7, LINKS_PER_IP_10MIN = 30;
@@ -152,6 +153,9 @@ async function verify(req, env) {
     if (n >= MAX_ATTEMPTS) await env.DB.prepare("UPDATE auth_codes SET used_at = ? WHERE id = ? AND used_at = ''").bind(t, row.id).run(); // 5 wrong → the code is burnt
     return err(401, "invalid_code", "invalid or expired code", { attempts_left: Math.max(0, MAX_ATTEMPTS - n) });
   }
+  // registrations paused (the owner's switch): only after a right code (the mailbox is proven, so nothing is revealed to anyone else), and
+  // before the code is used up — an existing member signs in as usual, a new address hears it clearly and nothing is created
+  if (!(await featureOn(env, "registrations")) && !(await findByEmail(env, row.email))) return err(503, "feature_off", undefined, { feature: "registrations", message: offMessage("registrations") });
   const used = await env.DB.prepare("UPDATE auth_codes SET used_at = ? WHERE id = ? AND used_at = ''").bind(t, row.id).run();
   if (!used.meta || used.meta.changes !== 1) return err(401, "invalid_code", "invalid or expired code");
   // one account per mailbox: an existing member row (e.g. activated by the platform for Bassem) is reused

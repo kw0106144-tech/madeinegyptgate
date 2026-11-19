@@ -6,6 +6,7 @@ import * as C from "./common.js";
 import * as ADV from "./advisor.js";
 import { line, now, isEmail, canonPlan, PLAN_LV, effPlan, iso, sha256 } from "./common.js";
 import { anamKey } from "./service-keys.js"; // ANAM_API_KEY, else the sealed slot anam.api_key (one rule for the whole Worker)
+import { publicFeatures } from "./flags.js";   // «🛠️ المطوّر» feature switches: GET /api/settings → features (scope client | both, effective)
 import { body, all, first, fail, needTables, batch, changed, jget, txt, txt1, isHttps, validator, auditStmt, actorOf } from "./acc-base.js";
 
 export const MK = ["local", "gulf", "africa", "asia", "europe"];
@@ -296,15 +297,18 @@ export async function publicSettings(env) {
   const settings = { ...SEED_PUBLIC };
   let v = T0;
   for (const r of rows) if (r.k in PUBLIC_KEYS) { settings[r.k] = String(r.v); if (r.updated_at > v) v = r.updated_at; }
-  return { v, settings };
+  // the site hides the UI of a switched-off feature (scope client | both only; the server rows and every lock / key state stay private)
+  let f = { features: null, features_v: "" }; try { f = await publicFeatures(env); } catch (e) { f = { features: null, features_v: "" }; }
+  return { v, settings, ...(f.features ? { features: f.features, features_v: f.features_v } : {}) };
 }
 export async function getSettings(env) {
   const pub = await publicSettings(env);
   const custom = (await all(env, "SELECT k, v, updated_at, updated_by FROM cc_settings WHERE scope = 'custom' ORDER BY k"));
   return { public: pub.settings, custom, groups: SETTING_GROUPS, v: pub.v };
 }
-/* reserved prefixes: never a "custom" setting (wa.* / respondio.* / anam.* / keys.* = «مفاتيح الخدمات», owner-only through /keys) */
-const RESERVED = /^(pay|mail|overlay|persona|system|acc|wa|respondio|anam|keys)\./;
+/* reserved prefixes: never a "custom" setting (wa.* / respondio.* / anam.* / keys.* = «مفاتيح الخدمات», owner-only through /keys;
+   the key "features" and dev.* / cloudflare.* = «🛠️ المطوّر», owner-only through /dev — an admin must not pre-create them as custom rows) */
+const RESERVED = /^(pay|mail|overlay|persona|system|acc|wa|respondio|anam|keys|dev|cloudflare)\.|^features$/;
 /* the bank-transfer / InstaPay instructions tell customers where to send money (/pay/, every invoice e-mail, the public overlay): they are
    «entered by the owner» (ACC-CONTRACT §5) — pay.config, the permission of «بوابة الدفع» — never by settings.write alone (review F1) */
 export const PAYEE_KEYS = ["manual_pay_ar", "manual_pay_en"];

@@ -7,6 +7,7 @@
      /api/plans /api/settings /api/ev/pv → handlePublicCC
      /api/index.php*           → handleOldApi     (transparent proxy to the old PHP API; built, not routed in deploy 2)
    /api/admin/cc/keys*: «مفاتيح الخدمات» (owner only, acc-keys.js) — respond.io token + channel, Anam key, the WhatsApp live switch.
+   /api/admin/cc/dev/*: «🛠️ المطوّر» (owner only, dev.manage, acc-dev.js) — feature switches (flags.js), deploys + rollback, health, audit.
    ccBoot(env, CC) applies the plans matrix (≤ 1 D1 read per isolate per 60 s), the mail config and the service keys (service-keys.js);
    ccCron(env, nowMs, CC) runs the
    Control Center's cron jobs. Every /api/admin/cc/* request needs a v2 e-mail-code session with a Control Center role (or X-Platform-Key);
@@ -28,6 +29,8 @@ import { eraseMemory } from "./acc-memory.js";          // 0009: the owner's aud
 import { listKnowledge, answerKnowledge } from "./knowledge.js"; // 0009: «بنك المعلومات» — «محتاجة إجابة» for the team
 import { loadServiceKeys } from "./service-keys.js";
 import { userOut } from "./common.js";
+import * as DEV from "./acc-dev.js";                  // «🛠️ المطوّر» — the owner-only developer panel
+import { loadFeatures } from "./flags.js";           // the feature switches (≤ 1 D1 read per isolate per 30 s)
 
 export { handleOldApi, handleLegacyAuth, handleMeCC, handleTeam };
 export { setPlan, setGcc } from "./acc-members.js";
@@ -41,6 +44,7 @@ export async function ccBoot(env, CC) {
   try { await PL.bootPlans(env); } catch (e) { /* defaults stay */ }
   try { if (CC && CC.email && typeof CC.email.loadMailConfig === "function") await CC.email.loadMailConfig(env); } catch (e) { /* defaults stay */ }
   try { await loadServiceKeys(env); } catch (e) { /* empty view: no panel keys, WhatsApp switch off (fail-closed) */ }
+  try { await loadFeatures(env); } catch (e) { /* the defaults */ }
 }
 export async function ccCron(env, nowMs = Date.now(), CC) {
   const out = {};
@@ -91,7 +95,7 @@ async function whoami(env, adm) {
   try { email = adm.CC && adm.CC.email && typeof adm.CC.email.mailReady === "function" ? !!adm.CC.email.mailReady(env) : emailOn(env); } catch (e) { email = false; }
   if (!anam) { try { anam = !!(await loadServiceKeys(env)).anam_key; } catch (e) { anam = false; } }
   return { user: adm.member ? userOut(env, adm.member) : null, role: adm.role, perms: adm.perms, bootstrap_owner: !!(adm.member && isBootstrap(env, adm.member)), lang_default: "ar", site: "https://madeinegyptgate.com/",
-    features: { overlay_kv: !!env.SEO_KV, media_r2: !!env.MEDIA, config_secret: configSecretOk(env), email_ready: email, pay_ready: pay, legacy_origin: !!bridgeOrigin(env), anam, ...KEYS.keyFeatures(env, adm) } };
+    features: { overlay_kv: !!env.SEO_KV, media_r2: !!env.MEDIA, config_secret: configSecretOk(env), email_ready: email, pay_ready: pay, legacy_origin: !!bridgeOrigin(env), anam, ...KEYS.keyFeatures(env, adm), ...(await DEV.devFeatures(env, adm)) } };
 }
 async function auditList(env, url, csv) {
   const where = [], args = [];
@@ -182,6 +186,13 @@ const ROUTES = [
   R("POST", P("/keys/:id/test"), "keys.manage", (q, e, c, a, u, m) => KEYS.testKey(q, e, c, a, m[1])),
   R("PUT", P("/keys/:id"), "keys.manage", (q, e, c, a, u, m) => KEYS.putKey(q, e, c, a, m[1])),
   R("DELETE", P("/keys/:id"), "keys.manage", (q, e, c, a, u, m) => KEYS.deleteKey(q, e, c, a, m[1])),
+  // «🛠️ المطوّر» (owner only — dev.manage ∈ OWNER_ONLY): feature switches, the Cloudflare deploys + rollback, health, its own audit
+  R("GET", P("/dev/features"), "dev.manage", (q, e) => DEV.getFeatures(e)),
+  R("PUT", P("/dev/features"), "dev.manage", (q, e, c, a) => DEV.putFeatures(q, e, c, a)),
+  R("GET", P("/dev/deploys"), "dev.manage", (q, e, c, a, u) => DEV.getDeploys(e, a, u)),
+  R("POST", P("/dev/deploys/rollback"), "dev.manage", (q, e, c, a) => DEV.postRollback(q, e, c, a)),
+  R("GET", P("/dev/health"), "dev.manage", (q, e, c, a) => DEV.getHealth(q, e, c, a)),
+  R("GET", P("/dev/audit"), "dev.manage", (q, e, c, a, u) => DEV.devAudit(e, u)),
 ];
 const body0 = req => readBody(req);
 /* data rows of a CSV text (quote-aware: a quoted cell may hold a line break); the header line is not counted */

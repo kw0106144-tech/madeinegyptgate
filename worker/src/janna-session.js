@@ -62,6 +62,7 @@ import { memberProfile } from "./profile.js";
 import { resumeContext, RESUME_BLOCK } from "./resume.js";
 import { forLLM, instructionLike } from "./text.js";
 import { jannaSessionContext, visitorContextOn } from "./visitor.js"; // 0009: Janna's memory of her visitors + «بنك المعلومات»
+import { featureOn, offMessage } from "./flags.js"; // «🛠️ المطوّر»: janna_live / bassem_live (owner switches, 503 feature_off)
 
 export const ANAM_TOKEN_URL = "https://api.anam.ai/v1/auth/session-token";
 export const ANAM_PERSONA_URL = "https://api.anam.ai/v1/personas/"; // + a persona id from PERSONAS (read-only GET, Bassem's member context)
@@ -209,6 +210,12 @@ export async function handleJannaSession(req, env) {
   const agent = pick(b.agent, "janna"), lang = pick(b.lang, "ar");
   if (!Object.prototype.hasOwnProperty.call(PERSONAS, agent)) return fail(400, "bad_agent", cors);
   if (lang !== "ar" && lang !== "en") return fail(400, "bad_lang", cors);
+  // «🛠️ المطوّر» (flags.js): the owner switched this persona's live calls off → no new call (the page hides the button too).
+  // A page built before the switches (no `ff: 1` in the body: a cached old data/janna-live.js, or a Pages rollback to an older build)
+  // treats any code it does not know as «use Anam's own widget», which talks to Anam directly and would ignore the switch — it gets
+  // code "daily_cap", the refusal it shows without that fallback («today's live calls are used up»); error stays "feature_off".
+  const fk = agent === "bassem" ? "bassem_live" : "janna_live";
+  if (!(await featureOn(env, fk))) return fail(503, "feature_off", cors, { feature: fk, message: offMessage(fk), ...(b.ff === 1 || b.ff === true || b.ff === "1" ? {} : { code: "daily_cap" }) });
   const key = await anamKey(env);
   if (!key) return fail(503, "anam_not_configured", cors);
   if (!env.DB) return fail(503, "store_off", cors);

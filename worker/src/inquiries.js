@@ -43,6 +43,7 @@ import { sendToMember, sendWA, waOn } from "./whatsapp.js";
 import { authUser, dashLoginUrl } from "./auth.js";
 import { findCandidates, aboutText } from "./candidates.js";
 import { senderAuth } from "./advisor.js";
+import { featureOn, offMessage } from "./flags.js"; // «🛠️ المطوّر»: rfq_autoroute (no automatic routing → the team) · registrations (signup)
 
 export const KINDS = ["contact", "rfq", "basket", "opp_offer", "lead_interest", "project_interest", "entity_contact", "signup", "profile_fix"];
 const SOURCES = ["form", "janna", "bassem", "basket"];
@@ -59,6 +60,11 @@ export const needsTeam = r => !!r && routable(r) && (r.status === "in_progress" 
 const IN_PROGRESS = {
   ar: "جاري معالجة طلبك. لا يوجد حالياً مصنع مسجّل على المنصة يطابق طلبك، فاتبلّغت إدارة المنصة تلقائياً وبتدوّر على مصانع تقدر تنفّذه، وأي رد هيوصلك هنا وعلى إيميلك. الطلب كمان هيفضل مفتوح 30 يوم، وأول ما ينضم مصنع مسجّل مطابق هيوصله تلقائياً.",
   en: "We're working on your request. No registered factory on the platform matches it yet, so the platform's administrators were notified automatically and are looking for factories that can fulfil it; any answer reaches you here and by email. The request also stays open for 30 days and goes automatically to any matching registered factory that joins.",
+};
+/* the owner switched the automatic routing off («🛠️ المطوّر» rfq_autoroute): the team passes the request on itself — said as it is */
+const HELD = {
+  ar: "جاري معالجة طلبك. فريق المنصة هيراجعه ويوصّله بنفسه للمصانع المناسبة، وأي رد هيوصلك هنا وعلى إيميلك. الطلب هيفضل مفتوح 30 يوم.",
+  en: "We're working on your request. The platform team reviews it and passes it on to suitable factories; any answer reaches you here and by email. The request stays open for 30 days.",
 };
 
 /* ---------- helpers ---------- */
@@ -191,6 +197,8 @@ async function create(req, env, ctx) {
   if (user && !user.email_verified_at) user = null;
   const kind = line(b.kind, 30);
   if (!KINDS.includes(kind)) return err(400, "invalid_kind", "invalid kind", { kinds: KINDS });
+  // «🛠️ المطوّر» registrations off: no new plan applications from the site (a staff entry from the Control Center still works)
+  if (kind === "signup" && !internal && !(await featureOn(env, "registrations"))) return err(503, "feature_off", undefined, { feature: "registrations", message: offMessage("registrations") });
   const email = (line(b.email, 254) || (user && user.email) || "").toLowerCase();
   const name = line(b.name, 120) || (user && user.name) || "";
   const phone = line(b.phone, 30) || (user && user.phone) || "";
@@ -233,13 +241,13 @@ async function create(req, env, ctx) {
   await env.DB.prepare(`INSERT INTO inquiries (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`).bind(...cols.map(k => row[k])).run();
   await ev(env, id, "received", { visible: 1, body: `تم استلام ${KIND_AR[kind]} برقم ${ref}.`, en: `${KIND_EN[kind]} received, reference ${ref}.`, ...(internal ? { meta: { by: line(internal.actor, 80), via: internal.source || "admin" } } : {}) });
   let inq = asInq(await getInq(env, ref)), res = { routed: 0, matched: 0, queued: 0 };
-  if (routable(inq)) res = await routeInquiry(env, inq);
+  if (routable(inq)) res = (await featureOn(env, "rfq_autoroute")) ? await routeInquiry(env, inq) : await holdForTeam(env, inq);
   else await recordOnly(env, inq, user);
   inq = asInq(await getInq(env, ref));
   // receipt (after routing, so it states the true number) + monitoring copy to the team (no action required)
   const jobs = [sendReceipt(env, inq, res).then(r => r.sent && env.DB.prepare("UPDATE inquiries SET receipt_sent = 1 WHERE id = ?").bind(id).run())];
   // no registered match → the admins act (candidates + console + email); its notice replaces the monitoring copy
-  if (res.needs_team) jobs.push(teamFlow(env, id));
+  if (res.needs_team) jobs.push(teamFlow(env, id, { held: !!res.held }));
   else if (team(env) && env.TEAM_NOTICES !== "0") jobs.push(mail(env, { id: "team-" + id, to: team(env), subject: `[متابعة] ${KIND_AR[kind]} ${ref} — ${inq.status} (${inq.routed_count})`, ar: `للمتابعة فقط — كل الخطوات تلقائية ولا يلزم أي إجراء.\n${KIND_AR[kind]} ${ref}\nالحالة: ${inq.status} · أُرسل إلى: ${inq.routed_count} · مطابق: ${res.matched || 0}\nمن: ${inq.company || "-"} (${firstName(inq.name)})${anon(inq) ? " — بدون تسجيل دخول" : ""}\n${summaryLines(env, inq)}\n\n${line(message, 600)}`, en: `Monitoring copy only — everything is automatic, no action needed. ${ref}: status ${inq.status}, delivered to ${inq.routed_count}, matched ${res.matched || 0}.` }));
   if (user) jobs.push(notify(env, user.id, { kind: "inquiry", title: `تم استلام طلبك ${ref}`, title_en: `Request ${ref} received`, body: inq.status === "routed" ? `اتبعت تلقائياً إلى ${n2(inq.routed_count)}` : inq.status === "in_progress" ? "جاري معالجة طلبك" : "", body_en: inq.status === "routed" ? `Sent automatically to ${nEn(inq.routed_count)}` : inq.status === "in_progress" ? "We're working on your request" : "", url: "track.html#" + ref, ref }));
   ctx.waitUntil(Promise.all(jobs).catch(e => console.error("inquiry mails", e && e.message)));
@@ -266,6 +274,16 @@ async function recordOnly(env, inq, user) {
   await ev(env, inq.id, "status", { visible: 1, body: T[0] + F[0], en: T[1] + F[1] });
   if (user && FOLLOWED)
     await env.DB.prepare("INSERT INTO follows (user_id, kind, ref_id, label, url, created_at) VALUES (?, ?, ?, ?, '', ?) ON CONFLICT(user_id, kind, ref_id) DO NOTHING").bind(user.id, inq.target_type.slice(0, 30), inq.target_id, inq.target_name, now()).run();
+}
+
+/* «🛠️ المطوّر» rfq_autoroute off: a routable request is NOT sent to factories automatically — it goes to the team («محتاج تدخل»,
+   teamFlow: candidates + console + e-mail), and the buyer hears exactly that; the console's manual resend still routes it */
+async function holdForTeam(env, inq) {
+  const idle = { routed: inq.routed_count || 0, added: 0, matched: 0, queued: 0, held: true };
+  if (!/^(received|no_match)$/.test(inq.status)) return idle;
+  await env.DB.prepare("UPDATE inquiries SET status = 'in_progress', updated_at = ? WHERE id = ?").bind(now(), inq.id).run();
+  await ev(env, inq.id, "in_progress", { visible: 1, body: HELD.ar, en: HELD.en, meta: { held: "rfq_autoroute_off" } });
+  return { ...idle, needs_team: true };
 }
 
 /* ---------- automatic routing ---------- */
@@ -341,6 +359,7 @@ async function sendRoute(env, inq, r, m) {
 
 /* a member was activated / changed sector-products: send them the open requests they match (newest first, at most 20) */
 export async function rematchForMember(env, memberId) {
+  if (!(await featureOn(env, "rfq_autoroute"))) return { sent: 0, skipped: "feature_off" }; // «🛠️ المطوّر»: no automatic routing
   const m = await env.DB.prepare("SELECT * FROM members WHERE id = ?").bind(memberId).first();
   if (!m || !planCan(m, "incoming") || !m.verified || !m.email || m.inbox_paused) return { sent: 0 };
   if (await isBlocked(env, { email: m.email })) return { sent: 0 };
@@ -361,7 +380,7 @@ async function sendReceipt(env, inq, res = {}) {
   const track = await trackUrl(env, inq.ref), meet = site(env) + "meeting.html#book";
   let ar, en;
   if (inq.status === "routed") { ar = `اتبعت طلبك تلقائياً إلى ${n2(inq.routed_count)} مسجّلة على المنصة تطابق طلبك.\nالمصانع بترد بنفسها، وأي رد أو عرض سعر بيوصلك على الإيميل ده ويظهر في صفحة التتبع فوراً. لو مصنع ما ردّش خلال 48 ساعة المنصة بتفكّره مرة واحدة تلقائياً، والطلب بيتقفل تلقائياً بعد 30 يوم.`; en = `Your request was sent automatically to ${nEn(inq.routed_count)} matching it.\nFactories answer directly; every reply or quote reaches this inbox and the tracking page right away. A factory that has not answered after 48 h gets one automatic reminder; the request closes automatically after 30 days.`; }
-  else if (inq.status === "in_progress") { ar = `${IN_PROGRESS.ar}${team(env) ? "\nلو عندك تفاصيل زيادة (مواصفات، كمية، موعد) رد على الإيميل ده — ردك بيوصل لإدارة المنصة مباشرةً." : ""}\nتقدر كمان تحجز اجتماع تعريفي مع جنة: ${meet}`; en = `${IN_PROGRESS.en}${team(env) ? "\nMore details (specs, quantity, dates)? Reply to this email — it reaches the platform's administrators directly." : ""}\nYou can also book an introductory meeting with Janna: ${meet}`; }
+  else if (inq.status === "in_progress") { const T = res.held ? HELD : IN_PROGRESS; ar = `${T.ar}${team(env) ? "\nلو عندك تفاصيل زيادة (مواصفات، كمية، موعد) رد على الإيميل ده — ردك بيوصل لإدارة المنصة مباشرةً." : ""}\nتقدر كمان تحجز اجتماع تعريفي مع جنة: ${meet}`; en = `${T.en}${team(env) ? "\nMore details (specs, quantity, dates)? Reply to this email — it reaches the platform's administrators directly." : ""}\nYou can also book an introductory meeting with Janna: ${meet}`; }
   else if (inq.status === "no_match") { ar = "لا يوجد حالياً مصنع مسجّل على المنصة يطابق طلبك، فما اتبعتش لأي جهة لسه — ومش هنقول غير كده.\nالطلب هيفضل مفتوح 30 يوم، وأول ما ينضم مصنع مطابق هيوصله تلقائياً وهنبلغك على الإيميل ده.\nتقدر كمان توسّع وصف المنتج في طلب جديد، أو تحجز اجتماع تعريفي مع جنة (هي اللي بتحدد الموعد وتبعتلك اللينك): " + meet; en = "No registered factory on the platform matches your request yet, so it has not been sent to anyone.\nIt stays open for 30 days and is sent automatically to matching factories that join; you will be emailed.\nYou can also send a broader description or book a meeting with Janna (she books it and emails you the link): " + meet; }
   else if (inq.status === "received") {
     const n = res.queued || res.matched || 0;
@@ -372,8 +391,8 @@ async function sendReceipt(env, inq, res = {}) {
   const waNote = inq.consent_wa && !buyerWaOn(env) ? ["\n(تحديثات الواتساب لسه مش متاحة — كل التحديثات بتوصلك على الإيميل ده وفي صفحة التتبع.)", "\n(WhatsApp updates are not available yet — every update reaches this email and the tracking page.)"] : ["", ""];
   return mail(env, { id: "rcpt-" + inq.id, to: inq.email, lang: inq.lang,
     subject: inq.lang === "en" ? `Received: ${KIND_EN[inq.kind]} ${inq.ref}` : `تم الاستلام: ${KIND_AR[inq.kind]} ${inq.ref}`, replyTo: inq.status === "in_progress" && team(env) ? team(env) : replyTo(env, inq.ref, inq.reply_key),
-    ar: `أهلاً ${firstName(inq.name)}،\nاستلمنا ${KIND_AR[inq.kind]} رقم ${inq.ref}.\n\n${ar}${waNote[0]}\n\nتتبّع الطلب: ${track}\n(كل ده بيتم تلقائياً — المنصة ما فيهاش موظف بيراجع الطلبات يدوياً.)`,
-    en: `Hello ${firstName(inq.name)},\nWe received your ${KIND_EN[inq.kind].toLowerCase()} ${inq.ref}.\n\n${en}${waNote[1]}\n\nTrack it: ${track}\n(All of this is automatic — nobody reviews requests by hand.)`,
+    ar: `أهلاً ${firstName(inq.name)}،\nاستلمنا ${KIND_AR[inq.kind]} رقم ${inq.ref}.\n\n${ar}${waNote[0]}\n\nتتبّع الطلب: ${track}${res.held ? "" : "\n(كل ده بيتم تلقائياً — المنصة ما فيهاش موظف بيراجع الطلبات يدوياً.)"}`,
+    en: `Hello ${firstName(inq.name)},\nWe received your ${KIND_EN[inq.kind].toLowerCase()} ${inq.ref}.\n\n${en}${waNote[1]}\n\nTrack it: ${track}${res.held ? "" : "\n(All of this is automatic — nobody reviews requests by hand.)"}`,
     why: "وصلتك لأنك أرسلت طلباً على المنصة / You sent a request on the platform." });
 }
 /* every reply / quote / decline / status change → buyer email (list "updates", unsubscribable) + bell (+ WhatsApp when a
@@ -666,7 +685,7 @@ export async function refreshCandidates(env, inq) {
 const candLine = x => `• ${x.name}${x.governorate ? " — " + x.governorate : ""}${x.sector ? " · " + x.sector : ""}\n  ${x.url}  (${x.source === "web" ? "بحث ويب / web: " + x.origin : x.origin === "public_source" ? "مصدر عام رسمي — غير مسجّل / official public source, not registered" : "دليل المنصة — غير مسجّل / platform directory, not registered"})`;
 /* in_progress → candidates (directory + web when a key is set) · bell for every admin account · email TEAM_EMAIL + ADMIN_EMAILS
    · (buyer:true) the buyer's «جاري معالجة طلبك» email when the receipt already went out with another status */
-export async function teamFlow(env, inqId, { buyer = false } = {}) {
+export async function teamFlow(env, inqId, { buyer = false, held = false } = {}) {
   const row = await env.DB.prepare("SELECT * FROM inquiries WHERE id = ?").bind(inqId).first();
   if (!row || !needsTeam(row)) return { skipped: true };
   const inq = asInq(row), about = line(bt(env, inq, aboutText(inq)), 80) || KIND_AR[inq.kind], consoleUrl = site(env) + "inbox.html#" + inq.ref;
@@ -674,17 +693,18 @@ export async function teamFlow(env, inqId, { buyer = false } = {}) {
   try { c = await refreshCandidates(env, inq); } catch (e) { console.error("candidates", e && e.message); }
   const admins = await adminMembers(env);
   for (const a of admins) await notify(env, a.id, { kind: "team_needed", title: `طلب محتاج رد الإدارة: ${about} (${inq.ref})`, title_en: `Request needs the team: ${about} (${inq.ref})`,
-    body: `مفيش مصنع مسجّل مطابق — ${c.candidates.length} مرشّح للمراجعة`, body_en: `No registered match — ${c.candidates.length} candidate(s) to review`, url: "inbox.html#" + inq.ref, ref: inq.ref });
+    body: held ? `التوزيع التلقائي مقفول — ${c.candidates.length} مرشّح للمراجعة` : `مفيش مصنع مسجّل مطابق — ${c.candidates.length} مرشّح للمراجعة`, body_en: held ? `Automatic routing is off — ${c.candidates.length} candidate(s) to review` : `No registered match — ${c.candidates.length} candidate(s) to review`, url: "inbox.html#" + inq.ref, ref: inq.ref });
   const web = c.web && c.web.provider ? (c.web.error ? `بحث الويب (${c.web.provider}) ما اشتغلش: ${c.web.error}` : `بحث الويب: ${c.web.provider}`) : "بحث الويب مش مفعّل (مفيش مفتاح بحث) / Web search off (no search key configured)";
   const to = adminEmails(env);
   let emailed = 0;
   for (let i = 0; i < to.length; i++) {
-    const r = await mail(env, { id: `teamneed-${inq.id}-${i}`, to: to[i], subject: `[مطلوب رد الإدارة] ${KIND_AR[inq.kind]} ${inq.ref}: ${about} — مفيش مصنع مسجّل مطابق`,
-      ar: `طلب جديد ومفيش أي مصنع مسجّل على المنصة يطابقه، فالمشتري وصله تلقائياً «جاري معالجة طلبك».\nالمطلوب: راجع المرشّحين، اتواصل مع المناسب بنفسك، وبعدين رد على المشتري من لوحة الإدارة بزرار «إحنا اللي هنرد» (الرد بيوصله على الإيميل ويظهر في صفحة التتبع).\n\n${KIND_AR[inq.kind]} ${inq.ref}\nمن: ${bt(env, inq, inq.company) || "-"} (${firstName(inq.name)})${anon(inq) ? " — بدون تسجيل دخول" : ""}\n${summaryLines(env, inq)}\n\n${line(bt(env, inq, inq.message), 600)}\n\nالمرشّحون (للإدارة فقط — مش أعضاء، ومحدش منهم اتبعتله حاجة):\n${c.candidates.length ? c.candidates.map(candLine).join("\n") : "لا يوجد مرشّحون في دليل المنصة لهذا الوصف."}\n${web}\n\nلوحة الإدارة: ${consoleUrl}`,
-      en: `A new request matches NO registered factory; the buyer was told automatically "We're working on your request". Review the candidates (admins only — none of them is a member and nobody was contacted), arrange it yourself, then answer the buyer from the admin console ("We'll answer" button): ${consoleUrl}` });
+    const r = await mail(env, { id: `teamneed-${inq.id}-${i}`, to: to[i], subject: `[مطلوب رد الإدارة] ${KIND_AR[inq.kind]} ${inq.ref}: ${about} — ${held ? "التوزيع التلقائي مقفول" : "مفيش مصنع مسجّل مطابق"}`,
+      ar: `${held ? "طلب جديد والتوزيع التلقائي على المصانع مقفول من «🛠️ المطوّر» في لوحة التحكم، فالمشتري وصله «جاري معالجة طلبك».\nالمطلوب: راجع الطلب وابعته للمصانع المسجّلة المطابقة بزرار «إعادة الإرسال» في لوحة الإدارة، أو اتواصل مع مرشّح مناسب بنفسك ورد على المشتري بزرار «إحنا اللي هنرد»." : "طلب جديد ومفيش أي مصنع مسجّل على المنصة يطابقه، فالمشتري وصله تلقائياً «جاري معالجة طلبك».\nالمطلوب: راجع المرشّحين، اتواصل مع المناسب بنفسك، وبعدين رد على المشتري من لوحة الإدارة بزرار «إحنا اللي هنرد» (الرد بيوصله على الإيميل ويظهر في صفحة التتبع)."}\n\n${KIND_AR[inq.kind]} ${inq.ref}\nمن: ${bt(env, inq, inq.company) || "-"} (${firstName(inq.name)})${anon(inq) ? " — بدون تسجيل دخول" : ""}\n${summaryLines(env, inq)}\n\n${line(bt(env, inq, inq.message), 600)}\n\nالمرشّحون (للإدارة فقط — مش أعضاء، ومحدش منهم اتبعتله حاجة):\n${c.candidates.length ? c.candidates.map(candLine).join("\n") : "لا يوجد مرشّحون في دليل المنصة لهذا الوصف."}\n${web}\n\nلوحة الإدارة: ${consoleUrl}`,
+      en: held ? `A new request arrived while automatic routing is OFF (Control Center «Developer»); the buyer was told "We're working on your request". Send it to the matching registered factories with "Resend" in the admin console, or arrange it yourself and answer the buyer ("We'll answer" button): ${consoleUrl}`
+        : `A new request matches NO registered factory; the buyer was told automatically "We're working on your request". Review the candidates (admins only — none of them is a member and nobody was contacted), arrange it yourself, then answer the buyer from the admin console ("We'll answer" button): ${consoleUrl}` });
     if (r.sent) emailed++;
   }
-  await ev(env, inq.id, "team_notified", { meta: { emailed, to: to.length, console: admins.length, candidates: c.candidates.length, web: c.web || {} } });
+  await ev(env, inq.id, "team_notified", { meta: { emailed, to: to.length, console: admins.length, candidates: c.candidates.length, web: c.web || {}, ...(held ? { held: "rfq_autoroute_off" } : {}) } });
   if (buyer) await buyerUpdate(env, inq, "in_progress");
   return { emailed, console: admins.length, candidates: c.candidates.length };
 }
@@ -736,8 +756,11 @@ export async function teamReply(env, row, { body, body_en, channel, status, by =
 export async function inquiriesCron(env, nowMs = Date.now()) {
   const out = { retried: 0, reminded: 0, closed: 0 };
   if (!env.DB) return out;
+  // «🛠️ المطوّر» rfq_autoroute off: no automatic (re)delivery to factories — the 48 h reminders and the 30-day close still run
+  const auto = await featureOn(env, "rfq_autoroute");
+  if (!auto) out.routing = "feature_off";
   // 1) deliveries that failed (provider down / not configured yet) — up to 5 attempts
-  const { results: fail } = await env.DB.prepare("SELECT DISTINCT r.inquiry_id FROM inquiry_routes r JOIN inquiries i ON i.id = r.inquiry_id WHERE r.status IN ('pending', 'failed') AND r.attempts < ? AND i.status NOT IN ('closed', 'blocked') AND r.created_at > ? LIMIT 20").bind(LIM.retryMax, iso(nowMs - 3 * 86400000)).all();
+  const { results: fail } = !auto ? { results: [] } : await env.DB.prepare("SELECT DISTINCT r.inquiry_id FROM inquiry_routes r JOIN inquiries i ON i.id = r.inquiry_id WHERE r.status IN ('pending', 'failed') AND r.attempts < ? AND i.status NOT IN ('closed', 'blocked') AND r.created_at > ? LIMIT 20").bind(LIM.retryMax, iso(nowMs - 3 * 86400000)).all();
   for (const f of fail || []) {
     const row = await env.DB.prepare("SELECT * FROM inquiries WHERE id = ?").bind(f.inquiry_id).first();
     if (!row) continue;
@@ -746,7 +769,7 @@ export async function inquiriesCron(env, nowMs = Date.now()) {
     else if (r.needs_team) { await noMatchLater(env, row, r); out.team = (out.team || 0) + 1; } // every delivery failed for good → the admins act
   }
   // inquiries whose first routing never ran (e.g. no candidates table yet) stay "received" → route them now
-  const { results: rec } = await env.DB.prepare("SELECT * FROM inquiries WHERE status = 'received' AND created_at < ? AND created_at > ? AND (kind IN ('rfq', 'basket') OR (kind = 'contact' AND target_type IN ('factory', 'company'))) LIMIT 10").bind(iso(nowMs - 30 * 60000), iso(nowMs - 3 * 86400000)).all();
+  const { results: rec } = !auto ? { results: [] } : await env.DB.prepare("SELECT * FROM inquiries WHERE status = 'received' AND created_at < ? AND created_at > ? AND (kind IN ('rfq', 'basket') OR (kind = 'contact' AND target_type IN ('factory', 'company'))) LIMIT 10").bind(iso(nowMs - 30 * 60000), iso(nowMs - 3 * 86400000)).all();
   for (const row of rec || []) { const r = await routeInquiry(env, asInq(row)); if (r.needs_team) { await noMatchLater(env, row, r); out.team = (out.team || 0) + 1; } }
   // 2) one reminder to factories that have not answered after 48 h
   const { results: due } = await env.DB.prepare("SELECT r.*, i.ref FROM inquiry_routes r JOIN inquiries i ON i.id = r.inquiry_id WHERE r.status = 'sent' AND r.reminded_at = '' AND r.sent_at != '' AND r.sent_at < ? AND i.status NOT IN ('closed', 'blocked') LIMIT 30").bind(iso(nowMs - LIM.remindHours * 3600e3)).all();

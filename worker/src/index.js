@@ -152,7 +152,7 @@ function summary(section, n, top, where, m) {
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Janna-Key" };
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...CORS } });
 
-export default {
+const WORKER = {
   async fetch(req, env, ctx) {
     const url = new URL(req.url);
     try { await CC.acc.ccBoot(env, CC); } catch (e) { /* defaults */ }
@@ -209,6 +209,10 @@ export default {
     ctx.waitUntil(platformCron(env).then(r => console.log("platform cron", JSON.stringify(r)), e => console.error("platform cron", e && e.stack || e)));
   },
 };
+export default WORKER;
+/* «🛠️ المطوّر» health (acc-dev.js): this Worker's own APIs are checked IN-PROCESS — a fetch from a Worker to its own zone skips the Workers
+   routes of that zone (no global_fetch_strictly_public flag here), so it could never reach them through the front door */
+CC.self = { fetch: (req, env, ctx) => WORKER.fetch(req, env, ctx) };
 /* every 15 min: inquiry retries / 48 h reminders / 30-day auto-close; once a day after 07:00 Cairo: digests + deadline
    reminders; Bassem's WhatsApp at each member's own time; once a Cairo day after midnight: the memory consolidation (memory.js) and then
    the daily memory update (daily.js: day digests, «ملخص العميل», tasks, knowledge merge, caps report). Each part is isolated so one
