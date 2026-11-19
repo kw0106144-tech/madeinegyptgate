@@ -245,13 +245,14 @@
      more) · "unknown" (no opener to ask) — data/bassem-tab.js asks the same */
   function wbCall() {
     var o = null; try { o = window.opener; } catch (e) { return "unknown"; }
-    if (!o || o === window) return "unknown";
+    if (!o) { try { if (/^mig-bassem-\d+$/.test(String(window.name || ""))) return "ended"; } catch (e) {} return "unknown"; } /* its call's tab was closed (Chrome: opener → null; data/bassem-tab.js state()) */
+    if (o === window) return "unknown";
     try { if (o.closed) return "ended"; var J = o.JANNA_LIVE; return J && J.isOpen && J.isOpen() && J.persona() === "bassem" ? "live" : "ended"; } catch (e) { return "ended"; }
   }
   /* never a second call from his tab: the call's tab comes back (the bar's back(): opener.focus() from the member's tap) — once that call
      is known to be over the mark is dropped (this tab is an ordinary one from its next page) and a call may start here as anywhere */
   function wbHold() {
-    if (!WB) return false;
+    if (!WB || window.MIG_WB === false) return false; /* the bar (data/bassem-tab.js end()) already dropped the mark: the call is over */
     if (wbCall() === "ended") { var B0 = window.MIG_WB_TAB; if (B0 && B0.end) B0.end(); else { try { sessionStorage.removeItem("mig-wb"); } catch (e) {} try { if (/^mig-bassem-/.test(window.name)) window.name = ""; } catch (e) {} } WB = false; window.MIG_WB = false; return false; }
     var B = window.MIG_WB_TAB;
     if (B && B.back) { try { B.back(); } catch (e) {} return true; }

@@ -57,13 +57,16 @@
   /* the call's tab: the window that opened this one (same site), while it is there */
   function opener() { try { var o = W.opener; return o && o !== W ? o : null; } catch (e) { return null; } }
   /* "live": a Bassem call is open in the call's tab · "ended": that tab closed, went to another site / page, or has no Bassem call open ·
-     "unknown": no opener to ask (the mark came with the link itself) */
+     "unknown": no opener to ask (the mark came with the link itself). A closed call's tab reads as no opener at all (Chrome:
+     window.opener → null), so a tab still named «mig-bassem-<ms>» (openTab names it and always opens it with an opener) that has lost
+     its opener lost the call: "ended" */
   function state() {
-    var o = opener(); if (!o) return "unknown";
+    var o = opener(); if (!o) return /^mig-bassem-\d+$/.test(String(W.name || "")) ? "ended" : "unknown";
     try { if (o.closed) return "ended"; var J = o.JANNA_LIVE; return J && J.isOpen && J.isOpen() && J.persona && J.persona() === "bassem" ? "live" : "ended"; } catch (e) { return "ended"; }
   }
   /* the call is over: the tab's next pages are ordinary ones (this page stays as it is) */
   function end() {
+    W.MIG_WB = false; /* this page's call buttons work again (data/janna-live.js wbHold) */
     try { W.sessionStorage.removeItem("mig-wb"); } catch (e) {}
     try { if (/^mig-bassem-/.test(String(W.name || ""))) W.name = ""; } catch (e) {}
     show("ended");

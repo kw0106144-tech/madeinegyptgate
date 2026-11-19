@@ -181,11 +181,49 @@ describe("the bar «باسم معاك في الصفحة التانية — ار�
       assert.equal(P.part("mwb-go").hidden, true);
     }
   });
-  test("no opener to ask: the words stay, the mark keeps its 4 h", () => {
-    const P = tabPage({ opener: null });
+  test("no opener to ask (the mark came with the link itself, no «mig-bassem-<ms>» name): the words stay, the mark keeps its 4 h", () => {
+    const P = tabPage({ opener: null, name: "" });
     assert.equal(P.win.MIG_WB_TAB.state(), "unknown");
     assert.equal(P.part("mwb-tx").textContent, "باسم معاك في الصفحة التانية");
     assert.equal(P.store["mig-wb"], "1795120000000");
+  });
+});
+
+describe("the call's tab closed (the member ends the call by closing its tab; Chrome then reads window.opener as null)", () => {
+  test("the bar: the call is over — said so, the mark dropped, his desk offered, this page's call buttons work again", () => {
+    const P = tabPage({ opener: null });
+    assert.equal(P.win.MIG_WB_TAB.update(), "ended");
+    assert.equal(P.part("mwb-tx").textContent, "المكالمة مع باسم خلصت");
+    assert.equal(P.store["mig-wb"], undefined); assert.equal(P.win.name, ""); assert.equal(P.win.MIG_WB, false);
+    assert.equal(P.part("mwb-desk").hidden, false); assert.equal(P.part("mwb-go").hidden, true);
+  });
+  /* janna-live.js wbCall() / wbHold() in a vm: the opener gone + the tab's «mig-bassem-<ms>» name → "ended" (a call may start here);
+     no name (the mark came with the link) → "unknown" and the call button brings the bar's back() instead */
+  const fnOf = (start, end) => { const a = LIVE.indexOf(start), b = LIVE.indexOf(end, a); assert.ok(a > 0 && b > a, start); return LIVE.slice(a, b); };
+  const HOLD = fnOf("function wbCall() {", "/* never a second call from his tab") + fnOf("function wbHold() {", "var btn = document.createElement");
+  function hold({ name = "mig-bassem-1795120000000", opener = null, MIG_WB = true, bar = null } = {}) {
+    const store = { "mig-wb": "1795120000000" }, win = { name, opener, MIG_WB, MIG_WB_TAB: bar };
+    const ctx = vm.createContext({ window: win, sessionStorage: { getItem: (k) => (k in store ? store[k] : null), removeItem: (k) => { delete store[k]; } }, String });
+    vm.runInContext("var WB = true;\n" + HOLD + ";this.__c = wbCall(); this.__h = wbHold(); this.__wb = WB;", ctx);
+    return { call: ctx.__c, held: ctx.__h, WB: ctx.__wb, win, store };
+  }
+  test("janna-live.js: its call's tab closed → \"ended\", the mark dropped, a call may start here", () => {
+    const r = hold();
+    assert.equal(r.call, "ended"); assert.equal(r.held, false); assert.equal(r.WB, false); assert.equal(r.win.MIG_WB, false);
+    assert.equal(r.store["mig-wb"], undefined); assert.equal(r.win.name, "");
+  });
+  test("janna-live.js: the bar already said the call is over (window.MIG_WB false) → the call button works", () => {
+    assert.equal(hold({ name: "", MIG_WB: false }).held, false);
+  });
+  test("janna-live.js: no opener and no name (the mark came with the link) → held: the bar's back() instead of a second call", () => {
+    let backs = 0;
+    const r = hold({ name: "", bar: { back() { backs++; } } });
+    assert.equal(r.call, "unknown"); assert.equal(r.held, true); assert.equal(backs, 1);
+  });
+  test("janna-live.js: the call is still live in its tab → held, the call's tab comes back", () => {
+    let backs = 0;
+    const o = callTab(), r = hold({ opener: o, bar: { back() { backs++; } } });
+    assert.equal(r.call, "live"); assert.equal(r.held, true); assert.equal(backs, 1);
   });
 });
 
