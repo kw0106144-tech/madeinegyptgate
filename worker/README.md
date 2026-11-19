@@ -624,7 +624,7 @@ OWNER_ONLY (admin / editor / support / `X-Platform-Key` → 403 `owner_only`, se
 one stores nothing. Reader `loadFeatures` (ccBoot, memo per `env.DB`, 30 s; no tables → defaults; a read error → the last good view):
 | key | default | scope | enforced |
 |---|---|---|---|
-| `janna_live` / `bassem_live` | on | both | `POST /api/janna/session` (agent janna / bassem) → 503 `feature_off` (meetings are not affected) |
+| `janna_live` / `bassem_live` | on | both | `POST /api/janna/session` (agent janna / bassem) → 503 `feature_off`; `bassem_live` also `POST /api/admin/cc/meetings` (Bassem's meeting invites) → 503 (Janna's `/api/meetings/*` are not affected) |
 | `janna_welcome`, `standing_figures`, `intel_pages` | on | client | the site hides the UI (`intel_pages`: links to /intel/ on the site's pages and Bassem's call screen; the /intel/ pages themselves — migate-intel — keep all their links and stay served) |
 | `noise_mode_default` | off | client | the site starts live calls in «وضع الدوشة» |
 | `registrations` | on | both | `POST /api/auth/verify` for an e-mail without an account → 503 (after the right code, before it is used up); `POST /api/inquiries` kind `signup` → 503 (staff entries still work) |
@@ -659,6 +659,45 @@ wrangler.toml (2026-11-19 review): `[version_metadata] binding = "CF_VERSION_MET
 `POST /api/janna/session` with the switch off: 503 `{error:"feature_off", code:"feature_off"}` for pages that send `ff:1` (data/janna-live.js);
 older pages (cached, or a Pages rollback) get `code:"daily_cap"`, which they show WITHOUT falling back to Anam's public widget.
 Tests: `test/dev-panel.test.mjs` (Cloudflare API, probes and D1 stubbed).
+
+## Bassem's meetings «📞 اجتماعات باسم» — src/bassem-meetings.js (owner request 2026-11-19)
+The Control Center sends Bassem (the Anam persona `19ef9078-5252-42a4-bbdf-9a3c4a38a4be`) into a **Google Meet / Zoom / Microsoft Teams** call of the
+platform's own team through the Anam Meetings API (`/v1/meetings/invites`). Anam cannot dial phone numbers — the page says so. Permission
+`meetings.bassem` (owner + admin; editor / support / `X-Platform-Key` → 403 `forbidden`, seo / data → their team page); the daily cap: `meetings.cap`
+∈ OWNER_ONLY (admin → 403 `owner_only`). Same Bearer session, origin-only CORS, 120 writes/min and audit rules as every Control Center endpoint.
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/api/admin/cc/meetings[?status=pending\|active\|ended\|failed\|cancelled]` | — | `{items:[{id, status, join_state, status_reason, join_at, created_at, now, type: team\|personal, group_call, provider, host, region, title, lang, by, session, cancellable}], cap:{value, default, max, source}, used_today, display_name}` — Anam's list (newest first, one page of 100) of the invites THIS panel made (its KV record, else the display name); never the link (host only), never the session id |
+| POST | `/api/admin/cc/meetings` | `{meeting_url, title (≤ 100), type: team\|personal, lang: ar\|en, when: now\|later, date: YYYY-MM-DD + time: HH:MM (Cairo) \| join_at (ISO with offset), agenda? (≤ 2000)}` | 201 `{ok, item, reserved, warning?: "short_notice", tools:[names]}` |
+| POST | `/api/admin/cc/meetings/:id/cancel` | — | `{ok, item, was}` (pending → cancelled; active → Bassem leaves the call) · `{ok, unchanged, item}` (already ended / cancelled / failed) · 403 `not_ours` (an invite this panel did not make) · 404 `not_found` |
+| PUT | `/api/admin/cc/meetings/cap` | `{value: 0–50 \| null}` | `{ok, cap}` (`null` = back to the default 10; 0 = invites off) · 422 `invalid` |
+**Create**: the saved persona is read (`GET /v1/personas/{id}`) and copied into an EPHEMERAL `personaConfig` by `bassem-context.js ephemeralFrom` (the
+member-context rules of `POST /api/janna/session`: same avatar, avatar model, voice, LLM, language, voice detection / generation, director notes;
+knowledge attachments, a voice speed, audio passthrough or zero-data retention → 409 `persona_copy`), whose prompt ends with the block
+`# اجتماع النهارده`: who is in the call (a team meeting = the platform's employees, never clients or members), the type, the time, the language,
+what he can / cannot do there, and the team's title + agenda as DATA between markers. Tools: only the persona's SERVER tools (webhooks: janna_lookup,
+platform_item, knowledge_lookup, bassem_intel, web search) — client tools need the site's page (screen, forms, e-mail / WhatsApp, memory writes) and
+nothing answers them in a meeting. Invite: `{meetingUrl, displayName: "باسم · منصة صنع في مصر" (Anam appends " (AI)"), aiDisclosure: true,
+personaConfig, groupCall: team → true (joins silently, answers when called by name) | personal → false (greets, answers everything), region: "eu",
+clientLabel: "madeinegyptgate-bassem-meeting", joinAt?: the Cairo date + time as ISO with the Cairo offset}`; `maxSessionLengthSeconds` 3600;
+lang `en` → `languageCode: "en"` + an English first sentence. `reserved` = ≥ 10 minutes ahead (Anam's guaranteed capacity); sooner / now →
+`warning: "short_notice"` (on-demand capacity).
+**Guards, in order**: «🛠️ المطوّر» `bassem_live` off → 503 `feature_off` · cap 0 → 503 `meetings_off` · the form → 422 (`errors[]`; codes `bad_link`
+(only `https://meet.google.com/xxx-xxxx-xxx`, `https://[sub.]zoom.us/j/<id>`, `https://teams.microsoft.com/l/meetup-join/…|/meet/…`,
+`https://teams.live.com/meet/…`), `bad_time`, `in_past`, `too_far` (> 7 days), `invalid_contact` (phones / e-mails in the title or agenda),
+`instruction_like` (an order to Bassem, text.js), `invalid`) · no Anam key → 503 `anam_key_missing` (the Worker's reader: `ANAM_API_KEY`, else the
+«مفاتيح الخدمات» slot `anam.api_key`; the key needs the **meetings** scope and persona read) · the day's cap → 429 `daily_cap` (D1 `rl`, key
+`bmeetday|<Cairo day>`, counted before the call and given back when Anam makes nothing) · an open (pending / active) invite to the same meeting
+(Anam's lists, compared by the meeting's code) → 409 `duplicate` · the persona read → 502 `persona_unavailable`.
+**Anam's answers**: 422 → `bad_link`; 400 about joinAt → `in_past` / `too_far`; 503 → `no_capacity` (+ `retry_s` from Retry-After) unless meetings
+are not enabled; 401 / 403 / 429 / 5xx → 502 `anam_refused` `{upstream_status, retry_s?}`; no answer → 502 `anam_unreachable` (a create that
+timed out after it was sent, like a 2xx without an invite id, may have made the invite: `unclear: true`, the day keeps counting it, the audit
+says `unclear`, and the panel reloads the list and asks to check it before sending again). Logs carry the status
+only (never the key, the link, the title or the prompt).
+**Storage**: no D1 table. Anam keeps the invite; the panel keeps `{t: title, ty: type, l: lang, h: host, by, at}` per invite in KV `SEO_KV`
+`acc:bmeet:<invite id>` (TTL 8 days) — never the link (a Zoom / Teams link carries the passcode), never the agenda. The cap: `cc_settings`
+`meetings.cap` (scope system; `meetings.*` is reserved, never a custom setting). Audit: `meetings.create` (audit-first: `sending` → the invite id +
+status, or `refused`), `meetings.cancel`, `meetings.cap` — who, when and the link's HOST only. Tests: `test/bassem-meetings.test.mjs` (Anam mocked).
 
 ## E-mail center — src/email-center.js (ACC-CONTRACT §6)
 Every e-mail goes through `src/email-center.js` (`deliver()`): provider = the Control Center settings when «البريد» is enabled with a key

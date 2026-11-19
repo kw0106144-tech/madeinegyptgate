@@ -9,6 +9,8 @@
    /api/admin/cc/keys*: «مفاتيح الخدمات» (owner only, acc-keys.js) — respond.io token + channel, Anam key, the WhatsApp live switch;
      POST /keys/websearch/connect = «🔗 وصّل البحث بباسم» (acc-wsconnect.js: creates / updates the Anam tool bassem_web_search, attaches it to Bassem).
    /api/admin/cc/dev/*: «🛠️ المطوّر» (owner only, dev.manage, acc-dev.js) — feature switches (flags.js), deploys + rollback, health, audit.
+   /api/admin/cc/meetings*: «📞 اجتماعات باسم» (owner + admin, meetings.bassem; the daily cap: owner only, meetings.cap — bassem-meetings.js)
+     — Bassem (Anam) joins a Google Meet / Zoom / Teams call of the platform's team; Anam's list of his invites; cancel.
    ccBoot(env, CC) applies the plans matrix (≤ 1 D1 read per isolate per 60 s), the mail config and the service keys (service-keys.js);
    ccCron(env, nowMs, CC) runs the
    Control Center's cron jobs. Every /api/admin/cc/* request needs a v2 e-mail-code session with a Control Center role (or X-Platform-Key);
@@ -33,6 +35,7 @@ import { loadServiceKeys } from "./service-keys.js";
 import { userOut } from "./common.js";
 import * as DEV from "./acc-dev.js";                  // «🛠️ المطوّر» — the owner-only developer panel
 import { loadFeatures } from "./flags.js";           // the feature switches (≤ 1 D1 read per isolate per 30 s)
+import * as BMEET from "./bassem-meetings.js";        // «📞 اجتماعات باسم» — Bassem joins the team's Meet / Zoom / Teams calls (Anam Meetings API)
 
 export { handleOldApi, handleLegacyAuth, handleMeCC, handleTeam };
 export { setPlan, setGcc } from "./acc-members.js";
@@ -196,6 +199,11 @@ const ROUTES = [
   R("POST", P("/dev/deploys/rollback"), "dev.manage", (q, e, c, a) => DEV.postRollback(q, e, c, a)),
   R("GET", P("/dev/health"), "dev.manage", (q, e, c, a) => DEV.getHealth(q, e, c, a)),
   R("GET", P("/dev/audit"), "dev.manage", (q, e, c, a, u) => DEV.devAudit(e, u)),
+  // «📞 اجتماعات باسم» (meetings.bassem: owner + admin; the cap: meetings.cap ∈ OWNER_ONLY) — every invite uses paid Anam minutes
+  R("GET", P("/meetings"), "meetings.bassem", (q, e, c, a, u) => BMEET.listMeetings(q, e, c, a, u)),
+  R("POST", P("/meetings"), "meetings.bassem", (q, e, c, a) => BMEET.createMeeting(q, e, c, a)),
+  R("PUT", P("/meetings/cap"), "meetings.cap", (q, e, c, a) => BMEET.putCap(q, e, c, a)),
+  R("POST", P("/meetings/:id/cancel"), "meetings.bassem", (q, e, c, a, u, m) => BMEET.cancelMeeting(q, e, c, a, m[1])),
 ];
 const body0 = req => readBody(req);
 /* data rows of a CSV text (quote-aware: a quoted cell may hold a line break); the header line is not counted */

@@ -163,11 +163,16 @@ export const PERMS = ["stats.read", "members.read", "members.write", "members.co
   "orders.read", "orders.reply", "orders.note", "orders.close", "orders.rfq", "orders.resend", "orders.block", "content.read", "content.write", "content.publish", "content.toggle",
   "media.upload", "media.delete", "plans.read", "plans.write", "plans.sync", "pay.read", "pay.invoice", "pay.mark_paid", "pay.config",
   "email.read", "email.templates", "email.test", "email.config", "settings.read", "settings.write", "seo", "staff.read", "staff.write",
-  "audit.read", "audit.export", "reports.read", "reports.export", "wa.read", "bassem.read", "import.run", "keys.manage", "dev.manage", ...DESK_PERMS];
+  "audit.read", "audit.export", "reports.read", "reports.export", "wa.read", "bassem.read", "import.run", "keys.manage", "dev.manage",
+  "meetings.bassem", "meetings.cap", ...DESK_PERMS];
 /* keys.manage = «مفاتيح الخدمات» (respond.io token, Anam key, the WhatsApp live switch — owner decision 2026-11-18): owner only
-   dev.manage = «🛠️ المطوّر» (feature switches, deploys + rollback, health, its audit — owner request 2026-11-19, acc-dev.js): owner only */
-export const OWNER_ONLY = new Set(["members.delete", "content.toggle", "pay.config", "email.config", "audit.export", "import.run", "keys.manage", "dev.manage"]);
+   dev.manage = «🛠️ المطوّر» (feature switches, deploys + rollback, health, its audit — owner request 2026-11-19, acc-dev.js): owner only
+   meetings.bassem = «📞 اجتماعات باسم» (send Bassem into a Meet / Zoom / Teams call of the team, list, cancel — bassem-meetings.js; every
+   invite uses paid Anam minutes): owner + admin only — never editor / support, never X-Platform-Key (an invite needs a person)
+   meetings.cap = the daily cap of those invites: owner only */
+export const OWNER_ONLY = new Set(["members.delete", "content.toggle", "pay.config", "email.config", "audit.export", "import.run", "keys.manage", "dev.manage", "meetings.cap"]);
 const ADMIN_P = PERMS.filter(p => !OWNER_ONLY.has(p));
+const PERSON_ONLY = ["meetings.bassem"]; // never through X-Platform-Key
 export const ROLE_PERMS = {
   owner: PERMS,
   admin: ADMIN_P,
@@ -176,7 +181,7 @@ export const ROLE_PERMS = {
     "content.read", "plans.read", "pay.read", "settings.read", "wa.read", "bassem.read"],
   seo: ["seo"],
   data: DESK_PERMS,
-  platform: ADMIN_P.filter(p => !DESK_PERMS.includes(p)), // X-Platform-Key = admin permissions minus every owner-only one (and the desk: it needs a person)
+  platform: ADMIN_P.filter(p => !DESK_PERMS.includes(p) && !PERSON_ONLY.includes(p)), // X-Platform-Key = admin permissions minus every owner-only one (and the desk + Bassem's meeting invites: they need a person)
 };
 /* the roles an admin (not an owner) may grant or change */
 export const ADMIN_GRANTS = ["editor", "support", "seo", "data"];

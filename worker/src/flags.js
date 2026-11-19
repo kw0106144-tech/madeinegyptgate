@@ -5,6 +5,7 @@
    site through GET /api/settings → features (scope client | both, EFFECTIVE values: acc-plans.js publicSettings) and ENFORCED on the
    server where the feature runs (scope server | both):
      janna_live / bassem_live  janna-session.js  POST /api/janna/session (agent janna / bassem) → 503 feature_off
+     bassem_live               bassem-meetings.js POST /api/admin/cc/meetings (a new meeting invite) → 503 feature_off
      registrations             auth.js           POST /api/auth/verify for an e-mail WITHOUT an account → 503 feature_off (members sign in)
                                inquiries.js      POST /api/inquiries kind signup → 503 feature_off (a staff entry still works)
      rfq_autoroute             inquiries.js      no automatic routing (new requests, cron retries, re-match): the team handles them
@@ -20,7 +21,7 @@
    Reader: loadFeatures(env) — ≤ 1 D1 read per isolate per 30 s (memo per env.DB; acc.js ccBoot warms it at the start of every request /
    cron run), featureOn(env, key) async, featureSync(env, key) from the memo (the default before the first load). No 0006 tables → the
    defaults; any other read error → the last good view, else the defaults (a D1 hiccup never switches the platform off).
-   Leaf module: imports service-keys.js only (inquiries.js, whatsapp.js, auth.js, janna-session.js, websearch.js, digest.js import it). */
+   Leaf module: imports service-keys.js only (inquiries.js, whatsapp.js, auth.js, janna-session.js, websearch.js, digest.js, bassem-meetings.js import it). */
 import { loadServiceKeys, respondioToken, webSearchConfig } from "./service-keys.js";
 
 export const FEATURES_KEY = "features";
@@ -37,9 +38,9 @@ export const FEATURES = Object.freeze([
     enforced_by: ["POST /api/janna/session (agent janna) → 503 feature_off", "site"] },
   { key: "bassem_live", default: true, scope: "both",
     label_ar: "مكالمات باسم المباشرة (فيديو)", label_en: "Bassem live video calls",
-    desc_ar: "مكالمات المستشار الذكي باسم مع الأعضاء. لو قفلته، زرار المكالمة بيختفي والسيرفر بيرفض أي مكالمة جديدة مع باسم.",
-    desc_en: "The AI advisor Bassem's calls with members. Off: the call button is hidden and the server refuses any new call with Bassem.",
-    enforced_by: ["POST /api/janna/session (agent bassem) → 503 feature_off", "site"] },
+    desc_ar: "مكالمات المستشار الذكي باسم مع الأعضاء. لو قفلته، زرار المكالمة بيختفي والسيرفر بيرفض أي مكالمة جديدة مع باسم، ولوحة التحكم مابتبعتش باسم لاجتماعات جديدة («📞 اجتماعات باسم»).",
+    desc_en: "The AI advisor Bassem's calls with members. Off: the call button is hidden, the server refuses any new call with Bassem, and the Control Center sends him to no new meeting («📞 Bassem's meetings»).",
+    enforced_by: ["POST /api/janna/session (agent bassem) → 503 feature_off", "POST /api/admin/cc/meetings → 503 feature_off", "site"] },
   { key: "janna_welcome", default: true, scope: "client",
     label_ar: "صندوق دعوة جنة", label_en: "Janna's invitation box",
     desc_ar: "الصندوق اللي بيظهر للزائر ومعاه زرار كبير «اتكلم مع جنة». لو قفلته، الصندوق مابيظهرش (المكالمة نفسها بتفضل شغالة من زرارها).",

@@ -330,7 +330,7 @@
   /* field: {n, l:[ar,en], t, w, dir, req, max, opts:[[v, ar, en]], ro, hint:[ar,en], ph, purpose, min, maxv, step, rows} */
   function fieldH(f, v) {
     var lab = h(L2(f.l)) + (f.req ? ' <b class="bad" aria-hidden="true">*</b>' : ""), cls = f.w || f.t === "ta" || f.t === "lines" || f.t === "img" || f.t === "html" ? ' class="w"' : "";
-    var dir = f.dir || /^(email|url|num|int|date|pw|tel)$/.test(f.t) ? ' dir="ltr"' : ' dir="auto"', ro = f.ro ? " disabled" : "", req = f.req ? ' aria-required="true"' : "";
+    var dir = f.dir || /^(email|url|num|int|date|time|pw|tel)$/.test(f.t) ? ' dir="ltr"' : ' dir="auto"', ro = f.ro ? " disabled" : "", req = f.req ? ' aria-required="true"' : "";
     var hint = f.hint ? '<span class="hint">' + h(L2(f.hint)) + "</span>" : "", fe = '<div class="fe" data-fe="' + f.n + '" role="alert"></div>', id = "f_" + f.n.replace(/[^\w-]/g, "_");
     var val = v == null ? "" : v;
     if (f.t === "html") return '<div class="w">' + (typeof f.html === "function" ? f.html(v) : f.html || "") + "</div>";
@@ -349,7 +349,7 @@
       var u = localImg(val), up = ST.features && ST.features.media_r2 === false ? '<span class="hint">' + h(T("رفع الصور محتاج تفعيل R2 — تقدر تكتب رابط صورة موجودة.", "Image uploads need R2 to be enabled — you can enter the URL of an existing image.")) + "</span>" : '<input type="file" accept="image/jpeg,image/png,image/webp" data-up="' + f.n + '" data-purpose="' + (f.purpose || "other") + '" aria-label="' + h(T("رفع صورة", "Upload an image")) + '"' + ro + ">";
       return '<div class="w"><label for="' + id + '">' + lab + '</label><div class="imgp">' + (u ? '<img src="' + h(u) + '" alt="" data-pv="' + f.n + '">' : '<img alt="" data-pv="' + f.n + '" hidden>') + '<input id="' + id + '" data-f="' + f.n + '" dir="ltr" value="' + h(val) + '" placeholder="/media/u/…" style="flex:1 1 220px;padding:9px;border:1px solid #CBD5E1;border-radius:9px;font:inherit"' + ro + ">" + up + "</div>" + '<span class="hint">' + h(f.hint ? L2(f.hint) : T("JPEG أو PNG أو WebP، حتى 5 ميجا.", "JPEG, PNG or WebP, up to 5 MB.")) + "</span>" + fe + "</div>";
     }
-    var type = f.t === "email" ? "email" : f.t === "num" || f.t === "int" ? "number" : f.t === "date" ? "date" : f.t === "pw" ? "password" : "text";
+    var type = f.t === "email" ? "email" : f.t === "num" || f.t === "int" ? "number" : f.t === "date" ? "date" : f.t === "time" ? "time" : f.t === "pw" ? "password" : "text";
     return "<label" + cls + ' for="' + id + '">' + lab + '<input id="' + id + '" type="' + type + '" data-f="' + f.n + '"' + dir + ro + req + (f.max && type === "text" ? ' maxlength="' + f.max + '"' : "") + (f.step ? ' step="' + f.step + '"' : f.t === "num" ? ' step="any"' : "") + (f.min != null ? ' min="' + f.min + '"' : "") + (f.maxv != null ? ' max="' + f.maxv + '"' : "") + (f.ph ? ' placeholder="' + h(L2(f.ph)) + '"' : "") + (f.t === "pw" ? ' autocomplete="new-password" value=""' : ' value="' + h(val) + '"') + ">" + hint + fe + "</label>";
   }
   function formH(fields, vals) { vals = vals || {}; return '<div class="fr">' + fields.map(function (f) { return fieldH(f, own(vals, f.n) ? vals[f.n] : f.def); }).join("") + "</div>"; }
@@ -384,6 +384,7 @@
       if (f.t === "url" && !/^https:\/\/[^\s"'<>]+$/i.test(x) && !(f.path && /^\/[^\s"'<>]*$/.test(x) && x.indexOf("//") !== 0)) e[f.n] = T("رابط https كامل", "A full https link");
       if (f.t === "img" && !imgUrl(x)) e[f.n] = T("رابط صورة غير مقبول", "Image URL not accepted");
       if (f.t === "date" && !/^\d{4}-\d{2}-\d{2}$/.test(x)) e[f.n] = T("التاريخ بالشكل YYYY-MM-DD", "Date as YYYY-MM-DD");
+      if (f.t === "time" && !/^\d{2}:\d{2}$/.test(x)) e[f.n] = T("الساعة بالشكل 15:30", "Time as 15:30");
       if ((f.t === "num" || f.t === "int") && (isNaN(x) || (f.min != null && x < f.min) || (f.maxv != null && x > f.maxv))) e[f.n] = T("رقم غير مقبول", "Number not accepted");
       if (f.check) { var m = f.check(x, v); if (m) e[f.n] = m; }
     });
@@ -468,7 +469,7 @@
     ["العملاء والاشتراكات", "Customers & subscriptions", [["users", "الأعضاء والاشتراكات", "Members & subscriptions", "expSoon", "members.read"], ["partners", "الشركاء", "Partners", "", "members.read"], ["customers", "العملاء (المشترون)", "Customers (buyers)", "", "customers.read"], ["members", "دليل الشركات", "Company directory", "", "directory.read"], ["plans", "الباقات والصلاحيات", "Plans & permissions", "", "plans.read"], ["approvals", "الموافقات", "Approvals", "approvals", ["approvals.products", "approvals.company"]], ["invoices", "الفواتير والمدفوعات", "Invoices & payments", "unpaid", "pay.read"]]],
     ["الخدمات", "Services", [["tenders", "المناقصات", "Tenders", "", "content.read"], ["rfqs", "طلبات عروض المشترين", "Buyer RFQs", "rfqNew", "content.read"], ["products", "المنتجات", "Products", "", "content.read"], ["store", "المتجر والعروض والتصنيفات", "Store, offers & categories", "", "content.read"], ["awards", "الترسيات والفائزون", "Awards & winners", "", "content.read"], ["projects", "المشاريع", "Projects", "", "content.read"], ["procurement", "أخبار المشتريات", "Procurement news", "", "content.read"], ["events", "الفعاليات والمعارض", "Events & exhibitions", "", "content.read"], ["banners", "البانرات الإعلانية", "Banners", "", "content.read"], ["zones", "المناطق الصناعية", "Industrial zones", "", "content.read"]]],
     ["المحتوى", "Content", [["news", "الأخبار", "News", "", "content.read"], ["videos", "الفيديوهات", "Videos", "", "content.read"], ["notices", "إعلانات الموقع", "Site notices", "", "content.read"], ["media", "مكتبة الصور", "Media library", "", "content.read"], ["publish", "النشر والتحديث", "Publishing & rebuild", "edge", "content.read"]]],
-    ["التواصل", "Communication", [["messages", "الرسائل والطلبات", "Messages & requests", "msgNew", "orders.read"], ["whatsapp", "الواتساب", "WhatsApp", "", "wa.read"], ["bassem", "باسم – المستشار", "Bassem – advisor", "", "bassem.read"]]],
+    ["التواصل", "Communication", [["messages", "الرسائل والطلبات", "Messages & requests", "msgNew", "orders.read"], ["whatsapp", "الواتساب", "WhatsApp", "", "wa.read"], ["bassem", "باسم – المستشار", "Bassem – advisor", "", "bassem.read"], ["bassem-meetings", "📞 اجتماعات باسم", "📞 Bassem's meetings", "", "meetings.bassem"]]],
     ["SEO يدوي", "SEO (manual)", [["seo", "بيانات الصفحات", "Page data", "", "seo"], ["keywords", "تتبع الكلمات", "Keyword tracking", "", "seo"], ["redirects", "تحويلات 301", "301 redirects", "", "seo"], ["seo-admin", "مساحة SEO الكاملة ↗", "Full SEO workspace ↗", "", "seo"]]],
     ["النظام", "System", [["payments", "بوابة الدفع", "Payment gateway", "", function () { return can("pay.config") || (can("pay.read") && can("pay.invoice")); }], ["keys", "مفاتيح الخدمات", "Service keys", "", "keys.manage"], ["mail", "البريد", "E-mail", "", "email.read"], ["settings", "الإعدادات", "Settings", "", "settings.read"], ["staff", "الإدارة والصلاحيات", "Admins & roles", "", "staff.read"], ["audit", "سجل العمليات", "Audit log", "", "audit.read"], ["reports", "التقارير", "Reports", "", "reports.read"], ["import", "استيراد من النظام القديم", "Import from the old system", "", "import.run"]]]
   ];
@@ -1738,6 +1739,208 @@
       }, function (e) { if (alive(c)) tb.innerHTML = '<div style="padding:12px">' + errH(e) + "</div>"; });
     };
     c.on.rf = load; load();
+  };
+
+
+  /* =====================================================================================================================
+     bassem-meetings ➕ — «📞 اجتماعات باسم» (owner + admin, meetings.bassem; owner request 2026-11-19): send Bassem (Anam) into a Google
+     Meet / Zoom / Teams call of the platform's team (POST /api/admin/cc/meetings), Anam's list of his invites (GET) with «إلغاء» for a
+     pending one and «⏹ إخراج باسم» for an active one (POST …/:id/cancel), and the daily cap (PUT …/cap: the owner, meetings.cap).
+     Anam cannot dial a phone number: the page says so in one line. The server checks everything again (worker/src/bassem-meetings.js).
+     ===================================================================================================================== */
+  var MT_ST = { pending: ["مستني", "Pending", "p"], active: ["جوّه الاجتماع دلوقتي", "In the meeting now", "ok"], ended: ["خلص", "Ended", "g"], failed: ["ماقدرش يدخل", "Could not join", "x"], cancelled: ["اتلغى", "Cancelled", "g"] };
+  var MT_JOIN = { joining: ["بيدخل الاجتماع…", "Joining…"], waiting_room: ["مستني حد يدخّله من غرفة الانتظار", "Waiting to be admitted from the waiting room"], in_call: ["جوّه المكالمة", "In the call"],
+    media_denied: ["الصوت أو الصورة اترفضوا", "Audio / video denied"], media_granted: ["الصوت والصورة شغّالين", "Audio / video on"], media_active: ["الصوت والصورة شغّالين", "Audio / video on"], left: ["خرج", "Left"], done: ["خلص", "Done"], error: ["حصلت مشكلة", "An error occurred"] };
+  var MT_WHY = { not_admitted: ["محدش دخّله من غرفة الانتظار", "Nobody admitted him from the waiting room"], join_denied: ["دخوله اترفض", "His join was denied"], meeting_link_invalid: ["رابط الاجتماع مش شغّال", "The meeting link does not work"],
+    meeting_not_started: ["الاجتماع ماكانش بدأ", "The meeting had not started"], removed_by_host: ["صاحب الاجتماع طلّعه", "The host removed him"], meeting_ended: ["الاجتماع خلص", "The meeting ended"],
+    idle_timeout: ["خرج بعد سكوت طويل", "He left after a long silence"], left_call: ["خرج من الاجتماع", "He left the call"], provider_error: ["مشكلة عند مزوّد الاجتماع", "A problem at the meeting provider"] };
+  var MT_TYPE = { team: ["اجتماع فريق", "Team meeting"], personal: ["مكالمة شخصية", "Personal call"] };
+  var MT_ERR = {
+    anam_key_missing: ["مفتاح Anam مش متضاف — المالك يضيفه من «مفاتيح الخدمات» (مفتاح فيه صلاحية الاجتماعات meetings).", "The Anam key is not set — the owner adds it in «Service keys» (a key with the meetings scope)."],
+    no_capacity: ["Anam مفيهوش مكان فاضي دلوقتي — جرّب كمان شوية، أو حدّد ميعاد بعد 10 دقايق على الأقل علشان مكانه يتحجز.", "Anam has no free capacity right now — try again shortly, or schedule at least 10 minutes ahead so his place is reserved."],
+    bad_link: ["الرابط لازم يكون رابط اجتماع Google Meet أو Zoom أو Microsoft Teams، زي https://meet.google.com/abc-defg-hij", "The link must be a Google Meet, Zoom or Microsoft Teams meeting link, like https://meet.google.com/abc-defg-hij"],
+    too_far: ["أقصى ميعاد 7 أيام من دلوقتي.", "The latest time is 7 days from now."],
+    in_past: ["الميعاد ده فات — اختار ميعاد جاي أو «دلوقتي».", "That time has passed — choose a later time or «Now»."],
+    bad_time: ["التاريخ أو الساعة مش مظبوطين (بتوقيت القاهرة).", "The date or time is not valid (Cairo time)."],
+    duplicate: ["باسم معزوم على الاجتماع ده بالفعل (لسه مستني أو جوّه) — ألغي الدعوة القديمة الأول لو عايز تغيّر الميعاد.", "Bassem is already invited to this meeting (pending or in it) — cancel the old invite first to change the time."],
+    daily_cap: ["وصلت لحد دعوات باسم النهارده — المالك يقدر يزوّد الحد من تحت.", "Today's limit of Bassem invites is reached — the owner can raise it below."],
+    meetings_off: ["دعوات باسم للاجتماعات مقفولة (الحد اليومي = 0).", "Bassem's meeting invites are off (daily cap = 0)."],
+    persona_unavailable: ["ماقدرناش نقرا إعدادات باسم من Anam دلوقتي — جرّب تاني بعد شوية.", "Bassem's settings could not be read from Anam right now — try again shortly."],
+    persona_copy: ["إعدادات باسم في Anam فيها حاجة ماينفعش تتنسخ للاجتماع (زي ملفات معرفة مربوطة أو سرعة صوت) — راجعها في Anam Lab.", "Bassem's Anam settings hold something that cannot be copied for a meeting (attached knowledge files or a voice speed) — check them in Anam Lab."],
+    anam_unreachable: ["Anam مش بيرد دلوقتي — جرّب تاني بعد شوية.", "Anam is not answering right now — try again shortly."],
+    not_ours: ["الدعوة دي مش من لوحة التحكم — تتلغي من Anam Lab.", "This invite was not made from the Control Center — cancel it in Anam Lab."],
+    instruction_like: ["فيه جملة شبه أمر لباسم (زي «تجاهل التعليمات» أو «باسم لازم يقول…») — اكتب موضوعات الاجتماع بس.", "A sentence reads like an order to Bassem (such as «ignore the instructions» or «Bassem must say…») — write the meeting's topics only."],
+    invalid_contact: ["ممنوع أرقام تليفون أو إيميلات أو لينكات واتساب في عنوان الاجتماع أو ملخصه.", "No phone numbers, e-mail addresses or WhatsApp links in the meeting's title or briefing."],
+    feature_off: ["«مكالمات باسم المباشرة» مقفولة من «🛠️ المطوّر» ← «المزايا» — الاجتماعات كمان واقفة.", "Bassem's live calls are switched off in «🛠️ Developer» → «Features» — meetings too."]
+  };
+  function mtErr(e) {
+    var c = e && e.code, j = (e && e.j) || {}, st = +j.upstream_status || 0, rs = +j.retry_s || 0;
+    var wait = rs ? T(" (استنى حوالي " + Math.max(1, Math.ceil(rs / 60)) + " دقيقة)", " (wait about " + Math.max(1, Math.ceil(rs / 60)) + " min)") : "";
+    if (c === "anam_refused") {
+      if (st === 401) return T("Anam رفض المفتاح (401) — المفتاح غلط أو اتلغى، والمالك يغيّره من «مفاتيح الخدمات».", "Anam refused the key (401) — it is wrong or revoked; the owner replaces it in «Service keys».");
+      if (st === 403) return T("مفتاح Anam مالوش الصلاحية المطلوبة (403) — محتاج مفتاح فيه صلاحية الاجتماعات (meetings) وقراءة الشخصيات.", "The Anam key lacks a needed permission (403) — it needs the meetings scope and persona read.");
+      if (st === 429) return T("Anam بيقول طلبات كتير (429) — استنى شوية وجرّب تاني.", "Anam says too many requests (429) — wait a little and try again.") + wait;
+      if (st === 503) return T("Anam مش متاح دلوقتي أو الاجتماعات مش متفعّلة على الحساب (503) — جرّب تاني بعد شوية، ولو فضلت كده كلّم Anam.", "Anam is unavailable right now, or meetings are not enabled on the account (503) — try again shortly; if it stays, contact Anam.") + wait;
+      if (st >= 500) return T("Anam عنده مشكلة دلوقتي (" + st + ") — جرّب تاني بعد شوية.", "Anam has a problem right now (" + st + ") — try again shortly.");
+      if (st >= 200 && st < 300) return T("Anam رجّع رد مش مفهوم — شوف القايمة تحت قبل ما تبعت تاني.", "Anam returned an unexpected answer — check the list below before sending again.");
+      return T("Anam رفض الطلب (" + (st || "—") + ").", "Anam refused the request (" + (st || "—") + ").");
+    }
+    if (c === "anam_unreachable" && j.unclear) return T("Anam ماردّش على طلب الدعوة في الوقت — ممكن تكون اتعملت: شوف القايمة تحت قبل ما تبعت تاني.", "Anam did not answer the invite request in time — it may have been made: check the list below before sending again.");
+    if (c === "no_capacity") return L2(MT_ERR.no_capacity) + wait;
+    if (c === "daily_cap") return L2(MT_ERR.daily_cap) + (j.cap != null ? " (" + nf(j.cap) + ")" : "");
+    if (MT_ERR[c]) return L2(MT_ERR[c]);
+    return errText(e);
+  }
+  /* a Cairo wall-clock date + time → UTC ms (NaN when unknown) — the Worker's two-step offset rule (meetings.js cairoToUtc), for the warnings only */
+  function cairoMs(d, t) {
+    var a = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str(d)), b = /^(\d{1,2}):(\d{2})$/.exec(str(t));
+    if (!a || !b) return NaN;
+    var naive = Date.UTC(+a[1], +a[2] - 1, +a[3], +b[1], +b[2]);
+    var off = function (ms) {
+      try {
+        var s = new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(ms));
+        var m = /(\d{2})\/(\d{2})\/(\d{4}),?\s+(\d{2}):(\d{2})/.exec(s);
+        return m ? (Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4] % 24, +m[5]) - Math.floor(ms / 60000) * 60000) / 60000 : 120;
+      } catch (e) { return 120; }
+    };
+    var ms = naive - off(naive - 72e5) * 60000;
+    return naive - off(ms) * 60000;
+  }
+  /* the meeting links the Worker accepts (the server checks again — this only spares a round trip) */
+  var MT_LINK = /^(?:https:\/\/)?(?:meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}(?:[\/?#]|$)|(?:[a-z0-9-]+\.)?zoom\.us\/j\/\d{9,11}(?:[\/?#]|$)|teams\.(?:microsoft|live)\.com\/(?:l\/meetup-join\/|meet\/))/i;
+  function mtStatusH(r) {
+    var s = MT_ST[r.status] || [r.status || "—", r.status || "—", "g"], x = tag(T(s[0], s[1]), s[2]);
+    if ((r.status === "pending" || r.status === "active") && r.join_state && MT_JOIN[r.join_state]) x += "<br><small>" + h(L2(MT_JOIN[r.join_state])) + "</small>";
+    if (r.status_reason) x += "<br><small>" + h(MT_WHY[r.status_reason] ? L2(MT_WHY[r.status_reason]) : r.status_reason) + "</small>";
+    return x;
+  }
+  var MT_COLS = [
+    ["الحالة", "Status", mtStatusH],
+    ["الميعاد (القاهرة)", "When (Cairo)", function (r) { return r.now ? h(T("فوراً", "Right away")) + "<br>" + fdh(r.created_at, true) : fdh(r.join_at, true); }],
+    ["العنوان", "Title", function (r) { return '<b dir="auto">' + h(r.title || "—") + "</b>" + (r.by ? '<br><small dir="ltr">' + h(r.by) + "</small>" : ""); }],
+    ["النوع", "Type", function (r) { return h(MT_TYPE[r.type] ? L2(MT_TYPE[r.type]) : r.type || "—") + (r.lang === "en" ? " · " + h(T("إنجليزي", "English")) : ""); }],
+    ["الرابط", "Link", function (r) { return '<span dir="ltr">' + h(r.host || "—") + "</span>"; }]
+  ];
+  function mtActs(r) {
+    if (r.status === "pending") return btn("mtcx", h(T("إلغاء", "Cancel")), "l s", ' data-id="' + h(r.id) + '"');
+    if (r.status === "active") return btn("mtcx", h(T("⏹ إخراج باسم", "⏹ Remove Bassem")), "d s", ' data-id="' + h(r.id) + '" data-st="active"');
+    return "";
+  }
+  function mtListH(items) { return tableH(MT_COLS, items || [], { count: (items || []).length, acts: mtActs, empty: T("لسه مفيش اجتماعات لباسم — ابعته لأول اجتماع من فوق.", "No meetings for Bassem yet — send him to the first one above.") }); }
+  SEC["bassem-meetings"] = function () {
+    var c = CUR, owner = can("meetings.cap");
+    head(T("📞 اجتماعات باسم", "📞 Bassem's meetings"), h(T("ابعت باسم لاجتماع فيديو مع فريق المنصة", "Send Bassem to a video meeting with the platform's team")), btn("rf", h(T("↻ تحديث", "↻ Refresh"))));
+    var F = [
+      { n: "meeting_url", l: ["رابط الاجتماع", "Meeting link"], w: 1, req: 1, max: 1500, dir: "ltr", ph: ["https://meet.google.com/abc-defg-hij", "https://meet.google.com/abc-defg-hij"], hint: ["Google Meet أو Zoom أو Microsoft Teams بس — اعمل الاجتماع من موبايلك وانسخ الرابط هنا.", "Google Meet, Zoom or Microsoft Teams only — create the meeting on your phone and paste its link here."] },
+      { n: "title", l: ["عنوان الاجتماع", "Meeting title"], req: 1, max: 100, ph: ["مثلاً: اجتماع الفريق الأسبوعي", "e.g. Weekly team meeting"] },
+      { n: "type", l: ["نوع المكالمة", "Call type"], t: "sel", opts: [["team", "اجتماع فريق — باسم بيسمع وبيرد لما حد يناديه باسمه", "Team meeting — Bassem listens and answers when called by name"], ["personal", "مكالمة شخصية — باسم بيرحّب وبيرد على كل الكلام", "Personal call — Bassem greets and answers everything"]] },
+      { n: "lang", l: ["لغة الاجتماع", "Meeting language"], t: "sel", opts: [["ar", "عربي (مصري)", "Arabic (Egyptian)"], ["en", "إنجليزي", "English"]] },
+      { n: "when", l: ["إمتى", "When"], t: "sel", opts: [["now", "دلوقتي — باسم بيدخل في خلال دقيقة", "Now — Bassem joins within a minute"], ["later", "في ميعاد محدد (بتوقيت القاهرة، لحد 7 أيام)", "At a set time (Cairo time, up to 7 days)"]] },
+      { n: "date", l: ["التاريخ", "Date"], t: "date" },
+      { n: "time", l: ["الساعة (بتوقيت القاهرة)", "Time (Cairo)"], t: "time", ph: ["15:30", "15:30"] },
+      { n: "agenda", l: ["ملخص لباسم / جدول الأعمال (اختياري)", "Briefing for Bassem / agenda (optional)"], t: "ta", max: 2000, rows: 5, hint: ["موضوعات الاجتماع بس، سطر لكل موضوع — من غير أرقام تليفون أو إيميلات لحد، ومن غير أوامر لباسم: هو بيقراها كمعلومات.", "Only the meeting's topics, one per line — no one's phone numbers or e-mails and no orders to Bassem: he reads them as information."] }
+    ];
+    var steps = [["اعمل اجتماع Google Meet من موبايلك (أو Zoom أو Teams) وانسخ الرابط.", "Create a Google Meet meeting on your phone (or Zoom or Teams) and copy its link."], ["الصق الرابط هنا واكتب عنوان قصير.", "Paste the link here and write a short title."],
+      ["اختار «دلوقتي» ودوس «📞 ابعت باسم للاجتماع».", "Choose «Now» and press «📞 Send Bassem to the meeting»."], ["باسم بيدخل في خلال دقيقة — لو الاجتماع فيه غرفة انتظار، دخّله.", "Bassem joins within a minute — if the meeting has a waiting room, admit him."]];
+    var notes = [["باسم بيظهر في الاجتماع باسم «%DN%»، وعلى الفيديو بتاعه علامة إنه ذكاء اصطناعي.", "Bassem shows in the meeting as «%DN%», with an AI label on his video."],
+      ["«دلوقتي» أو ميعاد بعد أقل من 10 دقايق: باسم بيدخل لو Anam عنده مكان فاضي ساعتها. ميعاد بعد 10 دقايق أو أكتر بيحجز مكانه.", "«Now» or a time less than 10 minutes away: Bassem joins if Anam has free capacity then. A time 10 minutes or more ahead reserves his place."],
+      ["في الاجتماع مفيش شاشة ولا إيميلات ولا واتساب: باسم بيدوّر في بيانات المنصة ومركز المعلومات وبيتكلم بس.", "In a meeting there is no shared screen, e-mail or WhatsApp: Bassem searches the platform's data and the information centre, and talks."],
+      ["كل دقيقة باسم جوّه الاجتماع بتتحسب من دقايق Anam (لحد ساعة في الاجتماع الواحد)، وAnam بيحتفظ بنص المكالمة وتسجيلها زي أي مكالمة مع باسم.", "Every minute Bassem spends in a meeting uses Anam minutes (up to one hour per meeting), and Anam keeps the call's transcript and recording like any call with Bassem."]];
+    setCt('<div class="note" role="note">' + h(T("باسم بيدخل اجتماعات Google Meet / Zoom / Teams — مش بيتصل على أرقام تليفون", "Bassem joins Google Meet / Zoom / Teams meetings — he does not call phone numbers")) + "</div>"
+      + cardH(T("📞 ابعت باسم لاجتماع", "📞 Send Bassem to a meeting"), '<ol class="bm-steps sm">' + steps.map(function (x) { return "<li>" + h(L2(x)) + "</li>"; }).join("") + "</ol>"
+        + '<div id="mtf" class="bm-form">' + formH(F, { type: "team", lang: "ar", when: "now", date: today() }) + "</div>"
+        + '<p class="sm warn" id="mtw" role="status" hidden></p>'
+        + '<div class="acts2" style="margin-top:10px">' + btn("mtsend", h(T("📞 ابعت باسم للاجتماع", "📞 Send Bassem to the meeting")), "r") + "</div>"
+        + '<div id="mtres" role="status"></div>'
+        + '<ul class="bm-notes sm mut">' + notes.map(function (x) { return "<li>" + h(L2(x)).replace("%DN%", '<bdi dir="rtl">باسم · منصة صنع في مصر (AI)</bdi>') + "</li>"; }).join("") + "</ul>")
+      + '<div class="cd"><h3>' + h(T("الاجتماعات", "Meetings")) + '</h3><div class="in" id="mtcap"></div><div id="tb"></div></div>');
+    var root = $("#mtf");
+    var later = function () { var w = $('[data-f="when"]', root); return !!w && w.value === "later"; };
+    /* the date + time only for «في ميعاد محدد»; the warning line under them: passed / < 10 minutes (not reserved) / > 7 days */
+    var warn = function () {
+      var el = $("#mtw"), v = readForm(root, F), m = later() ? (cairoMs(v.date, v.time) - Date.now()) / 60000 : NaN;
+      if (!el) return;
+      var t = isNaN(m) ? "" : m < 1 ? L2(MT_ERR.in_past) : m > 7 * 1440 ? L2(MT_ERR.too_far) : m < 10 ? T("⚠ الميعاد بعد أقل من 10 دقايق: مكان باسم مش هيتحجز، ولو Anam مشغول ساعتها ممكن يرفض.", "⚠ Less than 10 minutes away: Bassem's place is not reserved, and Anam may refuse if it is busy then.") : "";
+      el.textContent = t; el.hidden = !t;
+    };
+    var whenUi = function () {
+      var on = later();
+      ["date", "time"].forEach(function (n) { var el = $('[data-f="' + n + '"]', root), lb = el && el.closest ? el.closest("label") : null; if (lb) lb.hidden = !on; });
+      warn();
+    };
+    ["when", "date", "time"].forEach(function (n) { var el = $('[data-f="' + n + '"]', root); if (el) { el.addEventListener("change", whenUi); el.addEventListener("input", warn); } });
+    whenUi();
+    var capH = function (j) {
+      var cp = (j && j.cap) || {}, used = j && j.used_today != null ? +j.used_today : 0, lim = cp.value != null ? +cp.value : null;
+      var t1 = lim == null ? "" : T("النهارده اتبعت " + nf(used) + " من " + nf(lim) + " دعوة", "Sent today: " + nf(used) + " of " + nf(lim) + " invites") + (cp.source === "default" ? T(" (الحد الافتراضي)", " (the default cap)") : "") + (lim === 0 ? T(" — الدعوات مقفولة", " — invites are off") : "");
+      if (!owner) return t1 ? '<p class="sm mut" style="margin:0">' + h(t1) + "</p>" : "";
+      return (t1 ? '<p class="sm" style="margin:0 0 8px">' + h(t1) + "</p>" : "") + '<label for="mt_cap" class="sm" style="margin:0 0 4px">' + h(T("الحد اليومي للدعوات (0 = مقفولة، لحد 50)", "Daily invite cap (0 = off, up to 50)")) + "</label>"
+        + '<div class="acts2 bm-cap"><input id="mt_cap" type="number" min="0" max="50" step="1" dir="ltr" value="' + h(cp.source === "panel" ? String(cp.value) : "") + '" placeholder="' + h(String(cp["default"] || 10)) + '">'
+        + btn("mtcap", h(T("💾 حفظ الحد", "💾 Save the cap")), "r s") + (cp.source === "panel" ? btn("mtcapdef", h(T("↺ الافتراضي", "↺ Default") + " (" + (cp["default"] || 10) + ")"), "l s") : "") + "</div>";
+    };
+    var load = function () {
+      var tb = $("#tb"); if (!tb) return;
+      tb.innerHTML = '<div style="padding:18px" role="status">' + h(T("جارٍ التحميل…", "Loading…")) + "</div>";
+      GET("/admin/cc/meetings").then(function (j) {
+        if (!alive(c)) return; c.st.j = j || {};
+        tb.innerHTML = mtListH((j && j.items) || []); $("#mtcap").innerHTML = capH(j);
+      }, function (e) {
+        if (!alive(c)) return;
+        $("#mtcap").innerHTML = "";
+        tb.innerHTML = '<div style="padding:12px">' + (e.code === "anam_key_missing" ? '<div class="note">' + h(mtErr(e)) + (can("keys.manage") ? ' <a href="#keys">' + h(T("🔑 افتح «مفاتيح الخدمات» ←", "🔑 Open «Service keys» →")) + "</a>" : "") + "</div>"
+          : '<div class="errc" role="alert">' + h(mtErr(e)) + errSmall(e) + '<div class="acts">' + btn("rf", "↻ " + h(T("حاول تاني", "Try again")), "l s") + "</div></div>") + "</div>";
+      });
+    };
+    var say = function (ok, html) { var el = $("#mtres"); if (el) el.innerHTML = '<div class="' + (ok ? "okc" : "alert") + '">' + html + "</div>"; };
+    c.on.rf = load;
+    c.on.mtsend = function (b) {
+      var v = readForm(root, F), lt = v.when === "later";
+      var errs = validate(F.filter(function (f) { return lt || (f.n !== "date" && f.n !== "time"); }), v);
+      if (!errs.meeting_url && !MT_LINK.test(v.meeting_url)) errs.meeting_url = L2(MT_ERR.bad_link);
+      if (lt) { if (!v.date) errs.date = T("مطلوب", "Required"); if (!v.time) errs.time = T("مطلوب", "Required"); }
+      var mins = lt ? (cairoMs(v.date, v.time) - Date.now()) / 60000 : 0;
+      if (lt && !isNaN(mins) && !errs.time && !errs.date) { if (mins < 1) errs.time = L2(MT_ERR.in_past); else if (mins > 7 * 1440) errs.date = L2(MT_ERR.too_far); }
+      if (showErrs(root, errs)) return;
+      var msg = (lt ? T("باسم هيدخل الاجتماع ده يوم " + v.date + " الساعة " + v.time + " (بتوقيت القاهرة)", "Bassem will join this meeting on " + v.date + " at " + v.time + " (Cairo time)") : T("باسم هيدخل الاجتماع ده دلوقتي", "Bassem will join this meeting now"))
+        + T("، وكل دقيقة جوّه الاجتماع بتتحسب من دقايق Anam.", ", and every minute in the meeting uses Anam minutes.")
+        + (lt && mins < 10 ? "\n\n" + T("⚠ الميعاد بعد أقل من 10 دقايق: مكانه مش هيتحجز، وAnam ممكن يرفض لو مشغول.", "⚠ Less than 10 minutes away: his place is not reserved, and Anam may refuse if it is busy.") : "") + "\n\n" + T("نبعته؟", "Send him?");
+      if (!sure(msg)) return;
+      var body = { meeting_url: v.meeting_url, title: v.title, type: v.type, lang: v.lang, when: lt ? "later" : "now", agenda: v.agenda || "" };
+      if (lt) { body.date = v.date; body.time = v.time; }
+      b.disabled = true; $("#mtres").innerHTML = '<p class="sm" role="status">' + h(T("جارٍ الإرسال لـ Anam…", "Sending to Anam…")) + "</p>";
+      POST("/admin/cc/meetings", body, { timeout: 45000 }).then(function (j) {
+        b.disabled = false; if (!alive(c)) return;
+        var it = (j && j.item) || {};
+        say(true, h(T("✓ باسم معزوم على الاجتماع", "✓ Bassem is invited to the meeting")) + (it.host ? ' (<span dir="ltr">' + h(it.host) + "</span>)" : "") + " — " + h(MT_ST[it.status] ? L2(MT_ST[it.status]) : it.status || "")
+          + "<br><small>" + h(j && j.reserved ? T("مكانه اتحجز في الميعاد.", "His place is reserved for that time.") : T("مكانه مش محجوز: لو Anam مشغول ممكن مايدخلش — تابع الحالة في القايمة تحت.", "His place is not reserved: if Anam is busy he may not join — follow the status in the list below.")) + " " + h(T("لو فيه غرفة انتظار، دخّله أول ما يطلب.", "If there is a waiting room, admit him when he asks.")) + "</small>");
+        ["meeting_url", "title", "agenda"].forEach(function (n) { var el = $('[data-f="' + n + '"]', root); if (el) el.value = ""; });
+        toast(T("اتبعت ✓", "Sent ✓")); load();
+      }, function (e) {
+        b.disabled = false; if (!alive(c)) return;
+        showErrs(root, serverErrs(e)); say(false, h(mtErr(e)) + errSmall(e));
+        if (e.code === "duplicate" || e.code === "daily_cap" || (e.j && e.j.unclear)) load();
+      });
+    };
+    c.on.mtcx = function (b) {
+      var id = b.getAttribute("data-id"), act = b.getAttribute("data-st") === "active";
+      if (!sure(act ? T("إخراج باسم من الاجتماع دلوقتي؟", "Remove Bassem from the meeting now?") : T("إلغاء دعوة باسم للاجتماع ده؟", "Cancel Bassem's invite to this meeting?"))) return;
+      b.disabled = true;
+      POST("/admin/cc/meetings/" + enc(id) + "/cancel", {}).then(function (j) {
+        toast(j && j.unchanged ? T("الدعوة كانت خلصت أو اتلغت قبل كده.", "The invite had already ended or been cancelled.") : act ? T("باسم خرج من الاجتماع ✓", "Bassem left the meeting ✓") : T("الدعوة اتلغت ✓", "The invite was cancelled ✓"));
+        if (alive(c)) load();
+      }, function (e) { b.disabled = false; toast(mtErr(e), 1); });
+    };
+    c.on.mtcap = function (b) {
+      var inp = $("#mt_cap"), v = inp ? trim(inp.value) : "";
+      if (!/^\d{1,2}$/.test(v) || +v > 50) { toast(T("الحد اليومي رقم من 0 لـ 50 (0 = الدعوات مقفولة).", "The daily cap is a number from 0 to 50 (0 = invites off)."), 1); return; }
+      b.disabled = true;
+      PUT("/admin/cc/meetings/cap", { value: +v }).then(function (r) { toast(r && r.unchanged ? T("مفيش تغيير.", "No change.") : T("اتحفظ ✓", "Saved ✓")); if (alive(c)) load(); }, function (e) { b.disabled = false; toast(mtErr(e), 1); });
+    };
+    c.on.mtcapdef = function (b) {
+      b.disabled = true;
+      PUT("/admin/cc/meetings/cap", { value: null }).then(function () { toast(T("رجع للحد الافتراضي ✓", "Back to the default cap ✓")); if (alive(c)) load(); }, function (e) { b.disabled = false; toast(mtErr(e), 1); });
+    };
+    load();
   };
 
   /* =====================================================================================================================
