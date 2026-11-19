@@ -1,0 +1,81 @@
+# The intelligence Worker migate-intel (worker-intel/: /intel/, /api/intel/*, its cron pipeline): tests must pass, then
+# wrangler deploy. All logic is in deploy/ci/ci-intel.sh (locally: DRY_RUN=1 bash deploy/ci/ci-intel.sh).
+# Its secrets (PLATFORM_KEY, TOOL_KEY) stay in Cloudflare; its D1 database migate-intel is never migrated here.
+name: deploy-intel
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker-intel/**"
+      - "!worker-intel/**.md"
+      - "deploy/ci/ci-intel.sh"
+      - "deploy/ci/ci-lib.sh"
+      - ".github/workflows/deploy-intel.yml"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: tests and bundle, but do not deploy"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# one deploy of the Worker at a time, a running one is never cancelled; dry runs queue separately
+concurrency:
+  group: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'deploy-worker-migate-intel-dry-run' || 'deploy-worker-migate-intel' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: test, deploy (Worker migate-intel)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Optional hardening (needs GitHub Pro / Team for a private repository): Settings → Environments → New environment
+    # «production», Deployment branches: main only; move the secret CLOUDFLARE_API_TOKEN into it (delete the repository secret),
+    # then uncomment the next line in all four workflows. A branch whose workflow file was edited then cannot read the token.
+    # environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: 88c77c2b7595dd0ce510270175f69143
+      DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
+      # work dir: $RUNNER_TEMP/migate-intel (the scripts' default; uploaded below)
+      WRANGLER_SEND_METRICS: "false"
+      # optional switch (Settings → Secrets and variables → Actions → Variables); empty = the script's default
+      CI_AUTO_ROLLBACK: ${{ vars.CI_AUTO_ROLLBACK }}          # 0 = no automatic rollback when /intel/ fails after a deploy
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      # wrangler 4.164.0 comes from worker/package-lock.json (worker-intel/ has no lockfile and no dependencies)
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Install → tests → bundle → deploy → health
+        env:
+          # only a run for main that is not a dry run gets the token: «Run workflow» can start any branch or tag (unreviewed
+          # code), and such a run is refused by the script anyway (deploy/ci/ci-lib.sh ci_ref_guard)
+          CLOUDFLARE_API_TOKEN: ${{ (github.ref == 'refs/heads/main' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run)) && secrets.CLOUDFLARE_API_TOKEN || '' }}
+        run: bash deploy/ci/ci-intel.sh
+
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: intel-reports
+          path: |
+            ${{ runner.temp }}/migate-intel/SUMMARY.md
+            ${{ runner.temp }}/migate-intel/logs/
+          retention-days: 14
+          if-no-files-found: warn

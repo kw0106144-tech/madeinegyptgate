@@ -1,6 +1,8 @@
 # build outputs and local state (never commit)
 build/
 site/
+# ...but not the test fixture of worker-intel (a saved copy of live pages its tests read)
+!/worker-intel/test/fixtures/site/
 node_modules/
 .wrangler/
 __pycache__/

@@ -1,0 +1,112 @@
+# The Pages site of madeinegyptgate.com: every push to main that changes the site is built, checked and deployed.
+# All logic is in deploy/ci/ci-site.sh (the same script runs locally: DRY_RUN=1 bash deploy/ci/ci-site.sh).
+# Needs the repository secret CLOUDFLARE_API_TOKEN (Settings → Secrets and variables → Actions). Without it the run
+# builds and checks everything, then fails with an explanation instead of deploying.
+name: deploy-site
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "worker/**"
+      - "worker-intel/**"
+      - "docs/**"
+      - "**.md"
+      # the other pipelines' own files
+      - ".github/workflows/deploy-worker.yml"
+      - ".github/workflows/deploy-intel.yml"
+      - ".github/workflows/d1-migrate.yml"
+      - "deploy/ci/ci-worker.sh"
+      - "deploy/ci/ci-intel.sh"
+      - "deploy/ci/ci-d1-migrate.sh"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: build, stage, patch and check everything, but do not deploy"
+        type: boolean
+        default: false
+  # The runbook (deploy/README-DEPLOY.md section 7) wants a daily rebuild: tender / offer statuses and dates are computed
+  # on the build day. To turn it on, uncomment (02:37 UTC):
+  # schedule:
+  #   - cron: "37 2 * * *"
+
+permissions:
+  contents: read
+
+# one site deploy at a time; a running deploy is never cancelled (a newer push waits, the newest waiting one wins).
+# Dry runs queue in their own group, so they can never replace a waiting real deploy.
+concurrency:
+  group: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'deploy-site-dry-run' || 'deploy-site-production' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: build, check, deploy (Pages madeinegyptgate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Optional hardening (needs GitHub Pro / Team for a private repository): Settings → Environments → New environment
+    # «production», Deployment branches: main only; move the secret CLOUDFLARE_API_TOKEN into it (delete the repository secret),
+    # then uncomment the next line in all four workflows. A branch whose workflow file was edited then cannot read the token.
+    # environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: 88c77c2b7595dd0ce510270175f69143
+      DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
+      # work dir: $RUNNER_TEMP/migate-site (the scripts' default; uploaded below)
+      WRANGLER_SEND_METRICS: "false"
+      # optional switches (Settings → Secrets and variables → Actions → Variables); empty = the script's default
+      CI_AUTO_ROLLBACK: ${{ vars.CI_AUTO_ROLLBACK }}          # 0 = no automatic rollback when key pages fail after a deploy
+      CI_FULL_SMOKE: ${{ vars.CI_FULL_SMOKE }}                # 0 = skip deploy/smoke-test.sh after the deploy
+      CI_ALLOW_NO_OVERLAY: ${{ vars.CI_ALLOW_NO_OVERLAY }}    # 1 = deploy even if the published overlay could not be pulled
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Python dependencies (deploy/ci/requirements.txt, pinned)
+        run: python -m pip install --disable-pip-version-check --no-cache-dir -r deploy/ci/requirements.txt
+
+      - name: Build → stage → CI patches → checks → deploy → smoke test
+        id: site
+        env:
+          # only a run for main that is not a dry run gets the token: «Run workflow» can start any branch or tag (unreviewed
+          # code), and such a run is refused by the script anyway (deploy/ci/ci-lib.sh ci_ref_guard)
+          CLOUDFLARE_API_TOKEN: ${{ (github.ref == 'refs/heads/main' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run)) && secrets.CLOUDFLARE_API_TOKEN || '' }}
+        run: bash deploy/ci/ci-site.sh
+
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-reports
+          path: |
+            ${{ runner.temp }}/migate-site/SUMMARY.md
+            ${{ runner.temp }}/migate-site/logs/
+            ${{ runner.temp }}/migate-site/stage/STAGE-REPORT.json
+            ${{ runner.temp }}/migate-site/stage/CI-POST-STAGE.json
+            build/seo-stats.json
+          retention-days: 14
+          if-no-files-found: warn
+
+      # seo/lastmod.json is rewritten by every build (sitemap <lastmod> history and the memory of published /en/ pages).
+      # CI cannot commit (contents: read): this keeps the updated copy so it can be committed when pages appear or vanish.
+      - name: Keep this build's seo/lastmod.json
+        if: always() && steps.site.outputs.deployment_url != '' && steps.site.outputs.rolled_back != '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: seo-lastmod
+          path: ${{ runner.temp }}/migate-site/lastmod.json
+          retention-days: 90
+          if-no-files-found: warn

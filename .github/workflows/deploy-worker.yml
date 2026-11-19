@@ -1,0 +1,99 @@
+# The API Worker janna-lookup (/api/* of madeinegyptgate.com): tests must pass, Janna's index is rebuilt from data/*.js,
+# then wrangler deploy. All logic is in deploy/ci/ci-worker.sh (locally: DRY_RUN=1 bash deploy/ci/ci-worker.sh).
+# The Worker's secrets already live in Cloudflare and are never touched. D1 migrations never run here: d1-migrate.yml.
+name: deploy-worker
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker/**"
+      - "!worker/**.md"
+      # the data files worker/build-index.js and worker/build-items.js read (Janna's index)
+      - "data/mig-overlay.js"
+      - "data/regions.js"
+      - "data/factories.js"
+      - "data/facx.js"
+      - "data/oldfac.js"
+      - "data/oldfacd.js"
+      - "data/oldprod.js"
+      - "data/oldtend.js"
+      - "data/oldrfq.js"
+      - "data/offers.js"
+      - "data/zones.js"
+      - "data/real.js"
+      - "data/videos.js"
+      - "data/projects.js"
+      # this pipeline
+      - "deploy/ci/ci-worker.sh"
+      - "deploy/ci/ci-lib.sh"
+      - "deploy/ci/ci-overlay.py"
+      - ".github/workflows/deploy-worker.yml"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: config check, tests, index and bundle, but do not deploy"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# one deploy of the Worker at a time, a running one is never cancelled; dry runs queue separately
+concurrency:
+  group: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'deploy-worker-janna-lookup-dry-run' || 'deploy-worker-janna-lookup' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: test, index, deploy (Worker janna-lookup)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Optional hardening (needs GitHub Pro / Team for a private repository): Settings → Environments → New environment
+    # «production», Deployment branches: main only; move the secret CLOUDFLARE_API_TOKEN into it (delete the repository secret),
+    # then uncomment the next line in all four workflows. A branch whose workflow file was edited then cannot read the token.
+    # environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: 88c77c2b7595dd0ce510270175f69143
+      DRY_RUN: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '1' || '0' }}
+      # work dir: $RUNNER_TEMP/migate-worker (the scripts' default; uploaded below)
+      WRANGLER_SEND_METRICS: "false"
+      # optional switches (Settings → Secrets and variables → Actions → Variables); empty = the script's default
+      CI_AUTO_ROLLBACK: ${{ vars.CI_AUTO_ROLLBACK }}          # 0 = no automatic rollback when the API fails after a deploy
+      CI_ALLOW_NO_OVERLAY: ${{ vars.CI_ALLOW_NO_OVERLAY }}    # 1 = build Janna's index even without the published overlay
+      CI_ALLOW_INDEX_DROP: ${{ vars.CI_ALLOW_INDEX_DROP }}    # 1 = accept an index list that shrank by more than half
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Config check → npm ci → tests → index → bundle → deploy → health
+        env:
+          # only a run for main that is not a dry run gets the token: «Run workflow» can start any branch or tag (unreviewed
+          # code), and such a run is refused by the script anyway (deploy/ci/ci-lib.sh ci_ref_guard)
+          CLOUDFLARE_API_TOKEN: ${{ (github.ref == 'refs/heads/main' && !(github.event_name == 'workflow_dispatch' && inputs.dry_run)) && secrets.CLOUDFLARE_API_TOKEN || '' }}
+        run: bash deploy/ci/ci-worker.sh
+
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worker-reports
+          path: |
+            ${{ runner.temp }}/migate-worker/SUMMARY.md
+            ${{ runner.temp }}/migate-worker/logs/
+          retention-days: 14
+          if-no-files-found: warn

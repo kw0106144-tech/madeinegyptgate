@@ -529,7 +529,13 @@ fit();W.addEventListener("resize",function(){hdr();fit();last=-1;spy();clr();});
             from PIL import Image
             st = os.stat(fp)
             th = max(1, int(round(im['h'] * tw / float(im['w']))))
-            name = 'fp-%s.jpg' % sha('%s|%d|%d|%d' % (rel, st.st_size, int(st.st_mtime), tw), 14)
+            # named by the source's CONTENT, never its mtime: a git checkout (CI) gives every file a new mtime, which renamed these
+            # copies on every deploy and broke the image URLs of pages already open or cached
+            dig = S.setdefault('fp_srcsha', {})
+            if fp not in dig:
+                with open(fp, 'rb') as fh:
+                    dig[fp] = sha(fh.read(), 40)
+            name = 'fp-%s.jpg' % sha('%s|%d|%s|%d' % (rel, st.st_size, dig[fp], tw), 14)
             out = S['OUT'] + 'assets/img/' + name
             if not os.path.exists(out):
                 pic = Image.open(fp)

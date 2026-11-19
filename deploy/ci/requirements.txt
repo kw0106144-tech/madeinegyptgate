@@ -1,0 +1,3 @@
+# Python packages of the site build (deploy/deploy.sh build → site.py + seo_build.part.py), pinned. Standard library otherwise.
+# CI: .github/workflows/deploy-site.yml installs exactly this; locally: python3 -m pip install -r deploy/ci/requirements.txt
+pillow==12.3.0

@@ -1,0 +1,103 @@
+# ONE D1 migration on the Worker database migate-db — manual only (Actions → d1-migrate → Run workflow), never on push.
+# Order: check the request → export a full backup (wrangler d1 export) → keep it as an artifact → run the one chosen file.
+# Logic: deploy/ci/ci-d1-migrate.sh. Run migrations in number order, one at a time, after the Worker code that tolerates
+# them is live. The backup holds member data: 7-day artifact, never commit it or attach it anywhere.
+name: d1-migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration:
+        description: "File in worker/migrations/ (e.g. 0009_memory_upgrades.sql)"
+        required: true
+        type: string
+      confirm:
+        description: "Type the database name migate-db to run it"
+        required: true
+        type: string
+      backup_only:
+        description: "Only export the backup, do not run the migration"
+        type: boolean
+        default: false
+      allow_destructive:
+        description: "Also run a file with DROP / DELETE / UPDATE / INSERT OR REPLACE statements"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# one D1 job at a time (backup-only runs too: an export must not overlap a migration); never cancelled
+concurrency:
+  group: d1-migate-db
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: backup, then ${{ inputs.migration }} (D1 migate-db)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Optional hardening (needs GitHub Pro / Team for a private repository): Settings → Environments → New environment
+    # «production», Deployment branches: main only; move the secret CLOUDFLARE_API_TOKEN into it (delete the repository secret),
+    # then uncomment the next line in all four workflows. A branch whose workflow file was edited then cannot read the token.
+    # environment: production
+    env:
+      CLOUDFLARE_ACCOUNT_ID: 88c77c2b7595dd0ce510270175f69143
+      # work dir: $RUNNER_TEMP/migate-d1 (the scripts' default; uploaded below)
+      WRANGLER_SEND_METRICS: "false"
+      # inputs reach the script only as environment variables (never pasted into a shell line); it validates them
+      MIGRATION: ${{ inputs.migration }}
+      CONFIRM: ${{ inputs.confirm }}
+      DRY_RUN: ${{ inputs.backup_only && '1' || '0' }}
+      ALLOW_DESTRUCTIVE: ${{ inputs.allow_destructive && '1' || '0' }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: 1 · check the request (file name, database, statements)
+        run: bash deploy/ci/ci-d1-migrate.sh check
+
+      - name: 2 · backup (wrangler d1 export migate-db --remote)
+        env:
+          # only main gets the token: a branch's migration file and checks are unreviewed (the script refuses it too)
+          CLOUDFLARE_API_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.CLOUDFLARE_API_TOKEN || '' }}
+        run: bash deploy/ci/ci-d1-migrate.sh backup
+
+      - name: 3 · keep the backup (artifact, 7 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-backup-migate-db-${{ github.run_id }}
+          path: ${{ runner.temp }}/migate-d1/backup/
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: 4 · run worker/migrations/${{ inputs.migration }}
+        if: ${{ !inputs.backup_only }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.CLOUDFLARE_API_TOKEN || '' }}
+        run: bash deploy/ci/ci-d1-migrate.sh apply
+
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-migrate-logs
+          path: |
+            ${{ runner.temp }}/migate-d1/SUMMARY.md
+            ${{ runner.temp }}/migate-d1/logs/
+          retention-days: 14
+          if-no-files-found: warn

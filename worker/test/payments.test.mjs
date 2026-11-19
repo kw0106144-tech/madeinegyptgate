@@ -130,7 +130,11 @@ test("crypto: seal/unseal round trip, AAD binds the slot, tampering and another 
   assert.match(s, /^v1\.[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]+$/);
   assert.equal(await CRYPTO.unseal(env, "pay.paymob.secret_key", s), PM.secret);
   assert.equal(await CRYPTO.unseal(env, "pay.paymob.hmac_secret", s), null, "AAD = slot name");
-  const p = s.split("."), flip = p[2].slice(0, -2) + (p[2].slice(-2) === "AA" ? "AB" : "AA");
+  // tamper with a real byte (the middle one): swapping the last base64 characters can change only padding bits that atob()
+  // drops, so AES-GCM would (rightly) accept the value in ~0.5 % of runs and the test would fail at random
+  const p = s.split("."), ctb = Buffer.from(p[2], "base64url"); ctb[ctb.length >> 1] ^= 0x01;
+  const flip = ctb.toString("base64url");
+  assert.notEqual(flip, p[2]);
   assert.equal(await CRYPTO.unseal(env, "pay.paymob.secret_key", [p[0], p[1], flip].join(".")), null, "tampered");
   assert.equal(await CRYPTO.unseal({ ...env, CONFIG_SECRET: "d".repeat(40) }, "pay.paymob.secret_key", s), null, "other CONFIG_SECRET");
   assert.equal(await CRYPTO.unseal(env, "x", "garbage"), null);
