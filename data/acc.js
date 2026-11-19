@@ -1775,6 +1775,7 @@
       if (st >= 200 && st < 300) return T("Anam رجّع رد مش مفهوم — شوف القايمة تحت قبل ما تبعت تاني.", "Anam returned an unexpected answer — check the list below before sending again.");
       return T("Anam رفض الطلب (" + (st || "—") + ").", "Anam refused the request (" + (st || "—") + ").");
     }
+    if (c === "anam_unreachable" && j.unclear) return T("Anam ماردّش على طلب الدعوة في الوقت — ممكن تكون اتعملت: شوف القايمة تحت قبل ما تبعت تاني.", "Anam did not answer the invite request in time — it may have been made: check the list below before sending again.");
     if (c === "no_capacity") return L2(MT_ERR.no_capacity) + wait;
     if (c === "daily_cap") return L2(MT_ERR.daily_cap) + (j.cap != null ? " (" + nf(j.cap) + ")" : "");
     if (MT_ERR[c]) return L2(MT_ERR[c]);
@@ -1907,7 +1908,7 @@
       }, function (e) {
         b.disabled = false; if (!alive(c)) return;
         showErrs(root, serverErrs(e)); say(false, h(mtErr(e)) + errSmall(e));
-        if (e.code === "duplicate" || e.code === "daily_cap") load();
+        if (e.code === "duplicate" || e.code === "daily_cap" || (e.j && e.j.unclear)) load();
       });
     };
     c.on.mtcx = function (b) {

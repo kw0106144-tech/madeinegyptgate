@@ -31,7 +31,9 @@
    compared by the meeting's code, not its spelling) → 409 duplicate · the persona read / copy → 502 persona_unavailable · 409 persona_copy.
    Anam refusals (logs carry the status only — never the key, the link, the title or the prompt): 422 → bad_link, 400 about joinAt →
    in_past / too_far, 503 → no_capacity (retry_s) unless meetings are not enabled on the account, anything else → 502 anam_refused
-   {upstream_status, retry_s?}, no answer → 502 anam_unreachable.
+   {upstream_status, retry_s?}, no answer → 502 anam_unreachable. A create that TIMED OUT after it was sent (like a 2xx without an
+   invite id) may have made the invite: it keeps the day's count, the audit says "unclear" (never "refused") and the answer carries
+   unclear: true (the panel says to check the list before sending again).
    Storage: NO D1 table. Anam keeps the invite; the panel keeps only {t: title, ty: type, l: lang, h: host, by, at} per invite in KV SEO_KV
    "acc:bmeet:<invite id>" (the Worker's own prefix) for 8 days — never the meeting link (a Zoom / Teams link carries its passcode) and never
    the agenda (it reaches Anam inside the persona config only). Audit: meetings.create (audit-first: "sending" → the invite id and status,
@@ -214,7 +216,7 @@ async function anam(key, method, url, body, ms = ANAM_TIMEOUT_MS) {
     const r = await fetch(url, { method, signal: ctl.signal, headers: { Authorization: "Bearer " + key, Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
     let j = null; if (r.status !== 204) { try { j = await r.json(); } catch (e) { j = null; } }
     return { ok: r.ok, status: r.status, j, retry: retryOf(r) };
-  } catch (e) { return { ok: false, status: 0, j: null, net: true }; }
+  } catch (e) { return { ok: false, status: 0, j: null, net: true, timeout: ctl.signal.aborted || !!(e && e.name === "AbortError") }; } // timeout: the request went out, the answer did not come
   finally { clearTimeout(tm); }
 }
 const REFUSED = {
@@ -224,7 +226,11 @@ const REFUSED = {
 };
 /* an Anam answer that is not a success → the panel's error (thrown). op: create | list | get | cancel | persona */
 export function anamFail(r, op) {
-  if (r.net) { console.error("bassem meetings: anam unreachable", op); fail(502, "anam_unreachable", "Anam مش بيرد دلوقتي — جرّب تاني بعد شوية / Anam is not answering right now — try again shortly"); }
+  if (r.net) {
+    console.error("bassem meetings: anam unreachable", op, r.timeout ? "timeout" : "network");
+    if (op === "create" && r.timeout) fail(502, "anam_unreachable", "Anam ماردّش على طلب الدعوة في الوقت — ممكن تكون اتعملت: شوف القايمة قبل ما تبعت تاني / Anam did not answer the invite request in time — it may have been made: check the list before sending again", { unclear: true });
+    fail(502, "anam_unreachable", "Anam مش بيرد دلوقتي — جرّب تاني بعد شوية / Anam is not answering right now — try again shortly");
+  }
   const st = r.status, j = isObj(r.j) ? r.j : {}, msg = line([j.error, j.summary, j.message].filter(x => typeof x === "string" && x).join(" — "), 200);
   const extra = { upstream_status: st, ...(r.retry ? { retry_s: r.retry } : {}), ...(msg ? { detail: msg.replace(/https?:\/\/\S+/gi, "[link]") } : {}) };
   console.error("bassem meetings: anam refused", op, st);
@@ -334,8 +340,11 @@ export async function createMeeting(req, env, ctx, adm) {
     const r = await anam(key, "POST", ANAM_INVITES_URL, { meetingUrl: f.link.url, displayName: DISPLAY_NAME, aiDisclosure: true, personaConfig: pc, groupCall: f.group, region: REGION, clientLabel: CLIENT_LABEL, ...(f.joinIso ? { joinAt: f.joinIso } : {}) });
     const inv = r.ok && isObj(r.j) && UUID.test(String(r.j.id || "")) ? r.j : null;
     if (!inv) {
-      await adm.auditDone(aid, { after: { ...facts, status: r.ok ? "unclear" : "refused", upstream_status: r.status || 0 }, summary: `Bassem → ${f.link.host} (${f.type}, ${when}) — ${r.ok ? "unclear answer from" : "refused by"} Anam (${r.status || "no answer"})` });
-      if (r.ok) created = true; // a 2xx without an invite id: Anam may have made it, so the day keeps counting it (the list shows it by its name)
+      // a 2xx without an invite id, or a timeout after the request went out: Anam may have made it, so the day keeps counting it and the
+      // audit says "unclear", never "refused" (the list shows it by its name); a connection that failed outright made nothing
+      const unclear = r.ok || !!r.timeout, st = unclear ? "unclear" : r.net ? "unreachable" : "refused";
+      await adm.auditDone(aid, { after: { ...facts, status: st, upstream_status: r.status || 0 }, summary: `Bassem → ${f.link.host} (${f.type}, ${when}) — ${r.ok ? "unclear answer from Anam" : r.timeout ? "no answer from Anam in time (it may have made the invite)" : r.net ? "Anam not reachable" : "refused by Anam"} (${r.status || "no answer"})` });
+      if (unclear) created = true;
       anamFail(r, "create");
     }
     created = true;

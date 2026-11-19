@@ -326,6 +326,7 @@ describe("bassem meetings: Anam refusals → clear errors (status only), nothing
       [() => okJson({ error: "joinAt must be in the future" }, 400), 422, "in_past", 400],
       [() => okJson({ ok: true }, 201), 502, "anam_refused", 201],
       [() => { throw new TypeError("fetch failed"); }, 502, "anam_unreachable", undefined],
+      [() => { throw new DOMException("The operation was aborted", "AbortError"); }, 502, "anam_unreachable", undefined], // our timeout: sent, no answer
     ];
     let n = 0;
     for (const [fn, status, code, up, retry] of cases) {
@@ -336,11 +337,14 @@ describe("bassem meetings: Anam refusals → clear errors (status only), nothing
       if (retry) assert.equal(r.data.retry_s, retry);
       assert.match(r.data.error, / \/ /, "a bilingual message");
       if (code === "bad_link") assert.equal(r.data.field, "meeting_url");
+      assert.equal(r.data.unclear, n === cases.length ? true : undefined, "only a create that timed out after it was sent is unclear");
     }
-    assert.equal(await used(env), 1, "only the 2xx without an invite id keeps its count (Anam may have made it)");
+    assert.equal(await used(env), 2, "the 2xx without an invite id and the timed-out create keep their count (Anam may have made them)");
     const a = await audits(env, "meetings.create");
     assert.equal(a.length, cases.length, "every attempt that reached Anam is audited");
-    assert.ok(a.every(x => ["refused", "unclear"].includes(JSON.parse(x.after_json).status)));
+    assert.deepEqual(a.map(x => JSON.parse(x.after_json).status), [...Array(cases.length - 3).fill("refused"), "unclear", "unreachable", "unclear"],
+      "a refusal is «refused», no connection «unreachable», an unknown outcome «unclear» — never «refused»");
+    assert.match(a[a.length - 1].summary, /may have made the invite/);
     assert.ok(logs.every(l => !l.includes(KEY)), "the key is never logged");
   });
 });

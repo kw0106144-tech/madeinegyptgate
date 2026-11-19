@@ -675,7 +675,9 @@ lang `en` → `languageCode: "en"` + an English first sentence. `reserved` = ≥
 `bmeetday|<Cairo day>`, counted before the call and given back when Anam makes nothing) · an open (pending / active) invite to the same meeting
 (Anam's lists, compared by the meeting's code) → 409 `duplicate` · the persona read → 502 `persona_unavailable`.
 **Anam's answers**: 422 → `bad_link`; 400 about joinAt → `in_past` / `too_far`; 503 → `no_capacity` (+ `retry_s` from Retry-After) unless meetings
-are not enabled; 401 / 403 / 429 / 5xx → 502 `anam_refused` `{upstream_status, retry_s?}`; no answer → 502 `anam_unreachable`. Logs carry the status
+are not enabled; 401 / 403 / 429 / 5xx → 502 `anam_refused` `{upstream_status, retry_s?}`; no answer → 502 `anam_unreachable` (a create that
+timed out after it was sent, like a 2xx without an invite id, may have made the invite: `unclear: true`, the day keeps counting it, the audit
+says `unclear`, and the panel reloads the list and asks to check it before sending again). Logs carry the status
 only (never the key, the link, the title or the prompt).
 **Storage**: no D1 table. Anam keeps the invite; the panel keeps `{t: title, ty: type, l: lang, h: host, by, at}` per invite in KV `SEO_KV`
 `acc:bmeet:<invite id>` (TTL 8 days) — never the link (a Zoom / Teams link carries the passcode), never the agenda. The cap: `cc_settings`
