@@ -86,6 +86,7 @@ responses).
 | `tools/` | `dump-data.mjs` (data files → `build/data.json` for the generator), `i18n_subset.py` (per-page English parts), `company_media.py` + `test_company_media.py`, `partner_logos.py`, `app_icons.py` (the app icons from the logo, 1.11). The `gen_*.py`, `rebrand_*.py`, `make_handoff.py`, `import_registry.py`, `rename_persona.py` scripts are one-off history with hard-coded scratch paths: do not run them |
 | `docs/janna/` | Specs and contracts (section 8); `kb/` + `kb-upload/` = Janna's Anam knowledge-base files; `reports/` = past work reports |
 | `anam/` | Prepared Anam persona and tool changes (not applied) |
+| `app/` | The native iOS + Android apps (Capacitor 8): they show the live site (`server.url`), so site changes need no app update. Not part of the site build; `app/README.md` |
 | `.github/workflows/` | CI (section 4) |
 
 ### 1.3 The site build
@@ -305,7 +306,7 @@ conversational UI (Janna, Bassem, dashboards, the Control Center) is Egyptian Ar
 ### 2.3 Secrets
 
 - Values live only in Cloudflare (Worker and Pages secrets: `wrangler secret put` / the dashboard, done by the owner), in the
-  Control Center key store (encrypted with `CONFIG_SECRET`), and in GitHub Actions secrets (`CLOUDFLARE_API_TOKEN` only). CI never
+  Control Center key store (encrypted with `CONFIG_SECRET`), and in GitHub Actions secrets (`CLOUDFLARE_API_TOKEN`; the app workflows also read the store signing secrets of `app/README.md`). CI never
   sets or changes a Worker or Pages secret; they persist across deploys.
 - Names you will meet (values never): Worker `ADVISOR_SECRET`, `AUTH_SECRET`, `PLATFORM_KEY`, `MEETINGS_SECRET`, `RESEND_API_KEY`,
   `ANAM_API_KEY`, `CONFIG_SECRET`, `RESPONDIO_TOKEN`, `WA_WEBHOOK_SECRET`, `TURNSTILE_SECRET`, `TOOL_SECRET`, `WEBSEARCH_KEY`,
@@ -541,7 +542,11 @@ block of `deploy-site.yml` (02:37 UTC) is commented out, although `deploy/README
 statuses and the tenders-hub date are computed on the build day). Until the owner turns it on, a site build happens only on a push
 or a manual «Run workflow».
 
-Common to all: the repository secret `CLOUDFLARE_API_TOKEN` (never printed; without a working token a run does every check and then
+Two more workflows only build the native apps (`app/`) and deploy nothing: `app-android.yml` and `app-ios.yml` (push to `main`
+touching `app/**`, or «Run workflow»; no Cloudflare token, only the store signing secrets of `app/README.md`; a newer push cancels
+the running build). `deploy-site` ignores `app/**` and their files.
+
+Common to the four workflows of the table: the repository secret `CLOUDFLARE_API_TOKEN` (never printed; without a working token a run does every check and then
 fails or exits 3 = "checked, NOT deployed"). Only a run for `refs/heads/main` that is not a dry run gets it (the workflows' `env`
 condition), and the scripts refuse any other non-dry run at once (`ci_ref_guard` in `ci-lib.sh`): «Run workflow» on a branch can only
 check it. `ci-lib.sh` takes the token out of the environment as soon as it is sourced, so the build, the tests, npm and node never

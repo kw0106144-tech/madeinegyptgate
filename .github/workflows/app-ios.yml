@@ -1,0 +1,190 @@
+# The iOS app (app/, Capacitor with Swift Package Manager): a push to main that changes app/** builds it for the simulator, which
+# proves it compiles (no Apple account needed). When the Apple secrets are set it also archives a signed App Store build, exports
+# the IPA and uploads it to TestFlight (App Store Connect). Nothing reaches the site, no Cloudflare token (CLAUDE.md section 4).
+# Secrets (Settings → Secrets and variables → Actions) — app/README.md "iOS signing":
+#   signing (all four): APPLE_TEAM_ID, APPLE_DIST_CERT_P12_BASE64, APPLE_DIST_CERT_PASSWORD, APPLE_PROVISIONING_PROFILE_BASE64
+#   TestFlight upload (all three, on top): APPSTORE_API_KEY_ID, APPSTORE_API_ISSUER_ID, APPSTORE_API_KEY_P8 (the .p8 file's text)
+name: app-ios
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - ".github/workflows/app-ios.yml"
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: "Upload the signed build to TestFlight (needs the signing and App Store Connect secrets)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: build the iOS app
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      HAS_SIGNING: ${{ secrets.APPLE_TEAM_ID != '' && secrets.APPLE_DIST_CERT_P12_BASE64 != '' && secrets.APPLE_DIST_CERT_PASSWORD != '' && secrets.APPLE_PROVISIONING_PROFILE_BASE64 != '' }}
+      HAS_ASC: ${{ secrets.APPSTORE_API_KEY_ID != '' && secrets.APPSTORE_API_ISSUER_ID != '' && secrets.APPSTORE_API_KEY_P8 != '' }}
+      WANT_UPLOAD: ${{ github.event_name != 'workflow_dispatch' || inputs.upload }}
+      BUILD_NUMBER: ${{ github.run_number }}
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Xcode (the newest one on the runner; Capacitor 8 is tested with Xcode 26)
+        run: |
+          x=$(ls -d /Applications/Xcode_*.app 2>/dev/null | grep -E 'Xcode_[0-9]+(\.[0-9]+)*\.app$' | sort -V | tail -1)
+          [ -n "$x" ] || x=/Applications/Xcode.app
+          sudo xcode-select -s "$x/Contents/Developer"
+          xcodebuild -version
+          major=$(xcodebuild -version | awk '/^Xcode/ {split($2, v, "."); print v[1]}')
+          if [ "$major" -lt 16 ]; then echo "::error::Xcode $major is too old for Capacitor 8 (16 or newer)"; exit 1; fi
+
+      - name: Install the app's packages (npm ci)
+        run: npm ci --no-audit --no-fund
+
+      - name: Check the app folder (config, offline page ES5, store texts, iOS project)
+        run: |
+          npm i --prefix "$RUNNER_TEMP/es5" acorn@8.14.0 --no-audit --no-fund --silent
+          ACORN_DIR="$RUNNER_TEMP/es5" npm run check
+
+      - name: Copy the web files and plugins into the iOS project (npx cap sync ios)
+        run: npx cap sync ios
+
+      - name: Version
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "MIG_VERSION_NAME=$v" >> "$GITHUB_ENV"
+          echo "version $v ($BUILD_NUMBER)"
+
+      - name: Simulator build (proves the app compiles; no signing)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dd-sim" -quiet CODE_SIGNING_ALLOWED=NO \
+            MARKETING_VERSION="$MIG_VERSION_NAME" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" build
+          echo "SIM_OK=1" >> "$GITHUB_ENV"
+
+      - name: Signing keychain and provisioning profile
+        if: env.HAS_SIGNING == 'true'
+        env:
+          APPLE_DIST_CERT_P12_BASE64: ${{ secrets.APPLE_DIST_CERT_P12_BASE64 }}
+          APPLE_DIST_CERT_PASSWORD: ${{ secrets.APPLE_DIST_CERT_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          kc="$RUNNER_TEMP/app-signing.keychain-db"; kp=$(openssl rand -hex 16)
+          security create-keychain -p "$kp" "$kc"
+          security set-keychain-settings -lut 21600 "$kc"
+          security unlock-keychain -p "$kp" "$kc"
+          printf '%s' "$APPLE_DIST_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          security import "$RUNNER_TEMP/dist.p12" -P "$APPLE_DIST_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$kc"
+          rm -f "$RUNNER_TEMP/dist.p12"
+          security set-key-partition-list -S apple-tool:,apple: -k "$kp" "$kc" > /dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          prof="$RUNNER_TEMP/app.mobileprovision"
+          printf '%s' "$APPLE_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$prof"
+          security cms -D -i "$prof" > "$RUNNER_TEMP/profile.plist"
+          uuid=$(plutil -extract UUID raw "$RUNNER_TEMP/profile.plist")
+          pname=$(plutil -extract Name raw "$RUNNER_TEMP/profile.plist")
+          for d in "$HOME/Library/MobileDevice/Provisioning Profiles" "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
+            mkdir -p "$d"; cp "$prof" "$d/$uuid.mobileprovision"
+          done
+          echo "KEYCHAIN=$kc" >> "$GITHUB_ENV"
+          echo "PROFILE_NAME=$pname" >> "$GITHUB_ENV"
+          echo "profile «$pname» installed"
+
+      - name: Archive and export the IPA (App Store distribution)
+        if: env.HAS_SIGNING == 'true'
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          python3 tools/ios_project.py --ci-sign "$APPLE_TEAM_ID" "$PROFILE_NAME"
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/dd-release" -quiet \
+            MARKETING_VERSION="$MIG_VERSION_NAME" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" archive
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>export</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>signingCertificate</key><string>Apple Distribution</string>
+            <key>provisioningProfiles</key><dict><key>com.madeinegyptgate.app</key><string>$PROFILE_NAME</string></dict>
+            <key>uploadSymbols</key><true/>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/ipa"
+          ipa=$(ls "$RUNNER_TEMP"/ipa/*.ipa | head -1)
+          mv "$ipa" "$RUNNER_TEMP/ipa/madeinegyptgate-$MIG_VERSION_NAME-$BUILD_NUMBER.ipa"
+          echo "IPA=$RUNNER_TEMP/ipa/madeinegyptgate-$MIG_VERSION_NAME-$BUILD_NUMBER.ipa" >> "$GITHUB_ENV"
+
+      - name: Upload to TestFlight
+        if: env.HAS_SIGNING == 'true' && env.HAS_ASC == 'true' && env.WANT_UPLOAD == 'true'
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+        run: |
+          d="$HOME/.appstoreconnect/private_keys"; mkdir -p "$d"
+          printf '%s\n' "$APPSTORE_API_KEY_P8" > "$d/AuthKey_$APPSTORE_API_KEY_ID.p8"
+          xcrun altool --upload-app --type ios --file "$IPA" --apiKey "$APPSTORE_API_KEY_ID" --apiIssuer "$APPSTORE_API_ISSUER_ID"
+          rm -f "$d/AuthKey_$APPSTORE_API_KEY_ID.p8"
+          echo "UPLOADED=1" >> "$GITHUB_ENV"
+
+      - name: Keep the IPA
+        if: env.IPA != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: ${{ env.IPA }}
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Clean up the keychain and the profile
+        if: always()
+        run: |
+          [ -n "$KEYCHAIN" ] && security delete-keychain "$KEYCHAIN" || true
+          rm -f "$HOME"/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision "$HOME"/Library/Developer/Xcode/UserData/Provisioning\ Profiles/*.mobileprovision "$RUNNER_TEMP"/app.mobileprovision || true
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## iOS app $MIG_VERSION_NAME (build $BUILD_NUMBER)"
+            echo
+            echo "- Xcode: $(xcodebuild -version | head -1)"
+            echo "- Simulator build: $([ "$SIM_OK" = "1" ] && echo "✅ compiles" || echo "❌ failed, see the log")"
+            if [ "$HAS_SIGNING" = "true" ]; then
+              echo "- Signed App Store build: $([ -n "$IPA" ] && echo "✅ $(basename "$IPA") (artifact ios-ipa)" || echo "❌ failed, see the log")"
+            else
+              echo "- Signed App Store build: skipped, the Apple signing secrets are not all set (app/README.md \"iOS signing\")"
+            fi
+            if [ "$UPLOADED" = "1" ]; then echo "- TestFlight: ✅ uploaded (App Store Connect → TestFlight, processing takes a few minutes)"
+            elif [ "$HAS_SIGNING" = "true" ] && [ "$HAS_ASC" != "true" ]; then echo "- TestFlight: skipped, the App Store Connect API key secrets are not set"
+            else echo "- TestFlight: not uploaded"; fi
+          } >> "$GITHUB_STEP_SUMMARY"

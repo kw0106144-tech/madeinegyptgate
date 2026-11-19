@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- English: every language except Arabic (Arabic: values-ar/strings.xml). The app's own native texts only; the site translates itself. -->
+<resources>
+    <string name="app_name">Made in Egypt Gate</string>
+    <string name="title_activity_main">Made in Egypt Gate</string>
+    <string name="package_name" translatable="false">com.madeinegyptgate.app</string>
+    <string name="custom_url_scheme" translatable="false">com.madeinegyptgate.app</string>
+    <string name="mig_exit_title">Exit the app?</string>
+    <string name="mig_exit_message">Leave Made in Egypt Gate? You can come back any time.</string>
+    <string name="mig_exit_yes">Exit</string>
+    <string name="mig_exit_no">Cancel</string>
+    <string name="mig_share_file">Open or share the file</string>
+    <string name="mig_file_failed">This file could not be opened in the app.</string>
+</resources>

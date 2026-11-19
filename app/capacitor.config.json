@@ -1,0 +1,65 @@
+{
+  "appId": "com.madeinegyptgate.app",
+  "appName": "صنع في مصر",
+  "webDir": "www",
+  "backgroundColor": "#8E0B20",
+  "loggingBehavior": "debug",
+  "zoomEnabled": false,
+  "server": {
+    "url": "https://madeinegyptgate.com",
+    "hostname": "localhost",
+    "androidScheme": "https",
+    "cleartext": false,
+    "allowNavigation": [
+      "madeinegyptgate.com",
+      "www.madeinegyptgate.com"
+    ]
+  },
+  "android": {
+    "appendUserAgent": "MIGApp/1.0 (android)",
+    "backgroundColor": "#8E0B20",
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "appendUserAgent": "MIGApp/1.0 (ios)",
+    "backgroundColor": "#8E0B20",
+    "contentInset": "always",
+    "allowsLinkPreview": false,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "App": {
+      "disableBackButtonHandler": true
+    },
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "launchFadeOutDuration": 300,
+      "backgroundColor": "#8E0B20",
+      "showSpinner": false,
+      "splashFullScreen": false,
+      "splashImmersive": false,
+      "androidScaleType": "CENTER_INSIDE"
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#8E0B20",
+      "overlaysWebView": true
+    },
+    "SystemBars": {
+      "insetsHandling": "disable",
+      "style": "DARK"
+    },
+    "Keyboard": {
+      "resize": "native"
+    },
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  }
+}

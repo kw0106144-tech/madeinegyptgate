@@ -1,0 +1,146 @@
+# The Android app (app/, Capacitor): a push to main that changes app/** builds a debug APK, and a signed release (AAB for
+# Google Play + APK for testing) when the upload key is in the repository secrets. It only builds: nothing is uploaded to Google
+# Play, nothing reaches the site, and it has no Cloudflare token (deploy-site ignores app/**, CLAUDE.md section 4).
+# Secrets (Settings → Secrets and variables → Actions), all four or none — app/README.md "Android signing":
+#   ANDROID_KEYSTORE_BASE64   the upload keystore (.jks) as base64      ANDROID_KEYSTORE_PASSWORD   its password
+#   ANDROID_KEY_ALIAS         the key alias inside it                    ANDROID_KEY_PASSWORD        the key password
+name: app-android
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - ".github/workflows/app-android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: build the Android app
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      HAS_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+      MIG_VERSION_CODE: ${{ github.run_number }}
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Java 21 (Android Gradle Plugin 8.13)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Install the app's packages (npm ci)
+        run: npm ci --no-audit --no-fund
+
+      - name: Check the app folder (config, offline page ES5, store texts, iOS project)
+        run: |
+          npm i --prefix "$RUNNER_TEMP/es5" acorn@8.14.0 --no-audit --no-fund --silent
+          ACORN_DIR="$RUNNER_TEMP/es5" npm run check
+
+      - name: Copy the web files and plugins into the Android project (npx cap sync android)
+        run: npx cap sync android
+
+      - name: Version
+        run: |
+          v=$(node -p "require('./package.json').version")
+          echo "MIG_VERSION_NAME=$v" >> "$GITHUB_ENV"
+          echo "version $v ($MIG_VERSION_CODE)"
+
+      - name: Debug APK + unit tests
+        working-directory: app/android
+        run: ./gradlew assembleDebug testDebugUnitTest
+
+      - name: Signed release (AAB + APK, upload key)
+        if: env.HAS_KEY == 'true'
+        working-directory: app/android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          ks="$RUNNER_TEMP/upload.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$ks"
+          trap 'rm -f "$ks"' EXIT
+          ANDROID_KEYSTORE_FILE="$ks" ./gradlew bundleRelease assembleRelease
+
+      - name: Collect the files
+        id: out
+        run: |
+          out="$RUNNER_TEMP/app-out"; mkdir -p "$out"
+          name="madeinegyptgate-$MIG_VERSION_NAME-$MIG_VERSION_CODE"
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$out/$name-debug.apk"
+          if [ "$HAS_KEY" = "true" ]; then
+            cp android/app/build/outputs/bundle/release/app-release.aab "$out/$name-release.aab"
+            cp android/app/build/outputs/apk/release/app-release.apk "$out/$name-release.apk"
+          fi
+          bt=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          {
+            echo "## Android app $MIG_VERSION_NAME (build $MIG_VERSION_CODE)"
+            echo
+            echo "| File | Size | SHA-256 |"
+            echo "|---|---|---|"
+            for f in "$out"/*; do echo "| $(basename "$f") | $(du -h "$f" | cut -f1) | \`$(sha256sum "$f" | cut -d' ' -f1)\` |"; done
+            echo
+            echo "Signing certificates (the SHA-256 is what app/well-known/assetlinks.json needs; Google Play re-signs store installs with its own app signing key):"
+            echo '```'
+            for f in "$out"/*.apk; do echo "$(basename "$f"):"; "$bt/apksigner" verify --print-certs "$f" | grep -E "certificate (DN|SHA-256)"; done
+            echo '```'
+            if [ "$HAS_KEY" != "true" ]; then
+              echo
+              echo "Release build skipped: the four ANDROID_KEY* secrets are not all set (app/README.md). The debug APK is signed with the runner's throw-away debug key."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "dir=$out" >> "$GITHUB_OUTPUT"
+
+      - name: Keep the debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-debug-apk
+          path: ${{ steps.out.outputs.dir }}/*-debug.apk
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Keep the signed release (AAB for Google Play, APK for testing)
+        if: env.HAS_KEY == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: |
+            ${{ steps.out.outputs.dir }}/*-release.aab
+            ${{ steps.out.outputs.dir }}/*-release.apk
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Unit test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-report
+          path: app/android/app/build/reports/tests/
+          retention-days: 14
+          if-no-files-found: ignore

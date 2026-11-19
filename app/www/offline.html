@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>منصة صنع في مصر – لا يوجد اتصال · No connection</title>
+<!-- Shown by the app (the native error handlers in MainActivity / MainViewController; there is no server.errorPath) when
+     https://madeinegyptgate.com cannot be loaded. Self-contained on purpose: no other file of the app is reachable from this page
+     (inline CSS, inline ES5 script, the logo inline; tools/make_assets.py refreshes it between the LOGO markers). -->
+<style>
+:root { --red: #8E0B20; --red2: #C8102E; --gold: #C09300; --bg: #F8FAFC; --card: #FFFFFF; --fg: #0F172A; --muted: #64748B; --line: #E2E8F0; }
+@media (prefers-color-scheme: dark) { :root { --bg: #120708; --card: #1C0E10; --fg: #F2E8E9; --muted: #A8989A; --line: #35201F; --red2: #F0566A; } }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--fg); font-family: "Cairo", "Noto Kufi Arabic", "Noto Sans Arabic", "Geeza Pro", "Segoe UI", Tahoma, system-ui, sans-serif; -webkit-text-size-adjust: 100%; }
+.bar { background: var(--red); height: 6px; }
+.bar + .bar { background: var(--gold); height: 2px; }
+main { max-width: 520px; margin: 0 auto; padding: 28px 16px 36px; display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; }
+.logo { width: 112px; height: 112px; }
+.card { width: 100%; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; }
+h1 { margin: 0 0 6px; font-size: 1.2rem; line-height: 1.5; color: var(--red2); }
+p { margin: 0; line-height: 1.75; color: var(--muted); font-size: .95rem; }
+.acts { display: flex; flex-wrap: wrap; gap: 10px; width: 100%; }
+.btn { font: inherit; font-weight: 700; font-size: 1rem; border-radius: 12px; min-height: 48px; padding: 10px 16px; border: 1px solid transparent; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+#retry { flex: 2 1 200px; background: var(--red); color: #fff; }
+#retry[disabled] { opacity: .7; }
+#home { flex: 1 1 160px; background: transparent; color: var(--red2); border-color: var(--line); }
+.st { min-height: 1.6em; font-size: .88rem; }
+.tip { font-size: .8rem; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="bar"></div><div class="bar"></div>
+<main>
+<!--LOGO--><img class="logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOAAAADgCAMAAAAt85rTAAABIFBMVEXckJ3p59yfn5/fohggHx/mJkhhXl+Af368wsLjbYI6QD1/foC/v8C9wL7szohAPj9APkCAf4DAvcDpwFP8/PwAAAAJCQnKAycTExP////GAhHuAivr5+jbmgRmZmZ2dnZHR0cnJyeXl5dXV1fIx8fX19f///82Nja6AgS3treHh4eoqKj////////vyND////LFTH////doAnRKET////ZV23TNk/nmKfuusTu1drpp7TWQ1rWigLmh5jmd4uvBiPOJDrZZnny3OJOAw/ad4lyBRjXSmIyAgjrsrvw59DlWHHjZnvw3Kw8REPapa3sFjru1ZVcY2LmuUzy4rXTtrrpJ0flS2PhqizqxWqVBiHltDpcYF6NBBbebYMcIB4bJyUQUbAPAAAAYHRSTlP///////////////////////////4A////BP///////////////8///////49M/3D/L///uP////////////////////////////////////////////////////////+tPskCAAAdV0lEQVR42s1dB3/bNt5m0vba3nwHQ0EUzU1zybIcLY/YsV0njbPTpOM6v/+3eDFIEQABEtDoe/jdNbZFkXjw3wOg8WgvYwhH/dPR0fF4fAiHuR7ot/H4+Oiouar+adfD2B+44QlENqdgicbhHOI8Ge4PpLEncEfjuakx5uOjPYE0douuAndobjAOG5D/kQDxtIYnx3NzizE/xuy6Q4jGDok3PNmMdDwhEcadkdHYGfF2gm6NcWdkNHZEvOOdoaswHu+IjMZuiGfuYeyGjMbW8IZHc3NPY3403BqisS08Fd50Pt0t3424MV3evD1T5NT/F4AYXh9vOsZFhWfQHuSDpdENc7wdxI0BYup1ziy+GUiQtXE+f9txI0zFPxkgXNJO5jy7UcLGoFycdTHqpkQ0NuXOIzk8Y6aFjQI5+ySDeLQpnxqbceeJVHN++n4zdDXGZSzRqCeb8amxGXfKxG65Dboa40IqihsQ0diAfDLuvNkeXYXx+09SPt0zQEQ+sWk4+2I02BE+BPGdITEZukQ0dkO+t99rgLNtW+Gqdzc7IaKhh09MPuMLHdrZ0+dTBYSjwbuFhIh7AgiZ4+RQDE8Jn13/c26e2kp8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" width="112" height="112" alt="منصة صنع في مصر – Made in Egypt Gate"><!--/LOGO-->
+<section class="card" lang="ar" dir="rtl">
+  <h1>تعذّر الاتصال بمنصة صنع في مصر</h1>
+  <p>تأكد من اتصالك بالإنترنت (واي فاي أو بيانات الهاتف) ثم اضغط «إعادة المحاولة». ستُفتح الصفحة تلقائيًا عند عودة الاتصال.</p>
+</section>
+<section class="card" lang="en" dir="ltr">
+  <h1>Can't reach Made in Egypt Gate</h1>
+  <p>Check your internet connection (Wi-Fi or mobile data), then tap "Try again". The page opens by itself when you are back online.</p>
+</section>
+<div class="acts">
+  <button class="btn" id="retry" type="button"><span>إعادة المحاولة</span><span aria-hidden="true">·</span><span lang="en" dir="ltr">Try again</span></button>
+  <a class="btn" id="home" href="https://madeinegyptgate.com/"><span>الرئيسية</span><span aria-hidden="true">·</span><span lang="en" dir="ltr">Home</span></a>
+</div>
+<p class="st" id="st" role="status" aria-live="polite"></p>
+<p class="tip">إذا كان الإنترنت يعمل في تطبيقات أخرى فقد تكون المنصة تحت صيانة قصيرة؛ أعد المحاولة بعد دقائق.<br><span lang="en" dir="ltr">If the internet works in other apps, the platform may be under short maintenance: try again in a few minutes.</span></p>
+<p class="tip" id="tipAndroid" hidden>وإذا استمرت المشكلة فحدّث «Android System WebView» و«Chrome» من متجر Google Play.<br><span lang="en" dir="ltr">If it keeps happening, update "Android System WebView" and "Chrome" from Google Play.</span></p>
+</main>
+<script>
+/* ES5 only (the site's rule for browser code). The app hands over the page that failed: window.MIG_RETRY_URL (set by the native
+   error handler) or #u=<encoded URL>; anything that is not a page of the platform is ignored and the home page is used. */
+(function () {
+  var HOME = "https://madeinegyptgate.com/";
+  var SITE = /^https:\/\/(www\.)?madeinegyptgate\.com(\/[^\s"'<>\\]*)?$/;
+  var target = HOME, busy = false;
+  function ok(u) { return typeof u === "string" && u.length < 2048 && SITE.test(u); }
+  try { if (ok(window.MIG_RETRY_URL)) target = window.MIG_RETRY_URL; } catch (e) {}
+  try {
+    var m = /(?:^#|&)u=([^&]+)/.exec(location.hash || "");
+    if (m) { var u = decodeURIComponent(m[1]); if (ok(u)) target = u; }
+  } catch (e2) {}
+  var st = document.getElementById("st"), btn = document.getElementById("retry");
+  /* the English half in a Unicode isolate (FSI … PDI): in this RTL line its final full stop would otherwise jump to its start */
+  function say(ar, en) { st.textContent = ar ? ar + " · \u2068" + en + "\u2069" : ""; }
+  function go() { try { location.replace(target); } catch (e) { location.href = target; } }
+  /* the site answers = we are back online: a no-cors fetch of a tiny static file (an opaque answer is enough), else an image */
+  function probe(done) {
+    var fin = false, t = setTimeout(function () { end(false); }, 8000), q = "?app-ping=" + new Date().getTime();
+    function end(v) { if (fin) return; fin = true; clearTimeout(t); done(v); }
+    if (window.fetch) {
+      try { window.fetch(HOME + "manifest.webmanifest" + q, { mode: "no-cors", cache: "no-store" }).then(function () { end(true); }, function () { end(false); }); return; } catch (e) {}
+    }
+    var i = new Image();
+    i.onload = function () { end(true); };
+    i.onerror = function () { end(false); };
+    i.src = HOME + "img/janna.jpg" + q;
+  }
+  function attempt(byHand) {
+    if (busy) return;
+    busy = true; btn.disabled = true;
+    say("جارٍ المحاولة…", "Trying…");
+    probe(function (up) {
+      busy = false; btn.disabled = false;
+      if (up) { say("عاد الاتصال، جارٍ الفتح…", "Back online, opening…"); go(); return; }
+      say(byHand ? "ما زال الاتصال غير متاح، سنعيد المحاولة تلقائيًا." : "", byHand ? "Still offline, we will keep trying." : "");
+    });
+  }
+  btn.onclick = function () { attempt(true); };
+  if (window.addEventListener) window.addEventListener("online", function () { attempt(false); });
+  setInterval(function () { if (!document.hidden && navigator.onLine !== false) attempt(false); }, 10000);
+  if (/MIGApp\/[0-9.]+ \(android\)/.test(navigator.userAgent || "")) document.getElementById("tipAndroid").hidden = false;
+})();
+</script>
+</body>
+</html>
