@@ -498,6 +498,8 @@
     var u = String(a.url || a.open_url || a.page || ""), ref = String(a.ref || a.id || "").replace(/^\s+|\s+$/g, ""), q = cut(a.title, 120), idx = parseInt(a.index, 10);
     var ip = intelPath(u) || intelPath(ref); if (ip) return regById(ip.id) || { id: ip.id, path: ip.path };
     if (/^https?:\/\//i.test(u)) { var k = regByUrl(u); if (k) return k; } /* the official link of one of his results (url instead of page) */
+    /* the platform's own address (janna_lookup's open_url): exactly that item, never an Information Center result that looks like it */
+    if (s !== "intel" && /^(?:https?:\/\/(?:www\.)?madeinegyptgate\.com)?\/(?![\/\\])/i.test(u)) return null;
     var rl = ref.toLowerCase();
     if (/^[0-9a-z]{11}$/.test(rl)) { var r1 = regById(rl); if (r1) return r1; if (s === "intel") return { id: rl, path: "/intel/tenders/" + rl + "/" }; } /* the Worker redirects it to the item's own page */
     var c = curIntel(), fresh = INTEL.items.length > 0 && now() - INTEL.t < 3600000;
@@ -507,11 +509,14 @@
     /* «افتحلي التانية» right after an Information Center search, while its result is on the screen: his results, not the platform's list */
     if (s === "intel" || (fresh && c && !(ref && SEC[s]))) {
       if (idx > 0) return INTEL.items[idx - 1] || null;
-      if (q || ref) { var b = best(INTEL.items.concat(INTEL.one ? [INTEL.one] : []).map(function (x) { return { title: x.title, entity: x.entity + " " + x.place, ref: x.id, x: x }; }), q || ref); if (b) return b.x; }
+      if (q || ref) { var b = best(INTEL.items.concat(INTEL.one ? [INTEL.one] : []).map(function (x) { return { title: x.title, entity: x.entity + " " + x.place, ref: x.id, x: x }; }), q || ref); if (b && (s === "intel" || covers(b.x, q || ref))) return b.x; }
       if (s === "intel" && !q && !ref) return c || INTEL.one || INTEL.items[0] || null;
     }
     return null;
   }
+  /* a platform section named: the words asked must be mostly (≥ 60 % of their letters) in that result's title / buyer / place —
+     «بتاعة Rand Water» is that result, one shared «توريد» is not (a platform tender opened while an Information Center page is shown) */
+  function covers(x, q) { var ws = words(q), h = norm(x.title + " " + x.entity + " " + x.place + " " + x.id), n = 0, all = 0; for (var i = 0; i < ws.length; i++) { all += ws[i].length; if (h.indexOf(ws[i]) > -1) n += ws[i].length; } return all > 0 && n / all >= 0.6; }
   /* a title that is one of his results' titles (contained either way, ≥ 12 letters) or has 80 % of its words in one */
   function strongIntel(q) {
     var nq = norm(q), wq = words(q), all = INTEL.items.concat(INTEL.one ? [INTEL.one] : []), bestX = null, bs = 0;

@@ -280,13 +280,16 @@ export async function pdfText(bytes) {
   info.text = parts.join("\n\n");
   return info;
 }
-/* real words, not glyph numbers shown as letters */
+/* real words, not glyph numbers shown as letters. Glyphs a font maps to nothing (bullets, a symbol font, one CID-font run) come out as
+   U+FFFD / control codes: the words around them are judged, as long as they are most of the text (a real eTenders RFQ, read locally:
+   14 % of its characters, 48,888 letters of plain English around them) */
 export function readable(t) {
-  const s = String(t || "").replace(/\s+/g, " ").trim();
-  if (s.length < 40) return false;
-  const letters = (s.match(/\p{L}/gu) || []).length, bad = (s.match(/[\ufffd\u0000-\u0008\u000e-\u001f]/g) || []).length;
+  const all = String(t || "").replace(/\s+/g, " ").trim();
+  const s = all.replace(/[\ufffd\u0000-\u0008\u000e-\u001f]+/g, " ").replace(/\s+/g, " ").trim();
+  if (s.length < 40 || s.length < all.length * 0.6) return false;
+  const letters = (s.match(/\p{L}/gu) || []).length;
   const common = (s.match(/(?:^|[^\p{L}])(?:the|and|of|to|for|in|on|be|shall|with|by|or|is|de|la|le|les|et|des|du|pour|en|au|في|من|على|إلى|عن)(?=$|[^\p{L}])/giu) || []).length;
-  return bad / s.length < 0.03 && letters / s.length > 0.45 && common >= Math.min(6, Math.ceil(s.length / 400));
+  return letters / s.length > 0.45 && common >= Math.min(6, Math.ceil(s.length / 400));
 }
 
 /* ---------- HTML ---------- */
@@ -402,7 +405,7 @@ export const TOPIC_AR = Object.fromEntries(TOPICS.map(t => [t[0], t[1]]));
 /* the text as read: no links, e-mail addresses or phone numbers; no page headers / footers repeated on every page */
 export function cleanDocText(raw) {
   let t = String(raw || "").replace(/\r\n?/g, "\n").replace(/!\[[^\]]*\]\([^)]*\)/g, " ").replace(/\[([^\]]*)\]\((?:[^()]|\([^)]*\))*\)/g, "$1")
-    .replace(/\bhttps?:\/\/\S+|\bwww\.\S+/gi, " ").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u200b\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, "");
+    .replace(/\bhttps?:\/\/\S+|\bwww\.\S+/gi, " ").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u200b\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff]/g, "").replace(/\ufffd+/g, " ");
   const lines = t.split("\n").map(l => stripContacts(l.replace(/[ \t\u00a0]+/g, " ").trim()).replace(/^[|\s]+$/, ""));
   const freq = new Map();
   for (const l of lines) if (l && l.length < 90) freq.set(l, (freq.get(l) || 0) + 1);
@@ -485,7 +488,7 @@ export async function readItemDoc(env, it, o = {}) {
         if (!c2.flag && readable(c2.text)) {
           const pre = conv.flag === "login" ? "" : clip(cleanDocText(conv.text), 600);
           got = g2; conv = { ...c2, text: (pre ? pre + "\n\n" : "") + c2.text }; from = "linked";
-        } else bad = c2.flag || (c2.encrypted ? "encrypted" : g2.kind === "pdf" ? (c2.images > 0 || String(c2.text || "").replace(/\s+/g, "").length < 40 ? "scanned" : "unreadable") : "empty");
+        } else bad = c2.flag || (c2.encrypted ? "encrypted" : g2.kind === "pdf" ? (c2.images > 0 && String(c2.text || "").replace(/\s+/g, "").length < 40 ? "scanned" : "unreadable") : "empty");
       } else bad = g2.flag || "unsupported";
       if (bad) out.linked = { flag: bad, url: pick.url };
     }
@@ -497,7 +500,8 @@ export async function readItemDoc(env, it, o = {}) {
   if (conv.via === "local" && conv.aiSkip && (got.kind === "pdf" || got.kind === "docx")) out.ai_skip = conv.aiSkip;
   const t = String(conv.text || "");
   if (conv.encrypted && !readable(t)) { out.flags.push("encrypted"); return out; }
-  if (!readable(t)) { out.flags.push(got.kind === "pdf" ? (conv.images > 0 || t.replace(/\s+/g, "").length < 40 ? "scanned" : "unreadable") : "empty"); return out; }
+  /* «scanned» only for images with no text layer: a logo beside text the local reader cannot decode (a CID font) is «unreadable» */
+  if (!readable(t)) { out.flags.push(got.kind === "pdf" ? (conv.images > 0 && t.replace(/\s+/g, "").length < 40 ? "scanned" : "unreadable") : "empty"); return out; }
   const ex = requirementsExcerpt(t);
   out.ok = !!ex.excerpt; out.excerpt = ex.excerpt; out.found = ex.found; out.missing = ex.missing; out.key_lines = ex.key_lines;
   out.doc.chars = ex.chars; out.doc.lang = ex.lang;

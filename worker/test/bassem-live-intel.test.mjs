@@ -8,10 +8,13 @@ import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
 const SRC = readFileSync(new URL("../../data/bassem-live-tools.js", import.meta.url), "utf8");
-function load({ lang = "ar", persona = "bassem" } = {}) {
+function load({ lang = "ar", persona = "bassem", framePath = "" } = {}) {
   const listeners = {};
   const el = () => ({ style: {}, classList: { add() {}, remove() {}, contains() { return false; } }, setAttribute() {}, appendChild() {}, querySelector: () => null, querySelectorAll: () => [] });
-  const doc = { addEventListener(n, f) { (listeners[n] = listeners[n] || []).push(f); }, querySelector: () => null, querySelectorAll: () => [], getElementById: () => null, createElement: el, head: el(), body: el(), documentElement: el() };
+  /* framePath: the page the call's shared screen shows (.jnl .jnl-scr iframe) */
+  const shot = framePath ? { readyState: "complete", body: {}, title: "", location: { href: "https://madeinegyptgate.com" + framePath, pathname: framePath }, querySelector: () => null, querySelectorAll: () => [] } : null;
+  const ov = { querySelector: s => (s === ".jnl-scr iframe" && shot ? { contentDocument: shot, contentWindow: {} } : null) };
+  const doc = { addEventListener(n, f) { (listeners[n] = listeners[n] || []).push(f); }, querySelector: s => (s === ".jnl" && shot ? ov : null), querySelectorAll: () => [], getElementById: () => null, createElement: el, head: el(), body: el(), documentElement: el() };
   const win = { MIGLANG: lang, JANNA_LIVE: { persona: () => persona }, addEventListener() {}, dispatchEvent() {}, matchMedia: () => ({ matches: false }) };
   win.window = win; win.document = doc;
   const ctx = vm.createContext({ window: win, document: doc, Promise, JSON, Object, String, Date, Math, isNaN, parseInt, Number, Array, RegExp, setTimeout, clearTimeout, CustomEvent: function () {}, Event: function () {} });
@@ -64,6 +67,21 @@ describe("bassem_open_item: an Information Center item", () => {
     assert.equal(t({ section: "tenders", title: "توريد حديد تسليح", index: 2 }), null, "no Information Center page on the screen: the platform's list");
     assert.equal(t({ section: "factories", url: "/factories/some-factory/" }), null);
     assert.equal(t({ section: "rfqs", url: "https://evil.example.net/x.pdf" }), null);
+  });
+  test("the platform's own open_url, or a title sharing one word, never opens an Information Center result — even with one on the screen", () => {
+    /* after every bassem_intel search its first result is on the shared screen; a platform tender opened next keeps its own path */
+    for (const framePath of ["", "/intel/rfq/supply-of-water-treatment-chemicals-rw0000000a1/"]) {
+      const B = load({ framePath }); B.fire("tool-call-completed", { toolName: "bassem_intel", result: RESULT });
+      const t = a => { const x = B.LT._t.intelTarget(a, a.section); return x ? x.id : null; };
+      assert.equal(t({ section: "tenders", url: "https://madeinegyptgate.com/tender-item/eg-tnd-003/", title: "توريد مواسير حديد" }), null, "its open_url wins over a result with the same title; screen " + (framePath || "none"));
+      assert.equal(t({ section: "tenders", url: "/tender-item/eg-tnd-007/", title: "توريد كابلات كهربائية" }), null, "screen " + (framePath || "none"));
+      assert.equal(t({ section: "tenders", title: "توريد كابلات كهربائية" }), null, "one shared «توريد» is not that result; screen " + (framePath || "none"));
+    }
+    const B = load({ framePath: "/intel/rfq/supply-of-water-treatment-chemicals-rw0000000a1/" }); B.fire("tool-call-completed", { toolName: "bassem_intel", result: RESULT });
+    const t = (a, s) => { const x = B.LT._t.intelTarget(a, s); return x ? x.id : null; };
+    assert.equal(t({ section: "tenders", title: "Rand Water" }, "tenders"), "rw0000000a1", "its buyer's name, while its page is on the screen");
+    assert.equal(t({ section: "tenders", index: 2 }, "tenders"), "gh0000000b2", "«التانية» while an Information Center page is on the screen");
+    assert.equal(t({ section: "intel", url: PAGE("ke0000000c3") }, "intel"), "ke0000000c3");
   });
   test("intelPath reads only this site's Information Center item pages; English calls open the English twin", () => {
     const B = load(), P = B.LT._t.intelPath;

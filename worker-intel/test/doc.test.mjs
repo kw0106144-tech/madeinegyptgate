@@ -48,14 +48,14 @@ const TENDER_TEXT = [
   "Enquiries: procurement officer, e-mail buyer@randwater.example, tel. +27 11 682 0000",
 ];
 const esc = s => s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-function makePdf({ lines = TENDER_TEXT, compress = true, image = false, encrypt = false } = {}) {
+function makePdf({ lines = TENDER_TEXT, compress = true, image = false, encrypt = false, logo = false } = {}) {
   const content = image ? "q 595 0 0 842 0 0 cm /Im1 Do Q" : "BT /F1 10 Tf 50 800 Td 12 TL " + lines.map(l => "(" + esc(l) + ") Tj T*").join(" ") + " ET";
   const data = compress ? deflateSync(Buffer.from(content, "latin1")) : Buffer.from(content, "latin1");
   const parts = [Buffer.from("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n", "latin1"),
     Buffer.from("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n", "latin1"),
     Buffer.from("4 0 obj\n<< /Length " + data.length + (compress ? " /Filter /FlateDecode" : "") + " >>\nstream\n", "latin1"), data, Buffer.from("\nendstream\nendobj\n", "latin1"),
     Buffer.from("5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\nendobj\n", "latin1")];
-  if (image) parts.push(Buffer.from("6 0 obj\n<< /Type /XObject /Subtype /Image /Width 10 /Height 10 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode /Length 4 >>\nstream\n\xff\xd8\xff\xd9\nendstream\nendobj\n", "latin1"));
+  if (image || logo) parts.push(Buffer.from("6 0 obj\n<< /Type /XObject /Subtype /Image /Width 10 /Height 10 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode /Length 4 >>\nstream\n\xff\xd8\xff\xd9\nendstream\nendobj\n", "latin1"));
   parts.push(Buffer.from((encrypt ? "trailer\n<< /Root 1 0 R /Encrypt 9 0 R >>\n" : "trailer\n<< /Root 1 0 R >>\n") + "%%EOF\n", "latin1"));
   return new Uint8Array(Buffer.concat(parts));
 }
@@ -197,6 +197,25 @@ test("doc: local readers — FlateDecode PDF text, DOCX word/document.xml, HTML;
   assert.match(d, /RETURNABLE DOCUMENTS/); assert.match(d, /SBD 1, SBD 4 and SBD 6\.1/);
   const h = htmlText(NOTICE_HTML());
   assert.match(h, /^## Supply of laboratory equipment/); assert.match(h, /bank guarantee/); assert.doesNotMatch(h, /Login|© portal/, "menu and footer dropped");
+});
+test("doc: the local reader keeps a real text PDF whose bullets / symbol font come out as U+FFFD; «scanned» only for images with no text", async () => {
+  /* a real eTenders RFQ read locally had 14 % U+FFFD (bullets, one symbol-font run) beside 48,888 letters of English: it was flagged «scanned» */
+  const glyphs = "\x81\x8d\x8f\x90\x9d";
+  const lines = TENDER_TEXT.map(l => glyphs.slice(0, 3) + " " + l).concat(Array.from({ length: 6 }, () => glyphs.repeat(12)));
+  const p = await pdfText(makePdf({ lines, logo: true }));
+  const bad = (p.text.match(/�/g) || []).length;
+  assert.ok(bad / p.text.length > 0.15, "the fixture really carries U+FFFD: " + bad + " of " + p.text.length);
+  assert.equal(p.images, 1); assert.equal(readable(p.text), true);
+  const env = await envWith([RW]);
+  const r = await tool(env, { action: "doc", id: RW.id }, NOW, { fetch: net({ [DOC_URL]: pdfRes(makePdf({ lines, logo: true })) }).fn });
+  assert.equal(r.ok, true, JSON.stringify(r.flags)); assert.equal(r.doc.via, "local");
+  assert.match(r.excerpt, /registered on the Central Supplier Database/); assert.doesNotMatch(r.excerpt + r.key_lines.join(" "), /�/, "no replacement characters reach the persona");
+  /* a logo beside text the local reader cannot decode (a CID font) is not «a scanned image» */
+  const e2 = await envWith([RW]);
+  const g = await tool(e2, { action: "doc", id: RW.id }, NOW, { fetch: net({ [DOC_URL]: pdfRes(makePdf({ lines: Array.from({ length: 8 }, () => glyphs.repeat(10)), logo: true })) }).fn });
+  assert.deepEqual([g.ok, g.flags], [false, ["unreadable"]]); assert.match(g.text, /مقدرتش أطلع نص مفهوم/);
+  /* mostly replacement characters: still not read */
+  assert.equal(readable(glyphs.repeat(40) + " the tender shall be submitted by the closing date and the bid security"), false);
 });
 test("doc: DOCX via the local reader when there is no AI binding; HTML notice read locally (never AI)", async () => {
   const docxUrl = "https://www.etenders.gov.za/home/Download?blobName=a.docx&downloadedFileName=RFQ.docx";
