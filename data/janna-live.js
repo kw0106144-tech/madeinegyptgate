@@ -24,7 +24,9 @@
    - janna_follow {kind?, id?, label?} (defaults to what is on the screen: window.MIG_CTX) → MIGAPI.follow · janna_track {ref, last4}.
    - Bassem's tools (BACKLOG item 11) drive advisor.html through its own controls (#advQ, [data-how], [data-start], [data-open],
      #advPlan, #advStg, [data-dtab], #mTo #mSub #mBody #mLang #mSend): bassem_open_opportunity, bassem_start_deal,
-     bassem_draft_email, bassem_send_email (only after the member said yes), bassem_update_deal, bassem_open_guide; plus
+     bassem_draft_email, bassem_send_email (only after the member said yes; FROM THE PLATFORM — the deal room's button, or POST
+     /api/advisor/send, which starts the opportunity's deal; both answer Bassem in the SDK call: «e-mails from the call» below),
+     bassem_update_deal, bassem_open_guide; plus
      bassem_notify_member → MIGAPI.notify (POST /api/advisor/notify) and bassem_set_work_time → MIGAPI.prefs (POST /api/me/prefs).
      When neither Bassem's screen nor advisor.html is open, the page navigates to advisor.html#bcmd=<json> and runs it there.
    - every tool call is also shown on the holographic workspace: MIGHOLO.act(tool, args, {who}).
@@ -299,6 +301,8 @@
     el.addEventListener("anam-agent:session-started", function (e) { SID = String((e.detail && e.detail.sessionId) || ""); sessT0 = Date.now(); onSession(); holoWelcome(); if (NUDGE) nudge(NUDGE, 0); });
     el.addEventListener("anam-agent:session-ended", function (e) { onSessionEnd(e.detail || {}); });
     el.addEventListener("anam-agent:message-received", function (e) { onMessage(e.detail || {}); });
+    /* what the platform's server tools returned: the opportunities and any e-mail address in their data (the recipient of a draft) */
+    el.addEventListener("anam-agent:tool-call-completed", function (e) { try { harvest(e.detail || {}); } catch (x) {} });
     el.addEventListener("anam-agent:error", function (e) { var m = (e.detail && e.detail.message) || ""; say(/origin/i.test(m) ? T("الفيديو المباشر بيشتغل على موقع المنصة الرسمي", "Live video works on the official site") : T("حصلت مشكلة في الاتصال، جرّب تاني", "Connection problem, please try again")); });
   }
   function widgetHtml(name) { return '<anam-agent agent-id="' + AGENTS[persona] + '" layout="inline" ui-text-input="true" ui-mute-button="true" call-to-action="' + esc(T("ابدأ الكلام مع ", "Start talking to ") + name) + '" agent-name="' + esc(name) + '"></anam-agent>'; }
@@ -412,6 +416,7 @@
   }
   /* Bassem: the Worker checks the member's plan with the member's own sign-in — the platform session ("mig-tok"), else Bassem's advisor
      token from an activation link (advisor.html: sessionStorage "mig-adv-token"); a refusal of the first is tried once with the other */
+  var BTOK = "";
   function bassemAuth() {
     var out = [], t = "", c = null;
     try { t = localStorage.getItem("mig-tok") || ""; } catch (e) {}
@@ -457,7 +462,9 @@
     var c = bassemAuth(), i = 0;
     var next = function (prev) {
       if (i >= c.length) return Promise.reject(prev || { code: "login_required", status: 401 });
-      return sessToken(agent, c[i++], extra).then(null, function (e) { if (e && /^(login_required|full_login_required|plan)$/.test(e.code) && i < c.length) return next(e); throw e; });
+      var tk = c[i++];
+      /* BTOK: the sign-in this call was opened with — the e-mails of the call go out with it alone (sendPost), as the member of the call */
+      return sessToken(agent, tk, extra).then(function (j) { BTOK = tk; return j; }, function (e) { if (e && /^(login_required|full_login_required|plan)$/.test(e.code) && i < c.length) return next(e); throw e; });
     };
     return next(null);
   }
@@ -508,7 +515,7 @@
       me.msgN = msgs.length;
     });
     /* what he/she is saying right now: the screens follow the words (holoTopic) */
-    on("MESSAGE_STREAM_EVENT_RECEIVED", function (ev) { ev = ev || {}; if (ev.role !== "persona" || (me.skip && me.skip[String(ev.id || "")])) return; var k = String(ev.id || "m"); HT.buf[k] = (HT.buf[k] || "") + String(ev.content || ""); holoTopic(HT.buf[k]); if (window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.follow) { try { MIG_LIVE_TOOLS.follow(HT.buf[k], k); } catch (x) {} } });
+    on("MESSAGE_STREAM_EVENT_RECEIVED", function (ev) { ev = ev || {}; if (ev.role === "user") heardAdd(String(ev.id || ""), String(ev.content || "")); /* his words: a dictated address, «he spoke since it was shown» */ if (ev.role !== "persona" || (me.skip && me.skip[String(ev.id || "")])) return; var k = String(ev.id || "m"); HT.buf[k] = (HT.buf[k] || "") + String(ev.content || ""); holoTopic(HT.buf[k]); if (window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.follow) { try { MIG_LIVE_TOOLS.follow(HT.buf[k], k); } catch (x) {} } });
     on("TOOL_CALL_STARTED", function (d) { d = d || {}; sdkTool(me, d.toolName, d.toolType, d.arguments, d.toolCallId); });
     on("CLIENT_TOOL_EVENT_RECEIVED", function (d) { d = d || {}; sdkTool(me, d.eventName, "client", d.eventData, ""); }); /* older engines */
     /* the outcome of a tool call (server webhook bassem_intel included): data/bassem-intel-view.js shows exactly what Bassem got */
@@ -521,6 +528,11 @@
       /* janna_follow (critic D): the follow's real outcome goes back to Bassem (his own copy of the tool with awaitResult — the shared tool
          stays fire-and-forget for Janna), so he never promises alerts for a follow that was refused; run() leaves the call to this handler */
       try { c.registerToolCallHandler("janna_follow", { onStart: function (pl) { var x = pl && pl.arguments; if (typeof x === "string") { try { x = JSON.parse(x); } catch (e) { x = {}; } } return LV !== me || me.closed ? T("مااتحفظتش: المكالمة اتقفلت.", "Not saved: the call was closed.") : followTool(x || {}); } }); me.own.janna_follow = 1; } catch (e) {}
+      /* the e-mail tools ANSWER Bassem (awaitResult, owner 2026-11-19 «كل ما اديله اوردر انه يبعت ايميل بيقولي معرفش»): after a draft, what is on
+         the screen and «قوله ملخصه، واسأله تحب أبعته؟»; after a send, «اتبعت» ONLY when the platform answered sent (mailTool) */
+      ["bassem_draft_email", "bassem_send_email"].forEach(function (tn) {
+        try { c.registerToolCallHandler(tn, { onStart: function (pl) { return LV !== me || me.closed ? T("مااتعملش: المكالمة اتقفلت.", "Not done: the call was closed.") : mailTool(tn, pl && pl.arguments); } }); me.own[tn] = 1; } catch (e) {}
+      });
     }
     on("CONNECTION_CLOSED", function (code, details) { sdkClosed(me, String(code || ""), String(details || "")); });
     /* our own microphone (echo cancellation, noise suppression, voice isolation where offered) goes with the stream: the session starts
@@ -1475,8 +1487,9 @@
   }
   /* the deal room / advisor page the call works on: the screen's document, or this page when it is advisor.html itself */
   function advDoc() { try { if (frame && frame.contentDocument) return frame.contentDocument; } catch (e) { return null; } return pageKey(window) === "advisor" ? document : null; }
-  /* is this address one of the open deal's own addresses? (the hologram shows a recipient only then — holo.js) */
-  function knownEmail(v) { var em = String(v || "").trim().toLowerCase(), d = advDoc(); return !!(em && d && EMRE.test(em) && dealMails(d).indexOf(em) > -1); }
+  /* may this address be a recipient? one of the open deal's own addresses, one in the data the call's tools returned, his own typing, or
+     one he dictated (spoken forms too) — the hologram shows a recipient only then (holo.js); never a guessed address */
+  function knownEmail(v) { var e = toArg(v); return !!(e.addr && mailSource(e.addr)); }
   /* the shared screen holds work that a navigation would lose: the deal room open, or a form field that differs from its page value
      (a draft Bassem typed, the member's own typing); search boxes do not count */
   function screenBusy() {
@@ -1536,43 +1549,415 @@
       })();
     });
   }
-  /* ---------- the e-mail composer on the shared screen (owner 2026-11-18, 4th message #3: the e-mail opens ON SCREEN in front of him) ----------
-     For an e-mail with no deal behind it (an intro e-mail to buyers in China …): to / subject / body, left to right for a text that is not
-     Arabic, scrollable, editable («✏️ عدّل»), «📋 انسخ», «📤 ابعت», minimise / ✕. Nothing here is spoken or sent back to the call (the body
-     is never read aloud), and nothing goes out by itself: «ابعت» is the member's own click and opens HIS mail app with the draft (an
-     e-mail with no deal has no deal thread, so the deal room's sending from the platform does not apply; a deal's e-mail still goes
-     through the deal room). «إلى» is never filled with a guess: it stays empty until he types it — an address Bassem passed is only
-     offered as a one-tap suggestion (an address of the open deal itself is filled in, as in the deal room). */
-  var CMP = null;
+  /* ---------- e-mails from the call (owner 2026-11-19: «كل ما اديله اوردر انه يبعت ايميل بيقولي معرفش» · «بقوله اكتب عنوان الايميل بيقولي
+     مش هعرف اكتبه» · «باسم كتب الايميل بس مش بيقراه الاول كان بيقراه») ----------
+     bassem_draft_email puts the e-mail ON THE SCREEN: the deal room of an open deal, else the e-mail draft («مسودة إيميل», below) — to /
+     subject / body, left to right for a text that is not Arabic, scrollable, editable («✏️ عدّل»), «📋 انسخ», minimise / ✕. In the SDK call
+     (awaitResult, sdkRun) the tool ANSWERS Bassem with what is on the screen: the recipient and where it came from, the language, and
+     what to do now — tell the member in 2-3 Egyptian sentences what the e-mail says, then «تحب أبعته؟» (the body is read out in full
+     only when he asks). bassem_send_email — and the draft's «📤 ابعت من المنصة» — sends it FROM THE PLATFORM: an open deal through its
+     deal room's own button, else POST /api/advisor/send, which starts or reuses the deal of the opportunity the e-mail is about (an
+     Information Center notice too), so the reply is tracked; the Worker keeps every safeguard of the deal room (limits, new recipients,
+     opt-outs, Reply-To, footer, unsubscribe, audit). Bassem is told «اتبعت» ONLY when the platform answered sent; every refusal comes
+     back as words he can act on (no address → «أبعته لمين؟», the buyer's country, a limit, the plan …). «📧 من بريدي» still opens the
+     member's own mail app with the draft.
+     The recipient («إلى») is never a guess: an address in the data the call's tools returned (bassem_intel / platform_item / janna_lookup
+     results, a tender document's text) or in the open deal is filled in; one the member DICTATED (spoken forms: «info at x dot com», «آت»,
+     «دوت», «أندرسكور») is filled in and shown letter by letter, and goes out only once he heard / saw it (he spoke again after it was
+     shown, or tapped ✓); his own typing is his; anything else Bassem passes is only offered as a one-tap suggestion. */
+
+  /* @mail-pure-begin — no DOM and no state of the call (only T): worker/test/bassem-email.test.mjs runs this block on its own */
+  var MAILRX = /^[a-z0-9!#$%&'*+\/=?^_`{|}~.-]{1,64}@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}$/;
+  function mailOk(s) { s = String(s == null ? "" : s); return s.length <= 254 && MAILRX.test(s) && s.indexOf("..") < 0 && !/^\.|\.@/.test(s); }
+  /* the spoken words of an address → its characters (Latin and Egyptian forms; letters said one by one are joined) */
+  var MSYM = [[/^(?:at|@|آت|ات|أت|إت|ايت|آيت)$/, "@"], [/^(?:dot|\.|point|period|دوت|نقطة|نقطه|بوينت)$/, "."],
+    [/^(?:underscore|_|اندرسكور|أندرسكور|إندرسكور|شرطةسفلية)$/, "_"], [/^(?:dash|hyphen|minus|-|داش|هايفن|شرطة|شرطه)$/, "-"]];
+  var MTLD = { "كوم": "com", "نت": "net", "اورج": "org", "أورج": "org", "جوف": "gov" };
+  var MSAY = { "@": ["آت", "at"], ".": ["دوت", "dot"], "_": ["أندرسكور", "underscore"], "-": ["داش", "dash"] };
+  function mailTokens(text) {
+    var s = String(text == null ? "" : text).toLowerCase()
+      .replace(/[\u0660-\u0669]/g, function (c) { return String(c.charCodeAt(0) - 1632); }).replace(/[\u06f0-\u06f9]/g, function (c) { return String(c.charCodeAt(0) - 1776); })
+      .replace(/[\u064b-\u0652\u0640]/g, "").replace(/\uff20/g, "@").replace(/\bat\s+sign\b/g, "at").replace(/\bunder\s+score\b/g, "underscore")
+      .replace(/[اأإ]ندر\s+سكور/g, "اندرسكور").replace(/شرط[ةه]\s+(?:سفلي[ةه]|تحتي[ةه])/g, "شرطةسفلية");
+    var raw = s.split(/[\s,،;؛]+/), out = [], i, k, w, sym;
+    for (i = 0; i < raw.length; i++) {
+      w = raw[i].replace(/^[«»"'“”‘’()\[\]<>{}:!?؟]+/, "").replace(/[«»"'“”‘’()\[\]<>{}:!?؟]+$/, "");
+      if (!w) continue;
+      sym = "";
+      for (k = 0; k < MSYM.length; k++) if (MSYM[k][0].test(w)) { sym = MSYM[k][1]; break; }
+      if (sym) out.push({ k: "s", v: sym, w: w });
+      else if (MTLD.hasOwnProperty(w)) out.push({ k: "w", v: MTLD[w] });
+      else if (/^[a-z0-9._%+@-]+$/.test(w)) out.push({ k: "w", v: w });
+      else out.push({ k: "x", v: w });
+    }
+    return out;
+  }
+  /* every address written or spoken in a text, as «إلى» takes it (lower case, each once): the word(s) before «at» (or the letters spelled
+     one by one) @ the words up to the first «dot» joined («lamu west» → lamuwest), then one label after each dot */
+  function spokenMails(text) {
+    var tk = mailTokens(text), found = [], i, j, t, u, local, dom, parts, need, first, cand;
+    for (i = 0; i < tk.length; i++) {
+      t = tk[i]; local = null; dom = "";
+      if (t.k === "w" && t.v.indexOf("@") > 0 && t.v.indexOf("@") === t.v.lastIndexOf("@")) { local = t.v.slice(0, t.v.indexOf("@")); dom = t.v.slice(t.v.indexOf("@") + 1); }
+      else if (t.k === "s" && t.v === "@") {
+        parts = []; j = i - 1;
+        if (j >= 0 && tk[j].k === "w" && tk[j].v.length === 1) {
+          while (j >= 0 && ((tk[j].k === "w" && tk[j].v.length === 1) || (tk[j].k === "s" && tk[j].v !== "@"))) { parts.unshift(tk[j].v); j--; }
+        } else {
+          while (j >= 0 && tk[j].k === "w" && tk[j].v.indexOf("@") < 0) {
+            parts.unshift(tk[j].v); j--;
+            if (j >= 1 && tk[j].k === "s" && tk[j].v !== "@" && tk[j - 1].k === "w") { parts.unshift(tk[j].v); j--; } else break;
+          }
+        }
+        local = parts.join("");
+      }
+      if (local === null) continue;
+      need = !dom || /[.\-]$/.test(dom); first = dom.indexOf(".") < 0;
+      for (j = i + 1; j < tk.length; j++) {
+        u = tk[j];
+        if (u.k === "s" && (u.v === "." || u.v === "-")) { if (need) break; dom += u.v; need = true; if (u.v === ".") first = false; continue; }
+        if (u.k !== "w" || u.v.indexOf("@") > -1) break;
+        if (need) {
+          dom += u.v; need = false; if (u.v.indexOf(".") > -1) first = false;
+          if (u.v.length === 1) while (j + 1 < tk.length && tk[j + 1].k === "w" && tk[j + 1].v.length === 1) { j++; dom += tk[j].v; }
+          continue;
+        }
+        if (first) { dom += u.v; continue; }
+        break;
+      }
+      cand = (local + "@" + dom).replace(/[.\-]+$/, "").replace(/^[.\-_]+/, "");
+      if (mailOk(cand) && found.indexOf(cand) < 0) found.push(cand);
+    }
+    return found;
+  }
+  function spokenMail(text) { var m = spokenMails(text); return m.length ? m[0] : ""; }
+  /* «i n f o (آت) l a m u … (دوت) k e»: what the screen spells and Bassem can read back */
+  function mailSpell(addr) { var s = String(addr || ""), out = [], c, i; for (i = 0; i < s.length; i++) { c = s.charAt(i); out.push(MSAY[c] ? "(" + T(MSAY[c][0], MSAY[c][1]) + ")" : c); } return out.join(" "); }
+  /* Bassem's `to` → {addr} a valid address (spoken forms parsed) · {bad} words that are no address · {} nothing passed */
+  function toArg(v) {
+    var raw = String(v == null ? "" : v).replace(/^\s+|\s+$/g, ""), l = raw.toLowerCase().replace(/^mailto:/, ""), s;
+    if (!raw) return {};
+    if (mailOk(l)) return { addr: l, raw: raw };
+    s = spokenMail(raw);
+    return s ? { addr: s, raw: raw, spoken: true } : { bad: raw.slice(0, 80), raw: raw };
+  }
+  /* did the member say an address in these words of his? this one exactly; or (speech-to-text may have garbled it or written it in Arabic
+     letters — the screen then spells it for him to confirm) its letters «local @ domain» in that order, or an utterance shaped like an
+     address: a word, «at» / آت / «@», then «dot» / دوت / نقطة / «.» followed by a word. Ordinary words are no dictation (review 2026-11-19:
+     «look at this point» or «the procurement office of Lamu West» made ANY guessed address «said»): «point» / «period» count only in the
+     exact parse, and the letters of the two parts only around an «at» */
+  function mailHeard(addr, texts) {
+    addr = String(addr || "").toLowerCase(); if (!mailOk(addr)) return false;
+    var p = addr.split("@"), loc = p[0].replace(/[^a-z0-9]/g, ""), dom = p[1].split(".")[0].replace(/[^a-z0-9]/g, ""), i, j, t, tk, x, at, dot, flat;
+    for (i = 0; i < (texts || []).length; i++) {
+      t = String(texts[i] || ""); if (spokenMails(t).indexOf(addr) > -1) return true;
+      tk = mailTokens(t); at = -1; dot = false; flat = "";
+      for (j = 0; j < tk.length; j++) {
+        x = tk[j];
+        if (x.k === "s" && x.v === "@") { flat += "@"; if (at < 0 && j > 0) at = j; continue; }
+        if (x.k === "w") { flat += x.v.replace(/[^a-z0-9@]/g, ""); if (at < 0 && x.v.indexOf("@") > 0) { at = j; continue; } }
+        if (at > -1 && ((x.k === "s" && x.v === "." && !/^(?:point|period)$/.test(x.w || "") && j + 1 < tk.length && tk[j + 1].k !== "s") || (x.k === "w" && /[a-z0-9]\.[a-z]{2,}/.test(x.v)))) dot = true;
+      }
+      if (loc.length > 1 && dom.length > 1 && flat.indexOf(loc + "@" + dom) > -1) return true;
+      if (at > -1 && dot) return true;
+    }
+    return false;
+  }
+  /* the language an e-mail is written in: Swahili is told apart (a buyer's local language is never the default — owner 2026-11-19: a
+     Kenyan government buyer got an e-mail in Swahili), Arabic by its letters, else the language Bassem named, else English */
+  var SW_W = " kwa katika ya na wa za ni hii huu kutoka pia sisi yetu wenu tafadhali asante habari ndugu mpendwa kuhusu ugavi shule samani kampuni bidhaa ombi zabuni kwamba tunaweza tuna kama hizi wetu yako ";
+  function mailLang(text, given) {
+    var s = String(text || ""), w = s.toLowerCase().match(/[a-z]+/g) || [], seen = {}, n = 0, i, ar, la, g;
+    for (i = 0; i < w.length; i++) if (!seen[w[i]] && SW_W.indexOf(" " + w[i] + " ") > -1) { seen[w[i]] = 1; n++; }
+    if (n >= 5) return "sw";
+    ar = (s.match(/[\u0600-\u06ff]/g) || []).length; la = (s.match(/[a-z]/gi) || []).length;
+    if (ar > la) return "ar";
+    g = String(given || "").toLowerCase().slice(0, 2);
+    return /^[a-z]{2}$/.test(g) && g !== "ar" ? g : la ? "en" : "";
+  }
+  /* the language(s) a buyer in that market does business in (worker-intel market codes): Arabic for Egypt and the Arab countries, French
+     (or Arabic) for the Maghreb, French for francophone Africa, English for the rest of Africa, Asia, Europe and the international banks */
+  var BIZ = { ar: " local gulf eg sa ae qa kw om bh jo iq lb ye ps sy sd ly so gcc arab ", arfr: " ma tn dz mr dj km ", fr: " sn ci ml bf ne td bj tg ga cg cd gn bi cf mg ", enfr: " cm rw mu sc ", pt: " ao mz gw cv st " };
+  function bizLang(market) {
+    var c = " " + String(market || "").toLowerCase().replace(/^(africa|asia):/, "") + " ";
+    return BIZ.ar.indexOf(c) > -1 ? ["ar"] : BIZ.arfr.indexOf(c) > -1 ? ["ar", "fr"] : BIZ.fr.indexOf(c) > -1 ? ["fr"] : BIZ.enfr.indexOf(c) > -1 ? ["en", "fr"] : BIZ.pt.indexOf(c) > -1 ? ["pt", "en"] : ["en"];
+  }
+  var LNAME = { ar: ["عربي", "Arabic"], en: ["إنجليزي", "English"], fr: ["فرنساوي", "French"], pt: ["برتغالي", "Portuguese"], zh: ["صيني", "Chinese"], sw: ["سواحيلي", "Swahili"], es: ["إسباني", "Spanish"], de: ["ألماني", "German"], tr: ["تركي", "Turkish"], ru: ["روسي", "Russian"], it: ["إيطالي", "Italian"] };
+  function langName(l) { var n = LNAME[l]; return n ? T(n[0], n[1]) : String(l || "").toUpperCase(); }
+  /* which opportunity of the call an e-mail is about: the most words of its title / buyer / ref (and original title) in the e-mail; the
+     notice on the screen needs one such word, any other two — an e-mail about nothing the tools returned starts a deal of its own */
+  var STOPW = " the and for with from our your this that dear sir madam regards supply tender notice request please kind best السادة تحية طيبة وبعد من في على الى إلى عن مع هذا هذه بخصوص ";
+  function mwords(s) {
+    return String(s || "").toLowerCase().replace(/[\u064b-\u0652\u0640]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي")
+      .split(/[^a-z0-9\u0621-\u064a]+/).filter(function (w) { return w.length > 2 && STOPW.indexOf(" " + w + " ") < 0; });
+  }
+  function oppPick(list, screenKey, text) {
+    var ws = {}, best = null, bs = 0, i, j, o, sc, w, seen;
+    mwords(text).forEach(function (x) { ws[x] = 1; });
+    for (i = 0; i < (list || []).length; i++) {
+      o = list[i]; sc = 0; w = mwords([o.o.title, o.o.entity, o.o.ref, o.alt || ""].join(" ")); seen = {};
+      for (j = 0; j < w.length; j++) if (ws[w[j]] && !seen[w[j]]) { seen[w[j]] = 1; sc++; }
+      if (!sc) continue;
+      if (screenKey && o.k === screenKey) sc += 1;
+      if (sc > bs) { bs = sc; best = o; }
+    }
+    return bs >= 2 ? best : null;
+  }
+  /* the body of POST /api/advisor/send (worker/src/advisor.js sendFromCall) */
+  var TOSRC = { data: "opportunity", deal: "deal", doc: "document", said: "dictated", typed: "typed", sent: "repeat" };
+  function sendBody(st) {
+    var b = { to: String(st.to || ""), subject: String(st.subject || ""), body: String(st.body || ""), via: st.via === "button" ? "button" : "bassem" }, o = st.opp;
+    if (st.language) b.language = String(st.language);
+    if (TOSRC[st.toSrc]) b.to_source = TOSRC[st.toSrc];
+    if (st.dealId) b.deal_id = String(st.dealId);
+    else if (o && (o.title || o.ref)) { b.opportunity = {}; ["ref", "title", "entity", "market", "country", "source_url", "closing_date", "kind"].forEach(function (k) { if (o[k] != null && o[k] !== "") b.opportunity[k] = String(o[k]); }); }
+    if (st.market) b.market = String(st.market);
+    return b;
+  }
+  /* the platform's answer {status, j} → {ok, screen: what the member reads, bassem: the tool result} — «اتبعت» ONLY on sent:true */
+  function sendWords(to, r) {
+    var j = (r && r.j) || {}, c = String(j.code || ""), er = String(j.error || ""), d = j.deal || {}, ti = String(d.title || "").slice(0, 80), w, fb;
+    if (j.sent === true) return { ok: true,
+      screen: "✅ " + T("اتبعت من المنصة لـ ", "Sent from the platform to ") + to + (ti ? T(" — والرد هيتسجّل في صفقة «" + ti + "»", " — the reply is tracked in the deal “" + ti + "”") : ""),
+      bassem: T("اتبعت ✓ من المنصة لـ " + to + " باسم شركته" + (ti ? "، واتسجّل في صفقة \"" + ti + "\"" + (j.deal_created ? " اللي اتفتحت دلوقتي" : "") : "") + " علشان الرد يتتابع. قوله إنه اتبعت وإنك هتتابع الرد.",
+        "Sent ✓ from the platform to " + to + " in his company's name" + (ti ? ", on the deal \"" + ti + "\"" + (j.deal_created ? " (just started)" : "") : "") + ", so the reply is tracked. Tell him it was sent and that you will follow the reply.") };
+    fb = T(" يقدر يبعته من بريده بزرار «من بريدي».", " He can send it from his own mail app with “From my mail”.");
+    if (j.message && j.sent === false) { /* kept on the deal, not delivered */
+      w = /not configured/i.test(er) ? T("الإرسال من المنصة مش متشغّل دلوقتي، والإيميل اتحفظ مسودة في الصفقة", "sending from the platform is not switched on right now; the e-mail is saved as a draft in the deal")
+        : /^member not verified/i.test(er) ? T("حسابه لسه مش متفعّل للإرسال من المنصة، والإيميل اتحفظ مسودة في الصفقة", "his account is not yet enabled for sending from the platform; the e-mail is saved as a draft in the deal")
+        : T("مزوّد الإيميل ماقبلوش", "the e-mail provider did not accept it") + (er ? " (" + er.slice(0, 120) + ")" : "");
+      return { ok: false, failed: true, code: "not_sent", screen: "⚠️ " + T("مااتبعتش: ", "Not sent: ") + w + "." + fb, bassem: T("مااتبعتش: ", "Not sent: ") + w + T(". قوله كده بصراحة.", ". Tell him so honestly.") + fb };
+    }
+    if (c === "timeout") return { ok: false, failed: true, code: c, screen: "⏳ " + T("المنصة مارديتش في الوقت — مش متأكد إنه اتبعت. بص على صفقاتك قبل ما تبعته تاني.", "The platform did not answer in time — not sure it was sent. Check your deals before sending it again."),
+      bassem: T("مش متأكد إنه اتبعت: المنصة مارديتش في الوقت. قوله كده، وماتبعتوش تاني قبل ما يبص على صفقاته.", "Not sure it was sent: the platform did not answer in time. Tell him so, and do not send it again before he checks his deals.") };
+    var M = { /* code → [the member's words AR, EN, what Bassem does next AR, EN] */
+      invalid_to: ["عنوان المستلم مش صحيح", "the recipient's address is not valid", "اسأله «أبعته لمين؟» وابعته تاني بالعنوان الصح في to.", "ask him who to send it to and send again with the right address in to."],
+      invalid_cc: ["عنوان النسخة مش صحيح", "the Cc address is not valid", "شيل النسخة أو صححها.", "drop or fix the Cc."],
+      too_many_recipients: ["المستلمين أكتر من خمسة", "more than five recipients", "خليه مستلم واحد.", "keep one recipient."],
+      subject_required: ["الموضوع ناقص", "the subject is missing", "اكتب المسودة تاني بـ bassem_draft_email.", "write the draft again with bassem_draft_email."],
+      body_required: ["نص الإيميل ناقص", "the message is missing", "اكتب المسودة تاني بـ bassem_draft_email.", "write the draft again with bassem_draft_email."],
+      subject_too_long: ["الموضوع طويل زيادة", "the subject is too long", "اختصره واكتب المسودة تاني.", "shorten it and write the draft again."],
+      body_too_long: ["الإيميل طويل زيادة", "the e-mail is too long", "اختصره واكتب المسودة تاني.", "shorten it and write the draft again."],
+      market_required: ["محتاج أعرف الجهة دي في أنهي بلد علشان أفتحلها صفقة", "I need the buyer's country to start its deal", "اسأله «الجهة دي في أنهي بلد؟» وابعت تاني بالبلد في market.", "ask him which country the buyer is in and send again with it in market."],
+      market_not_in_plan: ["السوق ده مش في باقتك", "this market is not in your plan", "قوله كده من غير ضغط، وإن السوق ده في باقة أعلى.", "tell him so without pressure: that market is in a higher plan."],
+      daily_limit: ["وصلت لحد الإيميلات في اليوم" + (j.limit ? " (" + j.limit + ")" : ""), "today's e-mail limit is reached" + (j.limit ? " (" + j.limit + ")" : ""), "قوله إنه يتبعت بكرة، أو يبعته من بريده.", "tell him it can go tomorrow, or from his own mail."],
+      new_recipient_limit: ["وصلت لحد العناوين الجديدة في اليوم" + (j.limit ? " (" + j.limit + ")" : ""), "today's limit of new recipients is reached" + (j.limit ? " (" + j.limit + ")" : ""), "قوله إن العنوان ده يتبعتله بكرة، أو يبعته من بريده.", "tell him this address can get it tomorrow, or from his own mail."],
+      opted_out: ["المستلم ده طلب مايوصلوش رسايل من شركتك", "this recipient asked not to get e-mails from your company", "ماتبعتلوش تاني.", "do not send to it again."],
+      deal_limit: ["صفقاتك وصلت للحد الأقصى", "your deals reached the maximum", "قوله يقفل صفقات قديمة.", "tell him to close old deals."],
+      deal_not_found: ["الصفقة دي مش في صفقاتك", "that deal is not in your deals", "ابعته من غير صفقة (deal فاضي).", "send it with no deal (empty deal)."],
+      opportunity_required: ["الفرصة مالهاش عنوان", "the opportunity has no title", "ابعته من غير فرصة.", "send it without the opportunity."],
+      plan: ["باقتك الحالية مافيهاش الإرسال من المنصة", "your current plan does not include sending from the platform", "قوله كده من غير ضغط.", "tell him so without pressure."],
+      full_login_required: ["لازم تسجّل دخولك بكود الإيميل الأول", "you need to sign in with your e-mail code first", "الشاشة بتطلب منه يسجّل دخوله؛ بعدها ابعت تاني.", "the screen asks him to sign in; then send again."],
+      offline: ["سيرفر المنصة مش متاح دلوقتي", "the platform's server is not reachable right now", "قوله كده بصراحة.", "tell him so honestly."]
+    };
+    w = M[c] || (r && r.status === 401 ? ["لازم تسجّل الدخول الأول", "you need to sign in first", "قوله يسجّل دخوله.", "tell him to sign in."] : [er || c || "سبب مش معروف", er || c || "unknown reason", "قوله السبب زي ما هو.", "tell him the reason as it is."]);
+    fb = /^(market_required|invalid_to|invalid_cc|too_many_recipients|subject_required|body_required|opted_out|full_login_required)$/.test(c) ? "" : fb;
+    return { ok: false, failed: !M[c] || c === "offline", code: c, screen: "⚠️ " + T("مااتبعتش: ", "Not sent: ") + T(w[0], w[1]) + "." + fb, bassem: T("مااتبعتش: " + w[0] + ". " + w[2], "Not sent: " + w[1] + ". " + w[3]) + fb };
+  }
+  /* @mail-pure-end */
+
+  /* ---------- what the call's tools returned: the opportunities (to start the right deal) and every address in their data ---------- */
+  var MAILS = {}, MAILS_N = 0, OPPC = [], HEARD = [], USER_T = 0, TO_PEND = { addr: "", at: 0, ok: false }, MAIL_OWN = /@(?:[a-z0-9-]+\.)*madeinegyptgate\.com$/;
+  function resJson(r) {
+    for (var n = 0; n < 3 && r != null; n++) {
+      if (typeof r === "string") { try { r = JSON.parse(r); } catch (x) { return null; } continue; }
+      if (typeof r !== "object") return null;
+      if (r.results || r.found != null || r.title || r.id || r.text) return r;
+      r = r.result != null ? r.result : r.data != null ? r.data : r.body;
+    }
+    return null;
+  }
+  /* every address in the values of a result (its strings one by one — never its JSON text, where «\nprocurement@…» would read «nprocurement@…») */
+  function mailsKeep(x, item) {
+    var n = 0;
+    function scan(s) {
+      var m = String(s).toLowerCase().match(/[a-z0-9._%+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,24}/g) || [];
+      for (var i = 0; i < m.length && MAILS_N < 300; i++) {
+        var a = m[i].replace(/^[._%+-]+/, "");
+        if (!mailOk(a) || MAIL_OWN.test(a)) continue;
+        if (!MAILS[a]) { MAILS[a] = { src: "data", at: Date.now(), item: item || "" }; MAILS_N++; } else if (item && !MAILS[a].item) MAILS[a].item = item;
+      }
+    }
+    (function walk(v, depth) {
+      if (v == null || depth > 6 || n > 2000) return;
+      if (typeof v === "string") { n++; scan(v); return; }
+      if (typeof v !== "object") return;
+      if (Object.prototype.toString.call(v) === "[object Array]") { for (var i = 0; i < v.length && i < 200; i++) walk(v[i], depth + 1); return; }
+      for (var k in v) if (Object.prototype.hasOwnProperty.call(v, k)) walk(v[k], depth + 1);
+    })(x, 0);
+  }
+  function oppAdd(k, o) {
+    for (var i = 0; i < OPPC.length; i++) if (OPPC[i].k === k) { OPPC.splice(i, 1); break; }
+    OPPC.unshift({ k: k, o: o, at: Date.now(), alt: "" }); if (OPPC.length > 40) OPPC.length = 40;
+  }
+  function itemOpp(name, x) {
+    if (!x || typeof x !== "object" || !/^(bassem_intel|platform_item|janna_lookup)$/.test(name)) return null;
+    var id = String(x.id == null ? "" : x.id), title = String(x.title || x.title_ar || x.name || "").slice(0, 300);
+    if (!id || !title) return null;
+    if (name === "bassem_intel") return { k: "intel:" + id, o: { ref: "", title: title, entity: String(x.entity || ""), market: String(x.market || ""), country: String(x.market_name || x.country || ""), source_url: String(x.url || ""), closing_date: String(x.deadline || "").slice(0, 10), kind: String(x.kind || "") } };
+    var sec = String(x.section || "");
+    if (sec && !/^tenders?$/.test(sec)) return null; /* RFQs, factories, products … are answered through the platform, not by e-mail */
+    return { k: "item:" + id, o: { ref: String(x.ref_no || x.ref || id), title: title, entity: String(x.entity || ""), market: String(x.market || "local"), country: String(x.country || ""), source_url: String(x.documents_url || x.url || x.open_url || ""), closing_date: String(x.deadline || "").slice(0, 10), kind: "gov" } };
+  }
+  /* a completed tool call (anam-agent:tool-call-completed, both the SDK call and the widget): only what the platform's SERVER tools returned
+     — never a client tool's answer (ours quote the address he dictated, which must stay «said», never become «data») */
+  var HARVEST = /^(bassem_intel|platform_item|janna_lookup|bassem_web_search|knowledge_lookup)$/;
+  function harvest(d) {
+    d = d || {}; var name = String(d.toolName || d.name || ""), ty = String(d.toolType || "").toLowerCase(), r, list, it, i, k = "";
+    if (!name || ty === "client" || !(HARVEST.test(name) || ty === "server")) return;
+    r = resJson(d.result);
+    if (!r) { if (d.result != null) mailsKeep(d.result, name === "bassem_intel" ? screenOppKey() : ""); return; }
+    list = r.results && r.results.length ? r.results : r.found !== false && (r.id || r.title) ? [r] : [];
+    if (name === "janna_lookup" && r.section && !/^tenders?$/.test(String(r.section))) list = [];
+    for (i = 0; i < list.length && i < 12; i++) { it = itemOpp(name, list[i]); if (it) { oppAdd(it.k, it.o); mailsKeep(list[i], it.k); if (list.length === 1) k = it.k; } }
+    /* a notice's own document (bassem_intel action "doc": its id, or none — then the notice on the screen) gives its addresses to that
+       notice; a web search or a knowledge answer gives addresses to no notice (they are «data», never filled in by themselves) */
+    if (!k && name === "bassem_intel") k = r.id && /^[0-9a-z]{11}$/.test(String(r.id)) ? "intel:" + r.id : screenOppKey();
+    mailsKeep(r, k);
+  }
+  /* the member's own words (MESSAGE_STREAM_EVENT_RECEIVED role user, message-received): for «did he dictate it?» and «did he speak since?» */
+  function heardAdd(id, text) {
+    text = String(text || "").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, ""); if (!text) return;
+    var now = Date.now(), i, h;
+    for (i = HEARD.length - 1; i >= 0 && i >= HEARD.length - 4; i--) {
+      h = HEARD[i];
+      if (id) { if (h.id === id) { h.s = h.s.indexOf(text) > -1 ? h.s : text.indexOf(h.s) > -1 ? text : h.s + " " + text; return; } continue; } /* the same utterance, streaming */
+      if (now - h.t < 90000 && (h.s.indexOf(text) > -1 || text.indexOf(h.s) > -1)) { if (text.length > h.s.length) h.s = text; return; } /* its copy in the history */
+    }
+    HEARD.push({ id: id || "", s: text, t: now }); USER_T = now; if (HEARD.length > 14) HEARD.shift();
+  }
+  function heardTexts() { var out = [], t0 = Date.now() - 20 * 60000; for (var i = 0; i < HEARD.length; i++) if (HEARD[i].t >= t0) out.push(HEARD[i].s); return out; }
+  /* the opportunity the shared screen shows: an Information Center notice (/intel/<kind>/<slug>-<id>/) or a platform page (MIG_CTX) */
+  function screenOppKey() {
+    var w = screenWin(), p = "", c, m; try { p = String(w.location.pathname || ""); } catch (e) { return ""; }
+    m = /^\/intel\/(?:en\/)?[a-z_-]+\/[^\/]*-([0-9a-z]{11})\/?$/.exec(p); if (m) return "intel:" + m[1];
+    c = screenCtx(); return c && c.id != null && c.id !== "" ? "item:" + c.id : "";
+  }
+  /* that notice read from its own page when no tool of the call returned it (the JSON-LD the Information Center writes, worker-intel pages.js) */
+  function screenOpp() {
+    var k = screenOppKey(), d = null, i, ld, j, o, chip; if (!k) return null;
+    try { d = frame && frame.contentDocument; } catch (e) { d = null; }
+    if (k.indexOf("intel:") === 0 && d && d.querySelectorAll) {
+      ld = d.querySelectorAll('script[type="application/ld+json"]');
+      for (i = 0; i < ld.length; i++) { try { j = JSON.parse(ld[i].textContent || "{}"); } catch (e) { j = null; } if (j && j.isBasedOn && (j.name || j.headline)) break; j = null; }
+    }
+    for (i = 0; i < OPPC.length; i++) if (OPPC[i].k === k) { if (j && !OPPC[i].alt) OPPC[i].alt = String((j.about && j.about.name) || ""); return OPPC[i]; }
+    if (!d || !d.querySelectorAll) return null;
+    if (k.indexOf("intel:") === 0) {
+      if (!j) return null;
+      chip = d.querySelector(".sx-chips span:nth-child(2)");
+      o = { ref: "", title: String(j.name || j.headline || ""), entity: String((j.about && j.about.description) || ""), market: "", country: chip ? String(chip.textContent || "").replace(/[^\u0600-\u06ffA-Za-z' -]/g, "").replace(/^\s+|\s+$/g, "") : "", source_url: String(j.isBasedOn || ""), closing_date: String(j.expires || "").slice(0, 10), kind: "" };
+      oppAdd(k, o); OPPC[0].alt = String((j.about && j.about.name) || ""); return OPPC[0];
+    }
+    var c = screenCtx(); if (!c || !/tender/.test(String(c.type || ""))) return null;
+    oppAdd(k, { ref: String(c.id), title: String(c.title || ""), entity: "", market: "local", country: "", source_url: String(c.url || ""), closing_date: "", kind: "gov" }); return OPPC[0];
+  }
+  function oppMails(k) { var out = []; if (!k) return out; for (var a in MAILS) if (MAILS.hasOwnProperty(a) && MAILS[a].item === k) out.push(a); return out; }
+  /* where an address may come from: the tools' data of this call · the open deal · the member's own words — else "" (never filled in) */
+  function mailSource(addr) {
+    if (!mailOk(addr)) return "";
+    if (MAILS[addr]) return MAILS[addr].src;
+    var d = advDoc(); if (d && dealMails(d).indexOf(addr) > -1) return "deal";
+    if (CMP && CMP.toSrc === "typed" && String(CMP.to.value || "").replace(/^\s+|\s+$/g, "").toLowerCase() === addr) return "typed";
+    if (TO_PEND.ok && TO_PEND.addr === addr) return "said";
+    return mailHeard(addr, heardTexts()) ? "said" : "";
+  }
+  /* a dictated address on the screen goes out only once he heard / saw it: he spoke after it was shown, or tapped ✓ */
+  function toReady(addr) { return TO_PEND.addr !== addr || TO_PEND.ok || USER_T > TO_PEND.at + 300; }
+  /* Bassem sends an e-mail he put on the screen only after the member said something since it appeared (review 2026-11-19): a draft and its
+     send in one turn — words in a tool's result, a web page or a tender document telling him to — never e-mail anyone; the 2-3 sentence
+     summary and «تحب أبعته؟» come first. The member's own «📤 ابعت» click needs no such check */
+  function heardSince(t) { return USER_T > (+t || 0); }
+  function askFirstWords() { return T("لسه مااتبعتش: هو ماقالش حاجة من ساعة ما الإيميل ظهر على الشاشة. قوله ملخصه في جملتين أو تلاتة واسأله «تحب أبعته؟»، ولما يقولك ابعته استدعي bassem_send_email تاني.", "Not sent yet: he has not said anything since the e-mail appeared on the screen. Tell him in 2-3 sentences what it says and ask «Shall I send it?»; when he says send it, call bassem_send_email again."); }
+  function confirmWords(addr) { return T("لسه مااتبعتش: العنوان اللي قاله اتكتب على الشاشة حرف حرف (" + mailSpell(addr) + "). اطلب منه يبص عليه ويقولك لو صح، ولما يأكّد ابعت تاني.", "Not sent yet: the address he said is on the screen letter by letter (" + mailSpell(addr) + "). Ask him to check it; once he confirms, send again."); }
+  var NO_TO = function () { return T("مااتبعتش: مفيش عنوان مستلم. اسأله مرة واحدة «أبعته لمين؟» — ماتقولش إنك مش عارف — ولما يقولك العنوان (حتى بالكلام زي info آت … دوت com) استدعي bassem_send_email تاني وحطه في to.", "Not sent: there is no recipient. Ask him once «Who shall I send it to?» — never say you don't know — and when he says it (even spoken, like info at … dot com) call bassem_send_email again with it in to."); };
+  var SRCW = { data: ["من بيانات الفرصة", "from the opportunity's data"], deal: ["من بيانات الصفقة", "from the deal"], typed: ["هو كتبه بنفسه", "he typed it himself"], said: ["هو قاله", "he said it"], sent: ["بعتناله قبل كده في المكالمة دي", "already e-mailed in this call"] };
+  /* an address the platform sent to in this call (confirmed then): known from now on, «sent» */
+  function mailSent(addr, item) { if (!mailOk(addr)) return; if (!MAILS[addr] || MAILS[addr].src !== "data") { if (!MAILS[addr]) MAILS_N++; MAILS[addr] = { src: "sent", at: Date.now(), item: item || "" }; } }
+  function toWords(i) {
+    i = i || {};
+    if (i.bad) return T("مقدرتش أكتب عنوان مستلم من \"" + i.bad + "\": اطلب منه يتهجّاه حرف حرف (آت، دوت، أندرسكور) أو يكتبه بنفسه في خانة إلى.", "I could not make a recipient address out of \"" + i.bad + "\": ask him to spell it letter by letter (at, dot, underscore) or type it in the To box himself.");
+    if (i.addr && i.src === "said" && !toReady(i.addr)) return T("المستلم اللي قاله اتكتب على الشاشة حرف حرف: " + mailSpell(i.addr) + " — خليه يبص عليه ويقولك لو صح قبل ما تبعته.", "The recipient he said is on the screen letter by letter: " + mailSpell(i.addr) + " — let him check it before you send.");
+    if (i.addr) return T("المستلم: " + i.addr + " (" + (SRCW[i.src] || SRCW.typed)[0] + ")" + (i.offered ? "؛ والعنوان التاني اللي كتبته (" + i.offered + ") مش في بيانات الفرصة ولا هو قاله فمااتحطش" : "") + ".",
+      "Recipient: " + i.addr + " (" + (SRCW[i.src] || SRCW.typed)[1] + ")" + (i.offered ? "; the other address you wrote (" + i.offered + ") is neither in the data nor said by him, so it was not used" : "") + ".");
+    if (i.offered) return T("العنوان اللي كتبته (" + i.offered + ") مش في بيانات الفرصة ولا هو قاله، فمااتحطش في المستلم: اسأله «أبعته لمين؟».", "The address you wrote (" + i.offered + ") is neither in the opportunity's data nor said by him, so it was not put in To: ask him «Who shall I send it to?».");
+    if (i.several) return T("في بيانات الفرصة أكتر من عنوان (" + i.several.join("، ") + "): اسأله يختار أنهي واحد، وحطه في to.", "The opportunity's data has several addresses (" + i.several.join(", ") + "): ask him which one, and put it in to.");
+    return T("خانة المستلم فاضية: اسأله مرة واحدة «أبعته لمين؟» — ماتقولش إنك مش عارف، وماتخمّنش عنوان — ولما يقوله حطه في to (حتى لو قاله بالكلام زي info آت … دوت com).", "The To box is empty: ask him once «Who shall I send it to?» — never say you don't know, never guess one — and when he says it put it in to (even spoken, like info at … dot com).");
+  }
+  /* the answer of bassem_draft_email: what is on the screen, and what Bassem does now (the 2-3 sentence summary, «تحب أبعته؟») */
+  function draftWords(where, info, lang, o) {
+    var bl = o && (o.market || o.country) ? bizLang(o.market) : null, foreign = lang && lang !== "ar", L = [];
+    L.push(T((where === "room" ? "المسودة في غرفة الصفقة قدامه على الشاشة" : "المسودة قدامه على الشاشة") + (lang ? " بال" + langName(lang) : "") + "، ولسه مااتبعتتش.", (where === "room" ? "The draft is in the deal room on his screen" : "The draft is on his screen") + (lang ? " in " + langName(lang) : "") + ", not sent yet."));
+    L.push(toWords(info));
+    L.push(T("قوله دلوقتي في جملتين أو تلاتة بالمصري الإيميل بيقول إيه (رايح لمين، وبيطلب إيه، وأهم نقطة فيه) من غير ما تقراه" + (foreign ? "، وده مهم لأنه مش بالعربي" : "") + "، وبعدين اسأله «تحب أبعته؟». لو طلب تقراهوله اقراه كله" + (foreign ? "، ولو مش فاهم اللغة قوله معناه بالمصري جملة جملة" : "") + ".",
+      "Now tell him in 2-3 sentences what the e-mail says (to whom, what it asks, the key point) without reading it out" + (foreign ? " — it matters, it is not in Arabic" : "") + ", then ask «Shall I send it?». Read it in full only if he asks."));
+    if (lang && bl && bl.indexOf(lang) < 0) L.push(T("ملاحظة: الجهة في " + (o.country || o.market) + " والتعامل الرسمي معاها بال" + langName(bl[0]) + "؛ لو هو ماطلبش ال" + langName(lang) + " بنفسه، اكتب الإيميل تاني بال" + langName(bl[0]) + ".",
+      "Note: the buyer is in " + (o.country || o.market) + " and does business in " + langName(bl[0]) + "; unless he asked for " + langName(lang) + " himself, write it again in " + langName(bl[0]) + "."));
+    return L.join(" ");
+  }
+  /* the Worker refused the sign-in itself (nothing was sent or stored): the call's next sign-in may be tried (sendPost) */
+  function signRefused(x) { var c = String((x && x.j && x.j.code) || ""); return !!x && (x.status === 401 || (x.status === 403 && (c === "plan" || c === "full_login_required"))); }
+  /* POST /api/advisor/send with the member's platform sign-in (localStorage "mig-tok") → {status, j}; never a guessed success. The sign-in
+     the call was opened with (BTOK, mint) — else the call's own order (bassemAuth: the platform session, else the advisor token of an
+     activation / WhatsApp call link; review 2026-11-19: with "mig-tok" alone a member whose call came from such a link was told «لازم تسجّل
+     الدخول»), the next one only after signRefused, never after a timeout or any answer of the send itself */
+  function sendPost(body) {
+    var tks = BTOK ? [BTOK] : bassemAuth();
+    function once(tk) {
+      return new Promise(function (res) {
+        if (!window.fetch) { res({ status: 0, j: { code: "offline" } }); return; }
+        var fin = false, h = { "Content-Type": "application/json", Accept: "application/json" }, tm;
+        if (tk) h.Authorization = "Bearer " + tk;
+        tm = setTimeout(function () { if (!fin) { fin = true; res({ status: 0, j: { code: "timeout" } }); } }, 20000);
+        fetch(String(window.MIG_API_BASE || "/api").replace(/\/+$/, "") + "/advisor/send", { method: "POST", headers: h, body: JSON.stringify(body), credentials: "same-origin" }).then(function (r) {
+          if ((r.headers.get("content-type") || "").toLowerCase().indexOf("json") < 0) return { status: r.status, j: { code: "offline" } };
+          return r.json().then(function (j) { return { status: r.status, j: j || {} }; }, function () { return { status: r.status, j: { code: "offline" } }; });
+        }, function () { return { status: 0, j: { code: "offline" } }; }).then(function (x) { if (fin) return; fin = true; clearTimeout(tm); res(x); });
+      });
+    }
+    function from(i) { return once(tks[i] || "").then(function (x) { return i + 1 < tks.length && signRefused(x) ? from(i + 1) : x; }); }
+    return from(0);
+  }
+  /* Bassem learns what the member did himself («📤 ابعت» clicked): the SDK call's context for his next turn */
+  function tellBassem(text) { try { if (LV && !LV.closed && LV.client && LV.client.addContext) LV.client.addContext(String(text)); } catch (e) {} }
+
+  /* ---------- the e-mail draft on the shared screen ---------- */
+  var CMP = null, LAST_DRAFT = "", ROOM_DEAL = "", ROOM_DRAFT = "", ROOM_SENT = "", ROOM_AT = 0;
   var CMP_CSS = '.jnl-cmp{position:absolute;z-index:5;inset:52px 10px 10px 10px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;padding:10px 12px 12px;background:#fff;color:#14232a;border-radius:16px;overflow:auto;overscroll-behavior:contain;'
     + 'box-shadow:0 24px 60px -20px rgba(0,0,0,.6),0 0 0 1px rgba(4,18,26,.1),0 0 0 3px rgba(233,196,106,.6);font:400 .9rem/1.6 Cairo,Tajawal,Tahoma,sans-serif}'
     + '.jnl-cmp[hidden]{display:none}.jnl-cmp.fx{position:fixed;z-index:2147483003;inset:auto 12px 12px auto;width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 24px)}'
     + '.jnl-cmp .jc-hd{display:flex;align-items:center;gap:8px}.jnl-cmp .jc-hd b{flex:1;min-width:0;font-weight:800;color:#04121a}'
-    + '.jnl-cmp .jc-lg{font-style:normal;font-weight:800;font-size:.72rem;background:#04121a;color:#bff3ff;border-radius:999px;padding:1px 9px;direction:ltr}.jnl-cmp .jc-lg[hidden],.jnl-cmp .jc-why[hidden],.jnl-cmp .jc-sg[hidden]{display:none}'
+    + '.jnl-cmp .jc-lg{font-style:normal;font-weight:800;font-size:.72rem;background:#04121a;color:#bff3ff;border-radius:999px;padding:1px 9px;direction:ltr}.jnl-cmp .jc-lg[hidden],.jnl-cmp .jc-why[hidden],.jnl-cmp .jc-sg[hidden],.jnl-cmp .jc-sp[hidden]{display:none}'
     + '.jnl-cmp .jc-hd button{flex:none;width:32px;height:32px;border-radius:50%;border:0;background:#eef3f5;color:#04121a;font:inherit;font-weight:800;cursor:pointer}'
     + '.jnl-cmp .jc-nt{color:#5b6b72;font-size:.76rem;line-height:1.5}.jnl-cmp .jc-why{margin:0;padding:6px 10px;border-radius:10px;background:#fff8e6;color:#6b4e00;font-size:.8rem}'
     + '.jnl-cmp label{display:flex;flex-direction:column;gap:2px;font-weight:700;font-size:.8rem;color:#33444b}.jnl-cmp .jc-bl{flex:1;min-height:0}'
+    + '.jnl-cmp .jc-src{font-style:normal;font-weight:700;font-size:.72rem;color:#0b5d47}.jnl-cmp .jc-src:empty{display:none}'
     + '.jnl-cmp input,.jnl-cmp textarea{font:inherit;font-size:.92rem;font-weight:400;color:#14232a;border:1px solid #cfdde3;border-radius:10px;padding:7px 10px;background:#fff;box-sizing:border-box;width:100%}'
     + '.jnl-cmp textarea{flex:1;min-height:180px;resize:vertical;line-height:1.75;white-space:pre-wrap}.jnl-cmp [readonly]{background:#f6fafb}'
     + '.jnl-cmp .jc-sg{font-size:.8rem;color:#0b5d47;display:flex;flex-wrap:wrap;align-items:center;gap:6px}.jnl-cmp .jc-sg bdi{direction:ltr;font-weight:700}'
-    + '.jnl-cmp .jc-st{min-height:1.2em;margin:0;font-size:.82rem;font-weight:700;color:#0b5d47}.jnl-cmp .jc-st.err{color:#B42318}.jnl-cmp .jc-st a{color:#0a3d8f;margin-inline-start:6px}'
-    + '.jnl-cmp .jc-acts{display:flex;flex-wrap:wrap;gap:8px}.jnl-cmp .jc-acts button,.jnl-cmp .jc-sg button{border-radius:999px;border:1px solid #cfdde3;background:#fff;color:#04121a;font:inherit;font-weight:800;padding:6px 14px;cursor:pointer}'
-    + '.jnl-cmp .jc-acts .jc-send{background:#0b6b35;border-color:#0b6b35;color:#fff}.jnl-cmp .jc-hi{box-shadow:0 0 0 3px rgba(233,196,106,.95),0 0 24px rgba(233,196,106,.6)}'
+    + '.jnl-cmp .jc-sp{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px;border-radius:10px;background:#fff8e6;color:#6b4e00;font-size:.8rem;font-weight:700}'
+    + '.jnl-cmp .jc-sp bdi{display:inline-flex;flex-wrap:wrap;gap:3px;direction:ltr}.jnl-cmp .jc-ch{display:inline-block;min-width:1.2em;padding:1px 5px;border-radius:6px;background:#fff;color:#04121a;border:1px solid #ecd9a0;font:700 .95rem/1.4 Consolas,Menlo,monospace;text-align:center}'
+    + '.jnl-cmp .jc-ch.sy{font:800 .72rem/1.9 Cairo,Tajawal,Tahoma,sans-serif;color:#6b4e00}'
+    + '.jnl-cmp .jc-st{min-height:1.2em;margin:0;font-size:.82rem;font-weight:700;color:#0b5d47}.jnl-cmp .jc-st.err{color:#B42318}.jnl-cmp .jc-st a,.jnl-cmp .jc-st button{color:#0a3d8f;margin-inline-start:6px;background:none;border:0;padding:0;font:inherit;text-decoration:underline;cursor:pointer}'
+    + '.jnl-cmp .jc-acts{display:flex;flex-wrap:wrap;gap:8px}.jnl-cmp .jc-acts button,.jnl-cmp .jc-sg button,.jnl-cmp .jc-sp button{border-radius:999px;border:1px solid #cfdde3;background:#fff;color:#04121a;font:inherit;font-weight:800;padding:6px 14px;cursor:pointer}'
+    + '.jnl-cmp .jc-acts .jc-send{background:#0b6b35;border-color:#0b6b35;color:#fff}.jnl-cmp .jc-acts .jc-send[disabled]{opacity:.6;cursor:wait}.jnl-cmp .jc-hi{box-shadow:0 0 0 3px rgba(233,196,106,.95),0 0 24px rgba(233,196,106,.6)}'
     + '.jnl-cmp button:focus-visible,.jnl-cmp input:focus-visible,.jnl-cmp textarea:focus-visible{outline:3px solid #e9c46a;outline-offset:2px}'
     + '.jnl-cmp.min{inset:52px auto auto 10px;width:auto;max-width:calc(100% - 20px);padding:4px 6px 4px 12px;overflow:hidden;cursor:pointer}.jnl-cmp.min>*:not(.jc-hd){display:none}.jnl-cmp.min .jc-x{display:none}'
     + '@media (max-width:820px){.jnl-cmp{inset:48px 6px 6px 6px;padding:8px 10px}.jnl-cmp textarea{min-height:140px}}'
     /* review 2026-11-19 #15 (phones / stacked): «رجوع لباسم» (data/bassem-live-tools.js, bottom 14px, ~48px tall) stays — the open draft
        ends above it, so its «📤 ابعت» / «✏️ عدّل» are never under the button and both can be tapped */
     + '@media (max-width:820px),(max-aspect-ratio:3/2){.jnl:not(.fs) .jnl-scr.blt-bk.jnl-cmp-on .jnl-cmp:not(.min):not(.fx){bottom:68px}}';
-  function cmpRtl(s) { return /[\u0600-\u06FF]/.test(String(s || "")); }
+  function cmpRtl(s) { return /[\u0600-\u06ff]/.test(String(s || "")); }
   function cmpOn() { return !!(CMP && !CMP.el.hidden && document.body && document.body.contains(CMP.el)); }
   /* a draft is waiting in the composer (open, folded or closed with ✕ — its text is kept until the next draft) */
   function cmpDraft() { return !!(CMP && String(CMP.body.value || "").replace(/\s+/g, "")); }
   /* the deal room is open on the shared screen (or on this page, advisor.html itself) */
   function dealOnScreen() { var d = advDoc(), dr = null; try { dr = d && d.querySelector ? d.querySelector("#advDr") : null; } catch (e) { dr = null; } return !!(dr && !dr.hidden && dr.querySelector(".pn")); }
-  function cmpSay(msg, err, href) {
+  /* the status line under the draft; act = [label, fn] adds a small button (e.g. open the new deal on the shared screen) */
+  function cmpSay(msg, err, href, act) {
     if (!CMP) return; var st = CMP.st; st.textContent = msg || ""; st.className = "jc-st" + (err ? " err" : "");
     if (href) { var l = document.createElement("a"); l.href = href; l.textContent = T("لو ما اتفتحش: افتحه من هنا", "If it did not open: open it here"); st.appendChild(l); }
+    if (act) { var b = document.createElement("button"); b.type = "button"; b.textContent = act[0]; b.onclick = act[1]; st.appendChild(b); }
   }
   function cmpEdit(on) {
     var C = CMP; if (!C) return; C.sub.readOnly = !on; C.body.readOnly = !on;
@@ -1591,8 +1976,8 @@
     try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(ok, old); return; } } catch (e) {}
     old();
   }
-  /* «ابعت»: the member's own click — his mail app opens with the draft; nothing is sent from here */
-  function cmpSend() {
+  /* «📧 من بريدي»: the member's own mail app with the draft — nothing is sent from here */
+  function cmpMailto() {
     var C = CMP; if (!C) return;
     var to = C.to.value.trim(), sub = C.sub.value.trim(), body = C.body.value;
     if (!EMRE.test(to)) { cmpSay(T("اكتب بريد المستلم الأول (من إعلان الجهة أو موقعها الرسمي) — باسم مش بيخمّن عناوين.", "Write the recipient's e-mail first (from the buyer's notice or official site) — Bassem never guesses addresses."), true); try { C.to.focus(); } catch (e) {} return; }
@@ -1601,6 +1986,35 @@
     C.href = href;
     cmpSay(T("اتفتح الإيميل في برنامج البريد عندك — راجعه واضغط إرسال من هناك.", "The e-mail opened in your mail app — review it and press send there."), false, href);
     try { if (!window.JANNA_LIVE_NO_MAILTO) { var x = document.createElement("a"); x.href = href; x.style.display = "none"; document.body.appendChild(x); x.click(); x.parentNode.removeChild(x); } } catch (e) {}
+  }
+  /* «إلى» with its source: a dictated address is spelled letter by letter with ✓ / ✏️ under it */
+  function cmpSrc(C, src) { C.el.querySelector(".jc-src").textContent = src === "said" ? (toReady(C.to.value.trim().toLowerCase()) ? T("اللي قلته ✓", "what you said ✓") : T("اللي قلته — اتأكد منه", "what you said — please check it")) : SRCW[src] && src !== "typed" ? SRCW[src][EN ? 1 : 0] + " ✓" : ""; }
+  function cmpSpell(C, addr) {
+    var sp = C.el.querySelector(".jc-sp"), bd, i, ch, x, ok, ed; sp.innerHTML = ""; sp.hidden = !addr; if (!addr) return;
+    sp.appendChild(document.createTextNode(T("اتأكد من العنوان حرف حرف:", "Check the address letter by letter:") + " "));
+    bd = document.createElement("bdi"); bd.setAttribute("aria-label", addr);
+    for (i = 0; i < addr.length; i++) { ch = addr.charAt(i); x = document.createElement("span"); x.className = "jc-ch" + (MSAY[ch] ? " sy" : ""); x.textContent = MSAY[ch] ? ch + " " + T(MSAY[ch][0], MSAY[ch][1]) : ch; bd.appendChild(x); }
+    sp.appendChild(bd);
+    ok = document.createElement("button"); ok.type = "button"; ok.textContent = "✓ " + T("صح", "Correct");
+    ok.onclick = function () { if (TO_PEND.addr === addr) TO_PEND.ok = true; cmpSpell(C, ""); cmpSrc(C, "said"); };
+    ed = document.createElement("button"); ed.type = "button"; ed.textContent = "✏️ " + T("أصلّحه", "Fix it");
+    ed.onclick = function () { try { C.to.focus(); C.to.select(); } catch (e) {} };
+    sp.appendChild(ok); sp.appendChild(ed);
+  }
+  function cmpTo(addr, src) {
+    var C = cmpBox(); C.to.value = addr || ""; C.toSrc = addr ? src : ""; C.sg.innerHTML = ""; C.sg.hidden = true;
+    if (addr && src === "said") TO_PEND = { addr: addr, at: Date.now(), ok: TO_PEND.ok && TO_PEND.addr === addr };
+    cmpSpell(C, addr && src === "said" && !toReady(addr) ? addr : ""); cmpSrc(C, C.toSrc);
+  }
+  /* an address Bassem passed that nobody said and no data holds: only offered — the member's own tap uses it */
+  function cmpOffer(C, list) {
+    var sg = C.sg, i; sg.innerHTML = ""; if (!list.length) { sg.hidden = true; return; }
+    sg.appendChild(document.createTextNode((list.length > 1 ? T("العناوين اللي في بيانات الفرصة:", "Addresses in the opportunity's data:") : T("باسم كتب العنوان ده:", "Bassem wrote this address:")) + " "));
+    for (i = 0; i < list.length && i < 4; i++) (function (em) {
+      var bd = document.createElement("bdi"), ub = document.createElement("button"); bd.textContent = em; ub.type = "button"; ub.textContent = T("استخدمه", "Use it");
+      ub.onclick = function () { cmpTo(em, "typed"); }; sg.appendChild(bd); sg.appendChild(ub);
+    })(list[i]);
+    sg.hidden = false;
   }
   function cmpBox() {
     var host = ov && ov.querySelector(".jnl-scr");
@@ -1612,66 +2026,209 @@
       + '<button type="button" class="jc-min" title="' + esc(T("صغّرها", "Minimise")) + '" aria-label="' + esc(T("صغّر المسودة", "Minimise the draft")) + '">–</button>'
       + '<button type="button" class="jc-x" title="' + esc(T("اقفل", "Close")) + '" aria-label="' + esc(T("اقفل المسودة", "Close the draft")) + '">✕</button></div>'
       + '<p class="jc-why" hidden></p>'
-      + '<span class="jc-nt">' + esc(T("مش هيتبعت غير لما تضغط «ابعت» بنفسك، وباسم مش بيقراه بصوت عالي.", "Nothing is sent until you press “Send” yourself, and Bassem does not read it aloud.")) + '</span>'
-      + '<label>' + esc(T("إلى", "To")) + '<input class="jc-to" type="email" dir="ltr" autocomplete="off" spellcheck="false" placeholder="' + esc(T("المستلم: هيتحدد لما نختار الجهة", "Recipient: set once we choose the buyer")) + '"></label>'
-      + '<div class="jc-sg" hidden></div>'
+      + '<span class="jc-nt">' + esc(T("بيتبعت من المنصة باسم شركتك لما تقول لباسم «ابعته» أو تضغط «ابعت»، والرد بيتسجّل في صفقة على المنصة. باسم بيقولك ملخصه، ويقراه كله لو طلبت.", "Sent from the platform in your company's name when you tell Bassem “send it” or press “Send”; the reply is tracked in a deal on the platform. Bassem tells you what it says, and reads it in full if you ask.")) + '</span>'
+      + '<label>' + esc(T("إلى", "To")) + ' <em class="jc-src"></em><input class="jc-to" type="email" dir="ltr" autocomplete="off" spellcheck="false" placeholder="' + esc(T("لسه مفيش مستلم — قول لباسم العنوان أو اكتبه هنا", "No recipient yet — tell Bassem the address or type it here")) + '"></label>'
+      + '<div class="jc-sp" hidden></div><div class="jc-sg" hidden></div>'
       + '<label>' + esc(T("الموضوع", "Subject")) + '<input class="jc-sub" maxlength="250" readonly></label>'
       + '<label class="jc-bl">' + esc(T("نص الرسالة", "Message")) + '<textarea class="jc-body" readonly></textarea></label>'
       + '<p class="jc-st" role="status" aria-live="polite"></p>'
-      + '<div class="jc-acts"><button type="button" class="jc-send">📤 ' + esc(T("ابعت", "Send")) + '</button><button type="button" class="jc-copy">📋 ' + esc(T("انسخ", "Copy")) + '</button><button type="button" class="jc-edit" aria-pressed="false">✏️ ' + esc(T("عدّل", "Edit")) + '</button></div>';
+      + '<div class="jc-acts"><button type="button" class="jc-send">📤 ' + esc(T("ابعت من المنصة", "Send via the platform")) + '</button><button type="button" class="jc-mail">📧 ' + esc(T("من بريدي", "From my mail")) + '</button><button type="button" class="jc-copy">📋 ' + esc(T("انسخ", "Copy")) + '</button><button type="button" class="jc-edit" aria-pressed="false">✏️ ' + esc(T("عدّل", "Edit")) + '</button></div>';
     (host || document.body).appendChild(el);
-    CMP = { el: el, to: el.querySelector(".jc-to"), sub: el.querySelector(".jc-sub"), body: el.querySelector(".jc-body"), st: el.querySelector(".jc-st"), href: "" };
+    CMP = { el: el, to: el.querySelector(".jc-to"), sub: el.querySelector(".jc-sub"), body: el.querySelector(".jc-body"), st: el.querySelector(".jc-st"), sg: el.querySelector(".jc-sg"), href: "", toSrc: "", opp: null, lang: "", market: "", at: 0, busy: false, sentKey: "" };
     /* open and not folded → the host screen says so (CSS above); every way it opens / folds / closes changes `hidden` or `class` */
     var mark = function () { var on = !el.hidden && !el.classList.contains("min"); try { if (host) host.classList.toggle("jnl-cmp-on", on); } catch (e) {} };
     try { if (window.MutationObserver) new MutationObserver(mark).observe(el, { attributes: true, attributeFilter: ["hidden", "class"] }); } catch (e) {}
     mark();
-    if (keep) { CMP.to.value = keep.to.value; CMP.sub.value = keep.sub.value; CMP.body.value = keep.body.value; CMP.sub.dir = keep.sub.dir; CMP.body.dir = keep.body.dir; }
+    if (keep) { CMP.to.value = keep.to.value; CMP.sub.value = keep.sub.value; CMP.body.value = keep.body.value; CMP.sub.dir = keep.sub.dir; CMP.body.dir = keep.body.dir; CMP.toSrc = keep.toSrc; CMP.opp = keep.opp; CMP.lang = keep.lang; CMP.market = keep.market; CMP.at = keep.at; CMP.sentKey = keep.sentKey; cmpSrc(CMP, CMP.toSrc); }
     el.querySelector(".jc-x").onclick = function (e) { if (e && e.stopPropagation) e.stopPropagation(); el.hidden = true; };
     el.querySelector(".jc-min").onclick = function (e) { if (e && e.stopPropagation) e.stopPropagation(); el.classList.toggle("min"); };
     el.onclick = function (e) { if (el.classList.contains("min") && !(e && e.target && e.target.closest && e.target.closest(".jc-min"))) el.classList.remove("min"); };
     el.querySelector(".jc-edit").onclick = function () { cmpEdit(CMP.body.readOnly); };
     el.querySelector(".jc-copy").onclick = cmpCopy;
-    el.querySelector(".jc-send").onclick = cmpSend;
+    el.querySelector(".jc-mail").onclick = cmpMailto;
+    el.querySelector(".jc-send").onclick = function () { cmpSendNow("button"); };
+    /* his own typing in «إلى» is his address (no letter-by-letter check needed) */
+    CMP.to.addEventListener("input", function () { CMP.toSrc = CMP.to.value.trim() ? "typed" : ""; CMP.sg.hidden = true; cmpSpell(CMP, ""); cmpSrc(CMP, CMP.toSrc); });
     [CMP.sub, CMP.body].forEach(function (x) { x.addEventListener("input", function () { x.dir = cmpRtl(x.value) ? "rtl" : "ltr"; }); });
     return CMP;
   }
-  function cmpOpen(a, why) {
-    a = a || {};
-    var C = cmpBox(), el = C.el, sub = String(a.subject || ""), body = String(a.body || ""), em = String(a.to || "").trim().toLowerCase();
-    var lg = String(a.language || "").toLowerCase().slice(0, 2); if (!/^[a-z]{2}$/.test(lg)) lg = body || sub ? (cmpRtl(body || sub) ? "ar" : "") : "";
+  /* a new draft in the composer → the text for Bassem (draftWords) */
+  function cmpDraftNow(a, why) {
+    var C = cmpBox(), el = C.el, sub = String(a.subject || ""), body = String(a.body || ""), lg = mailLang(sub + "\n" + body, a.language), pick, prevK = C.opp ? C.opp.k : "", info, em, cur, ms;
+    screenOpp(); /* the notice on the screen joins the call's opportunities (read from its own page when no tool returned it) */
+    pick = oppPick(OPPC, screenOppKey(), sub + "\n" + body);
+    /* the last recipient stays only for a new version of the SAME e-mail: the same opportunity, or (no opportunity) a draft not sent yet,
+       within 10 minutes — a new e-mail never inherits the address of the last one */
+    if (C.to.value && !(pick ? pick.k === prevK : !prevK && !C.sentKey && Date.now() - (C.at || 0) < 600000)) { C.to.value = ""; C.toSrc = ""; }
+    C.opp = pick; C.lang = lg; C.market = ""; C.sentKey = ""; C.busy = false;
     el.dir = EN ? "ltr" : "rtl"; el.setAttribute("aria-label", T("مسودة إيميل من باسم", "E-mail draft from Bassem"));
     C.sub.value = sub; C.body.value = body; C.sub.dir = cmpRtl(sub) ? "rtl" : "ltr"; C.body.dir = cmpRtl(body) ? "rtl" : "ltr";
     var b0 = el.querySelector(".jc-lg"); b0.textContent = lg ? lg.toUpperCase() : ""; b0.hidden = !lg;
     var w0 = el.querySelector(".jc-why"); w0.textContent = why || ""; w0.hidden = !why;
-    /* «إلى»: an address of the open deal is used as in the deal room; any other address Bassem passed is only offered, never filled in */
-    var sg = el.querySelector(".jc-sg"); sg.innerHTML = ""; sg.hidden = true;
-    if (em && EMRE.test(em) && C.to.value.trim().toLowerCase() !== em) {
-      if (knownEmail(em)) C.to.value = em;
-      else {
-        sg.appendChild(document.createTextNode(T("باسم سمع العنوان ده:", "Bassem heard this address:") + " "));
-        var bd = document.createElement("bdi"); bd.textContent = em; sg.appendChild(bd);
-        var ub = document.createElement("button"); ub.type = "button"; ub.textContent = T("ده الصح — استخدمه", "That's right — use it"); ub.onclick = function () { C.to.value = em; sg.hidden = true; }; sg.appendChild(ub);
-        sg.hidden = false;
-      }
-    }
+    C.sg.innerHTML = ""; C.sg.hidden = true; cmpSpell(C, "");
+    em = toArg(a.to); cur = C.to.value.trim().toLowerCase();
+    if (em.addr) { var s0 = cur === em.addr && C.toSrc ? C.toSrc : mailSource(em.addr); if (s0) { if (cur !== em.addr || C.toSrc !== s0) cmpTo(em.addr, s0); info = { addr: em.addr, src: s0 }; } else { cmpOffer(C, [em.addr]); info = { addr: cur, src: cur ? C.toSrc : "", offered: em.addr }; } }
+    else if (em.bad) info = { addr: cur, src: C.toSrc, bad: cur ? "" : em.bad };
+    else if (cur && C.toSrc) info = { addr: cur, src: C.toSrc };
+    else { ms = pick ? oppMails(pick.k) : []; if (ms.length === 1) { cmpTo(ms[0], "data"); info = { addr: ms[0], src: "data" }; } else { if (ms.length > 1) cmpOffer(C, ms); info = { several: ms.length > 1 ? ms : null }; } }
     if (!C.to.value.trim()) C.to.title = C.to.placeholder;
+    cmpSrc(C, C.toSrc);
     cmpEdit(false); cmpSay("", false); C.href = ""; C.at = Date.now();
     el.classList.remove("min"); el.hidden = false;
     try { C.body.scrollTop = 0; el.scrollTop = 0; } catch (e) {}
     /* phones: the screen sits under the video — the «الشاشة» button pings, as it does when the screen changes */
     var sw = ov && ov.querySelector(".jnl-hd .sw"); if (sw) { sw.classList.remove("new"); void sw.offsetWidth; sw.classList.add("new"); }
+    done("bassem_draft_email");
+    return draftWords("cmp", info, lg, pick && pick.o);
+  }
+  /* the composer's draft FROM THE PLATFORM (Bassem's bassem_send_email, or the member's own «📤 ابعت») → the text for Bassem */
+  function cmpSendNow(via) {
+    var C = CMP, B = via !== "button", to, sub, body, key, msg;
+    var stop = function (m, st) { cmpSay(m, true); if (B) outcome("bassem_send_email", st || "refused", m); return m; };
+    if (!C || !cmpDraft()) return Promise.resolve(T("مفيش إيميل مكتوب على الشاشة لسه: اكتبه الأول بـ bassem_draft_email، وبعدها ابعته.", "There is no e-mail on the screen yet: write it first with bassem_draft_email, then send it."));
+    C.el.classList.remove("min"); C.el.hidden = false;
+    if (C.busy) return Promise.resolve(T("الإيميل ده بيتبعت دلوقتي — استنى النتيجة وماتبعتوش تاني.", "This e-mail is being sent right now — wait for the result, do not send it again."));
+    to = C.to.value.trim().toLowerCase(); sub = C.sub.value.trim(); body = C.body.value;
+    if (!to) { try { C.to.focus(); } catch (e) {} C.to.classList.add("jc-hi"); setTimeout(function () { C.to.classList.remove("jc-hi"); }, 4500); stop(T("لسه مفيش مستلم: قول لباسم العنوان أو اكتبه في خانة إلى.", "No recipient yet: tell Bassem the address or type it in To.")); return Promise.resolve(NO_TO()); }
+    if (!mailOk(to)) { stop(T("العنوان اللي في خانة إلى مش صحيح — صححه.", "The address in To is not valid — please correct it.")); return Promise.resolve(T("مااتبعتش: العنوان اللي في خانة إلى (" + to + ") مش صحيح. اطلب منه يقوله تاني حرف حرف.", "Not sent: the address in To (" + to + ") is not valid. Ask him to say it again letter by letter.")); }
+    if (!B && TO_PEND.addr === to) TO_PEND.ok = true; /* his own click is his confirmation */
+    if (B && C.toSrc === "said" && !toReady(to)) { cmpSpell(C, to); cmpSay(T("اتأكد من العنوان الأول — لما تقول صح بيتبعت.", "Check the address first — it goes out once you confirm."), false); outcome("bassem_send_email", "refused", "address not confirmed"); return Promise.resolve(confirmWords(to)); }
+    if (!sub || !body.replace(/\s+/g, "")) { stop(T("الموضوع ونص الرسالة مطلوبين.", "Subject and message are required.")); return Promise.resolve(T("مااتبعتش: الموضوع أو نص الإيميل ناقص — اكتب المسودة تاني بـ bassem_draft_email.", "Not sent: the subject or the message is missing — write the draft again with bassem_draft_email.")); }
+    key = to + "\n" + sub + "\n" + body;
+    if (C.sentKey === key) { msg = T("الإيميل ده اتبعت فعلاً لـ " + to + " — مش هيتبعت مرتين.", "This e-mail was already sent to " + to + " — it is not sent twice."); cmpSay("✅ " + msg, false); return Promise.resolve(msg); }
+    if (B && !heardSince(C.at)) { cmpSay(T("مستني موافقتك: قول لباسم «ابعته» أو اضغط «ابعت من المنصة».", "Waiting for your OK: tell Bassem “send it” or press “Send via the platform”."), false); outcome("bassem_send_email", "refused", T("مستني موافقتك", "waiting for your OK")); return Promise.resolve(askFirstWords()); }
+    C.busy = true; var btn = C.el.querySelector(".jc-send"); btn.disabled = true;
+    cmpSay("⏳ " + T("ببعت من المنصة…", "Sending from the platform…"), false);
+    if (B) doing(T("ببعت الإيميل من المنصة", "sending the e-mail from the platform"));
+    return sendPost(sendBody({ to: to, subject: sub, body: body, language: C.lang, opp: C.opp && C.opp.o, via: via, toSrc: C.toSrc, market: C.market })).then(function (r) {
+      C.busy = false; btn.disabled = false;
+      var w = sendWords(to, r), dl = r.j && r.j.deal;
+      if (w.ok) {
+        C.sentKey = key; mailSent(to, C.opp ? C.opp.k : "");
+        cmpSay(w.screen, false, "", dl && dl.id ? ["📂 " + T("افتح الصفقة", "Open the deal"), function () { go("advisor.html#deal=" + encodeURIComponent(dl.id)); }] : null);
+        if (B) done("bassem_send_email"); else tellBassem(T("العضو ضغط «ابعت» بنفسه: الإيميل \"" + sub + "\" اتبعت من المنصة لـ " + to + " (المنصة أكدت). ماتبعتوش تاني.", "The member pressed “Send” himself: the e-mail \"" + sub + "\" was sent from the platform to " + to + " (confirmed). Do not send it again."));
+      } else {
+        cmpSay(w.screen, true);
+        if (B) outcome("bassem_send_email", w.failed ? "failed" : "refused", w.screen);
+        else tellBassem(T("العضو ضغط «ابعت» بنفسه على الإيميل \"" + sub + "\" لـ " + to + " و", "The member pressed “Send” himself on the e-mail \"" + sub + "\" to " + to + " — ") + w.bassem);
+        if (w.code === "full_login_required") { try { var A = window.MIGAPI; if (A && A.login) setTimeout(function () { A.login({ why: T("سجّل دخولك بكود الإيميل علشان باسم يبعت الإيميل من المنصة.", "Sign in with your e-mail code so Bassem can send the e-mail from the platform.") }); }, 600); } catch (x) {} }
+      }
+      return w.bassem;
+    });
   }
   /* the draft gives way when Bassem shows something else (a tool that drives the screen / shows results, or a new page on the screen):
      it folds to its «✉️» chip and keeps everything the member typed; the next draft or send brings it back */
   var CMP_GIVE = /^(janna_search|janna_navigate|janna_open|bassem_open_item|bassem_screen|bassem_open_opportunity|bassem_start_deal|bassem_open_guide|bassem_update_deal|bassem_web_search|bassem_intel)$/;
   function cmpGive(tool) { if (!cmpOn() || CMP.el.classList.contains("min") || (tool ? !CMP_GIVE.test(String(tool)) : Date.now() - (CMP.at || 0) < 1500)) return; CMP.el.classList.add("min"); } /* a page load right after it opened does not fold it */
-  /* bassem_send_email for the composer's draft: never a send by itself — the member's own «ابعت» */
-  function cmpAsk() {
-    var C = cmpBox();
-    C.el.classList.remove("min"); C.el.hidden = false; C.at = Date.now();
-    var b = C.el.querySelector(".jc-send"); b.classList.add("jc-hi"); setTimeout(function () { b.classList.remove("jc-hi"); }, 4500);
-    var m = T("راجع الإيميل واضغط «ابعت» بنفسك — باسم مش بيبعت حاجة من غير ضغطتك.", "Review the e-mail and press “Send” yourself — Bassem never sends anything without your click.");
-    cmpSay(m, false); refuse("bassem_send_email", "refused", m);
+
+  /* ---------- the deal room (advisor.part.py): Bassem fills its own fields and presses its own «ابعت من المنصة» ---------- */
+  function roomDraft(d, a) {
+    return new Promise(function (res) {
+      doing(T("بكتبلك الإيميل", "drafting your e-mail"));
+      var known = dealMails(d);
+      tab(d, "mail", "#mTo", function (to) {
+        if (!to) { res(T("مقدرتش أفتح المراسلات في الصفقة — جرّب تاني.", "Could not open the deal's e-mails — please try again.")); return; }
+        /* the deal room has an Arabic and an LTR (English) template: every language but Arabic (zh, fr, es …) takes the LTR one */
+        if (a.language && d.querySelector("#mLang")) setIn(d, "#mLang", /^ar/i.test(a.language) ? "ar" : "en", ["change"]);
+        setTimeout(function () {
+          var em = toArg(a.to), cur = to.value.trim().toLowerCase(), info = cur ? { addr: cur, src: "deal" } : {}, s0;
+          /* Bassem never invents a recipient: an address of this deal / opportunity, of the call's data, or the member's own words */
+          if (em.addr) {
+            s0 = cur === em.addr || known.indexOf(em.addr) > -1 ? "deal" : mailSource(em.addr);
+            if (s0) { setIn(d, "#mTo", em.addr); info = { addr: em.addr, src: s0 }; if (s0 === "said") { TO_PEND = { addr: em.addr, at: Date.now(), ok: TO_PEND.ok && TO_PEND.addr === em.addr }; if (!toReady(em.addr)) sayAny("🔤 " + T("اتأكد من العنوان: ", "Check the address: ") + mailSpell(em.addr)); } }
+            else { info.offered = cur ? "" : em.addr; sayAny(T("باسم ما بيخمّنش عناوين بريد: البريد ده مش موجود في بيانات الفرصة ولا إنت قلته، فسيبت خانة «إلى» زي ما هي.", "Bassem never guesses addresses: that e-mail is neither in the opportunity's data nor said by you, so “To” was left as it is.")); }
+          } else if (em.bad) info.bad = cur ? "" : em.bad;
+          /* no real recipient yet: the draft says so instead of an address (owner test 2026-11-18: «sales@supplier-example.com») */
+          if (!to.value.trim()) { to.placeholder = T("المستلم: قول لباسم العنوان أو اكتبه هنا", "Recipient: tell Bassem the address or type it here"); to.title = to.placeholder; }
+          if (a.subject) setIn(d, "#mSub", a.subject); if (a.body) setIn(d, "#mBody", a.body);
+          /* a subject / body that is not Arabic (English, Chinese, French …) reads left to right */
+          [["#mSub", a.subject], ["#mBody", a.body]].forEach(function (x) { var el = x[1] && d.querySelector(x[0]); if (el) el.dir = /[\u0600-\u06ff]/.test(String(x[1])) ? "rtl" : "ltr"; });
+          var sg0 = d.querySelector("#advStg"), mb0 = d.querySelector("#mBody"); ROOM_DEAL = sg0 ? String(sg0.getAttribute("data-stage") || "") : "";
+          ROOM_DRAFT = "b" + Date.now().toString(36); ROOM_AT = Date.now(); if (mb0) mb0.setAttribute("data-bassem-draft", ROOM_DRAFT); /* roomSend sends only this form */
+          glow(d.querySelector("#mBody")); done("bassem_draft_email");
+          res(draftWords("room", info, mailLang(String(a.subject || "") + "\n" + String(a.body || ""), a.language), roomOpp(d)));
+        }, 300);
+      });
+    });
+  }
+  /* the open deal's market / country (its chips) for the language note */
+  function roomOpp(d) { var h = d.querySelector("#advDr .pn-h .opc-t .chip"), t = h ? String(h.textContent || "") : ""; return t ? { market: /الخليج|Gulf/i.test(t) ? "gulf" : /مصر|Egypt/i.test(t) ? "local" : "", country: t } : null; }
+  function roomWords(x, to) {
+    x = x || {};
+    if (x.sent) { mailSent(to, ""); ROOM_SENT = ROOM_DRAFT; done("bassem_send_email"); return T("اتبعت ✓ من المنصة لـ " + to + " من غرفة الصفقة، والرد هيتسجّل فيها. قوله إنه اتبعت وإنك هتتابع الرد.", "Sent ✓ from the platform to " + to + " from the deal room; the reply is tracked there. Tell him it was sent and that you will follow the reply."); }
+    if (x.mailto) { outcome("bassem_send_email", "refused", "opened in his mail app"); return T("اتفتح في برنامج البريد عنده (الصفحة مش متوصلة بخادم المستشار دلوقتي) — قوله يدوس إرسال من هناك، وماتقولش إنه اتبعت.", "It opened in his mail app (the page is not connected to the advisor server right now) — tell him to press send there; never say it was sent."); }
+    if (x.code === "placeholders") { outcome("bassem_send_email", "refused", "placeholders"); return T("مااتبعتش: الإيميل لسه فيه بيانات بين [ ] ناقصة. كمّلها في المسودة (bassem_draft_email) أو قوله يكمّلها، وبعدين ابعت.", "Not sent: the e-mail still has [placeholders]. Fill them in (bassem_draft_email) or ask him to, then send."); }
+    var w = sendWords(to, { status: 0, j: x.stored ? { sent: false, message: {}, error: x.error } : { code: x.code || "", error: x.error || "", limit: x.limit || "" } });
+    outcome("bassem_send_email", w.failed ? "failed" : "refused", w.screen);
+    return w.bassem;
+  }
+  /* the deal room's own «ابعت من المنصة», on the room that is open NOW — never a room re-opened or a tab switched just to send: that
+     re-renders the form with its template, and the member would get an e-mail he never saw. Bassem's draft is marked on its #mBody
+     (ROOM_DRAFT); a form without that mark (closed, re-opened, another tab) holds no draft of his */
+  function roomOpenId() { var d = advDoc(), s = null; try { s = d && d.querySelector ? d.querySelector("#advDr:not([hidden]) #advStg") : null; } catch (e) { s = null; } return s ? String(s.getAttribute("data-stage") || "") : ""; }
+  function roomIs(d, deal, openId) { var h = d && d.querySelector ? d.querySelector("#advDr #advDrT") : null, q = norm(deal); return deal === openId || !!(h && q && norm(h.textContent || "").indexOf(q) > -1); }
+  function roomSend(d, a) {
+    return new Promise(function (res) {
+      var b = d.querySelector("#advDr #mSend"), to = d.querySelector("#advDr #mTo"), mb = d.querySelector("#advDr #mBody"), w = null, em = toArg(a.to), v, fin = false, tm = 0, h;
+      if (!b || !to || !mb) { outcome("bassem_send_email", "refused", "no e-mail form open"); res(T("مااتبعتش: المراسلات مش مفتوحة في الصفقة دي — اكتب الإيميل الأول بـ bassem_draft_email.", "Not sent: the deal's e-mail form is not open — write the e-mail first with bassem_draft_email.")); return; }
+      if (ROOM_DRAFT && ROOM_DEAL && roomOpenId() === ROOM_DEAL && mb.getAttribute("data-bassem-draft") !== ROOM_DRAFT) { outcome("bassem_send_email", "refused", "the draft is no longer on the screen"); res(T("مااتبعتش: المسودة اللي كتبتها مش على الشاشة دلوقتي (الصفقة اتقفلت أو اتفتح تبويب تاني). اكتبها تاني بـ bassem_draft_email وبعدين ابعتها.", "Not sent: the draft you wrote is no longer on the screen (the deal was closed or another tab opened). Write it again with bassem_draft_email, then send it.")); return; }
+      if (ROOM_SENT && mb.getAttribute("data-bassem-draft") === ROOM_SENT) { res(T("الإيميل ده اتبعت فعلاً من غرفة الصفقة — مش هيتبعت مرتين.", "This e-mail was already sent from the deal room — it is not sent twice.")); return; }
+      try { w = d.defaultView; } catch (e) { w = null; }
+      if (em.addr) { var s0 = dealMails(d).indexOf(em.addr) > -1 ? "deal" : mailSource(em.addr); if (s0) { setIn(d, "#mTo", em.addr); if (s0 === "said" && TO_PEND.addr !== em.addr) TO_PEND = { addr: em.addr, at: Date.now(), ok: false }; } }
+      v = to.value.trim().toLowerCase();
+      if (!EMRE.test(v)) { glow(to); try { to.focus(); } catch (e) {} outcome("bassem_send_email", "refused", "no recipient"); res(NO_TO()); return; }
+      if (!toReady(v)) { sayAny("🔤 " + T("اتأكد من العنوان: ", "Check the address: ") + mailSpell(v)); outcome("bassem_send_email", "refused", "address not confirmed"); res(confirmWords(v)); return; }
+      /* Bassem's draft in this room goes out only after the member said something since it appeared (heardSince) */
+      if (ROOM_DRAFT && mb.getAttribute("data-bassem-draft") === ROOM_DRAFT && !heardSince(ROOM_AT)) { glow(b); sayAny(T("مستني موافقتك: قول لباسم «ابعته» أو اضغط «ابعت من المنصة».", "Waiting for your OK: tell Bassem “send it” or press “Send via the platform”.")); outcome("bassem_send_email", "refused", T("مستني موافقتك", "waiting for your OK")); res(askFirstWords()); return; }
+      h = function (e) { var x = (e && e.detail) || {}; if (fin) return; fin = true; clearTimeout(tm); try { w.removeEventListener("mig:advisor-mail", h); } catch (er) {} res(roomWords(x, v)); };
+      try { w.addEventListener("mig:advisor-mail", h); } catch (e) {}
+      tm = setTimeout(function () { if (fin) return; fin = true; try { w.removeEventListener("mig:advisor-mail", h); } catch (er) {} res(T("مش متأكد لسه إنه اتبعت — غرفة الصفقة مارديتش. بص على المراسلات فيها قبل ما تبعته تاني.", "Not sure yet that it was sent — the deal room did not answer. Check its e-mails before sending again.")); }, 20000);
+      doing(T("ببعت الإيميل من المنصة", "sending the e-mail from the platform")); glow(b); b.click();
+    });
+  }
+  /* bassem_draft_email / bassem_send_email → a Promise of the text Bassem is given (sdkRun's awaitResult handlers); the DOM path (run →
+     bassemTool: the widget, which cannot answer a tool) runs the same and the outcome is only shown on the screen */
+  function capped(p, ms, late) { return new Promise(function (res) { var t = setTimeout(function () { res(late); }, ms); p.then(function (v) { clearTimeout(t); res(v); }, function () { clearTimeout(t); res(late); }); }); }
+  var LATE_SEND = function () { return T("مش متأكد لسه إنه اتبعت — المنصة لسه مارديتش. ماتبعتوش تاني؛ النتيجة هتظهر على الشاشة.", "Not sure yet that it was sent — the platform has not answered. Do not send it again; the result will show on the screen."); };
+  /* the composer's draft from the platform, with a recipient / market Bassem passed with the send */
+  function cmpSendFor(name, a) {
+    var C = CMP, em = toArg(a.to), s0;
+    if (a.market) C.market = String(a.market).slice(0, 60);
+    if (em.addr && C.to.value.trim().toLowerCase() !== em.addr) { s0 = mailSource(em.addr); if (s0) cmpTo(em.addr, s0); else { cmpOffer(C, [em.addr]); C.el.hidden = false; C.el.classList.remove("min"); outcome(name, "refused", "address not in the data, not said"); return Promise.resolve(T("مااتبعتش: ", "Not sent: ") + toWords({ offered: em.addr })); } }
+    else if (em.bad && !C.to.value.trim()) { outcome(name, "refused", "no address"); return Promise.resolve(T("مااتبعتش: ", "Not sent: ") + toWords({ bad: em.bad })); }
+    return capped(cmpSendNow("bassem"), 23000, LATE_SEND());
+  }
+  function mailTool(name, a) {
+    if (typeof a === "string") { try { a = JSON.parse(a); } catch (e) { a = {}; } }
+    a = a && typeof a === "object" ? a : {};
+    var deal = String(a.deal || "").replace(/^\s+|\s+$/g, ""), rd, openId;
+    if (name === "bassem_draft_email") {
+      /* an e-mail with NO deal behind it (no deal named, no deal room open on the screen) opens in the composer — never in the first deal
+         of his list, never «مالقيتش الصفقة» (owner 2026-11-18, 4th message #3) */
+      if (!deal && !dealOnScreen()) { LAST_DRAFT = "cmp"; return Promise.resolve(cmpDraftNow(a, "")); }
+      return capped(new Promise(function (res) {
+        onAdvisor(name, a, function (d) {
+          openDealIn(d, a.deal, function (ok) {
+            /* a deal that is not in his deals: the draft still opens on the screen (the composer) — it is never lost */
+            if (!ok) { LAST_DRAFT = "cmp"; res(cmpDraftNow(a, T("مالقيتش الصفقة دي في صفقاتك، فالمسودة هنا — ولما تقول ابعته بيتبعت من المنصة وبتتفتحله صفقة لوحده.", "That deal is not in your deals, so the draft is here — when you say send it, it goes from the platform and gets its own deal."))); return; }
+            LAST_DRAFT = "room"; roomDraft(d, a).then(res);
+          });
+        });
+      }), 9000, T("المسودة لسه بتتكتب على الشاشة — قوله إنها قدامه حالاً.", "The draft is still being written on the screen — tell him it is coming."));
+    }
+    /* bassem_send_email: what is on the screen and he saw — the room his last draft went to (if it is still the open one), else the
+       composer's draft, else the room open now with an e-mail he wrote himself; nothing else */
+    rd = advDoc(); openId = roomOpenId();
+    if (LAST_DRAFT === "room" && !deal) {
+      if (openId && (!ROOM_DEAL || openId === ROOM_DEAL)) return capped(roomSend(rd, a), 23000, LATE_SEND());
+      outcome(name, "refused", "the deal room of the draft is closed");
+      return Promise.resolve(T("مااتبعتش: المسودة كانت في غرفة الصفقة، والغرفة دي اتقفلت. اكتبها تاني بـ bassem_draft_email وبعدين ابعتها.", "Not sent: the draft was in the deal room, and that room was closed. Write it again with bassem_draft_email, then send it."));
+    }
+    if (!deal && cmpDraft()) return cmpSendFor(name, a);
+    if (openId && (!deal || roomIs(rd, deal, openId))) return capped(roomSend(rd, a), 23000, LATE_SEND());
+    if (cmpDraft()) return cmpSendFor(name, a); /* a deal he named that is not open: the draft on the screen is the one he saw */
+    outcome(name, "refused", "nothing drafted");
+    return Promise.resolve(T("مفيش إيميل مكتوب على الشاشة يتبعت: اكتبه الأول بـ bassem_draft_email، وبعدها ابعته.", "There is no e-mail on the screen to send: write it first with bassem_draft_email, then send it."));
   }
   /* ---------- links in Bassem's messages (owner 2026-11-19: «بعتلي ... الرابط ومش بيفتح»: the model retyped a 160-character tender link
      and dropped one letter, so the e-mailed link answered 500). Every https link the call's tools returned (bassem_intel, janna_lookup,
@@ -1741,11 +2298,9 @@
         function (e) { refuse(name, "failed", "⚠️ " + T("مااتسجّلش: ", "Not saved: ") + errMsg(e)); });
       return;
     }
-    /* an e-mail with NO deal behind it (no deal named, no deal room open on the screen) opens in the composer on the shared screen — never
-       in the first deal of his list, never «مالقيتش الصفقة» (owner 2026-11-18, 4th message #3); a send asked for that draft only points at
-       the composer's «ابعت»: the member sends it himself */
-    if (name === "bassem_draft_email" && !String(a.deal || "").trim() && !dealOnScreen()) { cmpOpen(a, ""); done(name); return; }
-    if (name === "bassem_send_email" && cmpDraft() && !String(a.deal || "").trim() && !dealOnScreen()) { cmpAsk(); return; }
+    /* the e-mail tools (draft on the screen, send FROM THE PLATFORM): mailTool. In the SDK call its awaitResult handlers (sdkRun) run it
+       and answer Bassem — the DOM path leaves those calls to them (me.own); the widget cannot answer a tool, so here it only shows */
+    if (name === "bassem_draft_email" || name === "bassem_send_email") { if (LV && !LV.closed && LV.own && LV.own[name]) return; mailTool(name, a); return; }
     if (!BCMD_OK[name]) return; /* a tool this file does not know (e.g. a new one whose file did not load) never opens a deal */
     onAdvisor(name, a, function (d) {
       if (name === "bassem_open_opportunity") {
@@ -1779,41 +2334,7 @@
         return;
       }
       openDealIn(d, a.deal, function (ok) {
-        if (!ok) {
-          /* an e-mail for a deal that is not in his deals: the draft still opens on the screen (the composer) — it is never lost */
-          if (name === "bassem_draft_email") { cmpOpen(a, T("مالقيتش الصفقة دي في صفقاتك، فالمسودة هنا — تبعتها من بريدك، أو تبدأ الصفقة من الفرصة وتبعتها من المنصة.", "That deal is not in your deals, so the draft is here — send it from your mail app, or start the deal from the opportunity and send it from the platform.")); done(name); return; }
-          refuse(name, "refused", T("مالقيتش الصفقة دي في صفقاتك — ابدأها الأول من الفرصة.", "I couldn't find that deal — start it from the opportunity first.")); return;
-        }
-        if (name === "bassem_draft_email") {
-          doing(T("بكتبلك الإيميل", "drafting your e-mail"));
-          var known = dealMails(d);
-          tab(d, "mail", "#mTo", function (to) {
-            if (!to) return;
-            /* the deal room has an Arabic and an LTR (English) template: every language but Arabic (zh, fr, es …) takes the LTR one */
-            if (a.language && d.querySelector("#mLang")) setIn(d, "#mLang", /^ar/i.test(a.language) ? "ar" : "en", ["change"]);
-            setTimeout(function () {
-              var em = String(a.to || "").trim().toLowerCase();
-              /* Bassem never invents a recipient: only an address that already appears in this deal / opportunity is used (an exact
-                 match with one of its addresses — no guessing from the address's own shape) */
-              if (em) { if (EMRE.test(em) && (to.value.trim().toLowerCase() === em || known.indexOf(em) > -1)) setIn(d, "#mTo", em); else sayAny(T("باسم ما بيخمّنش عناوين بريد: البريد ده مش موجود في بيانات الفرصة، فسيبت خانة «إلى» زي ما هي.", "Bassem never guesses addresses: that e-mail is not in the opportunity's data, so “To” was left as it is.")); }
-              /* no real recipient yet: the draft says so instead of an address (owner test 2026-11-18: «sales@supplier-example.com») */
-              if (!to.value.trim()) { to.placeholder = T("المستلم: هيتحدد لما نختار الجهة", "Recipient: set once we choose the buyer"); to.title = to.placeholder; }
-              if (a.subject) setIn(d, "#mSub", a.subject); if (a.body) setIn(d, "#mBody", a.body);
-              /* a subject / body that is not Arabic (English, Chinese, French …) reads left to right */
-              [["#mSub", a.subject], ["#mBody", a.body]].forEach(function (x) { var el = x[1] && d.querySelector(x[0]); if (el) el.dir = /[\u0600-\u06FF]/.test(String(x[1])) ? "rtl" : "ltr"; });
-              glow(d.querySelector("#mBody")); done(name);
-            }, 300);
-          });
-          return;
-        }
-        if (name === "bassem_send_email") {
-          tab(d, "mail", "#mSend", function (b) {
-            var to = d.querySelector("#mTo");
-            if (!b || !to || !EMRE.test(to.value.trim())) { refuse(name, "refused", T("محتاج بريد المستلم الرسمي من الإعلان قبل ما أبعت.", "I need the recipient's official e-mail from the notice before sending.")); return; }
-            doing(T("ببعت الإيميل", "sending the e-mail")); glow(b); b.click();
-          });
-          return;
-        }
+        if (!ok) { refuse(name, "refused", T("مالقيتش الصفقة دي في صفقاتك — ابدأها الأول من الفرصة.", "I couldn't find that deal — start it from the opportunity first.")); return; }
         if (name === "bassem_update_deal") {
           doing(T("بحدّث الصفقة", "updating the deal"));
           tab(d, "over", "#advPlan", function () {
@@ -1962,6 +2483,7 @@
   }
   function onMessage(d) {
     if (d && (d.role === "agent" || d.role === "persona")) holoTopic(String(d.content || ""));
+    if (d && d.role === "user") heardAdd("", String(d.content || "")); /* the e-mail tools: what he said (a dictated address) */
     if (!MT || MT.done) return; var c = String(d.content || "");
     if (d.role === "user") { MT.user++; if (c.length > 12) mark("intro"); if (/[?؟]/.test(c)) mark("questions"); return; }
     if (/الجمعية المصرية للتنمية الصناعية|الجهة المشغ|بتديرها|تديرها|operated by|operator|EAFID/i.test(c)) mark("platform");
@@ -2069,9 +2591,9 @@
      member asked for it himself (o.force: the «افتحها على الشاشة» button) */
   window.JANNA_LIVE.show = function (u, o) { u = String(u || ""); if (!frame || !ov || ov.hidden || !/^\/(?!\/)[^\s"'<>\\]*$/.test(u)) return false; if (!(o && o.force) && screenBusy()) return false; go(u); return true; };
   window.JANNA_LIVE.screenBusy = screenBusy;
-  /* holo.js: a send asked for the composer's draft is no «sending» scene — the draft waits for the member's own «ابعت» (cmpAsk) */
-  window.JANNA_LIVE.draftWaiting = function (a) { a = a || {}; return cmpDraft() && !String(a.deal || "").trim() && !dealOnScreen(); };
   window.JANNA_LIVE.knownEmail = knownEmail;
+  /* the e-mail tools' helpers (debugging in the browser console; the same functions worker/test/bassem-email.test.mjs runs) */
+  window.JANNA_LIVE.mail = { spoken: spokenMail, spell: mailSpell, source: mailSource, lang: mailLang };
   window.JANNA_LIVE.visitorId = visitorId; /* data/bassem-memory.js: Janna's call memory goes with this id */
   window.JANNA_LIVE.rotateVisitor = rotateVisitor; /* data/bassem-memory.js: a 409 visitor_linked → a new id (review 2026-11-19 #7) */
   /* «وضع الدوشة»: noise() = the guard's state; noise(true | false) switches noisy-room mode (kept for the tab) */
