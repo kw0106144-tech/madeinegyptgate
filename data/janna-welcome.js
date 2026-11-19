@@ -340,6 +340,7 @@
   function autoSoon(ms) { setTimeout(autoTalk, ms); }
   function autoTalk() {
     if (autoDone || !stand) return;
+    if (flagOff("janna_welcome")) { autoDone = true; return; }   /* «🛠️ المطوّر»: her invitation box is switched off — nothing opens by itself */
     var first = STORE ? ssGet(INV) !== "1" : !fromSite();
     var fresh = voice() && (STORE ? saidList().indexOf(sayKey()) < 0 : first);
     /* closed by the visitor in this tab; or a later page with no new line of hers to say (English: never) → nothing by itself */
@@ -598,6 +599,8 @@
   }
   function talk() {
     if (!stand || handed || held || DE.classList.contains("bs-on")) return false;
+    /* «🛠️ المطوّر»: her invitation box is switched off → a tap on her opens her chat (janna.js) instead of the box */
+    if (flagOff("janna_welcome") && !bubble) { autoDone = true; setAway(false); hideHint(); act("chat"); return true; }
     why.f = 0; why.e = 0; setAway(false); hideHint();   /* the visitor called her: she stands in front again */
     autoDone = true;   /* nothing more opens by itself on this page */
     if (bubble) {
@@ -1021,8 +1024,18 @@
   }
   function init() {
     if (init.done) return; init.done = 1;
-    try { build(); } catch (e) { try { giveUp(); } catch (e2) {} }
+    /* «🛠️ المطوّر» → «المزايا» (data/flags.js): the owner switched the standing figures off → she does not stand (janna.js keeps its corner) */
+    flagsThen(function () {
+      if (flagOff("standing_figures")) return;
+      try { build(); } catch (e) { try { giveUp(); } catch (e2) {} }
+    });
   }
+  function flagOff(k) { var F = W.MIGFLAGS; return !!(F && F.on && F.on(k) === false); }
+  function flagsThen(fn) { var F = W.MIGFLAGS; if (F && F.ready) F.ready(fn, 3000); else fn(); }
+  /* a switch that arrives after she stood (a slow answer): she steps out / her box closes */
+  W.addEventListener("mig:flags", function () {
+    try { if (stand && flagOff("standing_figures")) { stopTalk(); giveUp(); } else if (bubble && flagOff("janna_welcome")) closeBubble(); } catch (e) {}
+  });
   function whenIdle() {
     if (whenIdle.on) return; whenIdle.on = 1;
     if (W.requestIdleCallback) W.requestIdleCallback(init, { timeout: 2500 }); else setTimeout(init, 400);

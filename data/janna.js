@@ -1114,8 +1114,8 @@
       case "rfq": return btn("rfq", t("rfq"));
       case "msg": return btn("msg", t("msg"));
       case "can": return btn("can", t("can"));
-      case "live": return window.JANNA_LIVE ? btn("live", t("video"), "") : btn("msg", t("msg"));
-      case "meet": return window.JANNA_LIVE ? btn("live", t("meet"), "meeting") : btn("msg", t("msg"));
+      case "live": return liveOn() ? btn("live", t("video"), "") : btn("msg", t("msg"));
+      case "meet": return liveOn() ? btn("live", t("meet"), "meeting") : btn("msg", t("msg"));
       case "tour": return btn("tour", t("tourB"));
       case "srch": return btn("srch", t("srch." + c[1]), c[1]);
       case "nav": return linkBtn(L === "ar" ? c[1] : c[2], c[3]);
@@ -1866,7 +1866,7 @@
     var open = !auto || !!big, hs = REAL && REAL.headshot ? REAL.headshot : "img/janna.jpg";
     var st = document.createElement("section"); st.className = "jn-stage jn-wc jn-st-pan"; st.setAttribute("role", "dialog"); st.setAttribute("aria-modal", "false");
     st.setAttribute("aria-labelledby", "jn-wc-h"); st.setAttribute("translate", "no"); st.dir = L === "ar" ? "rtl" : "ltr"; st.lang = L;
-    var live = !!(window.JANNA_LIVE && typeof JANNA_LIVE.open === "function"), meetOk = live && liveIntent("meeting");
+    var live = liveOn() && typeof JANNA_LIVE.open === "function", meetOk = live && liveIntent("meeting");
     st.innerHTML = '<button type="button" class="jn-st-x" data-st="close" aria-label="' + esc(t("close")) + '" title="' + esc(t("close")) + '">✕</button>'
       + '<div class="jn-wc-hd" data-st="open" role="button" tabindex="0" aria-label="' + esc(t("wcOpen")) + '">'
       + '<div class="jn-wc-av" aria-hidden="true"><img src="' + esc(hs) + '" alt="" width="52" height="52" decoding="async"><i></i></div>'
@@ -1978,6 +1978,8 @@
     autoSettle(6500, 9000);
   }
   /* Janna Live declares the intents it understands: JANNA_LIVE.intents = ["meeting", …] (or {meeting: true}) */
+  /* Janna Live is on this page and the owner has not switched her live calls off («🛠️ المطوّر», data/flags.js) */
+  function liveOn() { var F = window.MIGFLAGS; return !!window.JANNA_LIVE && !(F && F.on && F.on("janna_live") === false); }
   function liveIntent(k) { var sup = window.JANNA_LIVE && JANNA_LIVE.intents; return !!(sup && (sup === true || sup[k] === true || (typeof sup.indexOf === "function" && sup.indexOf(k) > -1))); }
   /* live video (data/janna-live.js): her own screen with the platform; «meeting» asks her to start the intro meeting */
   function liveOpen(intent) {

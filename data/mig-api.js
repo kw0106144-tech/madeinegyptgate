@@ -106,6 +106,13 @@
     if (!e) return T("حصلت مشكلة، جرّب تاني.", "Something went wrong, please try again.");
     var c = String(e.code || "");
     if (c === "offline") return OFFMSG();
+    /* a feature the owner switched off in the Control Center («🛠️ المطوّر»): 503 {code: "feature_off", feature} */
+    if (c === "feature_off") {
+      var ft = String(e.feature || (e.body && e.body.feature) || "");
+      if (ft === "registrations") return T("التسجيل الجديد موقوف مؤقتاً — جرّب تاني بعد شوية. لو عندك حساب على المنصة، ادخل بالإيميل بتاعه عادي.", "New registrations are paused for now — please try again later. If you already have an account, sign in with its e-mail as usual.");
+      if (ft === "janna_live" || ft === "bassem_live") return T("المكالمات المباشرة موقوفة مؤقتاً — جرّب تاني بعد شوية.", "Live calls are paused for now — please try again later.");
+      return T("الخدمة دي موقوفة مؤقتاً — جرّب تاني بعد شوية.", "This service is paused for now — please try again later.");
+    }
     /* the e-mailed one-time login link (POST /auth/link) */
     if (/^(used_link|link_used)$/.test(c)) return T("رابط الدخول ده اتستخدم قبل كده (كل رابط بيشتغل مرة واحدة). ادخل بكود على بريدك، وهتلاقي الطلب في «طلبات واردة لي».", "This sign-in link was already used (each link works once). Sign in with an e-mail code and you'll find the request under “Requests routed to me”.");
     if (/^(expired_link|link_expired)$/.test(c)) return T("رابط الدخول ده انتهت صلاحيته (الرابط صالح 7 أيام). ادخل بكود على بريدك، وهتلاقي الطلب في «طلبات واردة لي».", "This sign-in link has expired (links are valid for 7 days). Sign in with an e-mail code and you'll find the request under “Requests routed to me”.");

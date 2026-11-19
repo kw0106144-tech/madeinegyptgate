@@ -6,7 +6,8 @@
 # new section in the same navigation. The live panel itself stays where it is: /panel.html and /login.html are the owner's old system
 # (deploy/legacy-live.txt, legacy routes — never built here). The logic is data/acc.js, the additions to the live CSS are data/acc.css.
 # Page scripts, in order: data/mig-api.js (session `mig-tok`, e-mail-code dialog), data/mig-overlay.js with window.MIGOVL_ADMIN = 1
-# (schema + row mappers, no setters; only when the file exists), data/acc.js. The site's data files (oldfac.js, facx.js …) are loaded
+# (schema + row mappers, no setters; only when the file exists), data/acc.js, data/acc-dev.js («🛠️ المطوّر», owner only: registers its
+# section through MIGACC.use; only when the file exists). The site's data files (oldfac.js, facx.js …) are loaded
 # lazily by the sections that need them, with the build's ?v= hashes. The page lives in a sub-directory, so it carries the SEO build's
 # <base href="/"> + fragment fix (BASE_FIX_HEAD / BASE_FIX_TAIL, as every clean-URL page): relative data/, img/ and api/ URLs resolve
 # from the site root and «#section» links stay on /admin/.
@@ -131,6 +132,7 @@ _ACC_SKIP_JS = ('<script>document.addEventListener("click",function(e){var a=e.t
 def _acc_page():
     css_v = _acc_hl.md5(open(B + 'data/acc.css', 'rb').read()).hexdigest()[:8] if _acc_os.path.exists(B + 'data/acc.css') else '0'
     ovl = '<script src="data/mig-overlay.js"></script>' if _acc_os.path.exists(B + 'data/mig-overlay.js') else ''
+    dev = '<script src="data/acc-dev.js"></script>' if _acc_os.path.exists(B + 'data/acc-dev.js') else ''   # «🛠️ المطوّر» (owner only; registers with MIGACC.use)
     base_head = globals().get('seo_base_head') or '<base href="/">'                       # seo_build.part.py BASE_FIX_HEAD
     base_tail = seo_static_tail() if 'seo_static_tail' in globals() else ''               # BASE_FIX_TAIL: «#x» links stay on /admin/
     return ('<!doctype html>\n<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' + base_head +
@@ -145,7 +147,7 @@ def _acc_page():
             '<div id="mo"><div id="bx" role="dialog" aria-modal="true" aria-labelledby="bxT"></div></div><div id="tt" role="status" aria-live="polite"></div>'
             '<noscript><div class="note" style="margin:20px">لوحة التحكم محتاجة JavaScript شغّال في المتصفح.</div></noscript>'
             '<script>window.MIGOVL_ADMIN=1;window.MIGACC_CFG=' + _acc_json_js(_acc_cfg()) + ';</script>'
-            '<script src="data/mig-api.js"></script>' + ovl + '<script src="data/acc.js"></script>' + _ACC_SKIP_JS + base_tail + '</body></html>')
+            '<script src="data/mig-api.js"></script>' + ovl + '<script src="data/acc.js"></script>' + dev + _ACC_SKIP_JS + base_tail + '</body></html>')
 
 
 def _acc_write(OUT_, path):

@@ -2157,6 +2157,13 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             h.append('<script type="application/ld+json" data-seo="page">%s</script>' % ld(page_ld))
         if S.get('js_url'):
             h.append('<script src="%s" defer></script>' % S['js_url'])
+        # «🛠️ المطوّر» → «المزايا»: the owner's feature switches (data/flags.js, ~3 KB, defer: before data/janna-welcome.js, which waits for
+        # it); in <head>, so the /intel/ pages (migate-intel takes the site's head assets) get it too
+        if S.get('flags_src') is None:
+            _ff = B + 'data/flags.js'
+            S['flags_src'] = ('/data/flags.js?v=%s' % hashlib.md5(open(_ff, 'rb').read()).hexdigest()[:8]) if os.path.exists(_ff) else ''
+        if S['flags_src']:
+            h.append('<script src="%s" defer></script>' % S['flags_src'])
         return '\n'.join(h)
 
     def jsonld_site_graph(meta):

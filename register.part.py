@@ -116,8 +116,9 @@ html[lang=en] .bi-ar { display: none; }
   </section>
 
   <section class="wiz" id="form" style="scroll-margin-top:90px">
-    <ol class="steps3" id="steps3"><li data-s="0" hidden><span class="n">0</span>الباقة</li><li data-s="1"><span class="n">2</span>بيانات الشركة</li><li data-s="2"><span class="n">3</span>النشاط والقطاعات</li><li data-s="3"><span class="n">4</span>المستندات</li><li data-s="4"><span class="n">5</span>مسؤول التسجيل</li><li data-s="5"><span class="n">6</span>مراجعة وإرسال</li><li data-s="6"><span class="n">7</span>استلام الطلب</li></ol>
-    <form class="card2" id="regF" novalidate>
+    <div data-mig-off="registrations" hidden></div>
+    <ol class="steps3" id="steps3" data-mig-feature="registrations"><li data-s="0" hidden><span class="n">0</span>الباقة</li><li data-s="1"><span class="n">2</span>بيانات الشركة</li><li data-s="2"><span class="n">3</span>النشاط والقطاعات</li><li data-s="3"><span class="n">4</span>المستندات</li><li data-s="4"><span class="n">5</span>مسؤول التسجيل</li><li data-s="5"><span class="n">6</span>مراجعة وإرسال</li><li data-s="6"><span class="n">7</span>استلام الطلب</li></ol>
+    <form class="card2" id="regF" novalidate data-mig-feature="registrations">
       <div class="pbar3"><b id="pb3"></b></div>
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2 id="stTitle"><span class="bi-ar">استمارة التسجيل · </span>Registration Form</h2><span class="chip chip-gray num" id="today"></span></div>
 

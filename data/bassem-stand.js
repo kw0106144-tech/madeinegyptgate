@@ -363,7 +363,7 @@
   function actionList() {
     var w = who();
     if (w === "member") {
-      var l = callOK() ? [["call", "bst-call", S.call]] : [];
+      var l = callOK() && !flagOff("bassem_live") ? [["call", "bst-call", S.call]] : [];   /* «🛠️ المطوّر»: Bassem's live calls switched off → no 🎥 */
       l.push(["brief", "bst-brief", S.brief]);
       if (D.getElementById("advQ")) l.push(["ask", "bst-ask", S.ask]);
       return l;
@@ -816,8 +816,18 @@
   }
   function init() {
     if (init.done) return; init.done = 1;
-    try { build(); } catch (e) { try { giveUp(); } catch (e2) {} }
+    /* «🛠️ المطوّر» → «المزايا» (data/flags.js): the owner switched the standing figures off → he does not stand (bassem.js keeps its own figure) */
+    flagsThen(function () {
+      if (flagOff("standing_figures")) return;
+      try { build(); } catch (e) { try { giveUp(); } catch (e2) {} }
+    });
   }
+  function flagOff(k) { var F = W.MIGFLAGS; return !!(F && F.on && F.on(k) === false); }
+  function flagsThen(fn) { var F = W.MIGFLAGS; if (F && F.ready) F.ready(fn, 3000); else fn(); }
+  /* a switch that arrives after he stood (a slow answer): he steps out / his 🎥 goes */
+  W.addEventListener("mig:flags", function () {
+    try { if (stand && flagOff("standing_figures")) { stopTalk(); giveUp(); } else if (stand) fillActs(); } catch (e) {}
+  });
   function whenIdle() {
     if (whenIdle.on) return; whenIdle.on = 1;
     if (W.requestIdleCallback) W.requestIdleCallback(init, { timeout: 2500 }); else setTimeout(init, 400);

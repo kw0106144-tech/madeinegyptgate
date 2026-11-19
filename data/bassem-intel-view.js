@@ -90,8 +90,10 @@
   }
   function fmtDay(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "")); if (!m) return ""; try { return new Intl.DateTimeFormat(EN ? "en-GB" : "ar-EG-u-ca-gregory-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(new Date(+m[1], +m[2] - 1, +m[3])); } catch (e) { return m[0]; } }
   var ISNEWS = function (it) { return it && it.kind === "news" && it.tag !== "tender_news"; };
-  /* an item's own page on the Information Center as a same-site path ("" when it has none) */
-  function pagePath(it) { var m = /^(?:https?:\/\/[^\/]*madeinegyptgate\.com)?(\/intel\/[^\s"'<>\\]*)$/i.exec(String((it && it.page) || "")); return m ? m[1] : ""; }
+  /* an item's own page on the Information Center as a same-site path ("" when it has none — or while the owner switched the links to the
+     Information Center off: «🛠️ المطوّر» → intel_pages, data/flags.js; then the screen opens nothing and a line links its official source only) */
+  function intelOff() { var F = W.MIGFLAGS; return !!(F && F.on && F.on("intel_pages") === false); }
+  function pagePath(it) { if (intelOff()) return ""; var m = /^(?:https?:\/\/[^\/]*madeinegyptgate\.com)?(\/intel\/[^\s"'<>\\]*)$/i.exec(String((it && it.page) || "")); return m ? m[1] : ""; }
   /* one result line: title · «الجهة · السوق · آخر ميعاد …» · the official link (else its page on the Information Center) */
   function item(it) {
     var sub = [str(it.entity, 60), str(it.market_name, 30), it.deadline ? T("آخر ميعاد ", "deadline ") + fmtDay(it.deadline) : str(it.kind_label, 30)].filter(Boolean).join(" · ");

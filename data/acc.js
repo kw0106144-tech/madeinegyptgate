@@ -212,6 +212,8 @@
     if (!e) return T("حصلت مشكلة، جرّب تاني.", "Something went wrong, please try again.");
     if (e.code === "offline") return OFF();
     if (e.code === "data_file") return e.error;
+    /* a limit that lasts longer than «a minute» (e.g. the developer panel's rollbacks: up to an hour): say how long (retry_s) */
+    if (e.code === "rate_limited" || e.status === 429) { var rs = e.j ? +e.j.retry_s || +e.j.retry_after || 0 : 0; if (rs > 90) { var rm = Math.ceil(rs / 60); return rm >= 120 ? T("طلبات كتير في وقت قصير — استنى حوالي " + Math.round(rm / 60) + " ساعة وجرّب تاني.", "Too many requests in a short time — wait about " + Math.round(rm / 60) + " h and try again.") : T("طلبات كتير في وقت قصير — استنى حوالي " + rm + " دقيقة وجرّب تاني.", "Too many requests in a short time — wait about " + rm + " min and try again."); } }
     var x = ERRS[e.code];
     if (!x && /^invalid_/.test(e.code || "")) x = ERRS.invalid;
     var why = e.j && e.j.why ? " (" + e.j.why + ")" : "";
@@ -1695,7 +1697,7 @@
     setCt('<div id="wah">' + loadingH() + '</div><div id="watab"></div><div class="cd"><div id="tb"></div></div>');
     var health = function () { GET("/wa/health").then(function (j) { if (!alive(c)) return; $("#wah").innerHTML = cardH(T("الحالة", "Status"), kvH([[T("الواتساب", "WhatsApp"), j.whatsapp ? T("متضبط ✓", "Configured ✓") : T("مش متضبط", "Not configured")], [T("استقبال الرسائل (Webhook)", "Inbound webhook"), j.webhook ? T("متضبط ✓", "Configured ✓") : T("مش متضبط", "Not configured")], [T("القناة", "Channel"), j.channel || "—", "ltr"], [T("وضع التجربة (من غير إرسال)", "Dry run (no sending)"), j.dry_run ? T("شغّال — الرسائل بتتسجّل بس ومابتتبعتش", "On — messages are logged, not sent") : T("مقفول", "Off")]]) + (j.ok ? '<p class="ok">' + h(T("الإرسال والاستقبال شغّالين.", "Sending and receiving are working.")) + "</p>" : '<p class="warn">' + h(T("الواتساب مش جاهز بالكامل — الإيميل بيكمّل مكانه.", "WhatsApp is not fully ready — e-mail is used instead.")) + "</p>")
           /* the dry-run reason (whatsapp.js waDryReason) and, for the owner, the page that turns real sending on */
-          + (j.dry_run && j.reason ? '<p class="mut sm">' + h({ no_token: T("السبب: مفيش توكن respond.io.", "Why: no respond.io token."), env_dry_run: T("السبب: WA_DRY_RUN = \"1\" على الـ Worker.", "Why: WA_DRY_RUN = \"1\" on the Worker."), switch_off: T("السبب: مفتاح «تشغيل إرسال واتساب الحقيقي» مقفول.", "Why: the «real WhatsApp sending» switch is off.") }[j.reason] || "") + "</p>" : "")
+          + (j.dry_run && j.reason ? '<p class="mut sm">' + h({ no_token: T("السبب: مفيش توكن respond.io.", "Why: no respond.io token."), env_dry_run: T("السبب: WA_DRY_RUN = \"1\" على الـ Worker.", "Why: WA_DRY_RUN = \"1\" on the Worker."), switch_off: T("السبب: مفتاح «تشغيل إرسال واتساب الحقيقي» مقفول.", "Why: the «real WhatsApp sending» switch is off."), feature_off: T("السبب: «إرسال واتساب» متوقف من «🛠️ المطوّر» ← «المزايا».", "Why: WhatsApp sending is switched off in «🛠️ Developer» → «Features».") }[j.reason] || "") + "</p>" : "")
           + (can("keys.manage") ? '<div class="acts2"><a class="btn l" href="#keys">' + h(T("🔑 «مفاتيح الخدمات»: التوكن وتشغيل الإرسال الحقيقي", "🔑 «Service keys»: the token and real sending")) + "</a></div>" : "")); }, function (e) { if (alive(c)) $("#wah").innerHTML = errH(e, false); }); };
     var load = function () {
       $("#watab").innerHTML = tabsH([["", "كل الرسائل", "All messages"], ["mood", "مزاج", "Mood"], ["stop", "إيقاف", "Stop"], ["time", "مواعيد", "Times"]], c.st.flag, "wfl");
@@ -2049,7 +2051,8 @@
     var c = CUR;
     head(T("مفاتيح الخدمات", "Service keys"), h(T("توكن الواتساب ومفتاح الفيديو ومفتاح بحث الإنترنت — بيتحفظوا مشفّرين على السيرفر ومش بيظهروا تاني بعد الحفظ", "The WhatsApp token, the video key and the web-search key — stored encrypted on the server and never shown again after saving")), btn("rf", h(T("↻ تحديث", "↻ Refresh"))));
     c.st.msg = {};
-    var REASON = { no_token: ["مفيش توكن respond.io لسه", "No respond.io token yet"], env_dry_run: ["المتغيّر WA_DRY_RUN = \"1\" على الـ Worker بيقفل كل الإرسال (لازم يتغيّر لـ \"0\" من wrangler.toml)", "WA_DRY_RUN = \"1\" on the Worker stops all sending (it must be \"0\" in wrangler.toml)"], switch_off: ["مفتاح التشغيل اللي تحت مقفول", "The switch below is off"] };
+    var REASON = { no_token: ["مفيش توكن respond.io لسه", "No respond.io token yet"], env_dry_run: ["المتغيّر WA_DRY_RUN = \"1\" على الـ Worker بيقفل كل الإرسال (لازم يتغيّر لـ \"0\" من wrangler.toml)", "WA_DRY_RUN = \"1\" on the Worker stops all sending (it must be \"0\" in wrangler.toml)"], switch_off: ["مفتاح التشغيل اللي تحت مقفول", "The switch below is off"],
+      feature_off: ["«إرسال واتساب» متوقف من «🛠️ المطوّر» ← «المزايا» (إيقاف الطوارئ) — مفيش ولا رسالة بتطلع، ولا حتى رسالة التجربة", "WhatsApp sending is switched off in «🛠️ Developer» → «Features» (the emergency stop) — no message leaves, not even the test message"] };
     var SRC = { env: ["سر على الـ Worker", "a Worker secret"], panel: ["من اللوحة هنا", "from this page"], none: ["مفيش", "none"], "default": ["القيمة الافتراضية", "the default"] };
     var CSRC = { env: ["المتغيّر RESPONDIO_CHANNEL_ID على الـ Worker", "the RESPONDIO_CHANNEL_ID Worker variable"], panel: ["من اللوحة هنا", "from this page"], "default": ["القيمة الافتراضية 580384", "the default 580384"] };
     var load = function () {
@@ -2062,9 +2065,10 @@
       return '<p class="sm ' + (lt.ok ? "" : "bad") + '">' + h((lt.ok ? "✓ " + T("آخر اختبار نجح", "The last test passed") : "✗ " + T("آخر اختبار فشل", "The last test failed")) + " — " + fd(lt.at, true) + (lt.status ? " (" + lt.status + ")" : "")) + (lt.detail ? '<br><span class="mut" dir="auto">' + h(lt.detail) + "</span>" : "") + "</p>";
     };
     var msgH = function (k) { var m = c.st.msg[k]; return m ? '<div class="' + (m.ok ? "okc" : "alert") + '" role="status" dir="auto">' + h(m.t) + (m.sm ? errSmall(m.sm) : "") + "</div>" : ""; };
-    var secretCard = function (slot, s, noSec) {
+    var secretCard = function (slot, s, noSec, o) {
+      o = o || {};
       s = s || {}; var id = slot.replace(/\W/g, "_");
-      var st = s.set ? (s.readable ? '<span class="tag ok">' + h(T("محفوظ ✓", "Saved ✓")) + "</span> " + (s.tail ? '<small class="mut" dir="ltr">••••' + h(s.tail) + "</small> " : "") + '<small class="mut">' + h(whoWhen(s.set_at, s.set_by)) + "</small>"
+      var st = s.set ? (s.readable ? '<span class="tag ok">' + h(o.ok || T("محفوظ ✓", "Saved ✓")) + "</span> " + (s.tail ? '<small class="mut" dir="ltr">••••' + h(s.tail) + "</small> " : "") + '<small class="mut">' + h(whoWhen(s.set_at, s.set_by)) + "</small>"
         : '<span class="tag x">' + h(T("محفوظ بس مش مقروء", "Saved but unreadable")) + '</span> <small class="bad">' + h(T("السر CONFIG_SECRET اتغيّر — دخّل المفتاح تاني.", "CONFIG_SECRET changed — enter the key again.")) + "</small>")
         : '<span class="tag g">' + h(T("مش متضاف", "Not added")) + "</span>";
       var envNote = s.env ? '<div class="note">' + h(T("فيه سر " + (s.env_name || "") + " على الـ Worker، وهو اللي شغّال دلوقتي (بيكسب على قيمة اللوحة). امسحه من Cloudflare لو عايز قيمة اللوحة هي اللي تشتغل.", "A " + (s.env_name || "") + " Worker secret exists and is the one in use (it wins over this page). Remove it in Cloudflare to use the value saved here.")) + "</div>" : "";
@@ -2072,7 +2076,7 @@
       return cardH(L2([s.label_ar || slot, s.label_en || slot]), '<p style="margin:0 0 8px">' + st + "</p>" + envNote + eff
         + '<label class="w" style="display:block;margin:8px 0"><span style="display:block;font-weight:700;margin-bottom:4px">' + h(s.set ? T("استبدال المفتاح (الصق المفتاح الجديد)", "Replace the key (paste the new key)") : T("الصق المفتاح هنا", "Paste the key here")) + '</span><input id="k_' + id + '" type="password" autocomplete="new-password" spellcheck="false" autocapitalize="off" dir="ltr" style="width:100%;max-width:520px;padding:9px;border:1px solid #cfd8d3;border-radius:8px"' + (noSec ? " disabled" : "") + "></label>"
         + '<div class="acts2">' + btn("ksave", h(T("💾 حفظ", "💾 Save")), "r", ' data-slot="' + h(slot) + '"' + (noSec ? " disabled" : "")) + (s.set ? btn("kdel", h(T("🗑 مسح المفتاح", "🗑 Delete the key")), "l", ' data-slot="' + h(slot) + '"') : "") + (s.effective && s.effective !== "none" && s.testable !== false ? btn("ktest", h(T("🧪 اختبار", "🧪 Test")), "l", ' data-slot="' + h(slot) + '"') : "") + "</div>"
-        + testLine(s.last_test) + msgH(slot));
+        + testLine(s.last_test) + msgH(slot) + (o.extra || ""));
     };
     var chanCard = function (s) {
       s = s || {};
@@ -2088,13 +2092,15 @@
       /* review UX-3: under a disabled button, the step that is still missing (from wa.steps) */
       var whyOff = function (forTest) {
         if (w.dry_run_env) return T("مقفول: المتغيّر WA_DRY_RUN = \"1\" على الـ Worker.", "Disabled: WA_DRY_RUN = \"1\" on the Worker.");
+        if (forTest && w.feature_off) return T("مقفول: «إرسال واتساب» متوقف من «🛠️ المطوّر» ← «المزايا» — شغّله هناك الأول.", "Disabled: WhatsApp sending is switched off in «🛠️ Developer» → «Features» — switch it on there first.");
         if (!sp.token) return T("مقفول لحد ما تضيف توكن respond.io (الخطوة 1).", "Disabled until you add the respond.io token (step 1).");
         if (!sp.token_test) return T("مقفول لحد ما تدوس «🧪 اختبار» للتوكن وينجح (الخطوة 2).", "Disabled until the token's «🧪 Test» passes (step 2).");
         if (!forTest && !sp.test_message) return T("مقفول لحد ما تبعت رسالة التجربة لرقم المنصة (الخطوة 3).", "Disabled until you send the test message to the platform's number (step 3).");
         return forTest ? T("مقفول دلوقتي — حدّث الصفحة.", "Disabled right now — refresh the page.") : T("علّم «✓ رسالة التجربة وصلت» الأول.", "Tick «✓ The test message arrived» first.");
       };
       var stateH = live ? '<div class="okc">✓ ' + h(T("الإرسال الحقيقي شغّال — الرسايل بتطلع للمصانع والمشترين", "Real sending is ON — messages go out to factories and buyers")) + (w.live_at ? ' <small dir="auto">(' + h(whoWhen(w.live_at, w.live_by)) + ")</small>" : "") + "</div>"
-        : '<div class="alert">' + h(T("وضع التجربة (Dry run) — مفيش رسايل واتساب حقيقية بتطلع", "Dry run — no real WhatsApp message goes out")) + (w.reason && REASON[w.reason] ? '<br><small>' + h(L2(REASON[w.reason])) + "</small>" : "") + "</div>";
+        : '<div class="alert">' + h(T("وضع التجربة (Dry run) — مفيش رسايل واتساب حقيقية بتطلع", "Dry run — no real WhatsApp message goes out")) + (w.reason && REASON[w.reason] ? '<br><small>' + h(L2(REASON[w.reason])) + "</small>" : "")
+          + (w.reason === "feature_off" || w.feature_off ? ' <a href="#dev">' + h(T("افتح «🛠️ المطوّر» ←", "Open «🛠️ Developer» →")) + "</a>" : "") + "</div>";
       var sentNote = sp.test_message ? '<p class="sm">' + h(T("رسالة التجربة اتبعتت ", "The test message was sent ") + fd(w.test_sent_at, true) + T(" على رقم المنصة ", " to the platform's number ") + (w.own_display || "")) + "</p>" : "";
       return cardH(T("تشغيل إرسال واتساب الحقيقي", "Turn on real WhatsApp sending"), stateH
         + '<ol class="sm" style="line-height:2;margin:8px 0">' + step(sp.token, T("توكن respond.io متضاف", "The respond.io token is added")) + step(sp.token_test, T("اختبار التوكن نجح والقناة موجودة", "The token test passed and the channel exists")) + step(sp.test_message, T("رسالة تجربة اتبعتت لرقم المنصة ", "A test message was sent to the platform's number ") + (w.own_display || "01279188996")) + step(sp["switch"], T("تأكيد إنها وصلت وتشغيل الإرسال", "Confirm it arrived and switch sending on")) + "</ol>"
@@ -2102,7 +2108,8 @@
         + '<div class="acts2"><select id="k_wmode" aria-label="' + h(T("نوع رسالة التجربة", "Test message type")) + '"><option value="text">' + h(T("رسالة نصية", "Text message")) + '</option><option value="template">' + h(T("قالب واتساب (بعد موافقة Meta)", "WhatsApp template (after Meta approval)")) + "</option></select>"
         + btn("wtest", h(T("📤 ابعت رسالة تجربة لرقم المنصة", "📤 Send a test message to the platform's number")), "l", w.can_send_test ? "" : " disabled") + "</div>"
         + (w.can_send_test ? "" : '<small class="why-off">' + h(whyOff(true)) + "</small>") + sentNote
-        + (live ? '<div class="acts2" style="margin-top:10px">' + btn("woff", h(T("⏹ إيقاف الإرسال الحقيقي", "⏹ Switch real sending off")), "d") + "</div>"
+        + (live || sp["switch"] ? (live ? "" : '<p class="sm">' + h(T("مفتاح «تشغيل إرسال واتساب الحقيقي» نفسه شغّال — الإرسال واقف بس للسبب اللي فوق.", "The «real WhatsApp sending» switch itself is on — sending is held only by the reason above.")) + "</p>")
+          + '<div class="acts2" style="margin-top:10px">' + btn("woff", h(T("⏹ إيقاف الإرسال الحقيقي", "⏹ Switch real sending off")), "d") + "</div>"
           : '<label class="chk" style="margin:10px 0"><input type="checkbox" id="k_wok"' + (w.can_go_live ? "" : " disabled") + "> " + h(T("✓ رسالة التجربة وصلت على موبايل رقم المنصة", "✓ The test message arrived on the platform's phone")) + "</label>"
             + '<div class="acts2">' + btn("won", h(T("▶ تشغيل إرسال واتساب الحقيقي", "▶ Turn on real WhatsApp sending")), "r", w.can_go_live ? "" : " disabled") + "</div>"
             + (w.can_go_live ? "" : '<small class="why-off">' + h(whyOff(false)) + "</small>"))
@@ -2148,7 +2155,25 @@
         + '<div class="note">' + h(T("الصفحة دي لمالك المنصة بس. المفاتيح بتتبعت للسيرفر وبتتحفظ مشفّرة؛ ماحدش يقدر يشوفها تاني (ولا إنت) — بيظهر آخر 4 حروف بس. كل حفظ أو مسح أو اختبار بيتسجّل في «سجل العمليات» من غير المفتاح.", "This page is for the platform owner only. Keys go to the server and are stored encrypted; nobody can see them again (not even you) — only the last 4 characters show. Every save, delete or test is written to the «Audit log» without the key.")) + "</div>"
         + '<div class="gr">' + secretCard("respondio.token", sl["respondio.token"], noSec) + chanCard(sl["respondio.channel"]) + "</div>"
         + waCard(j.wa) + '<div class="gr">' + secretCard("anam.api_key", sl["anam.api_key"], noSec) + payCard(j.payments) + "</div>"
-        + (j.websearch ? '<div class="gr">' + wsCard(j.websearch, noSec) + "</div>" : ""));
+        + (j.websearch ? '<div class="gr">' + wsCard(j.websearch, noSec) + "</div>" : "") + cfCard(j.cloudflare, noSec) + moreSlots(sl, noSec));
+    };
+    /* «Cloudflare — لوحة المطوّر» (slot cloudflare.dev_token, GET /keys → cloudflare: {token, account_id, permissions_ar/en}): the token the
+       developer panel lists deploys and rolls back with — write-only like every key here, never a tail: «متسجّل ✓» only */
+    var cfCard = function (cf, noSec) {
+      if (!cf || !cf.token) return "";
+      var t = cf.token, perm = L2([cf.permissions_ar || "", cf.permissions_en || ""]);
+      return '<div class="gr">' + secretCard("cloudflare.dev_token", { kind: "secret", label_ar: t.label_ar || "Cloudflare — لوحة المطوّر", label_en: t.label_en || "Cloudflare — developer panel", set: t.set, set_at: t.set_at, set_by: t.set_by, readable: t.readable, env: t.env, env_name: t.env_name, effective: t.effective, testable: t.testable, last_test: t.last_test }, noSec,
+        { ok: T("متسجّل ✓", "Registered ✓"), extra: (perm ? '<p class="mut sm" dir="auto">' + h(T("الصلاحيات المطلوبة: ", "Permissions needed: ") + perm) + "</p>" : "") + (cf.account_id ? '<p class="mut sm">' + h(T("الحساب: ", "Account: ")) + '<code dir="ltr">' + h(cf.account_id) + "</code></p>" : "") + '<p class="sm"><a href="#dev/deploys">' + h(T("🛠️ افتح «النشر» في لوحة المطوّر ←", "🛠️ Open «Deploys» in the developer panel →")) + "</a></p>" }) + "</div>";
+    };
+    /* every other secret slot the server lists (the developer panel's «Cloudflare — لوحة المطوّر» token …) gets the same card */
+    var KNOWN = { "respondio.token": 1, "respondio.channel": 1, "anam.api_key": 1, "websearch.key": 1, "bassem.tool_secret": 1, "websearch.provider": 1, "websearch.cap": 1, "cloudflare.dev_token": 1 };
+    var moreSlots = function (sl, noSec) {
+      var ks = Object.keys(sl || {}).filter(function (k) { return !KNOWN[k] && sl[k] && typeof sl[k] === "object" && sl[k].kind !== "setting"; });
+      if (!ks.length) return "";
+      return '<div class="gr">' + ks.map(function (k) {
+        var dev = /^(cf|cloudflare)[._-]/i.test(k) || sl[k].section === "dev";
+        return secretCard(k, sl[k], noSec, { extra: dev ? '<p class="sm"><a href="#dev/deploys">' + h(T("🛠️ افتح «النشر» في لوحة المطوّر ←", "🛠️ Open «Deploys» in the developer panel →")) + "</a></p>" : "" });
+      }).join("") + "</div>";
     };
     var say = function (k, ok, t, e) { c.st.msg = {}; c.st.msg[k] = { ok: ok, t: t, sm: e || null }; };
     var reload = function () { GET("/admin/cc/keys").then(function (j) { if (!alive(c)) return; c.st.j = j || {}; paint(); }, function (e) { if (alive(c)) { toast(errText(e), 1); paint(); } }); };
@@ -2784,7 +2809,31 @@
     s1();
   };
 
+  /* ---------- section files (data/acc-dev.js «🛠️ المطوّر»): a script loaded after this one calls MIGACC.use(function (X) { … }) and
+     gets the panel's own primitives (transport with the session, errors, cards, tables, tabs, modal, typed confirm, state) plus
+     X.section(key, {ar, en, group, group_en, perm, run}) — the item joins the navigation group whose Arabic title is `group` (default
+     «النظام»; a new group otherwise) and opens like every built-in section (#key/arg, CUR.on / CUR.ch handlers). The server checks every
+     permission again: a section file adds pages, never rights. window.MIGACC_PLUGINS = [fn] queues files loaded before this one. ---------- */
+  function addSection(k, o) {
+    if (!k || !/^[\w-]{1,40}$/.test(k) || SEC[k] || NAVP[k] || !o || typeof o.run !== "function" || !o.perm) return false;
+    var gn = o.group || "النظام", g = null;
+    for (var i = 0; i < GR.length; i++) if (GR[i][0] === gn) g = GR[i];
+    if (!g) { g = [gn, o.group_en || gn, []]; GR.push(g); }
+    g[2].push([k, o.ar || k, o.en || o.ar || k, "", o.perm]); NAVP[k] = o.perm; NAVL[k] = [o.ar || k, o.en || o.ar || k]; SEC[k] = o.run;
+    if (ST.me) { navPaint(); if (new RegExp("^#" + k + "(/|$)").test(location.hash || "") && (!CUR || CUR.key !== k)) route(true); }
+    return true;
+  }
+  var XAPI = { W: W, D: D, CFG: CFG, T: T, L2: L2, EN: EN, h: h, $: $, $$: $$, ls: ls, U: U, own: own, str: str, trim: trim, enc: enc, qs: qs, nf: nf, fd: fd, fdh: fdh, cut: cut, safeUrl: safeUrl, lnk: lnk, today: today, roleName: roleName,
+    GET: GET, POST: POST, PUT: PUT, PATCH: PATCH, DEL: DEL, E: E, ERRS: ERRS, errText: errText, errSmall: errSmall, errH: errH,
+    toast: toast, head: head, setCt: setCt, loadingH: loadingH, btn: btn, tag: tag, cardH: cardH, kvH: kvH, tabsH: tabsH, tableH: tableH, emptyRow: emptyRow, csvSave: csvSave,
+    modal: modal, mh: mh, closeModal: closeModal, sure: sure, typed: typed,
+    can: can, role: function () { return ST.role; }, me: function () { return ST.me; }, features: function () { return ST.features || {}; },
+    cur: function () { return CUR; }, alive: alive, rerun: rerun, go: go, section: addSection };
+  function use(fn) { if (typeof fn !== "function") return false; try { fn(XAPI); return true; } catch (e) { if (W.console) console.warn("acc section file", e); return false; } }
+
   /* ---------- public surface (tests and the console); start ---------- */
-  W.MIGACC = { v: 1, go: go, boot: boot, state: function () { return { role: ST.role, perms: ST.perms.slice(), section: CUR && CUR.key }; }, nav: function () { return GR.map(function (g) { return [g[0], g[2].map(function (x) { return [x[0], x[1]]; })]; }); }, lang: setLang };
+  W.MIGACC = { v: 1, go: go, boot: boot, use: use, state: function () { return { role: ST.role, perms: ST.perms.slice(), section: CUR && CUR.key }; }, nav: function () { return GR.map(function (g) { return [g[0], g[2].map(function (x) { return [x[0], x[1]]; })]; }); }, lang: setLang };
+  (Object.prototype.toString.call(W.MIGACC_PLUGINS) === "[object Array]" ? W.MIGACC_PLUGINS : []).forEach(use);
+  W.MIGACC_PLUGINS = { push: use };
   if (D.readyState === "loading") D.addEventListener("DOMContentLoaded", boot); else boot();
 })();

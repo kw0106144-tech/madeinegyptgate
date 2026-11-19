@@ -109,3 +109,48 @@ a.btn{text-decoration:none;display:inline-block}
 .btn:disabled,.btn[disabled],button.btn[aria-disabled="true"]{opacity:.45;cursor:not-allowed;filter:saturate(.4)}
 .btn:disabled:hover,.btn[disabled]:hover{filter:saturate(.4)}
 .why-off{display:block;margin:4px 0 0;font-size:12px;color:#64748B}
+
+/* «🛠️ المطوّر / Developer» (data/acc-dev.js, owner only): feature switches, deploy lists + rollback, code links, health list */
+.dv-own{margin-bottom:10px}
+.dv-tabs .tabs{margin-bottom:14px}
+.dv-fs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:16px}
+.dv-f{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;gap:14px;align-items:flex-start}
+.dv-f.off{background:#FBFBFC}.dv-f.lk{background:#FFFBEB;border-color:#F5DFA6}
+.dv-f .tx{flex:1;min-width:0}.dv-f .hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.dv-f .hd b{font-size:15px}
+.dv-f p{margin:6px 0;color:#475569;font-size:13px;line-height:1.75}.dv-f p.lkr{color:#7A5B00;font-weight:600}
+.dv-f .mt{display:flex;gap:6px 10px;flex-wrap:wrap;align-items:center;font-size:12px;color:#64748B;margin-top:4px}
+.dv-f .fe:empty{display:none}.dv-f .fe{margin-top:6px}
+.dv-sw{flex:none;position:relative;width:60px;height:34px;border-radius:99px;border:0;background:#CBD5E1;cursor:pointer;padding:0;margin:2px 0 0;transition:background .15s}
+.dv-sw::after{content:"";position:absolute;top:4px;left:4px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.3);transition:left .15s,right .15s}
+.dv-sw[aria-checked=true]{background:#0B6B3A}.dv-sw[aria-checked=true]::after{left:30px}
+html[dir=rtl] .dv-sw::after{left:auto;right:4px}html[dir=rtl] .dv-sw[aria-checked=true]::after{left:auto;right:30px}
+.dv-sw:disabled{opacity:.5;cursor:not-allowed}.dv-sw:focus-visible{outline:3px solid #C09300;outline-offset:3px}
+.dv-pol{list-style:none;margin:0;padding:0}.dv-pol li{padding:10px 0;border-bottom:1px dashed var(--line)}.dv-pol li:last-child{border:0}
+.dv-pol b{display:block;margin-bottom:3px}.dv-pol span{color:#475569;font-size:13px;line-height:1.7}
+.dv-ask p{line-height:1.8}
+.dv-l{list-style:none;margin:0;padding:0}
+.dv-l li{display:flex;gap:8px 12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 0;border-bottom:1px dashed var(--line)}
+.dv-l li:last-child{border-bottom:0}.dv-l li.cur{background:#F0FDF4;border-radius:10px;padding:10px;margin:2px -10px}
+.dv-l .m{flex:1 1 240px;min-width:0}.dv-l .m>div{margin:2px 0;overflow-wrap:anywhere}.dv-l .a{display:flex;gap:6px;flex-wrap:wrap}
+.dv-l code,.dv-how code{font-size:12px;background:#F1F5F9;border-radius:6px;padding:1px 6px;overflow-wrap:anywhere}
+.dv-how{margin:8px 0 10px}.dv-how summary{cursor:pointer;font-weight:700;color:var(--g)}.dv-how ol{margin:8px 0;padding-inline-start:20px;line-height:2;font-size:13px}
+.dv-tk{margin:8px 0}.dv-tk span{display:block;font-weight:700;margin-bottom:4px}.dv-tk input{max-width:520px}
+.dv-p{line-height:1.9;margin:4px 0;font-size:14px}
+.dv-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:16px}
+.dv-tiles.sm2{margin-bottom:8px}
+a.dv-tile{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--line);border-radius:16px;padding:14px;background:#fff;color:#0F172A;text-decoration:none;min-height:72px}
+a.dv-tile:hover{border-color:var(--g);background:#FBE9EC}a.dv-tile i{font-style:normal;font-size:26px;line-height:1}
+a.dv-tile b{display:block;font-size:15px}a.dv-tile .d{display:block;color:#475569;font-size:13px;margin:2px 0}a.dv-tile small{display:block;color:#64748B;font-size:11px;overflow-wrap:anywhere}
+.dv-sum{font-weight:700;font-size:15px}
+.dv-h{list-style:none;margin:0;padding:0}
+.dv-h li{display:flex;gap:6px 10px;align-items:center;flex-wrap:wrap;padding:9px 0;border-bottom:1px dashed var(--line)}.dv-h li:last-child{border-bottom:0}
+.dv-h .dot{width:12px;height:12px;border-radius:50%;flex:none;background:#94A3B8}.dv-h li.ok .dot{background:#16A34A;box-shadow:0 0 0 3px #DCFCE7}.dv-h li.bad .dot{background:#DC2626;box-shadow:0 0 0 3px #FEE2E2}
+.dv-h .lb{flex:1 1 200px;min-width:0}.dv-h .lb small{overflow-wrap:anywhere}.dv-h .dtl{display:block;color:#B42318;font-size:12px}.dv-h li.ok .dtl{color:#64748B}
+.dv-h .mt{font-size:12px;color:#475569;white-space:nowrap}
+.dv-h .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.dv-tb .row span{overflow-wrap:anywhere}
+@media(max-width:820px){.dv-fs{grid-template-columns:1fr}.dv-f{padding:12px;gap:12px}.dv-l li.cur{margin:2px -6px;padding:10px 6px}.dv-tiles{grid-template-columns:1fr}}
+.dv-tech{margin-top:6px;font-size:12px;color:#64748B}.dv-tech summary{cursor:pointer;width:max-content}.dv-tech ul{margin:4px 0 0;padding-inline-start:18px;text-align:left;overflow-wrap:anywhere}
+.dv-f .sm3{margin-top:6px}
+.dv-f.lk .dv-sw[aria-checked=true]{background:#B7791F}   /* the owner's choice is on, but the feature waits for its key (locked) */
+.dv-warnl{margin:4px 0 10px;padding-inline-start:20px;line-height:1.9}   /* the switches an older build / version would stop applying (rollback dialog) */

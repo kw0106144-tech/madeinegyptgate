@@ -38,6 +38,8 @@ PAGES['meeting'] = ('اجتماعك مع جنة – صنع في مصر', '', COM
 .mtgsk { height: 18px; border-radius: 8px; background: linear-gradient(90deg, var(--line), transparent, var(--line)); background-size: 200% 100%; animation: mtgsk 1.2s linear infinite; }
 @keyframes mtgsk { to { background-position: -200% 0; } }
 .jnl-btn { display: none !important; } /* the page has its own join button */
+/* «🛠️ المطوّر» → janna_live off (data/flags.js hides #mtgNow / #mtgGo): no countdown, consent or join hint for a call that cannot start */
+html.mig-off-janna_live #mtgCd, html.mig-off-janna_live .mtgok, html.mig-off-janna_live #mtgHint { display: none !important; }
 @media (max-width: 900px) { .mtgm { grid-template-columns: 1fr; } .mtgside { order: 0; } }
 @media (max-width: 520px) { .mtgh .av { width: 72px; height: 72px; } .mtgcd div { min-width: 62px; } .mtgcd b { font-size: 1.35rem; } .mtgbtn { width: 100%; } }
 ''', '''
@@ -59,12 +61,14 @@ $("#mtgSide").innerHTML = '<div class="mtgc"><h3>🗓️ ' + T("جدول الا�
   + [["التعارف ونشاطك", "Introductions & your business"], ["المنصة والجهة المشغّلة", "The platform & its operator"], ["جولة على الشاشة", "Screen tour"], ["الباقة المناسبة ومستشارك باسم", "The right plan & your advisor Bassem"], ["أسئلتك", "Your questions"], ["التسجيل", "Registration"]].map(function (a) { return "<li>" + T(a[0], a[1]) + "</li>"; }).join("")
   + '</ol></div><div class="mtgc"><h3>✅ ' + T("قبل ما تدخل", "Before you join") + '</h3><ul><li>' + T("افتح الصفحة من الكمبيوتر أو الموبايل، والصوت شغّال.", "Use a computer or phone with sound on.") + '</li><li>' + T("اسمح للمتصفح باستخدام الميكروفون.", "Allow the browser to use your microphone.") + '</li><li>' + T("الجلسة المباشرة حدّها 10 دقايق في المرة الواحدة في الباقة الحالية، ولو محتاج وقت أكتر ابدأ جلسة تانية.", "A live session is capped at 10 minutes at a time on the current plan; start another session if you need more time.") + '</li></ul></div>'
   + '<div class="mtgc"><h3>💬 ' + T("محتاج مساعدة؟", "Need help?") + '</h3><div class="mtga"><a class="btn btn-sm btn-green" target="_blank" rel="noopener" href="https://wa.me/' + WA + '">' + T("واتساب", "WhatsApp") + '</a><a class="btn btn-sm btn-line" href="mailto:' + MAIL + '">' + MAIL + '</a></div></div>';
-function box(h) { $("#mtgBox").innerHTML = h; }
+function box(h) { $("#mtgBox").innerHTML = h; if (window.MIGFLAGS && MIGFLAGS.apply) MIGFLAGS.apply(); } /* the switches' notice in the new markup */
+/* shown only while the owner has switched Janna's live calls off (data/flags.js [data-mig-off]; the Worker refuses the call too) */
+function offNote() { return '<div class="mtgst warn" data-mig-off="janna_live" hidden>' + T("مكالمات جنة المباشرة موقوفة مؤقتاً — تقدر تكلّمها كتابة من «اسأل جنة»، أو تكلّمنا على واتساب المنصة أو الإيميل ونحدد معاك ميعاد.", "Live calls with Janna are paused for now — you can still write to her via «Ask Janna», or reach us on the platform's WhatsApp or by e-mail to set a time.") + '</div>'; }
 function contact(msg) {
   var wa = "https://wa.me/" + WA + "?text=" + encodeURIComponent(msg);
   return '<div class="mtga"><a class="btn btn-green" target="_blank" rel="noopener" href="' + esc(wa) + '">💬 ' + T("واتساب المنصة", "The platform's WhatsApp") + '</a><a class="btn btn-line" href="mailto:' + MAIL + '?subject=' + encodeURIComponent(T("اجتماع تعريفي مع جنة", "Introductory meeting with Janna")) + '">✉️ ' + MAIL + '</a></div>';
 }
-function liveBtn(label) { return '<button type="button" class="mtgbtn" id="mtgNow"><i></i>' + label + '</button>'; }
+function liveBtn(label) { return offNote() + '<button type="button" class="mtgbtn" id="mtgNow"><i></i>' + label + '</button>'; }
 function bindNow(intent) { var b = $("#mtgNow"); if (b) b.onclick = function () { if (window.JANNA_LIVE) JANNA_LIVE.open(intent ? { intent: intent } : { screen: "home.html" }); }; }
 var id = ((/^#([a-f0-9]{20})$/.exec(location.hash || "") || [])[1]) || "";
 function state(kind, extra) {
@@ -100,7 +104,7 @@ function state(kind, extra) {
   box('<h2>' + T("موعد الاجتماع", "Meeting time") + '</h2><div class="mtgw">' + esc(whenCairo) + '</div>' + whenLocal
     + '<div class="mtgcd" id="mtgCd" aria-label="' + T("العد التنازلي", "Countdown") + '"></div>'
     + '<label class="mtgok"><input type="checkbox" id="mtgOk"><span>' + T("موافق على تسجيل الاجتماع (صوت وصورة ونص المحادثة) وإرسال التسجيل والنص والملخص لبريدي. من غير الموافقة مش هنحفظ تسجيل ولا نص للمحادثة، وهيوصلك ملخص مكتوب من بياناتك ومحاور الاجتماع بس. اختيارك هنا وقت الدخول هو اللي بيتنفّذ، حتى لو كنت وافقت وقت الحجز.", "I agree to the meeting being recorded (audio, video and the conversation transcript) and the recording, transcript and summary being sent to my email. Without consent no recording or transcript is kept, and you only get a written summary of your details and the agenda. Your choice here when you join is what applies, even if you agreed when booking.") + '</span></label>'
-    + '<div class="mtga"><button type="button" class="mtgbtn" id="mtgGo" disabled><i></i>' + T("ادخل الاجتماع", "Join the meeting") + '</button><a class="btn btn-line" href="' + esc(API + "/" + id + "/ics") + '" download="meeting.ics">📅 ' + T("أضف للتقويم", "Add to calendar") + '</a></div><p class="mtgn" id="mtgHint"></p>');
+    + offNote() + '<div class="mtga"><button type="button" class="mtgbtn" id="mtgGo" disabled><i></i>' + T("ادخل الاجتماع", "Join the meeting") + '</button><a class="btn btn-line" href="' + esc(API + "/" + id + "/ics") + '" download="meeting.ics">📅 ' + T("أضف للتقويم", "Add to calendar") + '</a></div><p class="mtgn" id="mtgHint"></p>');
   $("#mtgGo").onclick = function () {
     if (!window.JANNA_LIVE) return;
     entered = true;

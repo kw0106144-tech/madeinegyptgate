@@ -374,7 +374,8 @@
   function acts(withVideo) {
     var a = [];
     if (ME.expired) return '<a class="gold" href="register.html#' + esc(ME.plan || "partner") + '">🔄 ' + T("جدّد الاشتراك", "Renew") + '</a><a href="contact.html">' + T("تواصل معنا", "Contact us") + "</a>";
-    if (withVideo !== false) a.push('<button type="button" class="vid" data-bs="video">🎥 ' + T("كلّم باسم فيديو", "Video call with Bassem") + "</button>");
+    /* «🛠️ المطوّر» → bassem_live off (data/flags.js): no 🎥 (the Worker refuses the call too; html.mig-off-bassem_live hides a late one) */
+    if (withVideo !== false && !(window.MIGFLAGS && MIGFLAGS.on && MIGFLAGS.on("bassem_live") === false)) a.push('<button type="button" class="vid" data-bs="video">🎥 ' + T("كلّم باسم فيديو", "Video call with Bassem") + "</button>");
     if (ME.expired || ME.left <= 30) a.push('<a class="gold" href="register.html#' + esc(ME.plan || "partner") + '">🔄 ' + T("جدّد الاشتراك", "Renew") + "</a>");
     QUICK.forEach(function (q) { if (q[0] === PAGE || (q[0] === "brief" && PAGE === "advisor" && !ME.expired)) { if (q[0] === "brief") a.push('<button type="button" class="' + (q[4] || "") + '" data-bs="brief">' + esc(T(q[1], q[2])) + "</button>"); return; } a.push('<a href="' + esc(url(q[3])) + '"' + (q[4] ? ' class="' + q[4] + '"' : "") + ">" + esc(T(q[1], q[2])) + "</a>"); });
     return a.join("");

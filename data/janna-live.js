@@ -444,7 +444,7 @@
     VID = v; return v;
   }
   try { window.addEventListener("storage", function (e) { if (e && e.key === "mig-tok" && !/^v2\./.test(String(e.newValue || ""))) { var m = ""; try { m = localStorage.getItem(VID_M) || ""; } catch (x) {} if (m) rotateVisitor(); } }); } catch (e) {} /* signed out in another tab */
-  function sessBody(agent, extra) { var b = { agent: agent, lang: EN ? "en" : "ar" }; if (agent === "janna") { var vi = visitorId(); if (vi) b.visitor_id = vi; } if (extra) for (var k in extra) if (extra.hasOwnProperty(k) && !b.hasOwnProperty(k)) b[k] = extra[k]; return b; }
+  function sessBody(agent, extra) { var b = { agent: agent, lang: EN ? "en" : "ar", ff: 1 }; /* ff: this page knows the owner's switches (feature_off) */ if (agent === "janna") { var vi = visitorId(); if (vi) b.visitor_id = vi; } if (extra) for (var k in extra) if (extra.hasOwnProperty(k) && !b.hasOwnProperty(k)) b[k] = extra[k]; return b; }
   function mint(agent, extra) {
     if (agent !== "bassem") {
       var jt = signedTok(); /* Janna never needs it: a refused / old sign-in is ignored by the Worker */
@@ -871,6 +871,7 @@
     /* this site cannot mint tokens (no key on the Worker, no endpoint): the widget, and this tab keeps it for a while */
     if (c === "unavailable" || c === "anam_not_configured" || c === "store_off" || s === 404) { rememberWidget(); LV = null; toWidget(true); return; }
     me.closed = true; me.st = "error";
+    if (c === "feature_off") { sdkUi("error", liveOffMsg(persona), { noRetry: true }); return; }
     if (c === "rate_limited") { var mn = Math.max(1, Math.ceil((+e.retry_after || 3600) / 60)); sdkUi("error", T("اتفتحت مكالمات فيديو كتير من نفس الشبكة الساعة دي — جرّب تاني بعد " + mn + " دقيقة.", "Too many video calls from this network this hour — please try again in " + mn + " min."), { go: T("جرّب تاني", "Try again") }); return; }
     if (c === "daily_cap") { sdkUi("error", T("مكالمات الفيديو المباشرة خلصت لليوم — جرّب تاني بكرة.", "Today's live video calls are used up — please try again tomorrow."), { noRetry: true }); return; }
     if (c === "blocked") { sdkUi("error", T("مكالمات الفيديو المباشرة مش متاحة من الشبكة دي.", "Live video calls are not available from this network."), { noRetry: true }); return; }
@@ -1000,7 +1001,9 @@
       z.src = src; z.lvl = me.nzLvl = function () { if (ac.state !== "running") return -1; an.getByteTimeDomainData(buf); var q = 0; for (var i = 0; i < buf.length; i++) { var x = (buf[i] - 128) / 128; q += x * x; } return Math.sqrt(q / buf.length); };
     } catch (e) { z.src = null; z.lvl = null; }
   }
-  function nzPrep(me) { me.nz = nzNew(); NZ.offerUntil = 0; if (me.textOnly) return; nzAc(); me.micP = micGet(me); } /* a new call: no offer left from the last one */
+  function nzPrep(me) { nzDefault(); me.nz = nzNew(); NZ.offerUntil = 0; if (me.textOnly) return; nzAc(); me.micP = micGet(me); }
+  /* «🛠️ المطوّر» → noise_mode_default on: a call starts in noisy-room mode unless the visitor chose a mode in this tab ("1" / "0") */
+  function nzDefault() { var s = null; try { s = sessionStorage.getItem(NZ_KEY); } catch (e) {} if (!NZ.on && s === null && window.MIGFLAGS && MIGFLAGS.on && MIGFLAGS.on("noise_mode_default") === true) { NZ.on = true; NZ.why = "default"; } } /* a new call: no offer left from the last one */
   function nzEnd(me) {
     var z = me && me.nz; if (!z) return;
     if (z.cand) { clearTimeout(z.cand.tm); z.cand.done = true; }
@@ -1106,7 +1109,7 @@
   function nzSet(on, why) {
     on = !!on; if (NZ.on === on) { nzChip(); return; }
     NZ.on = on; NZ.why = String(why || ""); NZ.fis = []; NZ.offerUntil = 0;
-    try { if (on) sessionStorage.setItem(NZ_KEY, "1"); else sessionStorage.removeItem(NZ_KEY); } catch (e) {}
+    try { sessionStorage.setItem(NZ_KEY, on ? "1" : "0"); } catch (e) {}
     var me = LV;
     if (me && me.nz && !me.closed) { nzEos(me); if (on) nzTick(me); else nzGate(me, false); }
     nzChip(); nzEvt(on ? "on" : "off", { why: why });
@@ -1188,6 +1191,8 @@
     o = o && typeof o === "object" && !o.target && !o.type ? o : {};
     var p = o.persona === "bassem" ? "bassem" : "janna";
     if (o.meeting || o.intent === "meeting") p = "janna";
+    /* «🛠️ المطوّر» → «المزايا»: this persona's live calls are switched off (data/flags.js; the Worker refuses the token too) */
+    if (liveOff(p)) { if (!(ov && persona === p)) note(liveOffMsg(p)); return; }
     if (ov && persona !== p) close();
     persona = p;
     if (p === "bassem") loadTools();
@@ -1227,6 +1232,9 @@
     ov.remove(); ov = null; frame = null; SID = ""; sessT0 = 0; NUDGE = ""; document.documentElement.style.overflow = ""; document.documentElement.classList.remove("jnl-on");
     if (m) { m.noteEl = note(m.msg); MT = null; }
   }
+  /* the owner's switches (data/flags.js MIGFLAGS; absent → nothing is off) */
+  function liveOff(p) { var F = window.MIGFLAGS; return !!(F && F.on && F.on(p === "bassem" ? "bassem_live" : "janna_live") === false); }
+  function liveOffMsg(p) { var F = window.MIGFLAGS, m = F && F.msg ? F.msg(p === "bassem" ? "bassem_live" : "janna_live") : ""; return m || (p === "bassem" ? T("مكالمات باسم المباشرة موقوفة مؤقتاً — جرّب تاني بعد شوية.", "Live calls with Bassem are paused for now — please try again later.") : T("مكالمات جنة المباشرة موقوفة مؤقتاً — تقدر تكلّمها كتابة من «اسأل جنة».", "Live calls with Janna are paused for now — you can still write to her via «Ask Janna».")); }
   function note(msg) {
     if (!msg) return; var n = document.createElement("div"); n.className = "jnl-note"; n.dir = EN ? "ltr" : "rtl"; n.setAttribute("translate", "no"); n.setAttribute("role", "status"); n.textContent = msg;
     document.body.appendChild(n); setTimeout(function () { n.remove(); }, 9000); return n;
