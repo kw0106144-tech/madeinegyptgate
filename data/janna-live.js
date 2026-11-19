@@ -470,15 +470,18 @@
     LV = me; tmStart(me); sdkUi("connecting", connMsg(me)); if (persona === "bassem") loadTools();
     nzPrep(me); /* noise guard: the audio meter + our own microphone request start inside this tap, while the token is minted */
     /* owner 2026-11-19 «باسم بياخد وقت»: the token is asked for at once, BESIDE the SDK download (it used to wait for it); a token minted
-       for a call whose SDK then fails to load is simply not used (the widget takes over, as before) */
-    var p = persona, tokP = mint(p).then(function (j) { tmMark(me, "token"); if (me.tm) me.tm.server = String(j.server_timing || ""); return j; },
-      function (e) { tmMark(me, "token"); if (me.tm && e && e.server_timing) me.tm.server = String(e.server_timing); throw e; });
-    tokP.then(null, function () {}); /* answered below once the SDK is there; never an unhandled rejection while it loads */
+       for a call whose SDK then fails to load is simply not used (the widget takes over, as before). When the SDK already failed to load
+       in this page (sdkBad: loadSdk refuses at once for 10 minutes) no token is asked for at all — every minted token counts in the
+       Worker's daily cap and the per-network hourly limit — and the widget takes over exactly as before */
+    var p = persona, tok = function () { return mint(p).then(function (j) { tmMark(me, "token"); if (me.tm) me.tm.server = String(j.server_timing || ""); return j; },
+      function (e) { tmMark(me, "token"); if (me.tm && e && e.server_timing) me.tm.server = String(e.server_timing); throw e; }); };
+    var tokP = sdkBad && Date.now() - sdkBad < 600000 ? null : tok();
+    if (tokP) tokP.then(null, function () {}); /* answered below once the SDK is there; never an unhandled rejection while it loads */
     me.timers.push(setTimeout(function () { sdkSlow(me); }, SLOW_MS));
     loadSdk().then(function (A) {
       tmMark(me, "sdk");
       if (LV !== me) return;
-      tokP.then(function (j) {
+      (tokP || tok()).then(function (j) {
         if (LV !== me || me.stopped) return;
         me.max = maxOf(j);
         sdkRun(me, A, j.sessionToken);
