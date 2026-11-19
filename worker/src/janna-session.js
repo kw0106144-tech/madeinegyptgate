@@ -4,7 +4,8 @@
    token) — the page shows its OWN AI label on the video instead («جنة · مساعِدة بالذكاء الاصطناعي» / "Janna · AI assistant").
 
    POST /api/janna/session  {agent: "janna" | "bassem", lang: "ar" | "en"}
-     200 {sessionToken, agent, lang, expires_in, max_session_sec}
+     200 {sessionToken, agent, lang, expires_in, max_session_sec}  + header Server-Timing (checks / ctx / persona / wait / token / total, ms;
+                                          also on the 502s) — where the wait before «بنوصّلك…» went (serverTiming below)
      503 {error: "anam_not_configured"}   no ANAM_API_KEY secret (nor the Control Center's sealed "anam.api_key" slot) → the page keeps
                                           the widget, exactly as before
      403 origin_not_allowed               Origin (else Referer) is not https://madeinegyptgate.com / https://www.madeinegyptgate.com
@@ -26,7 +27,8 @@
    call at max_session_sec (7200 s since the Anam Growth plan, warning 2 minutes before) — Anam's own limit for a saved persona is the persona's
    maxSessionLengthSeconds (Lab / PUT /v1/personas/{id}), which should be set to the same 600.
    Bassem for a member whose plan has «bassem» and whose profile has a name AND a title (bassem-context.js): the saved persona is read
-   (GET /v1/personas/{id}, PERSONA_TIMEOUT_MS) and the token is minted for an ephemeral copy of it — same avatar, voice, LLM, tools,
+   (GET /v1/personas/{id}, PERSONA_TIMEOUT_MS; started beside the member's D1 context, not after it — 2026-11-19) and the token is minted
+   for an ephemeral copy of it — same avatar, voice, LLM, tools,
    language, voice detection and director notes — whose prompt ends with the member's context from D1 (honorific + first name,
    company, sector, plan, the plan's markets) and whose initialMessage greets him by name; maxSessionLengthSeconds = 600. A saved
    persona cannot take a per-session prompt or first message (its personaConfig is {personaId} only). The persona read failing → today's
@@ -90,8 +92,17 @@ export const dailyCap = env => num(env && env.JANNA_DAILY_SESSIONS, 120, 100000)
 
 /* own headers: same-origin use, so no "Access-Control-Allow-Origin: *" on a token endpoint — an allowed Origin is reflected */
 const HDR = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", Vary: "Origin" };
-const out = (o, status, cors) => new Response(JSON.stringify(o), { status, headers: { ...HDR, ...(cors ? { "Access-Control-Allow-Origin": cors } : {}) } });
-const fail = (status, code, cors, extra) => out({ error: code, code, ...(extra || {}) }, status, cors);
+const out = (o, status, cors, hdr) => new Response(JSON.stringify(o), { status, headers: { ...HDR, ...(cors ? { "Access-Control-Allow-Origin": cors, ...(hdr ? { "Access-Control-Expose-Headers": "Server-Timing" } : {}) } : {}), ...(hdr || {}) } });
+const fail = (status, code, cors, extra, hdr) => out({ error: code, code, ...(extra || {}) }, status, cors, hdr);
+/* owner 2026-11-19 «باسم بياخد وقت» (the call screen stayed on «بنوصّلك بباسم…»): where the token request spent its time, as a Server-Timing
+   header the page reads (data/janna-live.js JANNA_LIVE.timing()) and the browser's network panel shows — milliseconds only, never data:
+   checks = origin / key / limits / sign-in, ctx = the member's (or visitor's) context from D1, persona = the saved persona's read (it runs
+   beside ctx for a member Bassem greets by name), wait = how long the token request still waited for that read after ctx, token = the
+   Anam token request(s), total = the whole request */
+export function serverTiming(t) {
+  const ms = v => Math.max(0, Math.round(Number(v) || 0));
+  return ["checks", "ctx", "persona", "wait", "token", "total"].filter(k => t && t[k] != null).map(k => k + ";dur=" + ms(t[k])).join(", ");
+}
 
 /* the page's origin: the Origin header, else the Referer's origin ("" when neither is usable) */
 export function originOf(req) {
@@ -174,10 +185,11 @@ export async function continuation(env, memberId, callId, nowMs = Date.now()) {
   } catch (e) { return ""; } // no 0008 table yet: the part starts fresh
 }
 export async function bassemContext(env, m, lang, b, nowMs = Date.now()) {
-  const cont = await continuation(env, m.id, b && b.continue_call, nowMs), o = { continued: !!cont };
+  if (!m) return null;
+  /* the continuation and the factory profile are independent reads: one D1 round trip instead of two (owner 2026-11-19 «باسم بياخد وقت») */
+  const [cont, prof] = await Promise.all([continuation(env, m.id, b && b.continue_call, nowMs), memberProfile(env, m.id)]), o = { continued: !!cont };
   const base = memberContext(m, lang, o) || memberContext(m, lang, { ...o, anonymous: true });
   if (!base) return null;
-  const prof = await memberProfile(env, m.id);
   const parts = [base.block, "- " + todayLineAr(nowMs) + " (بتوقيت القاهرة)."];
   if (cont) parts.push("", RESUME_BLOCK[0], cont, RESUME_BLOCK[1]);
   if (prof && prof.block) parts.push("", prof.block);
@@ -223,13 +235,24 @@ export async function handleJannaSession(req, env) {
     const nowMs = Date.now(), ih = await ipHash(req, env);
     if (await isBlocked(env, { ip_hash: ih })) return fail(403, "blocked", cors);
     if (!(await rateOk(env, "jsess|" + ih, perHour(env), 3600, nowMs))) return fail(429, "rate_limited", cors, { retry_after: 3600 - Math.floor(nowMs / 1000) % 3600 });
-    let ctx = null; // Bassem's member context: only from the member's own D1 rows (profile, memory, this call's turns), never from the page
-    if (agent === "bassem") { const c = await bassemCaller(req, env); if (c.no) return fail(c.no[0], c.no[1], cors); if (!c.staff && memberContextOn(env, b)) ctx = await bassemContext(env, c.m, lang, b, nowMs); }
-    else if (visitorContextOn(env, b)) ctx = await jannaSessionContext(env, req, b, lang, nowMs); // Janna: the visitor's memory + the knowledge bank (null = plain)
+    const personaId = PERSONAS[agent][lang], tm = {};
+    /* the saved persona's read, timed; never rejects (null on any failure) */
+    const readPersona = () => { const t0 = Date.now(); return savedPersona(key, personaId).then(p => { tm.persona = Date.now() - t0; return p; }); };
+    let ctx = null, personaP = null, tc = 0; // Bassem's member context: only from the member's own D1 rows (profile, memory, this call's turns), never from the page
+    if (agent === "bassem") {
+      const c = await bassemCaller(req, env); if (c.no) return fail(c.no[0], c.no[1], cors);
+      tm.checks = (tc = Date.now()) - startMs;
+      if (!c.staff && memberContextOn(env, b)) {
+        /* a member Bassem greets by name always gets the enriched persona (bassemContext never returns null for him): its read starts NOW,
+           beside his D1 context, instead of after it (owner 2026-11-19 «باسم بياخد وقت»); anyone else: read only once a context exists */
+        if (memberContext(c.m, lang)) personaP = readPersona();
+        ctx = await bassemContext(env, c.m, lang, b, nowMs);
+      }
+    } else { tm.checks = (tc = Date.now()) - startMs; if (visitorContextOn(env, b)) ctx = await jannaSessionContext(env, req, b, lang, nowMs); } // Janna: the visitor's memory + the knowledge bank (null = plain)
+    tm.ctx = Date.now() - tc;
     /* review 2026-11-19 #7: the page's visitor id is another member's (or the signed-out member's) → the page starts a new one; nothing to add → plain */
     const rotateVisitor = !!(ctx && ctx.rotate_visitor); if (ctx && agent === "janna" && !ctx.block) ctx = null;
-    const personaId = PERSONAS[agent][lang];
-    const personaP = ctx ? savedPersona(key, personaId) : null; // read while the day is counted; never rejects (null on any failure)
+    if (!ctx) personaP = null; else if (!personaP) personaP = readPersona(); // read while the day is counted
     if ((await countDay(env, nowMs, 1)) > dailyCap(env)) { await countDay(env, nowMs, -1); return fail(429, "daily_cap", cors); } // refused ones are not counted
     const plain = { personaConfig: { personaId }, sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: "madeinegyptgate-" + agent + "-" + lang };
     const send = async (body, ms) => {
@@ -242,14 +265,17 @@ export async function handleJannaSession(req, env) {
     const tokenOf = async r => { let j = null; try { j = await r.json(); } catch (e) { /* not JSON */ } return j && typeof j.sessionToken === "string" ? j.sessionToken : ""; };
     const left = () => ANAM_BUDGET_MS - (Date.now() - startMs);
     let r, sessionToken = "", personal = false, pc = null;
+    const timing = () => serverTiming({ ...tm, total: Date.now() - startMs }), th = () => ({ "Server-Timing": timing() });
     if (personaP) {
-      const p = await personaP;
+      const tw = Date.now(), p = await personaP;
+      tm.wait = Date.now() - tw;
       /* Janna without a returning visitor (the knowledge bank only): her own first sentence from the Lab stays */
       if (p && ctx && !ctx.greeting && !ctx.continued && typeof p.initialMessage === "string" && p.initialMessage.trim()) ctx = { ...ctx, greeting: p.initialMessage.trim() };
       pc = ephemeralFrom(p, ctx, MAX_SESSION_SEC);
       if (p && !pc) console.error("janna session: the saved persona cannot be copied for the member context");
       if (pc && Math.min(ANAM_TIMEOUT_MS, left() - RETRY_MIN_MS) < RETRY_MIN_MS) { console.error("janna session: no time left for the member context"); pc = null; }
     }
+    const ts = Date.now();
     try {
       if (pc) { // the enriched request first; any HTTP refusal (or no token) → today's request, once
         r = await send({ ...plain, personaConfig: pc }, Math.min(ANAM_TIMEOUT_MS, left() - RETRY_MIN_MS));
@@ -259,18 +285,20 @@ export async function handleJannaSession(req, env) {
       }
       if (!personal) { r = await send(plain, ctx ? Math.min(ANAM_TIMEOUT_MS, Math.max(RETRY_MIN_MS, left())) : ANAM_TIMEOUT_MS); sessionToken = await tokenOf(r); }
     } catch (e) {
+      tm.token = Date.now() - ts;
       await countDay(env, nowMs, -1);
       console.error("janna session: anam unreachable", (e && e.name) || "error");
-      return fail(502, "upstream_unreachable", cors);
+      return fail(502, "upstream_unreachable", cors, null, th());
     }
+    tm.token = Date.now() - ts;
     if (!r.ok || !sessionToken) {
       await countDay(env, nowMs, -1);
       console.error("janna session: anam refused", r.status);
-      return fail(502, "upstream", cors, { upstream_status: r.status });
+      return fail(502, "upstream", cors, { upstream_status: r.status }, th());
     }
     return out({ sessionToken, agent, lang, expires_in: TOKEN_TTL_SEC, max_session_sec: MAX_SESSION_SEC, ...(rotateVisitor ? { rotate_visitor: true } : {}),
       ...(personal && agent === "bassem" ? { member_context: true, ...(ctx.memory ? { memory: true } : {}), ...(ctx.continued ? { continued: true } : {}) } : {}),
-      ...(personal && agent === "janna" ? { visitor_context: true, ...(ctx.memory ? { memory: true } : {}), ...(ctx.knowledge ? { knowledge: true } : {}) } : {}) }, 200, cors);
+      ...(personal && agent === "janna" ? { visitor_context: true, ...(ctx.memory ? { memory: true } : {}), ...(ctx.knowledge ? { knowledge: true } : {}) } : {}) }, 200, cors, th());
   } catch (e) {
     console.error("janna session error", (e && e.message) || "error");
     return fail(500, "server", cors);

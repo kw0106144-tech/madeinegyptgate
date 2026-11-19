@@ -555,13 +555,14 @@ export async function memoryContext(env, memberId, { nowMs = Date.now(), max = C
   try {
     if (!env || !env.DB || !memberId) return "";
     const q = async (sql, ...a) => { try { return (await env.DB.prepare(sql).bind(...a).all()).results || []; } catch (e) { return []; } };
-    /* 0009: the open tasks with their due dates FIRST, then «ملخص العميل» (daily brief) */
-    const TK = await tasksContext(env, memberId, "bassem", { nowMs }), BR = await briefLines(env, memberId, "bassem");
-    const sums = await q("SELECT at, data_json, text FROM advisor_memory WHERE member_id = ? AND kind = 'summary' ORDER BY at DESC, id DESC LIMIT 3", memberId);
-    const srch = await q("SELECT at, data_json FROM advisor_memory WHERE member_id = ? AND kind = 'search' ORDER BY at DESC, id DESC LIMIT 40", memberId);
-    const facts = await q("SELECT at, text FROM advisor_memory WHERE member_id = ? AND kind = 'fact' ORDER BY id DESC LIMIT 6", memberId);
-    const deals = await q("SELECT title, entity, stage, next_action, due_date FROM deals WHERE member_id = ? AND stage NOT IN ('won', 'lost') ORDER BY (CASE WHEN due_date = '' THEN 1 ELSE 0 END), due_date, updated_at DESC LIMIT 3", memberId);
-    const follows = await q("SELECT label, kind FROM follows WHERE user_id = ? ORDER BY created_at DESC LIMIT 3", memberId);
+    /* 0009: the open tasks with their due dates FIRST, then «ملخص العميل» (daily brief). The seven reads are independent: they run
+       together (one D1 round trip, not seven one after the other, while the member waits on «بنوصّلك بباسم…» — owner 2026-11-19) */
+    const [TK, BR, sums, srch, facts, deals, follows] = await Promise.all([tasksContext(env, memberId, "bassem", { nowMs }), briefLines(env, memberId, "bassem"),
+      q("SELECT at, data_json, text FROM advisor_memory WHERE member_id = ? AND kind = 'summary' ORDER BY at DESC, id DESC LIMIT 3", memberId),
+      q("SELECT at, data_json FROM advisor_memory WHERE member_id = ? AND kind = 'search' ORDER BY at DESC, id DESC LIMIT 40", memberId),
+      q("SELECT at, text FROM advisor_memory WHERE member_id = ? AND kind = 'fact' ORDER BY id DESC LIMIT 6", memberId),
+      q("SELECT title, entity, stage, next_action, due_date FROM deals WHERE member_id = ? AND stage NOT IN ('won', 'lost') ORDER BY (CASE WHEN due_date = '' THEN 1 ELSE 0 END), due_date, updated_at DESC LIMIT 3", memberId),
+      q("SELECT label, kind FROM follows WHERE user_id = ? ORDER BY created_at DESC LIMIT 3", memberId)]);
     const day = at => dayRel(cairoOf(at), nowMs);
     const L = (arr, n) => (arr || []).map(x => llm(x, n)).filter(Boolean);
     const S = sums.map(r => { const d = jparse(r.data_json, {}), p = [];

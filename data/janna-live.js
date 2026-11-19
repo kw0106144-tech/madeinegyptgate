@@ -403,8 +403,10 @@
       var tm = setTimeout(function () { if (!fin) { fin = true; rej({ code: "timeout" }); } }, 15000);
       fetch(SESS_API, { method: "POST", headers: h, body: JSON.stringify(sessBody(agent, extra)), credentials: "same-origin", cache: "no-store" }).then(function (r) {
         if ((r.headers.get("content-type") || "").toLowerCase().indexOf("json") < 0) throw { code: "unavailable", status: r.status };
+        var st = String(r.headers.get("server-timing") || "").slice(0, 300); /* the Worker's own split of this wait (JANNA_LIVE.timing) */
         return r.json().then(function (j) {
-          if (!r.ok || !j || typeof j.sessionToken !== "string" || !j.sessionToken) throw { code: String((j && (j.code || j.error)) || "http_" + r.status), status: r.status, retry_after: j && j.retry_after };
+          if (!r.ok || !j || typeof j.sessionToken !== "string" || !j.sessionToken) throw { code: String((j && (j.code || j.error)) || "http_" + r.status), status: r.status, retry_after: j && j.retry_after, server_timing: st };
+          j.server_timing = st;
           return j;
         });
       }).then(function (j) { if (fin) return; fin = true; clearTimeout(tm); res(j); }, function (e) { if (fin) return; fin = true; clearTimeout(tm); rej(e && e.code ? e : { code: "network" }); });
@@ -465,24 +467,56 @@
     if (!sdkBox() || (LV && !LV.closed)) return;
     var me = { gen: ++LVN, st: "connecting", client: null, sid: "", ready: false, dc: false, playing: false, closed: false, stopped: false, stopReason: "", textOnly: !!textOnly, muted: false, micDenied: false, seen: {}, msgN: 0, max: CAP_MIN * 60, timers: [], connT: 0, own: {},
       chain: { n: 0, log: [], userEnded: false, t0: Date.now() } };
-    LV = me; sdkUi("connecting", T("بنوصّلك ب" + sdkName() + "…", "Connecting you to " + sdkName() + "…")); if (persona === "bassem") loadTools();
+    LV = me; tmStart(me); sdkUi("connecting", connMsg(me)); if (persona === "bassem") loadTools();
     nzPrep(me); /* noise guard: the audio meter + our own microphone request start inside this tap, while the token is minted */
-    var p = persona;
+    /* owner 2026-11-19 «باسم بياخد وقت»: the token is asked for at once, BESIDE the SDK download (it used to wait for it); a token minted
+       for a call whose SDK then fails to load is simply not used (the widget takes over, as before) */
+    var p = persona, tokP = mint(p).then(function (j) { tmMark(me, "token"); if (me.tm) me.tm.server = String(j.server_timing || ""); return j; },
+      function (e) { tmMark(me, "token"); if (me.tm && e && e.server_timing) me.tm.server = String(e.server_timing); throw e; });
+    tokP.then(null, function () {}); /* answered below once the SDK is there; never an unhandled rejection while it loads */
+    me.timers.push(setTimeout(function () { sdkSlow(me); }, SLOW_MS));
     loadSdk().then(function (A) {
+      tmMark(me, "sdk");
       if (LV !== me) return;
-      mint(p).then(function (j) {
+      tokP.then(function (j) {
         if (LV !== me || me.stopped) return;
         me.max = maxOf(j);
         sdkRun(me, A, j.sessionToken);
       }, function (e) { if (LV === me) sdkRefused(me, e || {}); });
     }, function () { if (LV === me) { LV = null; toWidget(true); } });
   }
+  /* ---------- where the start of a call goes (owner 2026-11-19 «باسم بياخد وقت»: the screen stayed on «بنوصّلك بباسم…» a long time) ----------
+     marks in ms after the «ابدأ» tap (performance.now()): token (the Worker answered; its own split is the Server-Timing header, kept in
+     `server`), sdk (the Anam SDK is loaded — fetched beside the token now), mic (our microphone answered), stream (the session starts:
+     streamToVideoElement), connected (WebRTC is up), ready (SESSION_READY), video (first frames), play (the video plays), voice (the first
+     words of her / his greeting arrive). JANNA_LIVE.timing() = the last call's marks; a "mig:live-timing" event carries them at «ready» and
+     «voice». After SLOW_MS without a session the status says the connection is slow instead of a frozen «بنوصّلك…» (never over the
+     browser's microphone question). Continuation parts of a chained call are not timed. */
+  var SLOW_MS = 7000, TM = null;
+  var PERF = window.performance && typeof window.performance.now === "function" ? function () { return window.performance.now(); } : function () { return Date.now(); };
+  function tmStart(me) { TM = me.tm = { t0: PERF(), persona: persona, marks: {}, server: "" }; }
+  function tmMark(me, k) {
+    var t = me && me.tm; if (!t || t.marks[k] != null) return;
+    t.marks[k] = Math.round(PERF() - t.t0);
+    if (k === "ready" || k === "voice") { try { window.dispatchEvent(new CustomEvent("mig:live-timing", { detail: tmOut(t) })); } catch (e) {} }
+  }
+  function tmOut(t) { var o = { persona: t.persona, server: t.server }; for (var k in t.marks) if (t.marks.hasOwnProperty(k)) o[k] = t.marks[k]; return o; }
+  function connMsg(me) {
+    var slow = !!(me && me.tm && PERF() - me.tm.t0 >= SLOW_MS);
+    return slow ? T("لسه بنوصّلك ب" + sdkName() + "… الاتصال بطيء شوية، خليك معانا", "Still connecting you to " + sdkName() + "… the connection is a little slow, please stay with us")
+      : T("بنوصّلك ب" + sdkName() + "…", "Connecting you to " + sdkName() + "…");
+  }
+  function sdkSlow(me) { if (LV === me && !me.ready && !me.closed && !me.stopped && !me.micAsk && !me.cont) sdkUi("connecting", connMsg(me)); }
   function sdkRun(me, A, token) {
     var bx = sdkBox(), vid = bx && bx.querySelector("video"), E = A.AnamEvent || {}, c = null;
     if (!vid) return;
     /* the token starts ONE session (maxSessions 1 on the Worker): no SDK retries with it; the visitor's «جرّب تاني» gets a new token */
     var opts = { metrics: { disableClientMetrics: true }, api: { retry: { maxAttempts: 1 } } };
     if (me.textOnly) opts.disableInputAudio = true;
+    /* a network that blocks UDP can hold the first frames for many seconds before the SDK's own fallback: window.JANNA_LIVE_RELAY = 1 (set
+       by a page, or in the console before «ابدأ») sends the media through Anam's TURN relay from the start (Anam docs: Client Options,
+       rtcConfiguration.iceTransportPolicy "relay") — off by default; JANNA_LIVE.timing() shows whether stream → connected was the slow part */
+    if (String(window.JANNA_LIVE_RELAY) === "1") opts.rtcConfiguration = { iceTransportPolicy: "relay" };
     try { c = A.createClient(token, opts); } catch (e) { sdkFail(me, "start"); return; }
     me.client = c;
     var mlc = { client: c, persona: persona }; window.MIG_LIVE_CLIENT = mlc; try { window.dispatchEvent(new CustomEvent("mig:live-client", { detail: mlc })); } catch (e) {} /* contract: data/bassem-memory.js, data/bassem-live-tools.js … attach here */
@@ -490,17 +524,19 @@
     var on = function (k, fn) { if (E[k]) c.addListener(E[k], function (a, b) { if (LV !== me || me.closed) return; try { fn(a, b); } catch (x) {} }); };
     contWire(me, on);
     me.nz = me.nz || nzNew(); nzWire(me, on); /* «وضع الدوشة»: after contWire, so a continued part's cut greeting is already marked */
-    on("MIC_PERMISSION_PENDING", function () { if (!me.ready && !me.cont) sdkUi("connecting", T("اسمح للمتصفح يستخدم الميكروفون علشان تتكلم مع ", "Allow the microphone so you can talk to ") + sdkName()); });
+    on("MIC_PERMISSION_PENDING", function () { if (!me.ready && !me.cont) { me.micAsk = true; sdkUi("connecting", T("اسمح للمتصفح يستخدم الميكروفون علشان تتكلم مع ", "Allow the microphone so you can talk to ") + sdkName()); } });
+    on("MIC_PERMISSION_GRANTED", function () { if (me.micAsk) { me.micAsk = false; if (!me.ready && !me.closed && !me.cont) sdkUi("connecting", connMsg(me)); } });
     /* the SDK keeps the call without a microphone: the text box still works */
-    on("MIC_PERMISSION_DENIED", function () { me.micDenied = true; updCtl(); say(T("الميكروفون مقفول للموقع ده — تقدر تكتب في الخانة تحت، أو تسمح بالميكروفون من إعدادات المتصفح.", "The microphone is blocked for this site — you can type in the box below, or allow the microphone in your browser settings.")); });
+    on("MIC_PERMISSION_DENIED", function () { me.micAsk = false; me.micDenied = true; updCtl(); say(T("الميكروفون مقفول للموقع ده — تقدر تكتب في الخانة تحت، أو تسمح بالميكروفون من إعدادات المتصفح.", "The microphone is blocked for this site — you can type in the box below, or allow the microphone in your browser settings.")); });
+    on("CONNECTION_ESTABLISHED", function () { tmMark(me, "connected"); });
     on("SESSION_READY", function (sid) {
       if (me.ready) return; /* once per call, even if the engine repeats it after a reconnect */
-      clearTimeout(me.connT); me.ready = true; me.st = "live"; me.sid = String(sid || ""); me.t0 = Date.now(); sdkUi("live"); sdkTimers(me);
+      clearTimeout(me.connT); me.ready = true; me.st = "live"; me.sid = String(sid || ""); me.t0 = Date.now(); tmMark(me, "ready"); sdkUi("live"); sdkTimers(me);
       if (me.cont) contReady(me); else sdkFire("session-started", { sessionId: me.sid });
     });
     on("DATA_CHANNEL_OPEN", function () { me.dc = true; updCtl(); if (NUDGE && me.ready) nudge(NUDGE, 0); });
-    on("VIDEO_PLAY_STARTED", function () { me.playing = true; var b = sdkBox(); if (b) b.classList.add("on"); });
-    on("VIDEO_STREAM_STARTED", function () { setTimeout(function () { sdkPlay(me); }, 0); });
+    on("VIDEO_PLAY_STARTED", function () { me.playing = true; tmMark(me, "play"); var b = sdkBox(); if (b) b.classList.add("on"); });
+    on("VIDEO_STREAM_STARTED", function () { tmMark(me, "video"); setTimeout(function () { sdkPlay(me); }, 0); });
     /* complete messages, as the widget reports them (captions.js, the meeting agenda) */
     on("MESSAGE_HISTORY_UPDATED", function (msgs) {
       msgs = msgs || [];
@@ -508,7 +544,7 @@
       me.msgN = msgs.length;
     });
     /* what he/she is saying right now: the screens follow the words (holoTopic) */
-    on("MESSAGE_STREAM_EVENT_RECEIVED", function (ev) { ev = ev || {}; if (ev.role !== "persona" || (me.skip && me.skip[String(ev.id || "")])) return; var k = String(ev.id || "m"); HT.buf[k] = (HT.buf[k] || "") + String(ev.content || ""); holoTopic(HT.buf[k]); if (window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.follow) { try { MIG_LIVE_TOOLS.follow(HT.buf[k], k); } catch (x) {} } });
+    on("MESSAGE_STREAM_EVENT_RECEIVED", function (ev) { ev = ev || {}; if (ev.role !== "persona" || (me.skip && me.skip[String(ev.id || "")])) return; tmMark(me, "voice"); var k = String(ev.id || "m"); HT.buf[k] = (HT.buf[k] || "") + String(ev.content || ""); holoTopic(HT.buf[k]); if (window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.follow) { try { MIG_LIVE_TOOLS.follow(HT.buf[k], k); } catch (x) {} } });
     on("TOOL_CALL_STARTED", function (d) { d = d || {}; sdkTool(me, d.toolName, d.toolType, d.arguments, d.toolCallId); });
     on("CLIENT_TOOL_EVENT_RECEIVED", function (d) { d = d || {}; sdkTool(me, d.eventName, "client", d.eventData, ""); }); /* older engines */
     /* the outcome of a tool call (server webhook bassem_intel included): data/bassem-intel-view.js shows exactly what Bassem got */
@@ -527,9 +563,10 @@
        once the browser answered (MIC_WAIT at most), else — or when ours failed — the SDK captures the microphone itself, as before */
     micFor(me).then(function (ms) {
       if (LV !== me || me.stopped || me.closed) { micStop(ms); return; } /* ✕ while the browser was asking */
-      me.micUsed = ms ? "own" : "sdk";
+      me.micUsed = ms ? "own" : "sdk"; tmMark(me, "mic");
       /* no session after 45 s (the widget's own start-up limit): stop and say so */
       me.connT = setTimeout(function () { if (LV !== me || me.ready || me.closed) return; me.stopped = true; try { c.stopStreaming(); } catch (x) {} if (!me.closed) sdkFail(me, "start"); }, 45000);
+      tmMark(me, "stream");
       var pr; try { pr = ms ? c.streamToVideoElement(vid.id, ms) : c.streamToVideoElement(vid.id); } catch (e) { pr = Promise.reject(e); }
       Promise.resolve(pr).then(function () { if (LV !== me || me.stopped) { try { c.stopStreaming(); } catch (x) {} } }, function () {
         try { c.stopStreaming(); } catch (x) {}
@@ -922,14 +959,17 @@
         itself (owner 2026-11-19: Bassem and Janna must stay interactive);
      3) noisy-room mode (half-duplex): while the persona speaks the microphone is muted (muteInputAudio; the visitor's own mute stays his),
         it reopens ~250 ms after her voice stops (the meter; else her text timing). The chip says «🔇 المكان فيه دوشة — هكمّل كلامي، ولو عايز
-        تقاطعني دوس ✋ استنى» with ✋ (interruptPersona + the microphone at once) and «↩︎ الوضع العادي». A persona_config data message
-        lowers endOfSpeechSensitivity to NZ_EOS[1] and puts NZ_EOS[0] back on the way out (0.45 = the Lab value of all three personas,
-        2026-11-19). Kept for the tab (sessionStorage "mig-jnl-noise"): the next call starts in it.
+        تقاطعني دوس ✋ استنى» with ✋ (interruptPersona + the microphone at once) and «↩︎ الوضع العادي». The persona's own
+        endOfSpeechSensitivity (the Lab's) is KEPT in this mode (owner 2026-11-19 «بياخد وقت في الرد»: the lower 0.35 it used to send made
+        every reply wait longer for the end of his sentence, while the closed microphone already keeps her voice and the room out while she
+        talks); a page may still lower it with window.JANNA_LIVE_EOS_NOISY (0–1): a persona_config data message then sends that value and
+        puts NZ_EOS[0] (JANNA_LIVE_EOS_NORMAL, default 0.45) back on the way out. Kept for the tab (sessionStorage "mig-jnl-noise2"): the
+        next call starts in it.
      The meter is a Web Audio analyser on the persona's own stream (AUDIO_STREAM_STARTED), never connected to the speakers, its context made
      inside the «ابدأ» tap; window.JANNA_LIVE_NOISE_METER = 0 turns it off (text timing only), = 1 turns it on for iOS / iPadOS too (off there
      by default: Web Audio on a remote WebRTC stream has not been tried on a real iPhone); window.JANNA_LIVE_MIC_WAIT (ms, 1000–60000,
      default 15000) bounds the wait for the browser's answer; JANNA_LIVE_EOS_NORMAL / _NOISY override NZ_EOS. JANNA_LIVE.noise() / .noise(true|false). */
-  var NZ_KEY = "mig-jnl-noise2", MIC_WAIT = (function () { var n = parseInt(window.JANNA_LIVE_MIC_WAIT, 10); return n >= 1000 && n <= 60000 ? n : 15000; })(), NZ_TH = 0.012, NZ_EOS = [nzNum(window.JANNA_LIVE_EOS_NORMAL, 0.45), nzNum(window.JANNA_LIVE_EOS_NOISY, 0.35)];
+  var NZ_KEY = "mig-jnl-noise2", MIC_WAIT = (function () { var n = parseInt(window.JANNA_LIVE_MIC_WAIT, 10); return n >= 1000 && n <= 60000 ? n : 15000; })(), NZ_TH = 0.012, NZ_EOS = [nzNum(window.JANNA_LIVE_EOS_NORMAL, 0.45), nzNum(window.JANNA_LIVE_EOS_NOISY, -1)]; /* -1: noisy-room mode keeps the persona's value */
   var NZ = { on: false, why: "", fis: [], offerUntil: 0, ac: null, mic: null, typed: [], last: null, el: null };
   try { NZ.on = sessionStorage.getItem(NZ_KEY) === "1"; } catch (e) {}
   var NZ_STOP = /(^| )(استني|استنا|لحظه|ثانيه|ثواني|ثوان|كفايه|خلاص|وقف|وقفي|اسكت|اسكتي|بس بس|جنه|باسم|stop|wait|hold on|hang on|one sec|janna|bassem)( |$)/;
@@ -968,8 +1008,8 @@
     try { p = md.getUserMedia({ audio: c }); } catch (e) { return null; }
     /* not answered within 350 ms and not granted before = the browser is asking: the same words as the SDK's own MIC_PERMISSION_PENDING */
     var granted = false; try { navigator.permissions.query({ name: "microphone" }).then(function (r) { granted = !!r && r.state === "granted"; }, function () {}); } catch (e) {}
-    tm = setTimeout(function () { if (!granted && LV === me && !me.ready && !me.closed && !me.micUsed) { shown = true; sdkUi("connecting", T("اسمح للمتصفح يستخدم الميكروفون علشان تتكلم مع ", "Allow the microphone so you can talk to ") + sdkName()); } }, 350);
-    var back = function () { clearTimeout(tm); if (shown && LV === me && !me.ready && !me.closed && !me.micUsed) sdkUi("connecting", T("بنوصّلك ب" + sdkName() + "…", "Connecting you to " + sdkName() + "…")); };
+    tm = setTimeout(function () { if (!granted && LV === me && !me.ready && !me.closed && !me.micUsed) { shown = true; me.micAsk = true; sdkUi("connecting", T("اسمح للمتصفح يستخدم الميكروفون علشان تتكلم مع ", "Allow the microphone so you can talk to ") + sdkName()); } }, 350);
+    var back = function () { clearTimeout(tm); if (shown) me.micAsk = false; if (shown && LV === me && !me.ready && !me.closed && !me.micUsed) sdkUi("connecting", connMsg(me)); };
     return Promise.resolve(p).then(function (s) {
       back();
       if (!micLive(s) || LV !== me || me.closed || me.stopped || me.micUsed) { micStop(s); return null; } /* the call ended, or the SDK already took the microphone */
@@ -1103,10 +1143,11 @@
     if (me.client && !me.closed && !me.swapped && !me.muted && nzMicOk(me)) { try { if (shut) me.client.muteInputAudio(); else me.client.unmuteInputAudio(); } catch (e) {} }
     nzChip();
   }
-  /* endOfSpeechSensitivity: NZ_EOS[1] in noisy-room mode, NZ_EOS[0] back on the way out (never sent in a part that never changed it) */
+  /* endOfSpeechSensitivity: unchanged in noisy-room mode unless a page set NZ_EOS[1] (then that value, and NZ_EOS[0] back on the way out);
+     never sent in a part that never changed it */
   function nzEos(me) {
     var z = me.nz, want = NZ_EOS[NZ.on ? 1 : 0];
-    if (!z || z.eos === want || (!NZ.on && z.eos === null) || !me.client || !me.dc || me.closed || me.swapped || !nzMicOk(me)) return;
+    if (!z || want < 0 || z.eos === want || (!NZ.on && z.eos === null) || !me.client || !me.dc || me.closed || me.swapped || !nzMicOk(me)) return;
     try { me.client.sendDataMessage(JSON.stringify({ message_type: "persona_config", data: { voiceDetectionOptions: { endOfSpeechSensitivity: want } } })); z.eos = want; } catch (e) {}
   }
   function nzSet(on, why) {
@@ -2074,6 +2115,9 @@
   window.JANNA_LIVE.knownEmail = knownEmail;
   window.JANNA_LIVE.visitorId = visitorId; /* data/bassem-memory.js: Janna's call memory goes with this id */
   window.JANNA_LIVE.rotateVisitor = rotateVisitor; /* data/bassem-memory.js: a 409 visitor_linked → a new id (review 2026-11-19 #7) */
+  /* the last call's start, in ms after the «ابدأ» tap (tmMark): {persona, server: the Worker's Server-Timing, token, sdk, mic, stream,
+     connected, ready, video, play, voice} — null before the first call */
+  window.JANNA_LIVE.timing = function () { return TM ? tmOut(TM) : null; };
   /* «وضع الدوشة»: noise() = the guard's state; noise(true | false) switches noisy-room mode (kept for the tab) */
   window.JANNA_LIVE.noise = function (on) {
     if (on === true || on === false) nzSet(on, "api");

@@ -303,6 +303,12 @@ answer 503 `profile_store_off` / `memory_off` and the call simply starts without
 | POST | `/api/janna/lookup` | now also `page`, `market` (tenders), each result with `id`, `open_url`, `list_key` and the amounts |
 | POST | `/api/janna/session` | Bassem's ephemeral persona now carries «النهارده: <Cairo date>», the profile and the memory (each in data markers, ≤ 5,200 characters); `continue_call` (a chain part) = the call's last words from the memory + no second greeting |
 
+**Start of a live call (owner 2026-11-19 «باسم بياخد وقت»).** For a member Bassem greets by name, `POST /api/janna/session` starts the
+saved persona's read (`GET /v1/personas/{id}`) beside his D1 context instead of after it; the continuation + factory profile are read
+together, and the memory block's seven reads (`memory.js memoryContext`) run together. Every 200 / 502 answer carries
+`Server-Timing: checks;dur=…, ctx;dur=…, persona;dur=…, wait;dur=…, token;dur=…, total;dur=…` (milliseconds only, exposed to the page with
+CORS); the page keeps it with its own marks in `JANNA_LIVE.timing()` (data/janna-live.js). Tests: `test/session-speed.test.mjs`.
+
 **Memory policy (owner, 2026-11-18):** Bassem's memory is permanent and only grows — no member-facing deletion, no age-based retention, no
 row cap; the daily cron consolidates (a call whose final summary never arrived gets it rebuilt) and never deletes. The only erasure is
 the owner deleting a whole member account in the Control Center for a formal legal data-subject request (Egyptian PDPL 151/2020):
