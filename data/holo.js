@@ -1492,10 +1492,13 @@
     if (d.ok === true || /^(done|ok|sent|success|delivered|completed)$/i.test(String(d.status || d.phase || ""))) { confirmTool(tool); return; }
     if (tool) api.act(tool, d.args || d.arguments || {}, { who: d.who, anchor: d.anchor, title: d.title });
   });
-  /* data/janna-live.js outcome(): a send the platform refused or did not do shows as such on the send scene */
+  /* data/janna-live.js outcome(): a send the platform refused or did not do shows as such on the send scene. Some outcome texts are
+     internal English notes ("address not confirmed", "no recipient" …): the Arabic scene says «مااتبعتش» alone then, never English */
   W.addEventListener("mig:tool-outcome", function (e) {
-    var d = e && e.detail || {};
-    if (d.tool === "bassem_send_email" && /^(refused|failed)$/.test(String(d.outcome || ""))) failTool(d.tool, String(d.text || "").replace(/^[⚠️⏳\s]+/, "").replace(/^(مااتبعتش|Not sent):\s*/, ""));
+    var d = e && e.detail || {}, why;
+    if (d.tool !== "bassem_send_email" || !/^(refused|failed)$/.test(String(d.outcome || ""))) return;
+    why = String(d.text || "").replace(/^[⚠️⏳\s]+/, "").replace(/^(مااتبعتش|Not sent):\s*/, "");
+    failTool(d.tool, EN() || /[\u0600-\u06ff]/.test(why) ? why : "");
   });
   /* Escape hides the hologram (not when the key belongs to an open dialog) */
   D.addEventListener("keydown", function (e) {

@@ -416,6 +416,7 @@
   }
   /* Bassem: the Worker checks the member's plan with the member's own sign-in — the platform session ("mig-tok"), else Bassem's advisor
      token from an activation link (advisor.html: sessionStorage "mig-adv-token"); a refusal of the first is tried once with the other */
+  var BTOK = "";
   function bassemAuth() {
     var out = [], t = "", c = null;
     try { t = localStorage.getItem("mig-tok") || ""; } catch (e) {}
@@ -461,7 +462,9 @@
     var c = bassemAuth(), i = 0;
     var next = function (prev) {
       if (i >= c.length) return Promise.reject(prev || { code: "login_required", status: 401 });
-      return sessToken(agent, c[i++], extra).then(null, function (e) { if (e && /^(login_required|full_login_required|plan)$/.test(e.code) && i < c.length) return next(e); throw e; });
+      var tk = c[i++];
+      /* BTOK: the sign-in this call was opened with — the e-mails of the call go out with it alone (sendPost), as the member of the call */
+      return sessToken(agent, tk, extra).then(function (j) { BTOK = tk; return j; }, function (e) { if (e && /^(login_required|full_login_required|plan)$/.test(e.code) && i < c.length) return next(e); throw e; });
     };
     return next(null);
   }
@@ -1582,7 +1585,7 @@
       if (!w) continue;
       sym = "";
       for (k = 0; k < MSYM.length; k++) if (MSYM[k][0].test(w)) { sym = MSYM[k][1]; break; }
-      if (sym) out.push({ k: "s", v: sym });
+      if (sym) out.push({ k: "s", v: sym, w: w });
       else if (MTLD.hasOwnProperty(w)) out.push({ k: "w", v: MTLD[w] });
       else if (/^[a-z0-9._%+@-]+$/.test(w)) out.push({ k: "w", v: w });
       else out.push({ k: "x", v: w });
@@ -1638,20 +1641,25 @@
     s = spokenMail(raw);
     return s ? { addr: s, raw: raw, spoken: true } : { bad: raw.slice(0, 80), raw: raw };
   }
-  /* did the member say an address in these words of his? this one, its two parts, or the words of an address (at / آت with dot / دوت, or
-     «@») — speech-to-text may have written it in Arabic letters, so the letters are confirmed on the screen anyway */
+  /* did the member say an address in these words of his? this one exactly; or (speech-to-text may have garbled it or written it in Arabic
+     letters — the screen then spells it for him to confirm) its letters «local @ domain» in that order, or an utterance shaped like an
+     address: a word, «at» / آت / «@», then «dot» / دوت / نقطة / «.» followed by a word. Ordinary words are no dictation (review 2026-11-19:
+     «look at this point» or «the procurement office of Lamu West» made ANY guessed address «said»): «point» / «period» count only in the
+     exact parse, and the letters of the two parts only around an «at» */
   function mailHeard(addr, texts) {
     addr = String(addr || "").toLowerCase(); if (!mailOk(addr)) return false;
-    var p = addr.split("@"), loc = p[0].replace(/[^a-z0-9]/g, ""), dom = p[1].split(".")[0].replace(/[^a-z0-9]/g, ""), i, j, t, tk, at, dot, flat;
+    var p = addr.split("@"), loc = p[0].replace(/[^a-z0-9]/g, ""), dom = p[1].split(".")[0].replace(/[^a-z0-9]/g, ""), i, j, t, tk, x, at, dot, flat;
     for (i = 0; i < (texts || []).length; i++) {
-      t = String(texts[i] || ""); tk = mailTokens(t); at = false; dot = false; flat = t.toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (spokenMails(t).indexOf(addr) > -1) return true;
-      if (loc.length > 1 && dom.length > 1 && flat.indexOf(loc) > -1 && flat.indexOf(dom) > -1) return true;
+      t = String(texts[i] || ""); if (spokenMails(t).indexOf(addr) > -1) return true;
+      tk = mailTokens(t); at = -1; dot = false; flat = "";
       for (j = 0; j < tk.length; j++) {
-        if ((tk[j].k === "s" && tk[j].v === "@") || (tk[j].k === "w" && tk[j].v.indexOf("@") > -1)) at = true;
-        if ((tk[j].k === "s" && tk[j].v === ".") || (tk[j].k === "w" && /[a-z0-9]\.[a-z]{2,}/.test(tk[j].v))) dot = true;
+        x = tk[j];
+        if (x.k === "s" && x.v === "@") { flat += "@"; if (at < 0 && j > 0) at = j; continue; }
+        if (x.k === "w") { flat += x.v.replace(/[^a-z0-9@]/g, ""); if (at < 0 && x.v.indexOf("@") > 0) { at = j; continue; } }
+        if (at > -1 && ((x.k === "s" && x.v === "." && !/^(?:point|period)$/.test(x.w || "") && j + 1 < tk.length && tk[j + 1].k !== "s") || (x.k === "w" && /[a-z0-9]\.[a-z]{2,}/.test(x.v)))) dot = true;
       }
-      if (at && dot) return true;
+      if (loc.length > 1 && dom.length > 1 && flat.indexOf(loc + "@" + dom) > -1) return true;
+      if (at > -1 && dot) return true;
     }
     return false;
   }
@@ -1856,6 +1864,11 @@
   }
   /* a dictated address on the screen goes out only once he heard / saw it: he spoke after it was shown, or tapped ✓ */
   function toReady(addr) { return TO_PEND.addr !== addr || TO_PEND.ok || USER_T > TO_PEND.at + 300; }
+  /* Bassem sends an e-mail he put on the screen only after the member said something since it appeared (review 2026-11-19): a draft and its
+     send in one turn — words in a tool's result, a web page or a tender document telling him to — never e-mail anyone; the 2-3 sentence
+     summary and «تحب أبعته؟» come first. The member's own «📤 ابعت» click needs no such check */
+  function heardSince(t) { return USER_T > (+t || 0); }
+  function askFirstWords() { return T("لسه مااتبعتش: هو ماقالش حاجة من ساعة ما الإيميل ظهر على الشاشة. قوله ملخصه في جملتين أو تلاتة واسأله «تحب أبعته؟»، ولما يقولك ابعته استدعي bassem_send_email تاني.", "Not sent yet: he has not said anything since the e-mail appeared on the screen. Tell him in 2-3 sentences what it says and ask «Shall I send it?»; when he says send it, call bassem_send_email again."); }
   function confirmWords(addr) { return T("لسه مااتبعتش: العنوان اللي قاله اتكتب على الشاشة حرف حرف (" + mailSpell(addr) + "). اطلب منه يبص عليه ويقولك لو صح، ولما يأكّد ابعت تاني.", "Not sent yet: the address he said is on the screen letter by letter (" + mailSpell(addr) + "). Ask him to check it; once he confirms, send again."); }
   var NO_TO = function () { return T("مااتبعتش: مفيش عنوان مستلم. اسأله مرة واحدة «أبعته لمين؟» — ماتقولش إنك مش عارف — ولما يقولك العنوان (حتى بالكلام زي info آت … دوت com) استدعي bassem_send_email تاني وحطه في to.", "Not sent: there is no recipient. Ask him once «Who shall I send it to?» — never say you don't know — and when he says it (even spoken, like info at … dot com) call bassem_send_email again with it in to."); };
   var SRCW = { data: ["من بيانات الفرصة", "from the opportunity's data"], deal: ["من بيانات الصفقة", "from the deal"], typed: ["هو كتبه بنفسه", "he typed it himself"], said: ["هو قاله", "he said it"], sent: ["بعتناله قبل كده في المكالمة دي", "already e-mailed in this call"] };
@@ -1882,25 +1895,34 @@
       "Note: the buyer is in " + (o.country || o.market) + " and does business in " + langName(bl[0]) + "; unless he asked for " + langName(lang) + " himself, write it again in " + langName(bl[0]) + "."));
     return L.join(" ");
   }
-  /* POST /api/advisor/send with the member's platform sign-in (localStorage "mig-tok") → {status, j}; never a guessed success */
+  /* the Worker refused the sign-in itself (nothing was sent or stored): the call's next sign-in may be tried (sendPost) */
+  function signRefused(x) { var c = String((x && x.j && x.j.code) || ""); return !!x && (x.status === 401 || (x.status === 403 && (c === "plan" || c === "full_login_required"))); }
+  /* POST /api/advisor/send with the member's platform sign-in (localStorage "mig-tok") → {status, j}; never a guessed success. The sign-in
+     the call was opened with (BTOK, mint) — else the call's own order (bassemAuth: the platform session, else the advisor token of an
+     activation / WhatsApp call link; review 2026-11-19: with "mig-tok" alone a member whose call came from such a link was told «لازم تسجّل
+     الدخول»), the next one only after signRefused, never after a timeout or any answer of the send itself */
   function sendPost(body) {
-    return new Promise(function (res) {
-      if (!window.fetch) { res({ status: 0, j: { code: "offline" } }); return; }
-      var tk = "", fin = false, h = { "Content-Type": "application/json", Accept: "application/json" }, tm;
-      try { tk = localStorage.getItem("mig-tok") || ""; } catch (e) {}
-      if (tk) h.Authorization = "Bearer " + tk;
-      tm = setTimeout(function () { if (!fin) { fin = true; res({ status: 0, j: { code: "timeout" } }); } }, 20000);
-      fetch(String(window.MIG_API_BASE || "/api").replace(/\/+$/, "") + "/advisor/send", { method: "POST", headers: h, body: JSON.stringify(body), credentials: "same-origin" }).then(function (r) {
-        if ((r.headers.get("content-type") || "").toLowerCase().indexOf("json") < 0) return { status: r.status, j: { code: "offline" } };
-        return r.json().then(function (j) { return { status: r.status, j: j || {} }; }, function () { return { status: r.status, j: { code: "offline" } }; });
-      }, function () { return { status: 0, j: { code: "offline" } }; }).then(function (x) { if (fin) return; fin = true; clearTimeout(tm); res(x); });
-    });
+    var tks = BTOK ? [BTOK] : bassemAuth();
+    function once(tk) {
+      return new Promise(function (res) {
+        if (!window.fetch) { res({ status: 0, j: { code: "offline" } }); return; }
+        var fin = false, h = { "Content-Type": "application/json", Accept: "application/json" }, tm;
+        if (tk) h.Authorization = "Bearer " + tk;
+        tm = setTimeout(function () { if (!fin) { fin = true; res({ status: 0, j: { code: "timeout" } }); } }, 20000);
+        fetch(String(window.MIG_API_BASE || "/api").replace(/\/+$/, "") + "/advisor/send", { method: "POST", headers: h, body: JSON.stringify(body), credentials: "same-origin" }).then(function (r) {
+          if ((r.headers.get("content-type") || "").toLowerCase().indexOf("json") < 0) return { status: r.status, j: { code: "offline" } };
+          return r.json().then(function (j) { return { status: r.status, j: j || {} }; }, function () { return { status: r.status, j: { code: "offline" } }; });
+        }, function () { return { status: 0, j: { code: "offline" } }; }).then(function (x) { if (fin) return; fin = true; clearTimeout(tm); res(x); });
+      });
+    }
+    function from(i) { return once(tks[i] || "").then(function (x) { return i + 1 < tks.length && signRefused(x) ? from(i + 1) : x; }); }
+    return from(0);
   }
   /* Bassem learns what the member did himself («📤 ابعت» clicked): the SDK call's context for his next turn */
   function tellBassem(text) { try { if (LV && !LV.closed && LV.client && LV.client.addContext) LV.client.addContext(String(text)); } catch (e) {} }
 
   /* ---------- the e-mail draft on the shared screen ---------- */
-  var CMP = null, LAST_DRAFT = "", ROOM_DEAL = "", ROOM_DRAFT = "", ROOM_SENT = "";
+  var CMP = null, LAST_DRAFT = "", ROOM_DEAL = "", ROOM_DRAFT = "", ROOM_SENT = "", ROOM_AT = 0;
   var CMP_CSS = '.jnl-cmp{position:absolute;z-index:5;inset:52px 10px 10px 10px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;padding:10px 12px 12px;background:#fff;color:#14232a;border-radius:16px;overflow:auto;overscroll-behavior:contain;'
     + 'box-shadow:0 24px 60px -20px rgba(0,0,0,.6),0 0 0 1px rgba(4,18,26,.1),0 0 0 3px rgba(233,196,106,.6);font:400 .9rem/1.6 Cairo,Tajawal,Tahoma,sans-serif}'
     + '.jnl-cmp[hidden]{display:none}.jnl-cmp.fx{position:fixed;z-index:2147483003;inset:auto 12px 12px auto;width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 24px)}'
@@ -2074,6 +2096,7 @@
     if (!sub || !body.replace(/\s+/g, "")) { stop(T("الموضوع ونص الرسالة مطلوبين.", "Subject and message are required.")); return Promise.resolve(T("مااتبعتش: الموضوع أو نص الإيميل ناقص — اكتب المسودة تاني بـ bassem_draft_email.", "Not sent: the subject or the message is missing — write the draft again with bassem_draft_email.")); }
     key = to + "\n" + sub + "\n" + body;
     if (C.sentKey === key) { msg = T("الإيميل ده اتبعت فعلاً لـ " + to + " — مش هيتبعت مرتين.", "This e-mail was already sent to " + to + " — it is not sent twice."); cmpSay("✅ " + msg, false); return Promise.resolve(msg); }
+    if (B && !heardSince(C.at)) { cmpSay(T("مستني موافقتك: قول لباسم «ابعته» أو اضغط «ابعت من المنصة».", "Waiting for your OK: tell Bassem “send it” or press “Send via the platform”."), false); outcome("bassem_send_email", "refused", T("مستني موافقتك", "waiting for your OK")); return Promise.resolve(askFirstWords()); }
     C.busy = true; var btn = C.el.querySelector(".jc-send"); btn.disabled = true;
     cmpSay("⏳ " + T("ببعت من المنصة…", "Sending from the platform…"), false);
     if (B) doing(T("ببعت الإيميل من المنصة", "sending the e-mail from the platform"));
@@ -2121,7 +2144,7 @@
           /* a subject / body that is not Arabic (English, Chinese, French …) reads left to right */
           [["#mSub", a.subject], ["#mBody", a.body]].forEach(function (x) { var el = x[1] && d.querySelector(x[0]); if (el) el.dir = /[\u0600-\u06ff]/.test(String(x[1])) ? "rtl" : "ltr"; });
           var sg0 = d.querySelector("#advStg"), mb0 = d.querySelector("#mBody"); ROOM_DEAL = sg0 ? String(sg0.getAttribute("data-stage") || "") : "";
-          ROOM_DRAFT = "b" + Date.now().toString(36); if (mb0) mb0.setAttribute("data-bassem-draft", ROOM_DRAFT); /* roomSend sends only this form */
+          ROOM_DRAFT = "b" + Date.now().toString(36); ROOM_AT = Date.now(); if (mb0) mb0.setAttribute("data-bassem-draft", ROOM_DRAFT); /* roomSend sends only this form */
           glow(d.querySelector("#mBody")); done("bassem_draft_email");
           res(draftWords("room", info, mailLang(String(a.subject || "") + "\n" + String(a.body || ""), a.language), roomOpp(d)));
         }, 300);
@@ -2155,6 +2178,8 @@
       v = to.value.trim().toLowerCase();
       if (!EMRE.test(v)) { glow(to); try { to.focus(); } catch (e) {} outcome("bassem_send_email", "refused", "no recipient"); res(NO_TO()); return; }
       if (!toReady(v)) { sayAny("🔤 " + T("اتأكد من العنوان: ", "Check the address: ") + mailSpell(v)); outcome("bassem_send_email", "refused", "address not confirmed"); res(confirmWords(v)); return; }
+      /* Bassem's draft in this room goes out only after the member said something since it appeared (heardSince) */
+      if (ROOM_DRAFT && mb.getAttribute("data-bassem-draft") === ROOM_DRAFT && !heardSince(ROOM_AT)) { glow(b); sayAny(T("مستني موافقتك: قول لباسم «ابعته» أو اضغط «ابعت من المنصة».", "Waiting for your OK: tell Bassem “send it” or press “Send via the platform”.")); outcome("bassem_send_email", "refused", T("مستني موافقتك", "waiting for your OK")); res(askFirstWords()); return; }
       h = function (e) { var x = (e && e.detail) || {}; if (fin) return; fin = true; clearTimeout(tm); try { w.removeEventListener("mig:advisor-mail", h); } catch (er) {} res(roomWords(x, v)); };
       try { w.addEventListener("mig:advisor-mail", h); } catch (e) {}
       tm = setTimeout(function () { if (fin) return; fin = true; try { w.removeEventListener("mig:advisor-mail", h); } catch (er) {} res(T("مش متأكد لسه إنه اتبعت — غرفة الصفقة مارديتش. بص على المراسلات فيها قبل ما تبعته تاني.", "Not sure yet that it was sent — the deal room did not answer. Check its e-mails before sending again.")); }, 20000);

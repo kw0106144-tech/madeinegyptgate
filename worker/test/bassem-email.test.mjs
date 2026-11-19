@@ -250,7 +250,7 @@ describe("data/janna-live.js, data/holo.js and advisor.part.py wiring (source ch
     assert.match(LIVE, /el\.querySelector\("\.jc-mail"\)\.onclick = cmpMailto;/);
     assert.doesNotMatch(LIVE, /function cmpAsk|draftWaiting|باسم مش بيبعت حاجة من غير ضغطتك/);
     assert.doesNotMatch(HOLO, /draftWaiting/);
-    assert.match(HOLO, /W\.addEventListener\("mig:tool-outcome"[\s\S]{0,200}failTool\(d\.tool/);
+    assert.match(HOLO, /W\.addEventListener\("mig:tool-outcome"[\s\S]{0,500}failTool\(d\.tool/);
     assert.match(LIVE, /var known = dealMails\(d\);/, "the deal room keeps its own addresses");
   });
   test("the deal room tells every outcome of «ابعت» (the call waits for it) and names the new deal kinds", () => {
@@ -258,6 +258,47 @@ describe("data/janna-live.js, data/holo.js and advisor.part.py wiring (source ch
     assert.ok((send.match(/mailDone\(\{ deal: d\.id/g) || []).length >= 8, "every exit of sendMail reports");
     assert.match(ADV, /window\.dispatchEvent\(new CustomEvent\("mig:advisor-mail", \{ detail: o \}\)\)/);
     assert.match(ADV, /project: \["مشروع", "Project"\], direct: \["تواصل مباشر", "Direct contact"\]/);
+  });
+});
+
+describe("verification fixes (review 2026-11-19): ordinary words are no dictation, a send waits for his answer, the call's own sign-ins", () => {
+  test("ordinary sentences never make a guessed address «said» (it is only offered); garbled dictations still are", () => {
+    const no = [["look at this point", "info@kenya.go.ke"], ["what's the point of writing at all", "sales@anything.com"], ["we met at the meeting point today", "procurement@lamuwest.go.ke"],
+      ["write to the procurement office of Lamu West", "procurement@lamuwest.go.ke"], ["I need info about the Kenya tender", "info@kenya.go.ke"],
+      ["send it to their sales team at the company, period", "sales@company.com"], ["ده أهم نقطة ات الإيميل", "x@y.com"], ["send it to info at their office dot", "info@kenya.go.ke"]];
+    for (const [said, addr] of no) { const S = load(); S.heardAdd("u1", said); assert.equal(S.mailSource(addr), "", said); }
+    const yes = [["pro curement at lamu west dot go dot ke", "procurement@lamuwest.go.ke"], ["انفو آت لامو ويست نقطة جو نقطة كي", "info@lamuwest.go.ke"],
+      ["ايميله info at lamuwest", "info@lamuwest.go.ke"], ["info uh at lamuwest dot go dot ke", "info@lamuwest.go.ke"], ["info at gmail point com", "info@gmail.com"]];
+    for (const [said, addr] of yes) { const S = load(); S.heardAdd("u1", said); assert.equal(S.mailSource(addr), "said", said); }
+  });
+  test("Bassem's send needs words of his AFTER the draft appeared (a draft + send in one turn is refused with «تحب أبعته؟»)", () => {
+    const S = load();
+    S.heardAdd("u1", "اكتب إيميل للجهة دي وابعته على طول"); S.tick(2000);
+    const shown = S.clock.t; // the draft appears
+    assert.equal(S.heardSince(shown), false, "his order came before the draft: the summary and «تحب أبعته؟» first");
+    assert.match(S.askFirstWords(), /^لسه مااتبعتش: .*«تحب أبعته؟»/);
+    S.tick(3000); S.heardAdd("u2", "ابعته");
+    assert.equal(S.heardSince(shown), true);
+    const cmp = LIVE.slice(LIVE.indexOf("function cmpSendNow("), LIVE.indexOf("function cmpSendNow(") + 4000), room = LIVE.slice(LIVE.indexOf("function roomSend("), LIVE.indexOf("function roomSend(") + 4000);
+    assert.match(cmp, /if \(B && !heardSince\(C\.at\)\) \{[^\n]*askFirstWords\(\)/, "the composer: Bassem's send only (the member's own click is his answer)");
+    assert.ok(cmp.indexOf("heardSince(C.at)") < cmp.indexOf("C.busy = true"), "checked before anything is sent");
+    assert.match(room, /ROOM_DRAFT && mb\.getAttribute\("data-bassem-draft"\) === ROOM_DRAFT && !heardSince\(ROOM_AT\)/);
+    assert.ok(room.indexOf("heardSince(ROOM_AT)") < room.indexOf("b.click()"), "the deal room: checked before its button is pressed");
+    assert.match(LIVE, /ROOM_DRAFT = "b" \+ Date\.now\(\)\.toString\(36\); ROOM_AT = Date\.now\(\);/);
+  });
+  test("the send uses the call's own sign-ins (the advisor token of an activation / WhatsApp link too); another one only after a refused sign-in", () => {
+    for (const x of [{ status: 401, j: { error: "unauthorized" } }, { status: 403, j: { code: "plan" } }, { status: 403, j: { code: "full_login_required" } }]) assert.equal(P.signRefused(x), true, JSON.stringify(x));
+    for (const x of [{ status: 403, j: { code: "market_not_in_plan" } }, { status: 403, j: { code: "opted_out" } }, { status: 429, j: { code: "daily_limit" } }, { status: 0, j: { code: "timeout" } }, { status: 0, j: { code: "offline" } }, { status: 200, j: { sent: false } }, { status: 200, j: { sent: true } }])
+      assert.equal(P.signRefused(x), false, JSON.stringify(x));
+    const sp = LIVE.slice(LIVE.indexOf("function sendPost("), LIVE.indexOf("function tellBassem("));
+    assert.match(sp, /var tks = BTOK \? \[BTOK\] : bassemAuth\(\);/, "the sign-in the call was opened with, alone: the e-mail goes out as the member of the call");
+    assert.match(sp, /i \+ 1 < tks\.length && signRefused\(x\) \? from\(i \+ 1\) : x/);
+    assert.match(LIVE, /function bassemAuth\(\) \{[\s\S]{0,200}"mig-tok"[\s\S]{0,200}"mig-adv-token"/);
+    const mint = LIVE.slice(LIVE.indexOf("function mint("), LIVE.indexOf("function sdkStart("));
+    assert.match(mint, /var tk = c\[i\+\+\];[\s\S]{0,300}sessToken\(agent, tk, extra\)\.then\(function \(j\) \{ BTOK = tk; return j; \}/, "mint remembers the sign-in that opened Bassem's call");
+  });
+  test("the send scene never shows an internal English note on the Arabic page", () => {
+    assert.match(HOLO, /failTool\(d\.tool, EN\(\) \|\| \/\[\\u0600-\\u06ff\]\/\.test\(why\) \? why : ""\)/);
   });
 });
 
