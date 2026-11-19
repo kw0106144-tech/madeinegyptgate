@@ -29,7 +29,22 @@
      files are loaded on demand (need()). Fuzzy Arabic matching (N(), base()); she never invents: no match → she says so.
    Not on dashboard / advisor / meeting pages, the kiosk, or while Bassem (data/bassem.js, html.bs-on) serves a member. */
 (function () {
-  if (window.__janna) return; window.__janna = 1;
+  if (window.__janna) return;
+  /* «باسم معاك»: a page that came out of Bassem's live call is his — she does not start there (data/janna-live.js sets window.MIG_WB
+     before this file; the same test here in case it did not run: window.name «mig-bassem-<ms>», ?with=bassem, sessionStorage "mig-wb") */
+  if (!window.JANNA_KIOSK && wbOn()) return;
+  function wbOn() {
+    var W = window, now = new Date().getTime(), t = 0, s = 0, m = null;
+    if (W.MIG_WB === true || W.MIG_WB === false) return W.MIG_WB;
+    try { m = /^mig-bassem-(\d{12,14})$/.exec(String(W.name || "")); } catch (e) {}
+    if (m) t = +m[1];
+    if (!t && /[?&]with=bassem(?:&|$)/.test(location.search)) t = now;
+    try { s = +sessionStorage.getItem("mig-wb") || 0; if (t > s) sessionStorage.setItem("mig-wb", String(t)); } catch (e) {}
+    if (!t) t = s;
+    W.MIG_WB = t > 0 && now - t < 144e5 && now - t > -6e4;
+    return W.MIG_WB;
+  }
+  window.__janna = 1;
   var KIOSK = !!window.JANNA_KIOSK;
   var R0 = window.JANNA_REAL, REAL = R0 && R0.body && R0.w && R0.h ? R0 : null, SVG = window.JANNA_SVG || "";
   var BUST = !!(REAL && REAL.kind === "bust");

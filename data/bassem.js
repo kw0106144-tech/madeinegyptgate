@@ -19,6 +19,21 @@
   /* never inside Janna Live's screen (same-origin iframe) or the hologram kiosk */
   var EMBED = !!window.JANNA_EMBED; try { if (!EMBED && window.top !== window && window.parent.__jannaLive === 1) EMBED = true; } catch (e) {}
   if (EMBED || window.JANNA_KIOSK) return;
+  /* «باسم معاك»: a page that came out of his live call (data/janna-live.js sets window.MIG_WB before this file; the same test here) —
+     he is in the call's tab, so here he stays out of sight and silent (no figure, page tip, welcome or browser voice; his video call
+     brings the call's tab back: data/janna-live.js open()), while his API, Janna's stand-down and the plan checks work as on any page */
+  var WB = (function () {
+    var W = window, now = new Date().getTime(), t = 0, s = 0, m = null;
+    if (W.MIG_WB === true || W.MIG_WB === false) return W.MIG_WB;
+    try { m = /^mig-bassem-(\d{12,14})$/.exec(String(W.name || "")); } catch (e) {}
+    if (m) t = +m[1];
+    if (!t && /[?&]with=bassem(?:&|$)/.test(location.search)) t = now;
+    try { s = +sessionStorage.getItem("mig-wb") || 0; if (t > s) sessionStorage.setItem("mig-wb", String(t)); } catch (e) {}
+    if (!t) t = s;
+    W.MIG_WB = t > 0 && now - t < 144e5 && now - t > -6e4;
+    return W.MIG_WB;
+  })();
+  if (WB) document.documentElement.classList.add("mig-wb");
   var EN = window.MIGLANG === "en", L = EN ? "en" : "ar";
   var T = function (ar, en) { return EN ? en : ar; };
   var R0 = window.BASSEM_REAL, REAL = R0 && R0.body && R0.w && R0.h ? R0 : null;
@@ -101,6 +116,7 @@
   /* ---------- look ---------- */
   var css = ''
     + 'html.bs-on .jn-fig,html.bs-on .jn-mini,html.bs-on .jn-bub,html.bs-on .jn-beam,html.bs-on .jn-tap,html.bs-on .jnl-btn,html.bs-on .sanad-btn,html.bs-on .sanad-tip{display:none!important}'
+    + 'html.mig-wb .bs-fig,html.mig-wb .bs-mini,html.mig-wb .bs-bub,html.mig-wb .bs-wel{display:none!important}'
     + '.bs-fig{position:fixed;z-index:65;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 4px);height:min(40vh,380px);pointer-events:none;font-family:Cairo,Tajawal,Tahoma,sans-serif}'
     + '.bs-fig[hidden],.bs-mini[hidden],.bs-bub[hidden],.bs-wel[hidden]{display:none!important}'
     + '.bs-floor{position:absolute;left:6%;right:6%;bottom:-1.6%;height:4.5%;border-radius:50%;background:radial-gradient(closest-side,rgba(10,20,30,.42),rgba(10,20,30,.14) 55%,transparent 100%)}'
@@ -309,7 +325,8 @@
   function later(fn, ms) { var h = setTimeout(fn, ms); timers.push(h); return h; }
   function stop() { SAY.id++; timers.forEach(clearTimeout); timers = []; try { if (synth && (synth.speaking || synth.pending)) synth.cancel(); } catch (e) {} lipsOff(); talking(false); }
   function speak(text) {
-    stop(); var id = SAY.id, spoken = clean(text); if (!spoken) return;
+    stop(); if (WB) return; /* his tab out of the live call: one Bassem voice, the call's */
+    var id = SAY.id, spoken = clean(text); if (!spoken) return;
     sim(spoken, id); /* owner 2026-11-18: never the browser's synthetic voice for Bassem — his real voice is the Anam call or his recorded clip */
   }
   /* no voice: the mouth stays closed — never silent "talking" (owner 2026-11-18); the bubble carries the words */
@@ -443,6 +460,7 @@
   var welRet = null;
   function welcome(force) {
     if (window.BASSEM_STAND) return; /* the standing cut-out greets instead (owner: no framed Bassem) */
+    if (WB) return false; /* his tab out of the live call (no overlay that would hold the page still) */
     ME = info(); if (!ME.eligible) return false;
     /* the platform's own operations account (role admin) works on these pages: no welcome overlay over its navigation (review A3) */
     var su = srvUser(); if (!force && su && String(su.role || "") === "admin") return false;
@@ -542,6 +560,7 @@
     var quiet = PAGE === "advisor" || PAGE === "inbox" || PAGE === "dashboard", startMini = MINI || quiet; MINI = startMini;
     dock(startMini);
     layout(); fire();
+    if (WB) return; /* his tab out of the live call: no welcome, no page tip — he is in the call */
     var shown = (PAGE === "dashboard" || PAGE === "advisor" || fromLogin) ? welcome(false) : false;
     if (shown) return;
     /* a short page tip once per page per tab session (he stays quiet on the advisor, where his advice is the page itself) */

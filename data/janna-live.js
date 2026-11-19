@@ -42,16 +42,47 @@
    No key on the Worker (503), no API (static preview), an Anam / network failure or an SDK file that cannot load → today's widget
    (agent-widget, SRI). A rate limit, the daily cap, a blocked network or a refused Bassem sign-in is said as it is (never the widget). */
 (function () {
+  /* the page widgets hidden on the call's shared screen (any page on it): Janna's and Bassem's figures, bubbles and pills, the old bot,
+     the «اسأل جنة» pill (#seoAsk) and buttons ([data-ask]) of the generated pages and the Information Center — Janna never appears
+     there, in Bassem's call or in her own — the WhatsApp float and the plan preview. Set by this file inside the screen (app pages) and
+     by the call's page on every document the screen shows (scrHook: generated and /intel/ pages do not load this file). */
+  var SCREEN_CSS = "[class^='jn-'],[class*=' jn-'],[class^='bs-'],[class*=' bs-'],body [class^='jw-'],body [class*=' jw-'],.jnl-btn,.sanad,.sanad-btn,.sanad-tip,#sdBox,.wa-float,.planpv,#seoAsk,.ask-btn,[data-ask]{display:none!important}"
+    + "@supports selector(:has(a)){.ci:has([data-ask]){display:none!important}}";
   var inScreen = false; try { inScreen = window.top !== window && window.parent.__jannaLive === 1; } catch (e) {}
   if (inScreen) {
     /* inside Janna's screen: the local Janna engine must not start (janna-live.js loads before janna.js) and page widgets are hidden */
     window.__janna = 1; window.JANNA_EMBED = 1;
-    var s0 = document.createElement("style");
-    s0.textContent = "[class^='jn-'],[class*=' jn-'],[class^='bs-'],[class*=' bs-'],.jnl-btn,.sanad-btn,.sanad-tip,#sdBox,.wa-float,.planpv{display:none!important}";
+    var s0 = document.createElement("style"); s0.setAttribute("data-mig-scr", "1");
+    s0.textContent = SCREEN_CSS;
     (document.head || document.documentElement).appendChild(s0);
     return;
   }
   if (window.__jannaLive) return; window.__jannaLive = 1;
+  /* ---------- «باسم معاك» — owner 2026-11-19: «لما بفتح المناقصة اللي باسم فاتحا بتفتح صفحة تانيه فيها جنة والمفروض ان باسم بس هو اللي
+     بيكمل». A page that leaves Bassem's live call («افتح الصفحة دي», a result's link, a same-site link on his shared screen that opens a new
+     tab, ctrl / middle click included) opens in a tab of its own (openTab) and the call goes on here. That tab is HIS: no Janna there
+     (no standing figure, invitation box, greeting, chat, «اسأل جنة» or call: data/janna-welcome.js, janna.js, bassem.js and
+     bassem-stand.js read the same mark), no second call (open() brings the call's tab back instead) and a bar that leads back to the call
+     (data/bassem-tab.js, loaded here or by janna-welcome.js). The tab carries the mark in window.name «mig-bassem-<ms>» (kept through the
+     site's redirects) and ?with=bassem (taken out of the address at once); sessionStorage "mig-wb" (the opening time) keeps it for the
+     tab's next pages, 4 h at most. Every page a visitor opens by himself keeps its Janna. ---------- */
+  var WB_CSS = "body [class^='jn-'],body [class*=' jn-'],body [class^='jw-'],body [class*=' jw-'],body .bs-fig,body .bs-mini,body .bs-bub,body .bs-wel,body .bst-st,body .bst-sb,body .bst-hint,body .jnl-btn,body .sanad,body .sanad-btn,body .sanad-tip,#seoAsk,body .ask-btn,body [data-ask]{display:none!important}"
+    + "@supports selector(:has(a)){body .ci:has([data-ask]){display:none!important}}";
+  function wbOn() {
+    var W = window, now = new Date().getTime(), t = 0, s = 0, m = null;
+    if (W.MIG_WB === true || W.MIG_WB === false) return W.MIG_WB;
+    try { m = /^mig-bassem-(\d{12,14})$/.exec(String(W.name || "")); } catch (e) {}
+    if (m) t = +m[1];
+    if (/[?&]with=bassem(?:&|$)/.test(location.search)) {
+      if (!t) t = now;
+      try { history.replaceState(history.state, "", location.pathname + location.search.replace(/([?&])with=bassem(&|$)/, function (x, a, b) { return b ? a : ""; }).replace(/[?&]$/, "") + location.hash); } catch (e) {}
+    }
+    try { s = +sessionStorage.getItem("mig-wb") || 0; if (t > s) sessionStorage.setItem("mig-wb", String(t)); } catch (e) {}
+    if (!t) t = s;
+    W.MIG_WB = t > 0 && now - t < 144e5 && now - t > -6e4;
+    return W.MIG_WB;
+  }
+  var WB = wbOn();
   var EN = window.MIGLANG === "en";
   /* personas: the Arabic Janna listens in Egyptian Arabic (accurate STT), the English one serves ?lang=en pages; Bassem (Arabic) advises members */
   var AGENTS = { janna: EN ? "e5101653-65b4-44a6-85e5-ec2e78f82685" : "5f06d835-22cc-4460-b412-84cefa9e565b", bassem: "19ef9078-5252-42a4-bbdf-9a3c4a38a4be" };
@@ -201,9 +232,38 @@
      screen (object-fit: cover crops the sides) — without access to it the widget keeps its own 3:2 frame */
   var SHADOW_CSS = ".anam-video-region{aspect-ratio:auto!important;height:var(--jnl-vh,auto)!important;max-height:none!important}.anam-sheet{border-radius:18px!important}";
   var st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
+  /* Bassem's tab («باسم معاك» above): Janna's engine (data/janna.js, loaded after this file) does not start, her widgets stay hidden, the
+     «جنة لايف» pill is not added, and the bar back to the call comes (data/bassem-tab.js) */
+  if (WB) wbStart();
+  function wbStart() {
+    var de = document.documentElement; de.classList.add("mig-wb"); window.__janna = 1;
+    if (!document.getElementById("mig-wb-css")) { var s = document.createElement("style"); s.id = "mig-wb-css"; s.textContent = WB_CSS; (document.head || de).appendChild(s); }
+    if (window.MIG_WB_TAB || document.querySelector("script[data-wb]")) return;
+    var me = document.querySelector('script[src*="data/janna-live.js"]'), src = me ? me.src : "", v = /[?&]v=([\w.-]+)/.exec(src);
+    var sc = document.createElement("script"); sc.src = (src ? src.replace(/data\/janna-live\.js.*$/, "") : "") + "data/bassem-tab.js" + (window.MIGVER_WB || (v ? "?v=" + v[1] : "")); sc.async = true; sc.charset = "utf-8"; sc.setAttribute("data-wb", "1");
+    (document.head || de).appendChild(sc);
+  }
+  /* is the call that opened this tab still on? "live" · "ended" (its tab closed, gone to another site, or no Bassem call there any
+     more) · "unknown" (no opener to ask) — data/bassem-tab.js asks the same */
+  function wbCall() {
+    var o = null; try { o = window.opener; } catch (e) { return "unknown"; }
+    if (!o) { try { if (/^mig-bassem-\d+$/.test(String(window.name || ""))) return "ended"; } catch (e) {} return "unknown"; } /* its call's tab was closed (Chrome: opener → null; data/bassem-tab.js state()) */
+    if (o === window) return "unknown";
+    try { if (o.closed) return "ended"; var J = o.JANNA_LIVE; return J && J.isOpen && J.isOpen() && J.persona() === "bassem" ? "live" : "ended"; } catch (e) { return "ended"; }
+  }
+  /* never a second call from his tab: the call's tab comes back (the bar's back(): opener.focus() from the member's tap) — once that call
+     is known to be over the mark is dropped (this tab is an ordinary one from its next page) and a call may start here as anywhere */
+  function wbHold() {
+    if (!WB || window.MIG_WB === false) return false; /* the bar (data/bassem-tab.js end()) already dropped the mark: the call is over */
+    if (wbCall() === "ended") { var B0 = window.MIG_WB_TAB; if (B0 && B0.end) B0.end(); else { try { sessionStorage.removeItem("mig-wb"); } catch (e) {} try { if (/^mig-bassem-/.test(window.name)) window.name = ""; } catch (e) {} } WB = false; window.MIG_WB = false; return false; }
+    var B = window.MIG_WB_TAB;
+    if (B && B.back) { try { B.back(); } catch (e) {} return true; }
+    try { if (window.opener && !window.opener.closed) window.opener.focus(); } catch (e) {}
+    return true;
+  }
 
   var btn = document.createElement("button"); btn.type = "button"; btn.className = "jnl-btn"; btn.setAttribute("translate", "no");
-  btn.innerHTML = "<i></i>" + T("جنة لايف · كلّميها فيديو", "Janna LIVE · video chat"); btn.title = T("جنة لايف · كلّميها فيديو", "Janna LIVE · video chat"); btn.setAttribute("aria-label", btn.title); document.body.appendChild(btn);
+  btn.innerHTML = "<i></i>" + T("جنة لايف · كلّميها فيديو", "Janna LIVE · video chat"); btn.title = T("جنة لايف · كلّميها فيديو", "Janna LIVE · video chat"); btn.setAttribute("aria-label", btn.title); if (!WB) document.body.appendChild(btn);
 
   var ov = null, frame = null, title = null, toast = null, pending = null, tt = 0, persona = "janna", SID = "", sessT0 = 0, MT = null, NUDGE = "";
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -228,7 +288,7 @@
       + '<div class="jnl-cap" dir="' + D2 + '"></div>'
       + '<div class="jnl-tip" dir="' + D2 + '">' + (B ? T("قوله مثلاً: «افتحلي المناقصات الجديدة» · «دوّرلي على طلبات أسعار للبلاستيك» · «وريني المشاريع في الخليج»", "Try: “open the new tenders” · “find RFQs for plastics” · “show me projects in the Gulf”") : T("قولها مثلاً: «وديني المناقصات» · «دوّري لي على مصانع بلاستيك في الشرقية» · «عايز أبعت طلب عرض سعر» · «سجّليلي مصنعي» · «عايز اجتماع تعريفي»", "Try: “take me to tenders” · “find plastic factories in Sharqia” · “I want to send a quote request” · “register my factory” · “I'd like an intro meeting”")) + '</div></aside>'
       + '<div class="jnl-mt" hidden dir="' + D2 + '"></div>'
-      + '<section class="jnl-scr"><div class="jnl-bar" dir="' + D2 + '"><b>🖥️ ' + who(["شاشة جنة", "شاشة باسم"], ["Janna's screen", "Bassem's screen"]) + ' — <span class="jnl-t"></span></b><button type="button" class="tv">🎥 ' + T("الفيديو", "Video") + '</button><button type="button" class="go">' + T("افتح الصفحة دي", "Open this page") + '</button><button type="button" class="x">✕ ' + T("إنهاء", "End") + '</button></div><iframe title="' + (B ? "Bassem" : "Janna") + ' screen"></iframe><div class="jnl-toast" role="status" aria-live="polite"></div></section>';
+      + '<section class="jnl-scr"><div class="jnl-bar" dir="' + D2 + '"><b>🖥️ ' + who(["شاشة جنة", "شاشة باسم"], ["Janna's screen", "Bassem's screen"]) + ' — <span class="jnl-t"></span></b><button type="button" class="tv">🎥 ' + T("الفيديو", "Video") + '</button><button type="button" class="go"' + (B ? ' title="' + esc(T("بتفتح في تاب جديدة، وباسم يفضل معاك في المكالمة هنا", "Opens in a new tab; Bassem stays with you on the call here")) + '"' : "") + '>' + T("افتح الصفحة دي", "Open this page") + '</button><button type="button" class="x">✕ ' + T("إنهاء", "End") + '</button></div><iframe title="' + (B ? "Bassem" : "Janna") + ' screen"></iframe><div class="jnl-toast" role="status" aria-live="polite"></div></section>';
     document.body.appendChild(ov);
     frame = ov.querySelector("iframe"); title = ov.querySelector(".jnl-t"); toast = ov.querySelector(".jnl-toast");
     frame.addEventListener("load", onLoad);
@@ -236,7 +296,14 @@
     var uT = 0, lastTop = 0, mark = function () { uT = Date.now(); };
     ["touchstart", "touchmove", "wheel", "pointerdown", "keydown"].forEach(function (n) { ov.addEventListener(n, mark, { passive: true }); });
     ov.addEventListener("scroll", function () { if (Date.now() - uT < 1500) { lastTop = ov.scrollTop; return; } if (Math.abs(ov.scrollTop - lastTop) > 2) ov.scrollTop = lastTop; }, { passive: true });
-    ov.querySelector(".go").onclick = function () { var u = ""; try { u = frame.contentWindow.location.href; } catch (e) {} close(); if (u) location.href = u; };
+    /* «افتح الصفحة دي»: Janna's call ends and this tab goes to the page; Bassem's call goes on here and the page opens in his own tab
+       (openTab: no Janna there, the bar back to the call) — owner 2026-11-19 */
+    ov.querySelector(".go").onclick = function () {
+      var u = ""; try { u = frame.contentWindow.location.href; } catch (e) {}
+      if (persona === "bassem") { if (!u || !/^https?:/i.test(u)) say(T("مقدرتش أفتح الصفحة دي في تاب جديدة — هي قدامك على الشاشة", "Couldn't open this page in a new tab — it is here on the screen")); else openTab(u); return; }
+      close(); if (u) location.href = u;
+    };
+    clearInterval(scrT); scrT = setInterval(scrHook, 200);
     ov.querySelector(".fsb").onclick = function () { fullscreen(!ov.classList.contains("fs")); };
     ov.querySelector(".sw").onclick = function () { this.classList.remove("new"); var s2 = ov.querySelector(".jnl-scr"); if (s2) try { s2.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) { s2.scrollIntoView(); } };
     ov.querySelector(".tv").onclick = function () { try { ov.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { ov.scrollTop = 0; } };
@@ -1204,6 +1271,8 @@
   /* open() · open({persona:"bassem"|"janna"}) · open({intent:"meeting"}) · open({meeting:{id, kind:"scheduled", name, consent}, screen:"home.html"}) */
   function open(o) {
     o = o && typeof o === "object" && !o.target && !o.type ? o : {};
+    /* Bassem's tab: his call is in the tab that opened this one — that tab comes back, no second call here («باسم معاك») */
+    if (!ov && wbHold()) return;
     var p = o.persona === "bassem" ? "bassem" : "janna";
     if (o.meeting || o.intent === "meeting") p = "janna";
     /* «🛠️ المطوّر» → «المزايا»: this persona's live calls are switched off (data/flags.js; the Worker refuses the token too) */
@@ -1245,6 +1314,7 @@
     /* the captions box goes back to the page first */
     try { if (window.MIGCAPTIONS && MIGCAPTIONS.place) { ov.hidden = true; MIGCAPTIONS.place(); } } catch (e) {}
     ov.remove(); ov = null; frame = null; SID = ""; sessT0 = 0; NUDGE = ""; document.documentElement.style.overflow = ""; document.documentElement.classList.remove("jnl-on");
+    clearInterval(scrT); scrT = 0; setTimeout(wbTell, 0);
     if (m) { m.noteEl = note(m.msg); MT = null; }
   }
   /* the owner's switches (data/flags.js MIGFLAGS; absent → nothing is off) */
@@ -1265,6 +1335,7 @@
   (function () {
     var want = /[?&#]live=1(?:[&#]|$)/.test(location.search + location.hash);
     if (!want && !window.JANNA_LIVE_AUTO) return;
+    if (WB) return; /* Bassem's tab: no call starts by itself here («باسم معاك») */
     if (!want || pageKey(window) !== "advisor") { setTimeout(open, 300); return; }
     /* Bassem's "I'm ready — let's talk on video" link: he opens once the platform confirms the member's plan (data/bassem.js decides) */
     var tries = 0, done0 = false;
@@ -1279,8 +1350,91 @@
 
   /* ---------- tools ---------- */
   function go(u, then) { pending = then || null; frame.src = withLang(url(u)); var sw = ov && ov.querySelector(".jnl-hd .sw"); if (sw && ov.scrollTop < 40) sw.classList.add("new"); }
+
+  /* ---------- nothing leaves the call by the side door («باسم معاك», owner 2026-11-19) ----------
+     openTab(u): a same-site page out of Bassem's call opens in a tab of its own, marked as his (window.name «mig-bassem-<ms>» + ?with=bassem,
+     see the top of this file), from the member's own tap (a browser lets a page open a tab only then); the call stays in this tab. Another
+     site's page → a plain new tab. → the new window (same site), or null. */
+  var scrT = 0, TABS = [];
+  function absUrl(u, w) { try { return new URL(String(u == null ? "" : u), (w && w.location && w.location.href) || location.href); } catch (e) { return null; } }
+  function extTab(href) { try { window.open(href, "_blank", "noopener"); } catch (e) {} }
+  function openTab(u) {
+    var a = absUrl(u); if (!a || !/^https?:$/.test(a.protocol)) return null;
+    /* another site, or a file / API answer of this one (a PDF, an .ics, an export: no page, no Janna — and a signed query stays whole) */
+    if (a.origin !== location.origin || /^\/(api|media|data|img|assets|_seo)\//.test(a.pathname) || /\.(?!html?$)[a-z0-9]{2,5}$/i.test(a.pathname)) { extTab(a.href); return null; }
+    if (!/[?&]with=bassem(?:&|$)/.test(a.search)) a.search = (a.search && a.search !== "?" ? a.search + "&" : "?") + "with=bassem";
+    var nm = "mig-bassem-" + new Date().getTime(), w = null;
+    try { w = window.open(a.href, nm); } catch (e) { w = null; }
+    if (!w) { say(T("المتصفح منع فتح تاب جديدة — اسمح بالنوافذ المنبثقة للموقع، أو كمّل هنا على الشاشة", "The browser blocked the new tab — allow pop-ups for this site, or carry on here on the screen")); return null; }
+    try { if (w.name !== nm) w.name = nm; } catch (e) {}
+    TABS.push(w); if (TABS.length > 12) TABS.shift();
+    say(T("فتحتلك الصفحة في تاب جديدة — وأنا معاك هنا في المكالمة", "I opened the page in a new tab — I'm right here with you on the call"));
+    return w;
+  }
+  /* the call ended here: Bassem's tabs say so at once (data/bassem-tab.js update()) instead of at their next look */
+  function wbTell() { for (var i = 0; i < TABS.length; i++) { try { var w = TABS[i]; if (w && !w.closed && w.MIG_WB_TAB && w.MIG_WB_TAB.update) w.MIG_WB_TAB.update(); } catch (e) {} } }
+  /* a link click → what it would do: "tab" (a new tab: target=_blank or a named target, ctrl / ⌘ / shift / middle click), "top" (_top /
+     _parent: the whole tab), "" (where it is). null: not a navigation worth a look (no link, a download, mailto: / tel:, a hash link) */
+  function linkOf(e, w) {
+    if (e.defaultPrevented || (e.type === "auxclick" && e.button !== 1)) return null;
+    var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+    if (!a || typeof a.href !== "string" || a.hasAttribute("download") || /^\s*#/.test(a.getAttribute("href") || "")) return null; /* (an SVG link's href is no string) */
+    var u = absUrl(a.href, w); if (!u || !/^https?:$/.test(u.protocol)) return null;
+    var tg = String(a.getAttribute("target") || "").toLowerCase();
+    var how = e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1 || (tg && tg !== "_self" && tg !== "_top" && tg !== "_parent") ? "tab" : tg === "_top" || tg === "_parent" ? "top" : "";
+    return { u: u, same: u.origin === location.origin, how: how };
+  }
+  /* the shared screen's documents (every page it shows: app, generated, the Information Center): Janna's widgets hidden (SCREEN_CSS), and
+     its links — Bassem's call: a same-site page it would open in a new tab → openTab; any call: _top / _parent never take this tab (that
+     would end the call): same-site → on the screen, another site → a new tab; its window.open the same way. Hooked on load and, before
+     that, by a look every 200 ms while the call is open (a link can be tapped before the page's images finished). */
+  function scrHook() {
+    var d = null, w = null; try { if (!frame) return; d = frame.contentDocument; w = frame.contentWindow; } catch (e) { return; }
+    if (!d || !w || !d.documentElement || d.__migScr) return;
+    d.__migScr = 1;
+    try { if (!d.querySelector("style[data-mig-scr]")) { var s = d.createElement("style"); s.setAttribute("data-mig-scr", "1"); s.textContent = SCREEN_CSS; (d.head || d.documentElement).appendChild(s); } } catch (e) {}
+    var click = function (e) {
+      var l = linkOf(e, w); if (!l || !frame) return;
+      if (l.how === "tab") { if (l.same && persona === "bassem") { e.preventDefault(); openTab(l.u.href); } return; }
+      if (l.how === "top") { e.preventDefault(); if (l.same) { try { w.location.href = l.u.href; } catch (x) { frame.src = l.u.href; } } else extTab(l.u.href); }
+    };
+    d.addEventListener("click", click, false); d.addEventListener("auxclick", click, false);
+    try {
+      var o0 = w.open;
+      if (o0 && !o0.__mig) {
+        var o1 = function (u, t) {
+          var tg = String(t == null || t === "" ? "_blank" : t).toLowerCase(), a = absUrl(u, w);
+          if (a && /^https?:$/.test(a.protocol)) {
+            if ((tg === "_top" || tg === "_parent") && frame) { if (a.origin === location.origin) { try { w.location.href = a.href; } catch (x) { frame.src = a.href; } } else extTab(a.href); return null; }
+            if (tg === "_blank" && a.origin === location.origin && persona === "bassem") return openTab(a.href);
+          }
+          return o0.apply(w, arguments);
+        };
+        o1.__mig = 1; w.open = o1;
+      }
+    } catch (e) {}
+  }
+  /* this tab's own links while a call is open (the hologram's results, the cards under the video …): nothing takes this tab away from the
+     call — a same-site page opens on the shared screen (a busy screen: Bassem's tab, else a new tab), another site's in a new tab; a
+     same-site link that opens a new tab → Bassem's tab in his call */
+  function topClick(e) {
+    if (!ov || ov.hidden) return;
+    var l = linkOf(e, window); if (!l) return;
+    if (l.u.origin === location.origin && l.u.pathname === location.pathname && l.u.search === location.search && l.u.hash) return; /* this page's own anchor */
+    if (l.how === "tab") { if (l.same && persona === "bassem") { e.preventDefault(); openTab(l.u.href); } return; }
+    e.preventDefault();
+    if (!l.same) { extTab(l.u.href); return; }
+    if (frame && !screenBusy()) {
+      go(l.u.pathname + l.u.search + l.u.hash);
+      if (stackedNow()) { var s2 = ov.querySelector(".jnl-scr"); if (s2) try { s2.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (x) { s2.scrollIntoView(); } }
+      return;
+    }
+    if (persona === "bassem") openTab(l.u.href); else extTab(l.u.href);
+  }
+  document.addEventListener("click", topClick, false); document.addEventListener("auxclick", topClick, false);
+  function stackedNow() { try { return !!(window.matchMedia && window.matchMedia("(max-width:820px),(max-aspect-ratio:3/2)").matches); } catch (e) { return false; } }
   function onLoad() {
-    cmpGive("");
+    cmpGive(""); scrHook();
     var d; try { d = frame.contentDocument; title.textContent = d.title.split("|")[0].split("·")[0].trim(); } catch (e) { return; }
     var p = pending; pending = null; if (p) setTimeout(function () { try { p(d, frame.contentWindow); } catch (e) { } }, 450);
   }
@@ -2591,6 +2745,17 @@
      member asked for it himself (o.force: the «افتحها على الشاشة» button) */
   window.JANNA_LIVE.show = function (u, o) { u = String(u || ""); if (!frame || !ov || ov.hidden || !/^\/(?!\/)[^\s"'<>\\]*$/.test(u)) return false; if (!(o && o.force) && screenBusy()) return false; go(u); return true; };
   window.JANNA_LIVE.screenBusy = screenBusy;
+  /* «باسم معاك»: isOpen() = a call is open in this tab (Bassem's tab asks its opener); openTab(u) = a page out of Bassem's call in a tab of
+     its own (data/bassem-intel-view.js «افتحها في صفحة جديدة»); welcomeBack() = the member came back from that tab (its bar): on a phone the
+     video comes back into view */
+  window.JANNA_LIVE.isOpen = function () { return !!(ov && !ov.hidden); };
+  window.JANNA_LIVE.openTab = function (u) { return persona === "bassem" && ov ? openTab(u) : null; };
+  window.JANNA_LIVE.welcomeBack = function () {
+    if (!ov || ov.hidden) return false;
+    if (stackedNow()) { try { ov.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { ov.scrollTop = 0; } }
+    say(T("أهلاً بيك تاني — كمّل كلامك مع باسم", "Welcome back — carry on with Bassem"));
+    return true;
+  };
   window.JANNA_LIVE.knownEmail = knownEmail;
   /* the e-mail tools' helpers (debugging in the browser console; the same functions worker/test/bassem-email.test.mjs runs) */
   window.JANNA_LIVE.mail = { spoken: spokenMail, spell: mailSpell, source: mailSource, lang: mailLang };
