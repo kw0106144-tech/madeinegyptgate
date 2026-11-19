@@ -10,6 +10,7 @@ import { memoryContext, buildSummary, forLLM, maskPII, clean, recall, memoryCron
 import { deleteMember } from "../src/acc-members.js";
 import { SAID_AR } from "../src/memory.js";
 import { D1 } from "./helpers.mjs";
+import { cairoDay, addDays } from "../src/common.js";
 
 const SITE = "https://madeinegyptgate.com";
 const SECRET = "adv-secret-for-memory-tests";
@@ -501,7 +502,9 @@ describe("consolidation C: «فيه جديد؟» — the same search again marks
     const env = env0(), m = await member(env, "nw1"), t = await tok(env, m);
     const first = await api(env, "POST", "", { token: t, body: { kind: "search", call_id: "call-a-00001", tool: "janna_lookup", query: "حديد تسليح", count: 2, results: [R("eg-tnd-001", "توريد حديد تسليح أ"), R("eg-tnd-002", "توريد حديد تسليح ب")] } });
     assert.equal(first.data.new_since, null, "nothing to compare with the first time");
-    await env.DB.prepare("UPDATE advisor_memory SET at = ? WHERE member_id = 'nw1'").bind(new Date(Date.now() - 26 * 3600000).toISOString()).run();
+    /* «امبارح» = the previous CAIRO day: 26 h back crossed two Cairo midnights between 22:00 and 24:00 UTC (00:00–02:00 Cairo), so
+       the first search is put at 10:00 UTC of the previous Cairo day (12:00 Cairo in winter, 13:00 in summer time), whatever the hour */
+    await env.DB.prepare("UPDATE advisor_memory SET at = ? WHERE member_id = 'nw1'").bind(addDays(cairoDay(Date.now()), -1) + "T10:00:00.000Z").run();
     const again = await api(env, "POST", "", { token: t, body: { kind: "search", call_id: "call-b-00001", tool: "janna_lookup", query: "حديد  تسليح", count: 2, results: [R("eg-tnd-001", "توريد حديد تسليح أ"), R("eg-tnd-003", "توريد حديد تسليح ج")] } });
     assert.equal(again.status, 201);
     assert.deepEqual([again.data.new_since.count, again.data.new_since.items.map(x => x.id)], [1, ["eg-tnd-003"]]);
