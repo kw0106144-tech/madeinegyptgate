@@ -512,7 +512,7 @@
     on("TOOL_CALL_STARTED", function (d) { d = d || {}; sdkTool(me, d.toolName, d.toolType, d.arguments, d.toolCallId); });
     on("CLIENT_TOOL_EVENT_RECEIVED", function (d) { d = d || {}; sdkTool(me, d.eventName, "client", d.eventData, ""); }); /* older engines */
     /* the outcome of a tool call (server webhook bassem_intel included): data/bassem-intel-view.js shows exactly what Bassem got */
-    on("TOOL_CALL_COMPLETED", function (d) { d = d || {}; sdkFire("tool-call-completed", { toolName: String(d.toolName || ""), toolType: String(d.toolType || ""), toolSubtype: String(d.toolSubtype || ""), toolCallId: String(d.toolCallId || ""), result: d.result, executionTime: d.executionTime }); });
+    on("TOOL_CALL_COMPLETED", function (d) { d = d || {}; urlsKeep(d.result); sdkFire("tool-call-completed", { toolName: String(d.toolName || ""), toolType: String(d.toolType || ""), toolSubtype: String(d.toolSubtype || ""), toolCallId: String(d.toolCallId || ""), result: d.result, executionTime: d.executionTime }); });
     on("TOOL_CALL_FAILED", function (d) { d = d || {}; sdkFire("tool-call-failed", { toolName: String(d.toolName || ""), toolType: String(d.toolType || ""), toolCallId: String(d.toolCallId || ""), errorMessage: String(d.errorMessage || "") }); });
     /* bassem_save_profile (CLIENT tool, awaitResult): the handler's answer goes back to Bassem as the tool result, so he says «اتسجّل»
        only when the platform saved it; the DOM path (run → bassemTool) leaves this tool to the handler (me.own) */
@@ -1673,13 +1673,52 @@
     var m = T("راجع الإيميل واضغط «ابعت» بنفسك — باسم مش بيبعت حاجة من غير ضغطتك.", "Review the e-mail and press “Send” yourself — Bassem never sends anything without your click.");
     cmpSay(m, false); refuse("bassem_send_email", "refused", m);
   }
+  /* ---------- links in Bassem's messages (owner 2026-11-19: «بعتلي ... الرابط ومش بيفتح»: the model retyped a 160-character tender link
+     and dropped one letter, so the e-mailed link answered 500). Every https link the call's tools returned (bassem_intel, janna_lookup,
+     platform_item results) is remembered; a link in a message he sends is replaced by the remembered link of the same host it is closest
+     to; a foreign link that matches nothing is not sent at all (the platform's own pages pass as they are). */
+  var URLS = {}, URLS_N = 0;
+  function urlsKeep(x) {
+    var s = ""; try { s = typeof x === "string" ? x : JSON.stringify(x); } catch (e) { return; }
+    var m = String(s || "").replace(/\\\//g, "/").match(/https?:\/\/[^\s"'<>\\]+/g) || [];
+    for (var i = 0; i < m.length && URLS_N < 800; i++) { var u = m[i].replace(/[),.;:\]]+$/, ""); if (!URLS[u]) { URLS[u] = 1; URLS_N++; } }
+  }
+  function urlHost(u) { var m = /^https?:\/\/([^\/?#]+)/i.exec(u); return m ? m[1].toLowerCase().replace(/^www\./, "") : ""; }
+  function urlDist(a, b, max) { /* Levenshtein distance, stops early past max */
+    var n = a.length, m = b.length, i, j, prev = [], cur, best;
+    if (Math.abs(n - m) > max) return max + 1;
+    for (j = 0; j <= m; j++) prev[j] = j;
+    for (i = 1; i <= n; i++) {
+      cur = [i]; best = i;
+      for (j = 1; j <= m; j++) { cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1)); if (cur[j] < best) best = cur[j]; }
+      if (best > max) return max + 1;
+      prev = cur;
+    }
+    return prev[m];
+  }
+  function urlsFix(msg) {
+    return String(msg || "").replace(/(https?:\/\/|www\.)[^\s<>"'«»]+/gi, function (u0) {
+      var u = u0.replace(/[),.;:\]]+$/, ""), tail = u0.slice(u.length), k, d, lim, best = "", bd = 1e9, h;
+      if (/^www\./i.test(u)) u = "https://" + u;
+      if (URLS[u]) return u + tail;
+      h = urlHost(u);
+      for (k in URLS) {
+        if (!URLS.hasOwnProperty(k) || urlHost(k) !== h) continue;
+        lim = Math.max(3, Math.round(k.length * 0.04)); d = urlDist(u, k, lim);
+        if (d <= lim && d < bd) { bd = d; best = k; }
+      }
+      if (best) return best + tail;
+      if (h === "madeinegyptgate.com") return u + tail;
+      return T("(الرابط الرسمي موجود على صفحة الفرصة في المنصة)", "(the official link is on the opportunity's page on the platform)") + tail;
+    });
+  }
   function bassemTool(name, a) {
     var A = window.MIGAPI;
     /* the member's factory profile (POST /api/advisor/profile) — never routed to advisor.html. In the SDK call the registered handler
        saves it and answers Bassem (sdkRun); the widget cannot answer a tool, so there it is saved without a result */
     if (name === "bassem_save_profile") { if (LV && !LV.closed && LV.own && LV.own.bassem_save_profile) return; profileTool(a); return; }
     if (name === "bassem_notify_member") {
-      var msg = String(a.message || "").trim(), chn = /^(whatsapp|email|both)$/.test(a.channel) ? a.channel : "both";
+      var msg = urlsFix(String(a.message || "").trim()), chn = /^(whatsapp|email|both)$/.test(a.channel) ? a.channel : "both";
       if (!msg) { refuse(name, "refused", T("قولّي الرسالة اللي عايزني أبعتهالك.", "Tell me the message you want me to send you.")); return; }
       doing(T("ببعتلك الرسالة", "sending you the message"));
       (A && A.notify ? A.notify(msg, chn) : post("/advisor/notify", { message: msg, channel: chn })).then(function (j) {
