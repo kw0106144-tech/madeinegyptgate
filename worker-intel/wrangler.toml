@@ -1,0 +1,41 @@
+# migate-intel — daily automatic intelligence pipeline (tenders, RFQs, projects, news) for madeinegyptgate.com
+name = "migate-intel"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+# The /intel/ pages read the site's own shell from https://madeinegyptgate.com/tenders/ at runtime (src/siteshell.js). Without this
+# flag a fetch to the Worker's own zone goes straight to the zone's origin record, bypassing the Workers / Pages that actually serve
+# the site; with it the request goes through the front door like a visitor's. Every other fetch of this Worker is to other hosts.
+compatibility_flags = ["global_fetch_strictly_public"]
+workers_dev = true
+# Routes are attached by the main session after review (do NOT uncomment here without that review):
+# routes = [
+#   { pattern = "madeinegyptgate.com/api/intel/*", zone_name = "madeinegyptgate.com" },
+#   { pattern = "www.madeinegyptgate.com/api/intel/*", zone_name = "madeinegyptgate.com" },
+#   { pattern = "madeinegyptgate.com/intel/*", zone_name = "madeinegyptgate.com" },
+#   { pattern = "www.madeinegyptgate.com/intel/*", zone_name = "madeinegyptgate.com" },
+# ]
+
+[triggers]
+crons = ["0 */2 * * *", "30 */6 * * *", "15 3 * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "migate-intel"
+database_id = "f6d7f706-a088-4033-bf88-0d7ad1da529a"
+
+[[kv_namespaces]]
+binding = "KV"   # namespace MIGATE_INTEL_KV
+id = "0f13a8cf3dd24a26ae79c3ec3a5ff357"
+
+[ai]
+binding = "AI"
+
+[vars]
+AI_DAILY_LIMIT = "400"   # hard cap on Workers AI enrichment calls per Cairo day
+AI_PER_RUN = "60"
+AI_TITLES_SHARE = "0.67" # share of a run's AI units for the titles pass (9 titles per call, 1 unit per 3 titles); the rest: full enrichment
+TOOL_RATE_PER_MIN = "30"
+
+[observability]
+enabled = true
+# Secrets: PLATFORM_KEY (admin endpoints, header X-Platform-Key). Optional TOOL_KEY (header X-Intel-Key for /api/intel/tool).

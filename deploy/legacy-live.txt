@@ -1,0 +1,26 @@
+# deploy/legacy-live.txt — DEPLOY 1: paths that stay on the OWNER'S LIVE SYSTEM after the cutover.
+#
+# Today the Worker "mis-egypt" (docs/janna/legacy-live/mis-egypt-worker.js) holds the two catch-all routes
+# madeinegyptgate.com/* and www.madeinegyptgate.com/* and proxies the whole domain to Hostinger (PHP API + older build).
+# At the cutover (deploy/deploy.sh cutover) those two catch-all routes are REPLACED by one specific mis-egypt route per
+# path below, for madeinegyptgate.com AND www.madeinegyptgate.com, so the owner's current admin dashboard keeps working
+# exactly as today (same look, same URL, same PHP session and data):
+#   /panel.html        «لوحة الإدارة – صنع في مصر» (users, companies, products, messages, RFQs, SEO, plans, payments, mail)
+#   /login.html        e-mail + password sign-in against the PHP session
+#   /api/index.php*    the PHP API on Hostinger (login, me, admin_*, plans_*, pay_*, mail_*, document …)
+#   /data/auth.js, /data/me.js, /data/egadm.js   scripts the live pages load from the old build
+# Everything else is served by the new site (Cloudflare Pages) and the new API Worker (janna-lookup, /api/<family>/*).
+#
+# Format: one path per line, exactly as a Cloudflare Workers route path (a trailing * = prefix match; no other
+# wildcard). Lines starting with "#" are comments. Read by deploy/deploy.sh (routes, cutover, rollback),
+# deploy/stage.py (links to these paths are valid; the Pages upload never ships its own panel.html / login.html) and
+# deploy/smoke-test.sh (these paths must still be answered by the old system on madeinegyptgate.com).
+# DEPLOY 2 keeps every path below on the old system: the new Admin Control Center is /admin/ and the new sign-in page /login/
+# (Cloudflare Pages); no mis-egypt route changes hands (the Worker janna-lookup can serve /api/index.php — handleOldApi — but is
+# deliberately not routed for it).
+/panel.html
+/login.html
+/api/index.php*
+/data/auth.js
+/data/me.js
+/data/egadm.js

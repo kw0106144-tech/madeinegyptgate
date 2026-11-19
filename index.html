@@ -1,0 +1,1053 @@
+<title>بوابة صنع في مصر</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Readex+Pro:wght@500;600;700&display=swap">
+<style>
+/* Layout: RTL B2B industrial hub. Utility bar + header, then 4 hash views: home | market | factory | dashboard. Factory sits at the center of an ecosystem. */
+:root {
+  --bg: #F4F6F3;
+  --surface: #FFFFFF;
+  --sunken: #E9EEE9;
+  --fg: #12201A;
+  --muted: #5B6B62;
+  --line: #D6DED8;
+  --brand: #0B6B47;
+  --brand-ink: #FFFFFF;
+  --brand-soft: #DCEFE5;
+  --gold: #A87618;
+  --gold-soft: #F5EAD3;
+  --deep: #0A2E21;
+  --deep-fg: #E8F2EC;
+  --ok: #0F8A55;
+  --warn: #B86E00;
+  --bad: #C0392B;
+  --fs: 16px;
+  --font-display: "Readex Pro", "IBM Plex Sans Arabic", Tahoma, sans-serif;
+  --font-body: "IBM Plex Sans Arabic", Tahoma, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0C1511; --surface: #121E18; --sunken: #18271F; --fg: #E5EEE8; --muted: #93A69B; --line: #24362C;
+    --brand: #3FBF86; --brand-ink: #06140D; --brand-soft: #173728; --gold: #E0AE4F; --gold-soft: #3A2F18;
+    --deep: #07110C; --deep-fg: #E5EEE8; --ok: #45C98A; --warn: #E6A13A; --bad: #EF6B5C; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C1511; --surface: #121E18; --sunken: #18271F; --fg: #E5EEE8; --muted: #93A69B; --line: #24362C;
+  --brand: #3FBF86; --brand-ink: #06140D; --brand-soft: #173728; --gold: #E0AE4F; --gold-soft: #3A2F18;
+  --deep: #07110C; --deep-fg: #E5EEE8; --ok: #45C98A; --warn: #E6A13A; --bad: #EF6B5C; color-scheme: dark;
+}
+html { font-size: var(--fs); }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 1rem; line-height: 1.7; }
+.app { min-height: 100%; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3, h4 { font-family: var(--font-display); line-height: 1.3; margin: 0; text-wrap: balance; }
+h2 { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; }
+h3 { font-size: 1.1rem; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--brand); text-decoration: none; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+.muted { color: var(--muted); }
+.eyebrow { font-size: .8rem; font-weight: 600; color: var(--gold); letter-spacing: .02em; }
+.num { font-variant-numeric: tabular-nums; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: .6rem 1.1rem; border-radius: 10px; border: 1px solid transparent; font-weight: 600; font-size: .95rem; cursor: pointer; background: var(--sunken); color: var(--fg); transition: transform .15s ease, filter .15s ease; white-space: nowrap; }
+.btn:hover { transform: translateY(-1px); }
+.btn-brand { background: var(--brand); color: var(--brand-ink); }
+.btn-gold { background: var(--gold); color: #1A1204; }
+.btn-line { background: transparent; border-color: var(--line); }
+.btn-sm { padding: .35rem .75rem; font-size: .85rem; border-radius: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; padding: 2px 10px; border-radius: 999px; background: var(--sunken); color: var(--muted); white-space: nowrap; }
+.chip.ok { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.chip.warn { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+.chip.bad { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); }
+.chip.brand { background: var(--brand-soft); color: var(--brand); }
+.chip.gold { background: var(--gold-soft); color: var(--gold); }
+.demo-note { font-size: .78rem; color: var(--muted); }
+svg.i { width: 1.15em; height: 1.15em; flex: none; }
+
+/* Utility bar */
+.util { background: var(--deep); color: var(--deep-fg); font-size: .82rem; }
+.util .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; padding-block: 8px; }
+.util .grp { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+.util .item { display: inline-flex; align-items: center; gap: 6px; opacity: .92; }
+.util button { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); color: var(--deep-fg); border-radius: 7px; padding: 2px 10px; cursor: pointer; font-size: .8rem; }
+.util button:hover { background: rgba(255,255,255,.16); }
+
+/* Header */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--surface); }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; gap: 20px; padding-block: 12px; }
+.logo { display: flex; align-items: center; gap: 10px; color: var(--fg); }
+.logo .mark { width: 44px; height: 44px; border-radius: 12px; background: var(--brand); display: grid; place-items: center; color: var(--brand-ink); }
+.logo b { font-family: var(--font-display); font-size: 1.1rem; display: block; line-height: 1.2; }
+.logo small { font-size: .68rem; letter-spacing: .14em; color: var(--muted); display: block; direction: ltr; text-align: right; }
+.mainnav { display: flex; gap: 4px; margin-inline-start: auto; flex-wrap: wrap; }
+.mainnav a { color: var(--muted); font-weight: 500; padding: 6px 12px; border-radius: 8px; font-size: .95rem; }
+.mainnav a:hover { background: var(--sunken); color: var(--fg); }
+.mainnav a.on { color: var(--brand); background: var(--brand-soft); }
+.hdr-cta { display: flex; gap: 8px; }
+.menu-btn { display: none; margin-inline-start: auto; background: var(--sunken); border: 0; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+@media (max-width: 1060px) {
+  .menu-btn { display: inline-flex; }
+  .mainnav { display: none; position: absolute; inset: 100% 0 auto 0; background: var(--surface); border-bottom: 1px solid var(--line); flex-direction: column; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); }
+  .mainnav.open { display: flex; }
+  .hdr-cta .btn-line { display: none; }
+}
+@media (max-width: 520px) { .hdr-cta { display: none; } }
+
+/* Views */
+.view[hidden] { display: none !important; }
+section.sec { padding-block: 56px; }
+.sec-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 28px; }
+.sec-head > div { display: flex; flex-direction: column; gap: 6px; max-width: 46em; }
+.band { background: var(--surface); border-block: 1px solid var(--line); }
+
+/* Hero */
+.hero { background: var(--deep); color: var(--deep-fg); position: relative; overflow: hidden; }
+.hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .5; }
+.hero .wrap { position: relative; padding-block: 56px 48px; display: grid; grid-template-columns: 1.25fr 1fr; gap: 40px; align-items: center; }
+.hero .wrap > * { min-width: 0; }
+.hero h1 { font-size: clamp(1.9rem, 4.2vw, 3rem); font-weight: 700; }
+.hero h1 span { color: #E9B95A; }
+.hero .lede { margin-top: 14px; font-size: 1.08rem; color: color-mix(in srgb, var(--deep-fg) 80%, transparent); max-width: 38em; }
+.search { margin-top: 24px; display: flex; gap: 0; background: #fff; border-radius: 12px; padding: 6px; flex-wrap: wrap; }
+.search select, .search input { border: 0; background: transparent; font: inherit; color: #12201A; padding: 10px 12px; min-width: 0; }
+.search select { border-inline-end: 1px solid #D6DED8; }
+.search input { flex: 1 1 200px; }
+.search input::placeholder { color: #6E7D74; }
+.search .btn { background: #0B6B47; color: #fff; }
+.quick { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; font-size: .85rem; }
+.quick a { color: var(--deep-fg); border: 1px solid rgba(255,255,255,.22); border-radius: 999px; padding: 2px 12px; }
+.quick a:hover { background: rgba(255,255,255,.1); }
+.hero-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.hero-stats div { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 2px; }
+.hero-stats b { font-family: var(--font-display); font-size: 1.9rem; color: #fff; }
+.hero-stats span { font-size: .88rem; opacity: .8; }
+.hero-stats .note { grid-column: 1 / -1; background: none; border: 0; padding: 0; font-size: .75rem; opacity: .6; }
+@media (max-width: 900px) { .hero .wrap { grid-template-columns: 1fr; } }
+
+/* Ecosystem */
+.eco { display: grid; grid-template-columns: 1fr auto 1fr; gap: 20px; align-items: center; }
+.eco > * { min-width: 0; }
+.eco-col { display: flex; flex-direction: column; gap: 12px; }
+.eco-node { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.eco-node .ic { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); flex: none; }
+.eco-node p { font-size: .85rem; color: var(--muted); line-height: 1.5; }
+.eco-core { width: 230px; aspect-ratio: 1; max-width: 100%; border-radius: 50%; background: var(--brand); color: var(--brand-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; gap: 6px; box-shadow: 0 0 0 14px var(--brand-soft), 0 0 0 28px color-mix(in srgb, var(--brand-soft) 45%, transparent); margin: 28px auto; }
+.eco-core b { font-family: var(--font-display); font-size: 1.3rem; }
+.eco-core span { font-size: .85rem; opacity: .9; }
+@media (max-width: 900px) { .eco { grid-template-columns: 1fr; } .eco-core { order: -1; } }
+
+/* Service cards */
+.svc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.svc { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 10px; border-bottom: 4px solid var(--brand); }
+.svc:nth-child(4n+2) { border-bottom-color: var(--gold); }
+.svc:nth-child(4n+3) { border-bottom-color: var(--deep); }
+.svc .ic { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand); }
+.svc p { color: var(--muted); font-size: .9rem; flex: 1; }
+.svc a { font-weight: 600; font-size: .9rem; }
+@media (max-width: 1000px) { .svc-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .svc-grid { grid-template-columns: 1fr; } }
+
+/* Markets */
+.mk-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.mk { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; text-align: start; }
+.mk:hover, .mk.on { border-color: var(--brand); }
+.mk.on { background: var(--brand-soft); }
+.mk .flag { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; }
+.mk .cnt { font-family: var(--font-display); font-size: 1.7rem; font-weight: 700; color: var(--brand); }
+.mk small { color: var(--muted); font-size: .8rem; }
+.mk .bar { height: 5px; background: var(--sunken); border-radius: 99px; overflow: hidden; }
+.mk .bar b { display: block; height: 100%; background: var(--gold); }
+@media (max-width: 1000px) { .mk-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px) { .mk-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* Sectors */
+.sec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.sector { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; text-align: start; }
+.sector:hover { border-color: var(--brand); }
+.sector .ic { width: 34px; height: 34px; border-radius: 9px; background: var(--gold-soft); color: var(--gold); display: grid; place-items: center; flex: none; font-family: var(--font-display); font-weight: 700; font-size: .85rem; }
+.sector b { font-weight: 600; font-size: .92rem; display: block; line-height: 1.4; }
+.sector small { color: var(--muted); font-size: .76rem; }
+
+/* Tables */
+.tbl-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; min-width: 720px; }
+th { text-align: start; font-weight: 600; color: var(--muted); font-size: .8rem; background: var(--sunken); padding: 10px 14px; white-space: nowrap; }
+td { padding: 12px 14px; border-top: 1px solid var(--line); vertical-align: middle; }
+td b { font-weight: 600; }
+tr:hover td { background: color-mix(in srgb, var(--brand-soft) 35%, transparent); }
+
+/* Factory cards */
+.fac-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.fac { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.fac .cover { height: 96px; position: relative; }
+.fac .lg { position: absolute; bottom: -22px; inset-inline-start: 16px; width: 52px; height: 52px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; color: var(--brand); }
+.fac .body { padding: 30px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.fac .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 8px; }
+@media (max-width: 1000px) { .fac-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .fac-grid { grid-template-columns: 1fr; } }
+
+/* Steps */
+.steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; counter-reset: s; }
+.steps li { counter-increment: s; display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 3px solid var(--line); }
+.steps li:first-child { border-top-color: var(--brand); }
+.steps li::before { content: "الخطوة " counter(s); font-size: .8rem; font-weight: 600; color: var(--gold); }
+.steps p { color: var(--muted); font-size: .9rem; }
+@media (max-width: 900px) { .steps { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .steps { grid-template-columns: 1fr; } }
+
+/* Marketplace */
+.mkt { display: grid; grid-template-columns: 270px 1fr; gap: 24px; padding-block: 28px 56px; align-items: start; }
+.mkt > * { min-width: 0; }
+.side { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 16px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 88px); max-height: calc(100vh - 110px); overflow: auto; }
+.side h4 { font-size: .9rem; margin-bottom: 6px; }
+.side label { display: flex; align-items: center; gap: 8px; font-size: .88rem; padding: 3px 0; cursor: pointer; }
+.side details summary { cursor: pointer; font-size: .88rem; padding: 4px 0; display: flex; justify-content: space-between; }
+.side details summary::marker { content: ""; }
+.side details[open] summary { color: var(--brand); font-weight: 600; }
+.side details ul { list-style: none; margin: 0; padding: 0 12px 6px 0; font-size: .82rem; color: var(--muted); }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; background: var(--sunken); padding: 5px; border-radius: 12px; width: fit-content; max-width: 100%; }
+.tabs button { border: 0; background: transparent; padding: 7px 16px; border-radius: 9px; cursor: pointer; font-weight: 600; color: var(--muted); }
+.tabs button.on { background: var(--surface); color: var(--brand); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.toolbar input, .toolbar select, .field input, .field select, .field textarea { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; min-width: 0; }
+.prod-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.prod { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.prod .ph { aspect-ratio: 16/10; max-width: 100%; display: grid; place-items: center; color: rgba(255,255,255,.9); }
+.prod .ph svg { width: 44px; height: 44px; }
+.prod .body { padding: 14px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.prod .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .82rem; color: var(--muted); }
+.prod .price { font-family: var(--font-display); font-weight: 600; color: var(--fg); font-size: 1rem; }
+.prod .acts { display: flex; gap: 8px; margin-top: auto; padding-top: 8px; }
+.prod .acts .btn { flex: 1; }
+.empty { padding: 40px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: 14px; }
+@media (max-width: 1100px) { .prod-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 860px) { .mkt { grid-template-columns: 1fr; } .side { position: static; max-height: none; } }
+@media (max-width: 520px) { .prod-grid { grid-template-columns: 1fr; } }
+
+/* Factory profile */
+.slider { position: relative; border-radius: 0 0 20px 20px; overflow: hidden; height: clamp(240px, 38vw, 420px); background: var(--deep); }
+.slide { position: absolute; inset: 0; opacity: 0; transition: opacity .6s ease; display: flex; align-items: flex-end; }
+.slide.on { opacity: 1; }
+.slide svg.scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+.slide .cap { position: relative; margin: 0 24px 56px; color: #fff; background: rgba(0,0,0,.35); padding: 6px 14px; border-radius: 8px; font-size: .9rem; }
+.slide .play { position: absolute; inset: 0; margin: auto; width: 76px; height: 76px; border-radius: 50%; background: rgba(255,255,255,.92); display: grid; place-items: center; color: #0B6B47; border: 0; cursor: pointer; }
+.slider .dots { position: absolute; bottom: 18px; inset-inline: 0; display: flex; justify-content: center; gap: 8px; }
+.slider .dots button { width: 10px; height: 10px; border-radius: 50%; border: 0; background: rgba(255,255,255,.5); cursor: pointer; padding: 0; }
+.slider .dots button.on { background: #fff; width: 26px; border-radius: 99px; }
+.slider .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.85); color: #12201A; cursor: pointer; display: grid; place-items: center; }
+.slider .prev { inset-inline-start: max(16px, env(safe-area-inset-right, 0px)); }
+.slider .next { inset-inline-end: max(16px, env(safe-area-inset-left, 0px)); }
+.pf-head { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; margin-top: -56px; position: relative; }
+.pf-logo { width: 116px; height: 116px; border-radius: 22px; background: var(--surface); border: 4px solid var(--surface); box-shadow: 0 8px 24px rgba(0,0,0,.15); display: grid; place-items: center; font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--brand); }
+.pf-title { flex: 1 1 300px; display: flex; flex-direction: column; gap: 6px; padding-bottom: 6px; min-width: 0; }
+.pf-title h1 { font-size: clamp(1.5rem, 3vw, 2rem); }
+.pf-title .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-acts { display: flex; gap: 8px; flex-wrap: wrap; padding-bottom: 6px; }
+.pf-body { display: grid; grid-template-columns: 1fr 320px; gap: 24px; padding-block: 28px 56px; align-items: start; }
+.pf-body > * { min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; font-size: .9rem; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+.social { display: flex; gap: 8px; flex-wrap: wrap; }
+.social a { width: 38px; height: 38px; border-radius: 50%; background: var(--sunken); display: grid; place-items: center; color: var(--fg); }
+.social a:hover { background: var(--brand); color: var(--brand-ink); }
+.pf-tabs { margin-bottom: 16px; }
+.facts4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.facts4 div { background: var(--sunken); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; }
+.facts4 b { font-family: var(--font-display); font-size: 1.35rem; }
+.facts4 span { font-size: .8rem; color: var(--muted); }
+.cert { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.cert .ic { width: 42px; height: 42px; border-radius: 10px; background: var(--gold-soft); color: var(--gold); display: grid; place-items: center; flex: none; }
+.gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.gallery div { aspect-ratio: 4/3; max-width: 100%; border-radius: 12px; display: grid; place-items: end start; padding: 10px; color: #fff; font-size: .8rem; }
+.exp-bars { display: flex; flex-direction: column; gap: 10px; }
+.exp-bars .r { display: grid; grid-template-columns: 110px 1fr 48px; gap: 10px; align-items: center; font-size: .88rem; }
+.exp-bars .t { height: 10px; background: var(--sunken); border-radius: 99px; overflow: hidden; }
+.exp-bars .t b { display: block; height: 100%; background: var(--brand); border-radius: 99px; }
+@media (max-width: 960px) { .pf-body { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .facts4 { grid-template-columns: repeat(2, 1fr); } .gallery { grid-template-columns: repeat(2, 1fr); } .pf-head { margin-top: -40px; } .pf-logo { width: 88px; height: 88px; font-size: 1.5rem; } }
+
+/* Dashboard */
+.dash { display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding-block: 24px 56px; align-items: start; }
+.dash > * { min-width: 0; }
+.dnav { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 88px); }
+.dnav .who { display: flex; gap: 10px; align-items: center; padding: 8px 8px 14px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+.dnav .who .av { width: 40px; height: 40px; border-radius: 10px; background: var(--brand); color: var(--brand-ink); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; }
+.dnav .who b { font-size: .92rem; display: block; line-height: 1.4; }
+.dnav .who small { font-size: .75rem; color: var(--muted); }
+.dnav button { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; text-align: start; padding: 9px 10px; border-radius: 9px; cursor: pointer; color: var(--muted); font-weight: 500; font-size: .92rem; }
+.dnav button:hover { background: var(--sunken); color: var(--fg); }
+.dnav button.on { background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+.dnav button .badge { margin-inline-start: auto; background: var(--gold); color: #1A1204; font-size: .7rem; border-radius: 99px; padding: 0 7px; }
+.dpanel { display: flex; flex-direction: column; gap: 20px; }
+.dpanel > header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+.kpi span { font-size: .82rem; color: var(--muted); }
+.kpi b { font-family: var(--font-display); font-size: 1.7rem; }
+.kpi small { font-size: .78rem; color: var(--ok); }
+.two { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+.two > * { min-width: 0; }
+.progress { height: 10px; border-radius: 99px; background: var(--sunken); overflow: hidden; }
+.progress b { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--brand)); }
+.todo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: .9rem; }
+.todo li { display: flex; align-items: center; gap: 8px; }
+.todo li.done { color: var(--muted); text-decoration: line-through; }
+.todo .ck { width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--line); flex: none; display: grid; place-items: center; font-size: .7rem; }
+.todo li.done .ck { background: var(--ok); border-color: var(--ok); color: #fff; }
+.opp { display: flex; flex-direction: column; gap: 10px; }
+.opp-item { display: flex; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.opp-item .m { font-family: var(--font-display); font-weight: 700; color: var(--brand); font-size: 1.1rem; width: 52px; text-align: center; flex: none; }
+.opp-item .m small { display: block; font-size: .65rem; color: var(--muted); font-weight: 500; }
+.opp-item > div:nth-child(2) { flex: 1; min-width: 0; }
+.dir-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.dir { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.dir .top { display: flex; gap: 10px; align-items: center; }
+.dir .top .av { width: 42px; height: 42px; border-radius: 10px; background: var(--sunken); display: grid; place-items: center; font-family: var(--font-display); font-weight: 700; color: var(--brand); flex: none; }
+.stars { color: var(--gold); font-size: .85rem; letter-spacing: 1px; }
+.consult-types { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.ctype { cursor: pointer; }
+.ctype input { position: absolute; opacity: 0; pointer-events: none; }
+.ctype span { display: flex; flex-direction: column; gap: 6px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); height: 100%; }
+.ctype span b { font-family: var(--font-display); }
+.ctype span small { color: var(--muted); font-size: .8rem; line-height: 1.5; }
+.ctype input:checked + span { border-color: var(--brand); background: var(--brand-soft); }
+.ctype input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 2px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: .88rem; }
+.field.full { grid-column: 1 / -1; }
+.field textarea { min-height: 96px; resize: vertical; }
+.ok-box { padding: 14px 16px; border-radius: 12px; background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); font-weight: 500; }
+.mk-detail { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.mk-detail > * { min-width: 0; }
+.hbar { display: grid; grid-template-columns: 140px 1fr 40px; gap: 10px; align-items: center; font-size: .86rem; }
+.hbar .t { height: 12px; background: var(--sunken); border-radius: 99px; overflow: hidden; }
+.hbar .t b { display: block; height: 100%; background: var(--brand); border-radius: 99px; }
+@media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, 1fr); } .dir-grid { grid-template-columns: repeat(2, 1fr); } .consult-types { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 900px) {
+  .dash { grid-template-columns: 1fr; }
+  .dnav { position: static; flex-direction: row; overflow-x: auto; }
+  .dnav .who { display: none; }
+  .dnav button { white-space: nowrap; }
+  .two, .mk-detail { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) { .dir-grid, .form-grid, .consult-types { grid-template-columns: 1fr; } .hbar { grid-template-columns: 100px 1fr 34px; } }
+
+/* Footer */
+footer.foot { background: var(--deep); color: var(--deep-fg); padding-block: 40px 24px; font-size: .9rem; }
+footer .cols { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 24px; }
+footer .cols > * { min-width: 0; }
+footer h4 { font-size: .95rem; margin-bottom: 10px; }
+footer ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; opacity: .8; }
+footer a { color: var(--deep-fg); }
+footer .bottom { margin-top: 28px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,.12); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; opacity: .7; font-size: .8rem; }
+@media (max-width: 800px) { footer .cols { grid-template-columns: 1fr 1fr; } }
+
+.toast { position: fixed; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); inset-inline: 0; margin: 0 auto; width: fit-content; max-width: calc(100% - 32px); background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 10px; font-size: .9rem; z-index: 50; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="app" dir="rtl" lang="ar">
+
+<!-- Utility bar (inspired by Sinaha's accessibility strip) -->
+<div class="util">
+  <div class="wrap">
+    <div class="grp">
+      <span class="item"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>info@madeinegyptgate.com</span>
+      <span class="item num" dir="ltr">+966 11 000 0000</span>
+      <button type="button" id="langBtn">English</button>
+    </div>
+    <div class="grp">
+      <span class="item" id="dateHijri"></span>
+      <span class="item num" id="dateGreg"></span>
+      <span class="item num" id="clock"></span>
+      <button type="button" id="fsUp" aria-label="تكبير الخط">A+</button>
+      <button type="button" id="fsDown" aria-label="تصغير الخط">A−</button>
+      <button type="button" id="themeBtn" aria-label="تبديل الوضع الليلي">◐</button>
+    </div>
+  </div>
+</div>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#home">
+      <span class="mark"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V10l5 3V10l5 3V6l8 4v11z"/><path d="M7 17h2M12 17h2M17 17h2"/></svg></span>
+      <span><b>بوابة صنع في مصر</b><small>MADE IN EGYPT GATE</small></span>
+    </a>
+    <button class="menu-btn" id="menuBtn" aria-label="القائمة" aria-expanded="false"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <nav class="mainnav" id="mainnav" aria-label="الرئيسية">
+      <a href="#home" data-v="home">الرئيسية</a>
+      <a href="#market" data-v="market">السوق الإلكتروني</a>
+      <a href="#factory" data-v="factory">ملف المصنع</a>
+      <a href="#dashboard" data-v="dashboard">المناقصات والفرص</a>
+      <a href="#dashboard" data-v="dashboard" data-tab="markets">الأسواق</a>
+      <a href="#dashboard" data-v="dashboard" data-tab="consult">الاستشارات</a>
+    </nav>
+    <div class="hdr-cta">
+      <a class="btn btn-line btn-sm" href="#dashboard">دخول المصانع</a>
+      <a class="btn btn-brand btn-sm" href="#dashboard">سجّل مصنعك</a>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- ================= HOME ================= -->
+<div class="view" id="v-home">
+  <section class="hero">
+    <canvas id="heroCanvas" aria-hidden="true"></canvas>
+    <div class="wrap">
+      <div>
+        <p class="eyebrow" style="color:#E9B95A">السوق الإلكتروني الخليجي للمنتج الوطني</p>
+        <h1 style="margin-top:10px">كل مصنع سعودي له <span>بيت رقمي</span> وسوق مفتوح على خمس قارات</h1>
+        <p class="lede">بوابة واحدة تربط المصانع بالموردين ومنافذ البيع، وبشركات الشحن والتأمين والبنوك. ملف تعريفي متكامل لمصنعك، ومنتجاتك معروضة في السوق، وفرص التوريد والمناقصات تصلك أولاً بأول.</p>
+        <form class="search" id="heroSearch" role="search">
+          <select id="hsType" aria-label="نوع البحث">
+            <option value="product">منتجات</option>
+            <option value="factory">مصانع</option>
+            <option value="tender">مناقصات</option>
+          </select>
+          <input id="hsQ" type="search" placeholder="ابحث: أنابيب PVC، تمور، ألواح شمسية…" aria-label="كلمة البحث">
+          <button class="btn" type="submit">بحث</button>
+        </form>
+        <div class="quick">
+          <a href="#market" data-sector="food">الصناعات الغذائية</a>
+          <a href="#market" data-sector="build">مواد البناء</a>
+          <a href="#market" data-sector="plastic">البلاستيك</a>
+          <a href="#market" data-sector="pharma">الأدوية</a>
+        </div>
+      </div>
+      <div class="hero-stats">
+        <div><b class="num">4,820</b><span>مصنع مسجّل</span></div>
+        <div><b class="num">61,300</b><span>منتج في السوق</span></div>
+        <div><b class="num">80</b><span>قطاعاً صناعياً</span></div>
+        <div><b class="num">1,145</b><span>طلب توريد مفتوح</span></div>
+        <p class="note">أرقام توضيحية للنموذج</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><div>
+        <p class="eyebrow">المنصة كمركز (Hub)</p>
+        <h2>المصنع في المنتصف، وكل ما يحتاجه حوله</h2>
+        <p class="muted">لا يحتاج المصنع أن يبني سوقه بنفسه. المنصة تجمع الطرف المشتري والخدمات المساندة في مكان واحد، تحت مظلة اتحاد الصناعات الخليجي، كسوق خليجي واحد.</p>
+      </div></div>
+      <div class="eco">
+        <div class="eco-col">
+          <div class="eco-node"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h13v10H3zM16 10h4l1 3v4h-5"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></span><div><b>الموردون</b><p>مواد خام ومستلزمات إنتاج من موردين موثّقين</p></div></div>
+          <div class="eco-node"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16l-1 11H5zM8 9V6a4 4 0 0 1 8 0v3"/></svg></span><div><b>منافذ البيع</b><p>تجار جملة، سلاسل تجزئة، موزعون في الخليج</p></div></div>
+          <div class="eco-node"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-6h6v6"/></svg></span><div><b>الجهات الحكومية</b><p>طلبات توريد ومناقصات ومشتريات حكومية</p></div></div>
+        </div>
+        <div class="eco-core"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 21V10l5 3V10l5 3V6l8 4v11z"/></svg><b>مصنعك</b><span>ملف تعريفي + متجر + لوحة فرص</span></div>
+        <div class="eco-col">
+          <div class="eco-node"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h20M12 2c3 3 3 17 0 20M12 2c-3 3-3 17 0 20"/><circle cx="12" cy="12" r="10"/></svg></span><div><b>شركات الشحن</b><p>شحن بري وبحري وجوي وتخليص جمركي</p></div></div>
+          <div class="eco-node"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg></span><div><b>شركات التأمين</b><p>تأمين الشحنات والائتمان التجاري</p></div></div>
+          <div class="eco-node"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h18L12 4zM5 10v8M9 10v8M15 10v8M19 10v8M3 20h18"/></svg></span><div><b>البنوك والتمويل</b><p>تمويل الطلبيات وخطابات الضمان</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec band">
+    <div class="wrap">
+      <div class="sec-head"><div>
+        <p class="eyebrow">خدمات المنصة</p>
+        <h2>منصات متخصصة تحت بوابة واحدة</h2>
+      </div></div>
+      <div class="svc-grid" id="svcGrid"></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><div>
+        <p class="eyebrow">الأسواق</p>
+        <h2>خمسة أسواق، وطلبات تنتظر مصنعك</h2>
+        <p class="muted">اختر السوق لترى أكثر القطاعات طلباً فيه. عدد الطلبات المفتوحة توضيحي.</p>
+      </div><a class="btn btn-line" href="#dashboard" data-tab="markets">تفاصيل الأسواق</a></div>
+      <div class="mk-grid" id="mkGrid"></div>
+    </div>
+  </section>
+
+  <section class="sec band">
+    <div class="wrap">
+      <div class="sec-head"><div>
+        <p class="eyebrow">80 قطاعاً ومشتقاتها</p>
+        <h2>تصفّح السوق حسب القطاع</h2>
+      </div><a class="btn btn-line" href="#market">كل القطاعات</a></div>
+      <div class="sec-grid" id="secGrid"></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><div>
+        <p class="eyebrow">أحدث الفرص</p>
+        <h2>طلبات التوريد وعروض الأسعار</h2>
+      </div><a class="btn btn-brand" href="#dashboard" data-tab="tenders">كل الفرص</a></div>
+      <div class="tbl-wrap"><table><thead><tr><th>رقم الطلب</th><th>الطلب</th><th>الجهة</th><th>النوع</th><th>السوق</th><th>آخر موعد</th><th></th></tr></thead><tbody id="homeTenders"></tbody></table></div>
+      <p class="demo-note" style="margin-top:8px">بيانات تجريبية لعرض الفكرة.</p>
+    </div>
+  </section>
+
+  <section class="sec band">
+    <div class="wrap">
+      <div class="sec-head"><div>
+        <p class="eyebrow">مصانع مميزة</p>
+        <h2>مصانع اكتمل ملفها على المنصة</h2>
+      </div></div>
+      <div class="fac-grid" id="facGrid"></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head"><div>
+        <p class="eyebrow">للمصانع</p>
+        <h2>من التسجيل إلى أول طلبية</h2>
+      </div><a class="btn btn-gold" href="#dashboard">ابدأ الآن مجاناً</a></div>
+      <ol class="steps">
+        <li><h3>سجّل المصنع</h3><p>بالسجل التجاري والترخيص الصناعي. نتحقق من البيانات ونمنحك شارة "موثّق".</p></li>
+        <li><h3>أكمل ملفك</h3><p>الشعار، صور وفيديو المصنع، النبذة، الشهادات، بيانات التواصل والسوشيال ميديا.</p></li>
+        <li><h3>أضف منتجاتك</h3><p>كل منتج يُربط بقطاعه ويظهر في السوق للموردين ومنافذ البيع داخل الخليج وخارجه.</p></li>
+        <li><h3>استقبل الفرص</h3><p>مناقصات حكومية وطلبات عروض أسعار تطابق قطاعك تصلك في لوحة التحكم.</p></li>
+      </ol>
+    </div>
+  </section>
+</div>
+
+<!-- ================= MARKET ================= -->
+<div class="view" id="v-market" hidden>
+  <div class="wrap mkt">
+    <aside class="side" aria-label="تصفية">
+      <div>
+        <h4>السوق</h4>
+        <div id="fMarkets"></div>
+      </div>
+      <div>
+        <h4>القطاعات <span class="muted" style="font-weight:400">(عرض 20 من 80)</span></h4>
+        <label><input type="radio" name="fsec" value="" checked> كل القطاعات</label>
+        <div id="fSectors"></div>
+      </div>
+      <div>
+        <h4>التوثيق</h4>
+        <label><input type="checkbox" id="fVerified"> مصانع موثّقة فقط</label>
+      </div>
+    </aside>
+    <div>
+      <div class="sec-head" style="margin-bottom:16px"><div>
+        <p class="eyebrow">السوق الإلكتروني</p>
+        <h2>اشترِ مباشرة من المصنع</h2>
+      </div></div>
+      <div class="toolbar">
+        <div class="tabs" id="mktTabs" role="tablist">
+          <button class="on" data-k="all" role="tab">الكل</button>
+          <button data-k="factory" role="tab">مصانع</button>
+          <button data-k="supplier" role="tab">موردون</button>
+          <button data-k="outlet" role="tab">منافذ بيع</button>
+        </div>
+        <input type="search" id="mktQ" placeholder="ابحث في المنتجات" aria-label="ابحث في المنتجات">
+      </div>
+      <p class="muted" id="mktCount" style="margin-bottom:12px;font-size:.88rem"></p>
+      <div class="prod-grid" id="prodGrid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= FACTORY PROFILE ================= -->
+<div class="view" id="v-factory" hidden>
+  <div class="slider" id="slider">
+    <div class="slides" id="slides"></div>
+    <button class="nav prev" id="sPrev" aria-label="السابق">›</button>
+    <button class="nav next" id="sNext" aria-label="التالي">‹</button>
+    <div class="dots" id="sDots"></div>
+  </div>
+  <div class="wrap">
+    <div class="pf-head">
+      <div class="pf-logo">ن.ص</div>
+      <div class="pf-title">
+        <div class="tags"><span class="chip ok">✓ مصنع موثّق</span><span class="chip gold">شهادة المحتوى المحلي</span><span class="chip">منذ 2004</span></div>
+        <h1>مصنع النخبة للصناعات البلاستيكية</h1>
+        <p class="muted">البلاستيك والمطاط · أنابيب ووصلات PVC و HDPE · المدينة الصناعية الثانية، الدمام</p>
+      </div>
+      <div class="pf-acts">
+        <button class="btn btn-brand" data-toast="تم إرسال طلب عرض السعر إلى المصنع (نموذج تجريبي)">اطلب عرض سعر</button>
+        <button class="btn btn-line" data-toast="تمت إضافة المصنع إلى المفضلة">حفظ</button>
+        <button class="btn btn-line" data-toast="انسخ رابط الصفحة من شريط العنوان">مشاركة</button>
+      </div>
+    </div>
+    <div class="pf-body">
+      <div>
+        <div class="tabs pf-tabs" id="pfTabs" role="tablist">
+          <button class="on" data-k="about">نبذة</button>
+          <button data-k="products">المنتجات</button>
+          <button data-k="services">الخدمات</button>
+          <button data-k="certs">الشهادات</button>
+          <button data-k="export">التصدير</button>
+          <button data-k="media">الصور والفيديو</button>
+        </div>
+        <div id="pfPanel"></div>
+      </div>
+      <aside style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <h3>بيانات التواصل</h3>
+          <dl class="kv">
+            <dt>الهاتف</dt><dd dir="ltr" style="text-align:right">+966 13 000 0000</dd>
+            <dt>واتساب</dt><dd dir="ltr" style="text-align:right">+966 50 000 0000</dd>
+            <dt>البريد</dt><dd>sales@nokhba-plastic.example</dd>
+            <dt>الموقع</dt><dd>nokhba-plastic.example</dd>
+            <dt>العنوان</dt><dd>المدينة الصناعية الثانية، الدمام 34326</dd>
+            <dt>ساعات العمل</dt><dd>الأحد – الخميس، 7:30 ص – 4:30 م</dd>
+          </dl>
+          <div class="social" aria-label="حسابات التواصل الاجتماعي">
+            <a href="https://x.com" aria-label="إكس">𝕏</a>
+            <a href="https://linkedin.com" aria-label="لينكدإن">in</a>
+            <a href="https://instagram.com" aria-label="إنستغرام">IG</a>
+            <a href="https://youtube.com" aria-label="يوتيوب">▶</a>
+            <a href="https://facebook.com" aria-label="فيسبوك">f</a>
+          </div>
+        </div>
+        <div class="card">
+          <h3>بيانات السجل</h3>
+          <dl class="kv">
+            <dt>السجل التجاري</dt><dd class="num">2050XXXXXX</dd>
+            <dt>الترخيص الصناعي</dt><dd class="num">4111XXXX</dd>
+            <dt>رأس المال</dt><dd>25 مليون جنيه</dd>
+            <dt>عدد العاملين</dt><dd>320</dd>
+          </dl>
+        </div>
+        <div class="card" style="background:var(--brand-soft);border-color:transparent">
+          <h3>هل هذا مصنعك؟</h3>
+          <p class="muted" style="font-size:.9rem">كل مصنع يحصل على صفحة مثل هذه فور التسجيل، ويحدّثها من لوحة التحكم.</p>
+          <a class="btn btn-brand" href="#dashboard">افتح لوحة المصنع</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<!-- ================= DASHBOARD ================= -->
+<div class="view" id="v-dashboard" hidden>
+  <div class="wrap dash">
+    <nav class="dnav" id="dnav" aria-label="لوحة المصنع">
+      <div class="who"><span class="av">ن.ص</span><div><b>مصنع النخبة للصناعات البلاستيكية</b><small>حساب مصنع · موثّق</small></div></div>
+      <button data-t="overview" class="on">نظرة عامة</button>
+      <button data-t="tenders">المناقصات الحكومية <span class="badge">12</span></button>
+      <button data-t="rfq">طلبات عروض الأسعار <span class="badge">7</span></button>
+      <button data-t="projects">المشاريع الكبرى</button>
+      <button data-t="awards">الترسيات (من فاز)</button>
+      <button data-t="directory">دليل المقاولين والشحن</button>
+      <button data-t="consult">طلب استشارة</button>
+      <button data-t="markets">الأسواق</button>
+      <button data-t="myproducts">منتجاتي</button>
+    </nav>
+    <div class="dpanel" id="dpanel"></div>
+  </div>
+</div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <h4>بوابة صنع في مصر</h4>
+        <p style="opacity:.8">السوق الإلكتروني الذي يربط المصانع الوطنية بالموردين ومنافذ البيع والخدمات المساندة، ضمن سوق خليجي واحد.</p>
+      </div>
+      <div><h4>المنصة</h4><ul><li><a href="#market">السوق الإلكتروني</a></li><li><a href="#factory">ملفات المصانع</a></li><li><a href="#dashboard">المناقصات والفرص</a></li></ul></div>
+      <div><h4>للمصانع</h4><ul><li><a href="#dashboard">تسجيل مصنع</a></li><li><a href="#dashboard">طلب استشارة</a></li><li><a href="#dashboard">الأسواق الخارجية</a></li></ul></div>
+      <div><h4>تواصل</h4><ul><li>info@madeinegyptgate.com</li><li dir="ltr" style="text-align:right">+966 11 000 0000</li><li>الرياض، جمهورية مصر العربية</li></ul></div>
+    </div>
+    <div class="bottom"><span>© 2026 بوابة صنع في مصر</span><span>نموذج تصميم أولي · البيانات المعروضة تجريبية</span></div>
+  </div>
+</footer>
+
+<div class="toast" id="toast" hidden></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  var fmt = new Intl.NumberFormat("ar-SA-u-nu-latn");
+
+  /* ---------- Data (sample) ---------- */
+  var MARKETS = [
+    { k: "local", n: "السوق المحلي", open: 486, top: [["مواد البناء", 92], ["الغذائية", 81], ["البلاستيك", 64], ["الكهربائية", 52], ["الأثاث", 38]] },
+    { k: "gulf", n: "السوق الخليجي", open: 312, top: [["الغذائية", 88], ["مواد البناء", 70], ["الكيماويات", 55], ["التغليف", 47], ["الأدوية", 33]] },
+    { k: "africa", n: "السوق الأفريقي", open: 158, top: [["الأسمدة", 74], ["البلاستيك", 61], ["الغذائية", 58], ["الحديد", 44], ["الأدوية", 29]] },
+    { k: "asia", n: "السوق الآسيوي", open: 121, top: [["البتروكيماويات", 95], ["الأسمدة", 66], ["التمور", 52], ["الألمنيوم", 40], ["الكيماويات", 31]] },
+    { k: "europe", n: "السوق الأوروبي", open: 68, top: [["البتروكيماويات", 80], ["التمور", 57], ["مستحضرات التجميل", 35], ["الألمنيوم", 30], ["الطاقة المتجددة", 22]] }
+  ];
+  var SECTORS = [
+    ["food", "الصناعات الغذائية", ["الألبان", "التمور", "المخبوزات", "اللحوم والدواجن", "العصائر"]],
+    ["petro", "البتروكيماويات", ["البوليمرات", "الميثانول", "الأوليفينات"]],
+    ["plastic", "البلاستيك والمطاط", ["الأنابيب", "العبوات", "الأفلام", "الإطارات"]],
+    ["build", "مواد البناء", ["الإسمنت", "الطوب", "الخرسانة الجاهزة", "العوازل", "السيراميك"]],
+    ["steel", "الحديد والصلب", ["حديد التسليح", "الهياكل المعدنية", "الصاج"]],
+    ["alum", "الألمنيوم والمعادن", ["القطاعات", "الألواح", "الأسلاك"]],
+    ["pharma", "الأدوية", ["الأدوية الجنيسة", "المحاليل", "المكملات"]],
+    ["medical", "الأجهزة والمستلزمات الطبية", ["المستهلكات", "الأسرّة الطبية", "الكمامات"]],
+    ["chem", "الكيماويات", ["المنظفات", "الغازات الصناعية", "المذيبات"]],
+    ["fert", "الأسمدة", ["اليوريا", "الفوسفات", "الأسمدة العضوية"]],
+    ["pack", "الورق والتغليف", ["الكرتون", "الأكياس", "الملصقات"]],
+    ["textile", "المنسوجات والملابس", ["الزي الموحد", "الأقمشة", "المفروشات"]],
+    ["furn", "الأثاث", ["أثاث مكتبي", "أثاث منزلي", "أثاث فندقي"]],
+    ["elec", "المعدات الكهربائية", ["الكابلات", "اللوحات", "المحولات", "الإنارة"]],
+    ["mach", "الآلات والمعدات", ["المضخات", "الصمامات", "خطوط الإنتاج"]],
+    ["auto", "السيارات وقطع الغيار", ["البطاريات", "الفلاتر", "الهياكل"]],
+    ["glass", "الزجاج", ["زجاج معماري", "عبوات زجاجية"]],
+    ["cosm", "مستحضرات التجميل", ["العطور", "العناية بالبشرة", "دهن العود"]],
+    ["solar", "الطاقة المتجددة", ["الألواح الشمسية", "المحوّلات", "الهياكل"]],
+    ["paint", "الدهانات", ["دهانات معمارية", "دهانات صناعية", "العوازل المائية"]]
+  ];
+  var SEC = {}; SECTORS.forEach(function (s) { SEC[s[0]] = s[1]; });
+  var KIND = { factory: "مصنع", supplier: "مورد", outlet: "منفذ بيع" };
+  var COLORS = ["#0B6B47", "#7A5A12", "#1F4E6B", "#5B3A6B", "#2F5D3A", "#6B3A2F", "#3A4F6B", "#4E6B1F"];
+
+  var PRODUCTS = [
+    ["أنابيب PVC ضغط عالٍ 110 مم", "plastic", "factory", "مصنع النخبة للصناعات البلاستيكية", "الدمام", 38, 52, "متر", 500, ["local", "gulf", "africa"], true],
+    ["تمور خلاص معبأة 1 كجم", "food", "factory", "مصنع واحة القصيم للتمور", "بريدة", 18, 24, "عبوة", 1000, ["local", "gulf", "asia", "europe"], true],
+    ["حديد تسليح 16 مم", "steel", "factory", "مصنع الراية للصلب", "الجبيل", 2650, 2800, "طن", 25, ["local", "gulf"], true],
+    ["ألواح شمسية 550 واط", "solar", "factory", "شمس الجزيرة للطاقة", "الرياض", 420, 480, "لوح", 100, ["local", "gulf", "africa"], true],
+    ["كرتون مضلع 5 طبقات", "pack", "factory", "مصنع الخليج للتغليف", "جدة", 3.2, 4.1, "حبة", 5000, ["local", "gulf"], false],
+    ["محلول ملحي وريدي 500 مل", "pharma", "factory", "الدواء الوطني", "الرياض", 4.5, 5.2, "عبوة", 2000, ["local", "gulf", "africa"], true],
+    ["حبيبات بولي إيثيلين HDPE", "petro", "supplier", "مورد الشرق للمواد الخام", "الجبيل", 4900, 5300, "طن", 20, ["local", "gulf", "asia", "europe"], true],
+    ["عازل مائي بيتوميني", "paint", "factory", "مصنع درع للعوازل", "الخرج", 95, 130, "لفة", 200, ["local", "gulf", "africa"], false],
+    ["كابلات نحاس 4×16 مم²", "elec", "factory", "مصنع الوطن للكابلات", "الدمام", 88, 102, "متر", 1000, ["local", "gulf", "africa"], true],
+    ["دهن عود فاخر 12 مل", "cosm", "outlet", "دار العطور العربية", "مكة المكرمة", 240, 380, "عبوة", 50, ["local", "gulf", "europe"], true],
+    ["يوريا محببة 46%", "fert", "supplier", "مورد الصحراء للأسمدة", "الجبيل", 1350, 1480, "طن", 100, ["africa", "asia"], true],
+    ["أثاث مكتبي متكامل", "furn", "factory", "مصنع إتقان للأثاث", "الرياض", 3200, 5800, "طقم", 10, ["local", "gulf"], false],
+    ["بلوك أسمنتي معزول 20 سم", "build", "factory", "مصنع الأساس للبلوك", "المدينة المنورة", 3.6, 4.4, "حبة", 3000, ["local"], true],
+    ["حليب طويل الأجل 1 لتر", "food", "outlet", "موزعو المراعي الذهبية", "الرياض", 4.1, 4.8, "عبوة", 1200, ["local", "gulf"], false],
+    ["مضخات طرد مركزي صناعية", "mach", "supplier", "مورد التقنية الصناعية", "جدة", 7800, 14500, "قطعة", 2, ["local", "gulf", "africa"], true],
+    ["قطاعات ألمنيوم معمارية", "alum", "factory", "مصنع الصقر للألمنيوم", "الدمام", 14, 19, "كجم", 1000, ["local", "gulf", "europe"], true],
+    ["كمامات طبية 3 طبقات", "medical", "factory", "مصنع وقاية للمستلزمات الطبية", "الرياض", 0.18, 0.25, "حبة", 50000, ["local", "gulf", "africa"], true],
+    ["زي عمال موحد قطني", "textile", "outlet", "متاجر المهنة للزي الموحد", "جدة", 65, 95, "طقم", 200, ["local", "gulf"], false]
+  ];
+
+  var TENDERS = [
+    ["GT-2026-4417", "توريد أنابيب HDPE لمشروع شبكة مياه", "جهة حكومية – قطاع المياه", "حكومية", "plastic", "local", "2026-12-08", "4.2 مليون", 94],
+    ["RFQ-88210", "تمور فاخرة معبأة لسلسلة متاجر", "سلسلة تجزئة – الكويت", "خاصة", "food", "gulf", "2026-11-30", "380 ألف", 0],
+    ["GT-2026-4390", "توريد محاليل وريدية لمستشفيات المنطقة الشرقية", "جهة حكومية – قطاع الصحة", "حكومية", "pharma", "local", "2026-12-15", "2.8 مليون", 0],
+    ["RFQ-88197", "كابلات جهد منخفض لمشروع سكني", "مقاول عام – الرياض", "خاصة", "elec", "local", "2026-11-26", "1.1 مليون", 0],
+    ["RFQ-88174", "حبيبات بلاستيك لمصنع عبوات", "مصنع عبوات – نيروبي", "خاصة", "petro", "africa", "2026-12-02", "640 ألف", 0],
+    ["GT-2026-4352", "أثاث مدرسي لـ 40 مدرسة", "جهة حكومية – قطاع التعليم", "حكومية", "furn", "local", "2026-12-20", "6.5 مليون", 0],
+    ["RFQ-88160", "عبوات بلاستيكية للأغذية 500 مل", "مصنع عصائر – مسقط", "خاصة", "plastic", "gulf", "2026-11-28", "210 ألف", 81],
+    ["RFQ-88142", "يوريا محببة 5,000 طن", "مستورد أسمدة – فيتنام", "خاصة", "fert", "asia", "2026-12-10", "7.1 مليون", 0],
+    ["GT-2026-4318", "أنابيب PVC لتصريف مياه الأمطار", "أمانة منطقة – البنية التحتية", "حكومية", "plastic", "local", "2026-12-04", "3.3 مليون", 88],
+    ["RFQ-88101", "قطاعات ألمنيوم لواجهات فندق", "مطوّر عقاري – ميلانو", "خاصة", "alum", "europe", "2026-12-18", "920 ألف", 0],
+    ["RFQ-88093", "كرتون تغليف لصادرات التمور", "مصدّر تمور – الأحساء", "خاصة", "pack", "local", "2026-11-24", "150 ألف", 0],
+    ["RFQ-88077", "وصلات وأكواع PVC بمقاسات متعددة", "مورد مواد سباكة – الدوحة", "خاصة", "plastic", "gulf", "2026-12-06", "290 ألف", 76]
+  ];
+  var PROJECTS = [
+    ["مدينة صناعية جديدة – المرحلة الأولى", "جهة حكومية", "المنطقة الشرقية", "12 مليار", "طرح العقود", 60],
+    ["محطة تحلية مياه بطاقة 600 ألف م³", "شراكة بين القطاعين", "الساحل الغربي", "9.4 مليار", "التصميم", 25],
+    ["مشروع إسكان 8,000 وحدة", "مطوّر خاص", "الرياض", "6.2 مليار", "التنفيذ", 45],
+    ["شبكة صرف صحي لـ 14 حياً", "جهة حكومية", "منطقة مكة المكرمة", "2.1 مليار", "الترسية", 70],
+    ["مجمّع مستشفيات تخصصي", "جهة حكومية", "منطقة القصيم", "3.7 مليار", "التنفيذ", 38],
+    ["مزرعة طاقة شمسية 1.5 جيجاواط", "مطوّر خاص", "منطقة تبوك", "5.5 مليار", "طرح العقود", 18]
+  ];
+  var AWARDS = [
+    ["GT-2026-3981", "توريد أنابيب PVC لشبكة ري", "شركة الأفق للأنابيب", "جهة حكومية – قطاع الزراعة", "2.6 مليون", "2026-11-10", 5],
+    ["GT-2026-3944", "كابلات لمحطة تحويل كهرباء", "مصنع الوطن للكابلات", "جهة حكومية – قطاع الطاقة", "11.8 مليون", "2026-11-06", 7],
+    ["RFQ-87720", "عبوات HDPE لمصنع منظفات", "مصنع النخبة للصناعات البلاستيكية", "مصنع منظفات – الدمام", "460 ألف", "2026-11-03", 4],
+    ["GT-2026-3902", "بلوك معزول لمبانٍ مدرسية", "مصنع الأساس للبلوك", "جهة حكومية – قطاع التعليم", "1.9 مليون", "2026-10-29", 9],
+    ["GT-2026-3877", "مستلزمات طبية لمراكز صحية", "مصنع وقاية للمستلزمات الطبية", "جهة حكومية – قطاع الصحة", "3.4 مليون", "2026-10-25", 6]
+  ];
+  var DIRECTORY = [
+    ["contractor", "شركة البنيان للمقاولات العامة", "الرياض", 4.7, "مقاولات مباني وبنية تحتية · تصنيف أولى"],
+    ["contractor", "مؤسسة الإتقان للمقاولات الكهربائية", "الدمام", 4.4, "أعمال كهرباء وأنظمة تيار خفيف"],
+    ["contractor", "شركة المسار للطرق والجسور", "جدة", 4.5, "طرق، جسور، شبكات مياه"],
+    ["consultant", "دار الخبرة للاستشارات الهندسية", "الرياض", 4.8, "تصميم وإشراف على المشاريع الصناعية"],
+    ["consultant", "بيت الجودة للاستشارات", "الخبر", 4.6, "ISO 9001، تأهيل للمحتوى المحلي، SASO"],
+    ["consultant", "رؤية للاستشارات المالية", "الرياض", 4.5, "دراسات جدوى، هيكلة تمويل، تقييم مصانع"],
+    ["shipping", "الجسر الخليجي للشحن البري", "الدمام", 4.6, "شحن بري لكل دول الخليج · تخليص جمركي"],
+    ["shipping", "موانئ البحر الأحمر للخدمات اللوجستية", "جدة", 4.3, "شحن بحري إلى أفريقيا وأوروبا"],
+    ["shipping", "صقر للشحن الجوي", "الرياض", 4.2, "شحن جوي سريع للعينات والطلبيات الصغيرة"],
+    ["insurance", "أمان لتأمين البضائع", "الرياض", 4.4, "تأمين الشحنات والائتمان التجاري"],
+    ["bank", "برنامج تمويل الطلبيات الصناعية", "الرياض", 4.5, "تمويل أوامر الشراء وخطابات الضمان"],
+    ["contractor", "شركة الركن للمقاولات الصناعية", "الجبيل", 4.3, "إنشاء مصانع وتركيب خطوط إنتاج"]
+  ];
+  var DIRTYPE = { contractor: "مقاول", consultant: "استشاري", shipping: "شحن", insurance: "تأمين", bank: "تمويل" };
+  var SERVICES = [
+    ["السوق الإلكتروني", "منتجات المصانع والموردين ومنافذ البيع مقسّمة على 80 قطاعاً، مع طلب عرض سعر بضغطة.", "#market", "M4 9h16l-1 11H5zM8 9V6a4 4 0 0 1 8 0v3"],
+    ["دليل المصانع والصادرات", "ملف تعريفي لكل مصنع بالصور والفيديو والشهادات وأسواق التصدير.", "#factory", "M3 21V10l5 3V10l5 3V6l8 4v11z"],
+    ["المناقصات الحكومية", "طلبات التوريد الحكومية المطابقة لقطاعك، مع تنبيه قبل الإغلاق.", "#dashboard|tenders", "M3 21h18M5 21V10l7-5 7 5v11"],
+    ["طلبات عروض الأسعار", "طلبات الشراء من القطاع الخاص داخل المملكة والخليج وخارجه.", "#dashboard|rfq", "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"],
+    ["المشاريع الكبرى", "مشاريع حكومية وخاصة قيد التنفيذ ومراحلها، لتعرف أين سيكون الطلب.", "#dashboard|projects", "M3 3v18h18M7 15l4-4 3 3 5-6"],
+    ["نتائج الترسيات", "من فاز بأي مناقصة وبكم، لتقرأ السوق وتسعّر بثقة.", "#dashboard|awards", "M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"],
+    ["دليل المقاولين والخدمات", "مقاولون واستشاريون وشركات شحن وتأمين وتمويل في مكان واحد.", "#dashboard|directory", "M17 21v-2a4 4 0 0 0-8 0v2M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0M21 21v-2a4 4 0 0 0-3-3.9"],
+    ["الاستشارات", "إدارية ومالية وتسويقية وإنتاجية، لرفع الطاقة الإنتاجية وفتح أسواق جديدة.", "#dashboard|consult", "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"]
+  ];
+
+  /* ---------- Helpers ---------- */
+  function icon(d) { return '<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="' + d + '"/></svg>'; }
+  function mName(k) { for (var i = 0; i < MARKETS.length; i++) if (MARKETS[i].k === k) return MARKETS[i].n; return k; }
+  function shortM(k) { return mName(k).replace("السوق ", ""); }
+  function daysLeft(d) { return Math.ceil((new Date(d + "T23:59:00") - new Date("2026-11-16T12:00:00")) / 864e5); }
+  function dateAr(d) { return new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { day: "numeric", month: "short" }).format(new Date(d + "T12:00:00")); }
+  function dlChip(d) { var n = daysLeft(d); var c = n <= 10 ? "bad" : n <= 18 ? "warn" : "ok"; return '<span class="chip ' + c + '">' + dateAr(d) + ' · ' + n + ' يوم</span>'; }
+  function color(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return COLORS[h % COLORS.length]; }
+  function initials(n) { var w = n.replace(/^(مصنع|شركة|مؤسسة|مورد|دار)\s+/, "").split(/\s+/); return (w[0] || "").charAt(0) + "." + (w[1] || w[0] || "").replace(/^ال/, "").charAt(0); }
+  var toastT;
+  function toast(m) { var t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { t.hidden = true; }, 2600); }
+  document.addEventListener("click", function (e) { var b = e.target.closest("[data-toast]"); if (b) toast(b.getAttribute("data-toast")); });
+
+  /* ---------- Utility bar ---------- */
+  function tick() {
+    var now = new Date();
+    try { $("#dateHijri").textContent = new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(now); } catch (e) { $("#dateHijri").textContent = ""; }
+    $("#dateGreg").textContent = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", { day: "numeric", month: "short", year: "numeric" }).format(now);
+    $("#clock").textContent = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Riyadh" }).format(now);
+  }
+  tick(); setInterval(tick, 30000);
+  var fs = 16;
+  function setFs(v) { fs = Math.max(14, Math.min(20, v)); document.documentElement.style.setProperty("--fs", fs + "px"); try { localStorage.setItem("mig-fs", fs); } catch (e) {} }
+  try { var s = +localStorage.getItem("mig-fs"); if (s) setFs(s); } catch (e) {}
+  $("#fsUp").onclick = function () { setFs(fs + 1); };
+  $("#fsDown").onclick = function () { setFs(fs - 1); };
+  $("#themeBtn").onclick = function () {
+    var r = document.documentElement, cur = r.getAttribute("data-theme");
+    var dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+    r.setAttribute("data-theme", dark ? "light" : "dark");
+  };
+  $("#langBtn").onclick = function () { toast("النسخة الإنجليزية جزء من المرحلة التالية"); };
+  $("#menuBtn").onclick = function () { var n = $("#mainnav"); n.classList.toggle("open"); this.setAttribute("aria-expanded", n.classList.contains("open")); };
+
+  /* ---------- Hero canvas: factory skyline grid ---------- */
+  function drawHero() {
+    var c = $("#heroCanvas"); if (!c) return;
+    var r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    c.width = r.width * d; c.height = r.height * d;
+    var x = c.getContext("2d"); x.scale(d, d);
+    x.clearRect(0, 0, r.width, r.height);
+    x.strokeStyle = "rgba(255,255,255,0.06)"; x.lineWidth = 1;
+    for (var gx = 0; gx < r.width; gx += 40) { x.beginPath(); x.moveTo(gx, 0); x.lineTo(gx, r.height); x.stroke(); }
+    for (var gy = 0; gy < r.height; gy += 40) { x.beginPath(); x.moveTo(0, gy); x.lineTo(r.width, gy); x.stroke(); }
+    x.fillStyle = "rgba(255,255,255,0.07)";
+    var base = r.height, px = 0, seed = 7;
+    function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    while (px < r.width) {
+      var w = 40 + rnd() * 90, h = 40 + rnd() * 110;
+      x.fillRect(px, base - h, w, h);
+      if (rnd() > .5) { x.fillRect(px + w * .6, base - h - 50 - rnd() * 40, 10, 60 + rnd() * 40); }
+      if (rnd() > .6) { x.beginPath(); x.moveTo(px, base - h); for (var k = 0; k < 3; k++) { x.lineTo(px + (k + .5) * w / 3, base - h - 18); x.lineTo(px + (k + 1) * w / 3, base - h); } x.fill(); }
+      px += w + 6;
+    }
+  }
+  drawHero(); window.addEventListener("resize", drawHero);
+
+  /* ---------- Home ---------- */
+  $("#svcGrid").innerHTML = SERVICES.map(function (s) {
+    var p = s[2].split("|");
+    return '<article class="svc"><span class="ic">' + icon(s[3]) + '</span><h3>' + s[0] + '</h3><p>' + s[1] + '</p><a href="' + p[0] + '"' + (p[1] ? ' data-tab="' + p[1] + '"' : "") + '>اكتشف المزيد ←</a></article>';
+  }).join("");
+
+  var maxOpen = Math.max.apply(null, MARKETS.map(function (m) { return m.open; }));
+  $("#mkGrid").innerHTML = MARKETS.map(function (m) {
+    return '<a class="mk" href="#dashboard" data-tab="markets" data-market="' + m.k + '"><span class="flag">' + m.n + '</span><span class="cnt num">' + fmt.format(m.open) + '</span><small>طلب مفتوح · الأعلى: ' + m.top[0][0] + '</small><span class="bar"><b style="width:' + (m.open / maxOpen * 100) + '%"></b></span></a>';
+  }).join("");
+
+  $("#secGrid").innerHTML = SECTORS.slice(0, 15).map(function (s, i) {
+    return '<a class="sector" href="#market" data-sector="' + s[0] + '"><span class="ic num">' + (i + 1) + '</span><span><b>' + s[1] + '</b><small>' + s[2].length + ' قطاعات فرعية</small></span></a>';
+  }).join("") + '<a class="sector" href="#market"><span class="ic">+65</span><span><b>عرض كل القطاعات</b><small>80 قطاعاً ومشتقاتها</small></span></a>';
+
+  function tenderRow(t, withMatch) {
+    return '<tr><td class="num">' + t[0] + '</td><td><b>' + t[1] + '</b><br><span class="muted" style="font-size:.8rem">' + SEC[t[4]] + (t[7] ? ' · القيمة التقديرية ' + t[7] + ' جنيه' : '') + '</span></td><td>' + t[2] + '</td><td><span class="chip ' + (t[3] === "حكومية" ? "brand" : "gold") + '">' + t[3] + '</span></td><td>' + shortM(t[5]) + '</td><td>' + dlChip(t[6]) + '</td>' +
+      (withMatch ? '<td>' + (t[8] ? '<span class="chip ok num">تطابق ' + t[8] + '%</span>' : '<span class="chip">—</span>') + '</td>' : '') +
+      '<td><button class="btn btn-sm btn-brand" data-toast="تم فتح ملف الطلب ' + t[0] + ' (نموذج تجريبي)">التفاصيل</button></td></tr>';
+  }
+  $("#homeTenders").innerHTML = TENDERS.slice(0, 6).map(function (t) { return tenderRow(t, false); }).join("");
+
+  var feat = [["مصنع النخبة للصناعات البلاستيكية", "plastic", "الدمام", 46, ["local", "gulf", "africa"]], ["مصنع واحة القصيم للتمور", "food", "بريدة", 18, ["gulf", "asia", "europe"]], ["مصنع الوطن للكابلات", "elec", "الدمام", 64, ["local", "gulf", "africa"]], ["شمس الجزيرة للطاقة", "solar", "الرياض", 12, ["local", "gulf"]]];
+  $("#facGrid").innerHTML = feat.map(function (f) {
+    var c = color(f[0]);
+    return '<a class="fac" href="#factory" style="color:inherit"><div class="cover" style="background:linear-gradient(135deg,' + c + ',' + c + 'aa)"><span class="lg">' + initials(f[0]) + '</span></div><div class="body"><h3>' + f[0] + '</h3><span class="muted" style="font-size:.85rem">' + SEC[f[1]] + ' · ' + f[2] + '</span><span style="font-size:.85rem">' + f[3] + ' منتجاً في السوق</span><div class="meta"><span class="chip ok">✓ موثّق</span>' + f[4].map(function (m) { return '<span class="chip">' + shortM(m) + '</span>'; }).join("") + '</div></div></a>';
+  }).join("");
+
+  /* ---------- Market ---------- */
+  var mState = { kind: "all", sector: "", markets: [], verified: false, q: "" };
+  $("#fMarkets").innerHTML = MARKETS.map(function (m) { return '<label><input type="checkbox" value="' + m.k + '" name="fmk"> ' + m.n + '</label>'; }).join("");
+  $("#fSectors").innerHTML = SECTORS.map(function (s) {
+    return '<details><summary><label style="padding:0"><input type="radio" name="fsec" value="' + s[0] + '"> ' + s[1] + '</label><span class="muted">' + s[2].length + '</span></summary><ul>' + s[2].map(function (x) { return '<li>' + x + '</li>'; }).join("") + '</ul></details>';
+  }).join("");
+  function renderMarket() {
+    var q = mState.q.trim();
+    var list = PRODUCTS.filter(function (p) {
+      return (mState.kind === "all" || p[2] === mState.kind) && (!mState.sector || p[1] === mState.sector) && (!mState.verified || p[10]) &&
+        (!mState.markets.length || mState.markets.some(function (m) { return p[9].indexOf(m) > -1; })) &&
+        (!q || (p[0] + p[3] + SEC[p[1]]).indexOf(q) > -1);
+    });
+    $("#mktCount").textContent = list.length + " منتجاً مطابقاً" + (mState.sector ? " في قطاع " + SEC[mState.sector] : "");
+    $("#prodGrid").innerHTML = list.length ? list.map(function (p) {
+      var c = color(p[1] + "x");
+      return '<article class="prod"><div class="ph" style="background:linear-gradient(135deg,' + c + ',' + c + '99)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg></div><div class="body">' +
+        '<div class="row"><span class="chip ' + (p[2] === "factory" ? "brand" : p[2] === "supplier" ? "gold" : "") + '">' + KIND[p[2]] + '</span>' + (p[10] ? '<span class="chip ok">✓ موثّق</span>' : '') + '</div>' +
+        '<h3 style="font-size:1rem">' + esc(p[0]) + '</h3><a href="#factory" style="font-size:.85rem">' + esc(p[3]) + ' · ' + p[4] + '</a>' +
+        '<div class="row"><span class="price num">' + fmt.format(p[5]) + ' – ' + fmt.format(p[6]) + ' ج.م</span><span>/ ' + p[7] + '</span></div>' +
+        '<div class="row"><span>أقل كمية: <b class="num">' + fmt.format(p[8]) + '</b> ' + p[7] + '</span></div>' +
+        '<div class="row" style="justify-content:flex-start;flex-wrap:wrap;gap:4px">' + p[9].map(function (m) { return '<span class="chip">' + shortM(m) + '</span>'; }).join("") + '</div>' +
+        '<div class="acts"><button class="btn btn-sm btn-brand" data-toast="تم إرسال طلب عرض السعر إلى ' + esc(p[3]) + ' (نموذج تجريبي)">طلب عرض سعر</button><a class="btn btn-sm btn-line" href="#factory">ملف المصنع</a></div></div></article>';
+    }).join("") : '<div class="empty" style="grid-column:1/-1">لا توجد منتجات بهذه التصفية. جرّب قطاعاً آخر أو أزل بعض الفلاتر.</div>';
+  }
+  $("#mktTabs").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; $$("#mktTabs button").forEach(function (x) { x.classList.toggle("on", x === b); }); mState.kind = b.dataset.k; renderMarket(); });
+  $(".side").addEventListener("change", function (e) {
+    if (e.target.name === "fsec") mState.sector = e.target.value;
+    if (e.target.name === "fmk") mState.markets = $$('input[name="fmk"]:checked').map(function (i) { return i.value; });
+    if (e.target.id === "fVerified") mState.verified = e.target.checked;
+    renderMarket();
+  });
+  $("#mktQ").addEventListener("input", function () { mState.q = this.value; renderMarket(); });
+  function setSector(k) { mState.sector = k || ""; var r = $('input[name="fsec"][value="' + mState.sector + '"]'); if (r) { r.checked = true; var d = r.closest("details"); if (d) d.open = true; } }
+  $("#heroSearch").addEventListener("submit", function (e) {
+    e.preventDefault(); var t = $("#hsType").value, q = $("#hsQ").value;
+    if (t === "tender") { go("dashboard", "tenders"); } else { mState.q = q; $("#mktQ").value = q; go("market"); }
+  });
+
+  /* ---------- Factory profile ---------- */
+  var SLIDES = [
+    ["#0B6B47", "#0A2E21", "خطوط البثق: 12 خطاً بطاقة 18,000 طن سنوياً", false],
+    ["#1F4E6B", "#0A1E2E", "جولة فيديو داخل المصنع · 3:40 دقيقة", true],
+    ["#7A5A12", "#2E220A", "مختبر الجودة المعتمد لاختبار الضغط", false],
+    ["#2F5D3A", "#0E2416", "مستودعات التخزين والتحميل · 24,000 م²", false]
+  ];
+  function scene(a, b, i) {
+    var bld = "", seed = i * 13 + 5; function r() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    var x = 0; while (x < 1200) { var w = 60 + r() * 140, h = 80 + r() * 160; bld += '<rect x="' + x + '" y="' + (420 - h) + '" width="' + w + '" height="' + h + '" fill="rgba(255,255,255,' + (.06 + r() * .08).toFixed(2) + ')"/>'; if (r() > .55) bld += '<rect x="' + (x + w * .7) + '" y="' + (420 - h - 90) + '" width="14" height="90" fill="rgba(255,255,255,.12)"/>'; x += w + 8; }
+    return '<svg class="scene" viewBox="0 0 1200 420" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><defs><linearGradient id="g' + i + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + a + '"/><stop offset="1" stop-color="' + b + '"/></linearGradient></defs><rect width="1200" height="420" fill="url(#g' + i + ')"/>' + bld + '</svg>';
+  }
+  $("#slides").innerHTML = SLIDES.map(function (s, i) {
+    return '<div class="slide' + (i === 0 ? ' on' : '') + '">' + scene(s[0], s[1], i) + (s[3] ? '<button class="play" aria-label="تشغيل الفيديو" data-toast="هنا يُعرض فيديو المصنع الذي يرفعه صاحب المصنع">' + '<svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>' : '') + '<span class="cap">' + s[2] + '</span></div>';
+  }).join("");
+  $("#sDots").innerHTML = SLIDES.map(function (s, i) { return '<button aria-label="شريحة ' + (i + 1) + '"' + (i === 0 ? ' class="on"' : '') + '></button>'; }).join("");
+  var cur = 0, sTimer;
+  function show(n) { cur = (n + SLIDES.length) % SLIDES.length; $$("#slides .slide").forEach(function (s, i) { s.classList.toggle("on", i === cur); }); $$("#sDots button").forEach(function (d, i) { d.classList.toggle("on", i === cur); }); }
+  function auto() { clearInterval(sTimer); if (!matchMedia("(prefers-reduced-motion: reduce)").matches) sTimer = setInterval(function () { show(cur + 1); }, 5000); }
+  $("#sNext").onclick = function () { show(cur + 1); auto(); };
+  $("#sPrev").onclick = function () { show(cur - 1); auto(); };
+  $("#sDots").addEventListener("click", function (e) { var i = $$("#sDots button").indexOf(e.target); if (i > -1) { show(i); auto(); } });
+  auto();
+
+  var PF = {
+    about: '<div class="card"><h3>عن المصنع</h3><p>تأسس مصنع النخبة عام 2004 في المدينة الصناعية الثانية بالدمام، ويُعد من أكبر منتجي أنابيب PVC و HDPE في المنطقة الشرقية. يخدم مشاريع المياه والصرف الصحي والري والبنية التحتية داخل المملكة، ويصدّر إلى دول الخليج وشرق أفريقيا.</p><div class="facts4"><div><b class="num">18,000</b><span>طن طاقة سنوية</span></div><div><b class="num">12</b><span>خط إنتاج</span></div><div><b class="num">46</b><span>منتجاً في السوق</span></div><div><b class="num">9</b><span>دول تصدير</span></div></div><h3>الرؤية</h3><p class="muted">أن نكون المورد الأول لأنظمة الأنابيب في الخليج بجودة تطابق المواصفات القياسية السعودية والدولية.</p></div>',
+    products: function () { return '<div class="prod-grid">' + PRODUCTS.filter(function (p) { return p[1] === "plastic" || p[1] === "petro"; }).concat([["وصلات وأكواع PVC", "plastic", "factory", "", "", 2.5, 18, "قطعة", 1000, ["local", "gulf"], true], ["أنابيب HDPE للري 63 مم", "plastic", "factory", "", "", 9, 14, "متر", 1000, ["local", "africa"], true]]).map(function (p) { var c = color(p[0]); return '<article class="prod"><div class="ph" style="background:linear-gradient(135deg,' + c + ',' + c + '99)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M21 8 12 3 3 8v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg></div><div class="body"><h3 style="font-size:1rem">' + p[0] + '</h3><div class="row"><span class="price num">' + fmt.format(p[5]) + ' – ' + fmt.format(p[6]) + ' ج.م</span><span>/ ' + p[7] + '</span></div><div class="acts"><button class="btn btn-sm btn-brand" data-toast="تم إرسال طلب عرض السعر (نموذج تجريبي)">طلب عرض سعر</button></div></div></article>'; }).join("") + '</div>'; },
+    services: '<div class="card"><h3>الخدمات</h3><ul style="margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:6px"><li>تصنيع حسب الطلب بمقاسات وضغوط خاصة (OEM)</li><li>استشارات فنية لتصميم شبكات المياه والري</li><li>توصيل للمواقع داخل المملكة بأسطول المصنع</li><li>اختبار الضغط في الموقع قبل الاستلام</li><li>تدريب فرق التركيب لدى المقاولين</li></ul></div>',
+    certs: '<div class="card"><h3>الشهادات والاعتمادات</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">' + [["ISO 9001:2015", "نظام إدارة الجودة"], ["ISO 14001", "الإدارة البيئية"], ["علامة الجودة السعودية", "مطابقة المواصفات القياسية"], ["شهادة المحتوى المحلي", "نسبة محتوى محلي 62%"], ["WRAS", "اعتماد ملامسة مياه الشرب"], ["عضوية اتحاد الصناعات", "عضو فاعل"]].map(function (c) { return '<div class="cert"><span class="ic">' + icon("M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM8.2 13.9 7 22l5-3 5 3-1.2-8.1") + '</span><div><b>' + c[0] + '</b><br><span class="muted" style="font-size:.82rem">' + c[1] + '</span></div></div>'; }).join("") + '</div></div>',
+    export: '<div class="card"><h3>أسواق التصدير</h3><p class="muted" style="font-size:.88rem">نسبة المبيعات حسب السوق خلال 2025.</p><div class="exp-bars">' + [["السوق المحلي", 58], ["السوق الخليجي", 27], ["السوق الأفريقي", 12], ["السوق الآسيوي", 3]].map(function (r) { return '<div class="r"><span>' + r[0] + '</span><span class="t"><b style="width:' + r[1] + '%"></b></span><span class="num">' + r[1] + '%</span></div>'; }).join("") + '</div><p style="font-size:.88rem">يصدّر إلى: الإمارات، الكويت، عُمان، البحرين، قطر، اليمن، كينيا، إثيوبيا، تنزانيا.</p></div>',
+    media: '<div class="card"><h3>الصور والفيديو</h3><div class="gallery">' + ["خط البثق 3", "مختبر الجودة", "▶ فيديو الافتتاح", "المستودع", "أسطول التوصيل", "▶ جولة المصنع"].map(function (t, i) { var c = COLORS[i % COLORS.length]; return '<div style="background:linear-gradient(135deg,' + c + ',' + c + '88)">' + t + '</div>'; }).join("") + '</div><p class="demo-note">يرفع صاحب المصنع الصور والفيديوهات من لوحة التحكم، وتظهر هنا وفي السلايدر أعلى الصفحة.</p></div>'
+  };
+  function pfShow(k) { $$("#pfTabs button").forEach(function (b) { b.classList.toggle("on", b.dataset.k === k); }); var v = PF[k]; $("#pfPanel").innerHTML = typeof v === "function" ? v() : v; }
+  $("#pfTabs").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) pfShow(b.dataset.k); });
+  pfShow("about");
+
+  /* ---------- Dashboard ---------- */
+  var dState = { tab: "overview", tMarket: "", tKind: "حكومية", dirType: "", market: "gulf", consultSent: false };
+  var D = {};
+  D.overview = function () {
+    var matches = TENDERS.filter(function (t) { return t[8]; }).sort(function (a, b) { return b[8] - a[8]; });
+    return '<header><div><p class="eyebrow">لوحة المصنع</p><h2>صباح الخير، مصنع النخبة</h2><p class="muted">لديك ' + matches.length + ' فرص تطابق منتجاتك بنسبة عالية هذا الأسبوع.</p></div><a class="btn btn-line" href="#factory">عرض صفحتي العامة</a></header>' +
+      '<div class="kpis"><div class="kpi"><span>زيارات صفحة المصنع</span><b class="num">2,418</b><small>▲ 18% عن الشهر الماضي</small></div><div class="kpi"><span>طلبات عروض أسعار واردة</span><b class="num">37</b><small>▲ 9 هذا الأسبوع</small></div><div class="kpi"><span>فرص مطابقة مفتوحة</span><b class="num">' + matches.length + '</b><small>أقربها يغلق بعد ' + Math.min.apply(null, matches.map(function (t) { return daysLeft(t[6]); })) + ' أيام</small></div><div class="kpi"><span>منتجات منشورة</span><b class="num">46</b><small>في 3 أسواق</small></div></div>' +
+      '<div class="two"><div class="card"><h3>فرص تطابق قطاعك</h3><div class="opp">' + matches.map(function (t) { return '<div class="opp-item"><span class="m num">' + t[8] + '%<small>تطابق</small></span><div><b>' + t[1] + '</b><br><span class="muted" style="font-size:.82rem">' + t[2] + ' · ' + shortM(t[5]) + '</span></div>' + dlChip(t[6]) + '</div>'; }).join("") + '</div><button class="btn btn-brand" data-go="tenders" style="align-self:flex-start">كل المناقصات</button></div>' +
+      '<div class="card"><h3>اكتمال ملف المصنع</h3><div style="display:flex;justify-content:space-between;font-size:.9rem"><span>78%</span><span class="muted">ملف مكتمل يظهر أولاً في البحث</span></div><div class="progress"><b style="width:78%"></b></div><ul class="todo"><li class="done"><span class="ck">✓</span>الشعار وبيانات السجل</li><li class="done"><span class="ck">✓</span>النبذة والخدمات</li><li class="done"><span class="ck">✓</span>صور المصنع (8 صور)</li><li class="done"><span class="ck">✓</span>الشهادات</li><li><span class="ck"></span>فيديو جولة المصنع</li><li><span class="ck"></span>حسابات التواصل الاجتماعي</li><li><span class="ck"></span>كتالوج PDF للمنتجات</li></ul><button class="btn btn-gold" data-toast="هنا يرفع المصنع الفيديو والكتالوج">أكمل الملف</button></div></div>';
+  };
+  function tendersPanel(kind) {
+    var list = TENDERS.filter(function (t) { return (!kind || t[3] === kind) && (!dState.tMarket || t[5] === dState.tMarket); });
+    var title = kind === "حكومية" ? "المناقصات وطلبات التوريد الحكومية" : "طلبات عروض الأسعار الخاصة";
+    return '<header><div><p class="eyebrow">' + (kind === "حكومية" ? "مشتريات حكومية" : "القطاع الخاص") + '</p><h2>' + title + '</h2><p class="muted">مرتبة حسب نسبة التطابق مع منتجاتك ثم موعد الإغلاق.</p></div><div class="toolbar" style="margin:0"><select id="tMk" aria-label="السوق"><option value="">كل الأسواق</option>' + MARKETS.map(function (m) { return '<option value="' + m.k + '"' + (dState.tMarket === m.k ? " selected" : "") + '>' + m.n + '</option>'; }).join("") + '</select><button class="btn btn-line btn-sm" data-toast="سيصلك تنبيه بالبريد وواتساب عند نزول طلب في قطاعك">تفعيل التنبيهات</button></div></header>' +
+      '<div class="tbl-wrap"><table><thead><tr><th>الرقم</th><th>الطلب</th><th>الجهة</th><th>النوع</th><th>السوق</th><th>الإغلاق</th><th>التطابق</th><th></th></tr></thead><tbody>' +
+      (list.length ? list.sort(function (a, b) { return (b[8] - a[8]) || (daysLeft(a[6]) - daysLeft(b[6])); }).map(function (t) { return tenderRow(t, true); }).join("") : '<tr><td colspan="8" class="muted" style="text-align:center;padding:30px">لا توجد طلبات في هذا السوق حالياً.</td></tr>') +
+      '</tbody></table></div><p class="demo-note">بيانات تجريبية. في النسخة الفعلية تُجلب الطلبات من مصادر المشتريات الحكومية وتُضاف طلبات القطاع الخاص من المشترين على المنصة.</p>';
+  }
+  D.tenders = function () { return tendersPanel("حكومية"); };
+  D.rfq = function () { return tendersPanel("خاصة"); };
+  D.projects = function () {
+    return '<header><div><p class="eyebrow">ذكاء السوق</p><h2>المشاريع الحكومية والخاصة الكبرى</h2><p class="muted">اعرف أين سيكون الطلب على منتجاتك قبل طرح المناقصات.</p></div></header>' +
+      '<div class="tbl-wrap"><table><thead><tr><th>المشروع</th><th>المالك</th><th>المنطقة</th><th>القيمة (جنيه)</th><th>المرحلة</th><th>نسبة الإنجاز</th><th></th></tr></thead><tbody>' +
+      PROJECTS.map(function (p) { return '<tr><td><b>' + p[0] + '</b></td><td>' + p[1] + '</td><td>' + p[2] + '</td><td class="num">' + p[3] + '</td><td><span class="chip ' + (p[4] === "طرح العقود" || p[4] === "الترسية" ? "gold" : "brand") + '">' + p[4] + '</span></td><td style="min-width:140px"><div class="progress"><b style="width:' + p[5] + '%"></b></div><span class="muted num" style="font-size:.78rem">' + p[5] + '%</span></td><td><button class="btn btn-sm btn-line" data-toast="ستصلك المناقصات المرتبطة بهذا المشروع">متابعة</button></td></tr>'; }).join("") +
+      '</tbody></table></div><p class="demo-note">أسماء وقيم توضيحية.</p>';
+  };
+  D.awards = function () {
+    return '<header><div><p class="eyebrow">نتائج الترسية</p><h2>من فاز بالمناقصات</h2><p class="muted">الفائز، القيمة، وعدد المتقدمين. يساعدك على تسعير عروضك القادمة.</p></div></header>' +
+      '<div class="tbl-wrap"><table><thead><tr><th>الرقم</th><th>المناقصة</th><th>الفائز</th><th>الجهة</th><th>قيمة الترسية (جنيه)</th><th>المتقدمون</th><th>التاريخ</th></tr></thead><tbody>' +
+      AWARDS.map(function (a) { var me = a[2].indexOf("النخبة") > -1; return '<tr><td class="num">' + a[0] + '</td><td><b>' + a[1] + '</b></td><td>' + (me ? '<span class="chip ok">مصنعك ✓</span> ' : '') + a[2] + '</td><td>' + a[3] + '</td><td class="num">' + a[4] + '</td><td class="num">' + a[6] + '</td><td>' + dateAr(a[5]) + '</td></tr>'; }).join("") +
+      '</tbody></table></div><p class="demo-note">بيانات تجريبية.</p>';
+  };
+  D.directory = function () {
+    var list = DIRECTORY.filter(function (d) { return !dState.dirType || d[0] === dState.dirType; });
+    return '<header><div><p class="eyebrow">الدليل</p><h2>مقاولون واستشاريون وشركات شحن</h2><p class="muted">تواصل مع من يشتري منتجاتك، ومن يوصلها، ومن يؤمّنها ويموّلها.</p></div></header>' +
+      '<div class="tabs" id="dirTabs"><button data-k=""' + (!dState.dirType ? ' class="on"' : '') + '>الكل</button>' + Object.keys(DIRTYPE).map(function (k) { return '<button data-k="' + k + '"' + (dState.dirType === k ? ' class="on"' : '') + '>' + DIRTYPE[k] + '</button>'; }).join("") + '</div>' +
+      '<div class="dir-grid">' + list.map(function (d) { return '<article class="dir"><div class="top"><span class="av">' + initials(d[1]) + '</span><div><b style="font-size:.95rem;line-height:1.4;display:block">' + d[1] + '</b><span class="muted" style="font-size:.8rem">' + d[2] + '</span></div></div><p class="muted" style="font-size:.85rem">' + d[4] + '</p><div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto"><span class="chip">' + DIRTYPE[d[0]] + '</span><span class="stars" aria-label="التقييم ' + d[3] + '">★ <span class="num">' + d[3] + '</span></span></div><button class="btn btn-sm btn-line" data-toast="تم إرسال طلب تواصل إلى ' + d[1] + ' (نموذج تجريبي)">تواصل</button></article>'; }).join("") + '</div>';
+  };
+  D.consult = function () {
+    if (dState.consultSent) return '<header><div><p class="eyebrow">الاستشارات</p><h2>تم استلام طلبك</h2></div></header><div class="ok-box">تم تسجيل طلب الاستشارة (نموذج تجريبي). في النسخة الفعلية يتواصل معك مستشار مختص خلال يومي عمل.</div><button class="btn btn-line" id="consultAgain" style="align-self:flex-start">طلب استشارة أخرى</button>';
+    var types = [["admin", "إدارية", "الهيكل التنظيمي، الحوكمة، الموارد البشرية، أنظمة ERP"], ["finance", "مالية", "دراسات الجدوى، التمويل الصناعي، التسعير، خفض التكاليف"], ["marketing", "تسويقية", "دخول أسواق جديدة، التصدير، الهوية، المعارض"], ["production", "إنتاجية", "رفع الطاقة الإنتاجية، الجودة، الأتمتة، المحتوى المحلي"]];
+    return '<header><div><p class="eyebrow">الاستشارات</p><h2>اطلب استشارة لرفع إنتاجك</h2><p class="muted">مستشارون معتمدون على المنصة في أربعة مجالات.</p></div></header>' +
+      '<form id="consultForm" class="card" novalidate><div class="consult-types">' + types.map(function (t, i) { return '<label class="ctype"><input type="radio" name="ctype" id="ct-' + t[0] + '" value="' + t[0] + '"' + (i === 3 ? " checked" : "") + '><span><b>' + t[1] + '</b><small>' + t[2] + '</small></span></label>'; }).join("") + '</div>' +
+      '<div class="form-grid"><label class="field">اسم المسؤول<input id="c-name" value="م. خالد العتيبي"></label><label class="field">الجوال<input id="c-phone" dir="ltr" value="+966 50 000 0000"></label>' +
+      '<label class="field">طريقة الاستشارة<select id="c-mode"><option>زيارة للمصنع</option><option>اجتماع عن بُعد</option><option>تقرير مكتوب</option></select></label><label class="field">الموعد المفضل<select id="c-when"><option>خلال أسبوع</option><option>خلال شهر</option><option>غير مستعجل</option></select></label>' +
+      '<label class="field full">وصف التحدي<textarea id="c-desc">نعمل بطاقة 70% على خطوط البثق، ونريد خطة لرفعها إلى 90% وفتح السوق الأفريقي.</textarea></label></div>' +
+      '<button class="btn btn-brand" type="submit" style="align-self:flex-start">إرسال الطلب</button></form>';
+  };
+  D.markets = function () {
+    var m = MARKETS.filter(function (x) { return x.k === dState.market; })[0];
+    return '<header><div><p class="eyebrow">الأسواق</p><h2>وسّع إنتاجك خارج حدود مدينتك</h2><p class="muted">الطلب المفتوح في كل سوق، والقطاعات الأكثر طلباً. اختر سوقاً.</p></div></header>' +
+      '<div class="mk-grid">' + MARKETS.map(function (x) { return '<button class="mk' + (x.k === dState.market ? ' on' : '') + '" data-mk="' + x.k + '"><span class="flag">' + x.n + '</span><span class="cnt num">' + x.open + '</span><small>طلب مفتوح</small><span class="bar"><b style="width:' + (x.open / maxOpen * 100) + '%"></b></span></button>'; }).join("") + '</div>' +
+      '<div class="mk-detail"><div class="card"><h3>أكثر القطاعات طلباً في ' + m.n + '</h3><p class="muted" style="font-size:.85rem">عدد الطلبات المفتوحة لكل قطاع</p>' + m.top.map(function (t) { return '<div class="hbar"><span>' + t[0] + '</span><span class="t"><b style="width:' + (t[1] / m.top[0][1] * 100) + '%"></b></span><span class="num">' + t[1] + '</span></div>'; }).join("") + '</div>' +
+      '<div class="card"><h3>ما تحتاجه لدخول ' + m.n + '</h3><ul class="todo"><li class="done"><span class="ck">✓</span>ملف مصنع موثّق</li><li class="' + (m.k === "local" || m.k === "gulf" ? "done" : "") + '"><span class="ck">' + (m.k === "local" || m.k === "gulf" ? "✓" : "") + '</span>شهادة منشأ ' + (m.k === "gulf" ? "خليجية" : "") + '</li><li><span class="ck"></span>شريك شحن لهذا السوق</li><li><span class="ck"></span>تأمين ائتمان المشتري</li></ul><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-brand" data-go="rfq" data-mkf="' + m.k + '">طلبات هذا السوق</button><button class="btn btn-line" data-go="directory" data-dir="shipping">شركات الشحن</button></div></div></div><p class="demo-note">أرقام توضيحية.</p>';
+  };
+  D.myproducts = function () {
+    var mine = [["أنابيب PVC ضغط عالٍ 110 مم", 312, 14, "منشور"], ["أنابيب HDPE للري 63 مم", 188, 9, "منشور"], ["وصلات وأكواع PVC", 140, 6, "منشور"], ["أنابيب صرف 160 مم", 0, 0, "مسودة"]];
+    return '<header><div><p class="eyebrow">منتجاتي</p><h2>منتجات المصنع في السوق</h2></div><button class="btn btn-brand" data-toast="نموذج إضافة منتج: الاسم، القطاع والقطاع الفرعي، الصور، السعر، أقل كمية، أسواق البيع">+ إضافة منتج</button></header>' +
+      '<div class="tbl-wrap"><table><thead><tr><th>المنتج</th><th>القطاع</th><th>المشاهدات (30 يوماً)</th><th>طلبات عروض أسعار</th><th>الحالة</th><th></th></tr></thead><tbody>' +
+      mine.map(function (p) { return '<tr><td><b>' + p[0] + '</b></td><td>البلاستيك › الأنابيب</td><td class="num">' + p[1] + '</td><td class="num">' + p[2] + '</td><td><span class="chip ' + (p[3] === "منشور" ? "ok" : "") + '">' + p[3] + '</span></td><td><button class="btn btn-sm btn-line" data-toast="تعديل المنتج">تعديل</button></td></tr>'; }).join("") +
+      '</tbody></table></div>';
+  };
+  function renderDash() {
+    $$("#dnav button").forEach(function (b) { b.classList.toggle("on", b.dataset.t === dState.tab); });
+    $("#dpanel").innerHTML = D[dState.tab]();
+  }
+  $("#dnav").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { dState.tab = b.dataset.t; renderDash(); } });
+  $("#dpanel").addEventListener("click", function (e) {
+    var g = e.target.closest("[data-go]");
+    if (g) { if (g.dataset.mkf !== undefined) dState.tMarket = g.dataset.mkf; if (g.dataset.dir) dState.dirType = g.dataset.dir; dState.tab = g.dataset.go; renderDash(); window.scrollTo(0, 0); return; }
+    var mk = e.target.closest("[data-mk]"); if (mk) { dState.market = mk.dataset.mk; renderDash(); return; }
+    var dt = e.target.closest("#dirTabs button"); if (dt) { dState.dirType = dt.dataset.k; renderDash(); return; }
+    if (e.target.id === "consultAgain") { dState.consultSent = false; renderDash(); }
+  });
+  $("#dpanel").addEventListener("change", function (e) { if (e.target.id === "tMk") { dState.tMarket = e.target.value; renderDash(); } });
+  $("#dpanel").addEventListener("submit", function (e) { if (e.target.id === "consultForm") { e.preventDefault(); dState.consultSent = true; renderDash(); } });
+
+  /* ---------- Router ---------- */
+  var VIEWS = ["home", "market", "factory", "dashboard"];
+  function go(v, tab) { if (tab) dState.tab = tab; if (location.hash !== "#" + v) location.hash = v; else route(); }
+  function route() {
+    var v = (location.hash || "#home").slice(1); if (VIEWS.indexOf(v) < 0) v = "home";
+    VIEWS.forEach(function (x) { $("#v-" + x).hidden = x !== v; });
+    $$("#mainnav a").forEach(function (a) { a.classList.toggle("on", a.dataset.v === v && !a.dataset.tab); });
+    $("#mainnav").classList.remove("open");
+    if (v === "market") renderMarket();
+    if (v === "dashboard") renderDash();
+    if (v === "home") drawHero();
+    window.scrollTo(0, 0);
+  }
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest("a[href^='#']"); if (!a) return;
+    if (a.dataset.tab) dState.tab = a.dataset.tab;
+    if (a.dataset.market) dState.market = a.dataset.market;
+    if (a.dataset.sector !== undefined && a.getAttribute("href") === "#market") setSector(a.dataset.sector);
+    else if (a.getAttribute("href") === "#market" && !a.closest(".prod")) setSector("");
+    if (a.getAttribute("href") === location.hash) { e.preventDefault(); route(); }
+  });
+  window.addEventListener("hashchange", route);
+  route();
+})();
+</script>

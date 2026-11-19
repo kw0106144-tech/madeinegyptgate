@@ -1,0 +1,24 @@
+# The system that is LIVE on madeinegyptgate.com today (copied 2026-11-18, read-only reference)
+
+- **Routing:** Cloudflare Worker `mis-egypt` (source: mis-egypt-worker.js) has the zone routes `madeinegyptgate.com/*` and `www.madeinegyptgate.com/*`. It proxies an allow-list of files to the Hostinger temp domain `mindful-mediumslateblue-okapi-21.hostingersite.com/egypt` and 301s old WordPress URLs. `/api/index.php` is proxied too.
+- **Backend:** PHP API `api/index.php` on Hostinger, source NOT available to us. Its data store, probably MySQL, holds the accounts and admin data.
+  - Actions seen in the client code: `login {email,password}`, `logout`, `me`, `check {email}` (recognises a known company and pre-fills register.html), `admin_list {e, q, page, kind, plan, status, expired}`, `admin_save`, `admin_delete`, `admin_stats`, `plans_get/plans_save {perms}`, `pay_get/pay_save`, `mail_get/mail_save/mail_test`, `document`.
+- **panel.html:** the owner's CURRENT admin dashboard («لوحة الإدارة – صنع في مصر»). The owner said «الداش بورد الحاليه في الموقع متشيلعاش ضيف عليها اللي احنا قولنا عليه», so it must be kept and extended.
+  - Entities:
+    - users «الأعضاء والاشتراكات»: email, company, manager, tel, plan, plan_until, status, password
+    - members «الشركات»: company, manager, country, phones, web, address, activity, status registered/lead
+    - products «المنتجات»
+    - messages «الطلبات والرسائل»
+    - rfqs «طلبات عروض المشترين (RFQ)», entered manually; the published ones show on rfqs.html
+    - seo «SEO — بيانات الصفحات»
+    - keywords «SEO — تتبع الكلمات»
+    - redirects «SEO — تحويلات 301»
+    - settings «الإعدادات»
+  - Views:
+    - home: statistics for the last 30 days — views, unique visitors, mobile %, counts, a daily chart, top pages, traffic sources, members by plan, latest sign-ups
+    - plans «الباقات والصلاحيات»: a permission matrix per plan, numbers plus checkboxes
+    - payments «بوابة الدفع»: N-Genius, Moyasar, Tap, PayTabs, HyperPay, Stripe, PayPal, manual; enable flag, test mode, keys kept server-side
+    - mail «البريد»: SMTP on the own mail server (port 587) or the Brevo API; enable flag; test send
+- **login.html:** email + password, against the PHP session.
+- **dashboard.html:** the live factory dashboard, an older build of ours patched with auth.js and me.js, guarded by the PHP session.
+- **DNS:** the domain already has DKIM for Brevo (brevo1/brevo2 + brevo-code), Amazon SES and Resend (resend._domainkey). DMARC rua goes to Brevo.

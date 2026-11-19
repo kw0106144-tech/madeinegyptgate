@@ -1,0 +1,14 @@
+# Local-only config for test/integration.mjs (real workerd + local D1 via `wrangler dev --local`). Never deployed.
+name = "advisor-integration"
+main = "../src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+REPLY_DOMAIN = "reply.madeinegyptgate.com"
+INBOUND_REPLY_ENABLED = "1"   # this test drives the reply-by-email loop (production keeps it "0")
+MAX_EMAILS_PER_DAY = "30"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "advisor-local"
+database_id = "00000000-0000-0000-0000-000000000000"

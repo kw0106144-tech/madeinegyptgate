@@ -1,0 +1,8 @@
+/* migate-intel live widget — uses the site's tokens (--line, --surface, --muted, --green) */
+.intel-live{border:1px solid var(--line,#e5e2dc);border-radius:16px;background:var(--surface,#fff);padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.intel-live-h{font-size:1.1rem;font-weight:800;margin:0}
+.intel-live-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.intel-live-list li{border:1px solid var(--line,#e5e2dc);border-radius:12px;padding:8px 12px}
+.intel-live-list a{font-weight:800;color:var(--green,#8E0B20)}
+.intel-live-m{display:block;font-size:.8rem;color:var(--muted,#6b6b6b)}
+.intel-live-f{margin:0;font-size:.82rem;color:var(--muted,#6b6b6b)}

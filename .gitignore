@@ -1,0 +1,19 @@
+# build outputs and local state (never commit)
+build/
+site/
+node_modules/
+.wrangler/
+__pycache__/
+*.pyc
+*.tmp~
+serve.pid
+*.zip
+# secrets and local env files — keep them in Cloudflare / GitHub secrets, never here
+.env
+.env.*
+.dev.vars
+*.pem
+*.key
+deploy-secrets/
+# database exports hold member data — never commit
+*d1-backup*.sql

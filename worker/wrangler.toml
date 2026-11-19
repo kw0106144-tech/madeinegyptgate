@@ -1,0 +1,117 @@
+# Made in Egypt Gate platform Worker (Janna lookup + Bassem AI Deal Advisor + meetings + accounts, inquiries, admin console API)
+# — see worker/README.md. DEPLOY 1 production config. Secrets are NEVER in this file (README "Secrets").
+name = "janna-lookup"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Routes on madeinegyptgate.com AND www.madeinegyptgate.com — one line per prefix the Worker serves (src/index.js).
+# NEVER a catch-all "…/api/*": /api/seo/* belongs to the Pages Functions (functions/api/seo) and a bare /api/* Worker route would
+# shadow it. NOT here in deploy 1 (they stay on the owner's mis-egypt Worker → Hostinger): /api/index.php*, /panel.html, /login.html.
+# test/integ-worker.test.mjs checks this list against src/index.js and fails on a bare /api/*.
+routes = [
+  # Janna's live lookup (Anam SERVER_WEBHOOK tool janna_lookup) + health
+  { pattern = "madeinegyptgate.com/api/janna/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/janna/*", zone_name = "madeinegyptgate.com" },
+  # Bassem — AI Deal Advisor
+  { pattern = "madeinegyptgate.com/api/advisor/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/advisor/*", zone_name = "madeinegyptgate.com" },
+  # Janna-hosted meetings (/api/meetings and /api/meetings/…)
+  { pattern = "madeinegyptgate.com/api/meetings*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/meetings*", zone_name = "madeinegyptgate.com" },
+  # e-mail-code login + signed one-time login links (/api/auth/link)
+  { pattern = "madeinegyptgate.com/api/auth/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/auth/*", zone_name = "madeinegyptgate.com" },
+  # the member's own account (customer dashboard)
+  { pattern = "madeinegyptgate.com/api/me", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/me", zone_name = "madeinegyptgate.com" },
+  { pattern = "madeinegyptgate.com/api/me/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/me/*", zone_name = "madeinegyptgate.com" },
+  # requests: create, track, signed answer pages (/api/inquiries, /api/inquiries/…)
+  { pattern = "madeinegyptgate.com/api/inquiries*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/inquiries*", zone_name = "madeinegyptgate.com" },
+  # the platform's admin console API (inbox.html); the owner's PHP panel stays on /api/index.php (not here)
+  { pattern = "madeinegyptgate.com/api/admin/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/admin/*", zone_name = "madeinegyptgate.com" },
+  # honest page metrics (sendBeacon)
+  { pattern = "madeinegyptgate.com/api/ev", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/ev", zone_name = "madeinegyptgate.com" },
+  # one-click unsubscribe pages
+  { pattern = "madeinegyptgate.com/api/unsub*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/unsub*", zone_name = "madeinegyptgate.com" },
+  # respond.io WhatsApp webhook + health
+  { pattern = "madeinegyptgate.com/api/wa/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/wa/*", zone_name = "madeinegyptgate.com" },
+  # Admin Control Center (deploy 2): public plans/settings JSON, payments, page analytics, the published overlay, uploaded images,
+  # the team dashboards' front desk. NOT /api/index.php*, /panel.html, /login.html (Pages / mis-egypt keep them, ACC-CONTRACT §0).
+  { pattern = "madeinegyptgate.com/api/plans*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/plans*", zone_name = "madeinegyptgate.com" },
+  { pattern = "madeinegyptgate.com/api/settings*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/settings*", zone_name = "madeinegyptgate.com" },
+  { pattern = "madeinegyptgate.com/api/pay/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/pay/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "madeinegyptgate.com/api/ev/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/ev/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "madeinegyptgate.com/api/team/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/api/team/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "madeinegyptgate.com/data/overlay.js*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/data/overlay.js*", zone_name = "madeinegyptgate.com" },
+  { pattern = "madeinegyptgate.com/media/u/*", zone_name = "madeinegyptgate.com" },
+  { pattern = "www.madeinegyptgate.com/media/u/*", zone_name = "madeinegyptgate.com" }
+]
+
+# Cron (every 15 min): meeting reminders + recording/summary retries · inquiry retries, 48 h reminders (with a fresh login link),
+# 30-day auto-close · daily digests / deadline reminders after 07:00 Cairo · Bassem's morning message + "I'm ready" call link
+# (WhatsApp when live, otherwise by e-mail).
+[triggers]
+crons = ["*/15 * * * *"]
+
+# D1 (owner created "migate-db", EEUR — BACKLOG 23). Empty database, in this order: schema.sql → 0004 → 0005 → 0006.
+[[d1_databases]]
+binding = "DB"
+database_name = "migate-db"
+database_id = "f86e00bb-9739-4985-a149-3dddb45b2b42"
+
+# R2 bucket for meeting recordings + transcripts (owner created "migate-media", EEUR — BACKLOG 27)
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "migate-media"
+
+# KV: the SAME namespace as the Pages project's SEO_KV — the Worker writes only keys "acc:*" (the SEO API stays the only writer of "seo:bundle")
+[[kv_namespaces]]
+binding = "SEO_KV"
+id = "b321fb348f3447179c99b4380952e5ac"
+
+# ---- non-secret settings ----
+# Secrets (npx wrangler secret put <NAME>; README "Secrets"): ADVISOR_SECRET · MEETINGS_SECRET · WA_WEBHOOK_SECRET · PLATFORM_KEY ·
+#   RESEND_API_KEY · ANAM_API_KEY · RESPONDIO_TOKEN (both may instead be saved by the owner in the Control Center «مفاتيح الخدمات»;
+#   a Worker secret wins) · optional TURNSTILE_SECRET, AUTH_SECRET, JANNA_KEY, BRAVE_SEARCH_KEY or
+#   GOOGLE_CSE_KEY + GOOGLE_CSE_CX (web search for the admins' candidate list) · + CONFIG_SECRET (required to save gateway / mail / Anam keys:
+#   openssl rand -base64 32) · optional BREVO_API_KEY · Bassem's web search (src/websearch.js): TOOL_SECRET (the X-MIG-Tool header of the
+#   Anam tool bassem_web_search; or the panel slot «سر أدوات باسم») + WEBSEARCH_KEY (or the panel slot) · optional vars WEBSEARCH_PROVIDER
+#   (tavily | serper | brave) and WEBSEARCH_CAP (calls per Cairo day, default 300, 0 = off) — the panel values win for provider / cap.
+[vars]
+SITE_URL = "https://madeinegyptgate.com/"
+MAIL_FROM = "منصة صنع في مصر <noreply@madeinegyptgate.com>" # the ONE sender (domain verified at Resend); Reply-To set per email
+TEAM_EMAIL = "info@madeinegyptgate.com"        # no-match "action needed" notices, meeting bookings, Reply-To of team answers
+ADMIN_EMAILS = "info@madeinegyptgate.com"      # admin console access (they sign in with an email code) + no-match notices
+RESPONDIO_CHANNEL_ID = "580384"                # respond.io WhatsApp channel ("Whatsapp Business"); a channel saved in «مفاتيح الخدمات» wins
+WA_DRY_RUN = "0"                               # deploy 2: the PANEL switch «تشغيل إرسال واتساب الحقيقي» decides (Control Center → «مفاتيح الخدمات»,
+                                               # owner only, OFF by default). It stays OFF until the owner's respond.io token test passes AND one
+                                               # test message to the platform's own number 01279188996 is delivered (and the templates are
+                                               # Meta-approved); until then nothing goes by WhatsApp — e-mail instead. "1" = hard kill switch:
+                                               # nothing is ever sent by WhatsApp, whatever the panel says (needs a deploy).
+INBOUND_REPLY_ENABLED = "0"                    # Email Routing stays OFF (owner decision): Reply-To no-reply + «رد من هنا» links.
+                                               # "1" ONLY after Cloudflare Email Routing for REPLY_DOMAIN delivers to this Worker
+REPLY_DOMAIN = "reply.madeinegyptgate.com"     # used only when INBOUND_REPLY_ENABLED=1
+LEGACY_ORIGIN = "https://mindful-mediumslateblue-okapi-21.hostingersite.com/egypt" # the OLD PHP system (old-password bridge + import; "off" disables)
+MAX_EMAILS_PER_DAY = "30"                      # Bassem deal emails per member, rolling 24 h
+MAX_NEW_RECIPIENTS_PER_DAY = "10"              # per member, rolling 24 h: addresses never emailed before (cold-mail brake)
+MAX_INBOUND_PER_DEAL_DAY = "20"                # replies accepted per deal address per 24 h (only with INBOUND_REPLY_ENABLED=1)
+# Optional (defaults in code): NOREPLY_EMAIL (default = MAIL_FROM's address) · DIGEST_TIME "07:00" · TEAM_NOTICES "0" ·
+#   MAX_ROUTES_PER_MEMBER_DAY "30" · EV_ORIGINS · WA_TPL_BUYER_UPDATE (approved buyer template) · INBOUND_AUTHSERV_ID.
+# NEVER set ADVISOR_OPEN_MODE in production (local testing only).
+
+# Optional alternative to Resend: Cloudflare Email Service sending binding (Resend is the owner's provider — leave this off).
+# [[send_email]]
+# name = "SEND_EMAIL"
+# remote = true

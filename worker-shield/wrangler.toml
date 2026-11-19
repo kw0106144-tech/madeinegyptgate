@@ -1,0 +1,11 @@
+# migate-shield — refreshes the WAF IP list migate_blocklist (rule MIG-1) every 15 minutes. No routes.
+name = "migate-shield"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+[triggers]
+crons = ["*/15 * * * *"]
+[vars]
+ACCOUNT_ID = "88c77c2b7595dd0ce510270175f69143"
+LIST_ID = "d185cb2d0ddb4fed98550f025541f096"
+# Secret (owner adds in the dashboard): CF_LISTS_TOKEN = API token with "Account Filter Lists: Edit"

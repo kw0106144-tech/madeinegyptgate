@@ -1,0 +1,480 @@
+{
+ "zones": {
+  "sczone-sokhna-iz": "img/ind/sokhna-industrial-zone.jpg",
+  "sczone-east-port-said-iz": "img/ind/alex-free-zone.jpg",
+  "sczone-qantara-west-iz": "img/ind/sadat-prima.jpg",
+  "sczone-east-ismailia-tech-valley": "img/ind/smart-village.jpg",
+  "teda-egypt-sokhna": "img/ind/sokhna-industrial-zone.jpg",
+  "sczone-ain-sokhna-port": "img/ind/alexandria-port.jpg",
+  "sczone-east-port-said-port": "img/ind/maersk-damietta.jpg",
+  "sczone-west-port-said-port": "img/ind/dekheila-port.jpg",
+  "sczone-adabiya-port": "img/ind/adabiya-port.jpg",
+  "sczone-arish-port": "img/ind/arish-port.jpg",
+  "fz-alexandria": "img/ind/alex-free-zone-2.jpg",
+  "fz-nasr-city": "img/ind/mog-factory.jpg",
+  "fz-port-said": "img/ind/alexandria-port.jpg",
+  "fz-suez": "img/ind/port-tawfik-shipyard.jpg",
+  "fz-ismailia": "img/ind/ccpp-piping.jpg",
+  "fz-damietta": "img/ind/damietta-lng.jpg",
+  "fz-shebin-el-kom": "img/ind/alex-free-zone-2.jpg",
+  "fz-qeft": "img/ind/armant-sugar-plant.jpg",
+  "fz-media-6-october": "img/ind/mog-factory.jpg",
+  "fz-planned-10th-ramadan": "img/ind/sokhna-industrial-zone.jpg",
+  "fz-planned-new-october": "img/ind/ccpp-construction.jpg",
+  "fz-planned-new-borg-el-arab": "img/ind/borg-farag-allah-1.jpg",
+  "fz-planned-new-alamein": "img/ind/dabaa-construction.jpg",
+  "ic-10th-of-ramadan": "img/ind/sadat-ezz-steel.jpg",
+  "ic-6th-of-october": "img/ind/borg-farag-allah-2.jpg",
+  "ic-sadat-city": "img/ind/sadat-ezz-steel.jpg",
+  "ic-obour": "img/ind/sadat-prima.jpg",
+  "ic-badr": "img/ind/mog-factory.jpg",
+  "ic-15th-of-may": "img/ind/aswan-efaco-ferroalloys.jpg",
+  "ic-new-borg-el-arab": "img/ind/borg-farag-allah-2.jpg",
+  "ic-new-damietta": "img/ind/damietta-lng.jpg",
+  "ic-new-salhia": "img/ind/alex-free-zone-2.jpg",
+  "ic-new-beni-suef": "img/ind/ncc-cement-benisuef.jpg",
+  "ic-new-assiut": "img/ind/nac-power-plant.jpg",
+  "ic-new-sohag": "img/ind/borg-farag-allah-1.jpg",
+  "ic-new-aswan": "img/ind/aswan-efaco-ferroalloys.jpg",
+  "ic-new-alamein": "img/ind/dabaa-construction.jpg",
+  "ic-new-cairo": "img/ind/borg-farag-allah-2.jpg",
+  "ia-robbiki-leather-city": "img/ind/machine-workshop.jpg",
+  "ia-kom-abu-radi": "img/ind/sadat-ezz-steel.jpg",
+  "ia-bayad-el-arab": "img/ind/ncc-cement-benisuef.jpg",
+  "ia-north-fayoum-kom-oshim": "img/ind/sadat-prima.jpg",
+  "ia-arab-el-awamer": "img/ind/ccpp-construction.jpg",
+  "ia-matahra": "img/ind/aswan-efaco-ferroalloys.jpg",
+  "ia-hiw-nag-hammadi": "img/ind/armant-sugar-plant.jpg",
+  "ia-kawthar-sohag": "img/ind/machine-workshop.jpg",
+  "ia-gabal-ghareb": "img/ind/ncc-cement-benisuef.jpg",
+  "ia-abu-rawash": "img/ind/alex-free-zone.jpg",
+  "ia-quesna-mubarak": "img/ind/ccpp-piping.jpg",
+  "ia-gamasa": "img/ind/dabaa-reactor-transport.jpg",
+  "ia-raswa-port-said": "img/ind/port-tawfik-shipyard.jpg",
+  "ia-merghem-alexandria": "img/ind/alex-free-zone.jpg",
+  "ia-akrasha": "img/ind/dabaa-reactor-transport.jpg",
+  "ia-baghdadi-luxor": "img/ind/armant-sugar-plant.jpg",
+  "ia-damietta-furniture-city": "img/ind/damietta-lng.jpg",
+  "iz-mit-ghamr": "img/ind/ccpp-construction.jpg",
+  "iz-banha-farouqia": "img/ind/nac-power-plant.jpg",
+  "iz-golden-triangle": "img/ind/phosphate-mine.jpg",
+  "tp-smart-village": "img/ind/smart-village.jpg",
+  "tp-maadi-technology-park": "img/ind/smart-village.jpg",
+  "tp-silicon-waha-borg-el-arab": "img/ind/borg-tech-park.jpg",
+  "tp-silicon-waha-new-assiut": "img/ind/smart-village-2.jpg",
+  "tp-silicon-waha-sadat": "img/ind/borg-tech-park.jpg",
+  "tp-silicon-waha-new-beni-suef": "img/ind/smart-village-2.jpg"
+ },
+ "projects": {
+  "wind": [
+   "img/ind/prj-wind.jpg",
+   "img/ind/prj-wind-2.jpg"
+  ],
+  "solar": [
+   "img/ind/prj-solar.jpg",
+   "img/ind/prj-solar-2.jpg"
+  ],
+  "power": [
+   "img/ind/prj-power.jpg",
+   "img/ind/prj-power-2.jpg"
+  ],
+  "water": [
+   "img/ind/prj-water.jpg",
+   "img/ind/prj-water-2.jpg"
+  ],
+  "port": [
+   "img/ind/prj-port.jpg",
+   "img/ind/prj-port-2.jpg"
+  ],
+  "road": [
+   "img/ind/prj-road.jpg",
+   "img/ind/prj-road-2.jpg"
+  ],
+  "rail": [
+   "img/ind/prj-rail.jpg",
+   "img/ind/prj-rail-2.jpg"
+  ],
+  "housing": [
+   "img/ind/prj-housing.jpg",
+   "img/ind/prj-housing-2.jpg"
+  ],
+  "industry": [
+   "img/ind/prj-industry.jpg",
+   "img/ind/prj-industry-2.jpg"
+  ],
+  "petro": [
+   "img/ind/prj-petro.jpg",
+   "img/ind/prj-petro-2.jpg"
+  ],
+  "cement": [
+   "img/ind/prj-cement.jpg",
+   "img/ind/prj-cement-2.jpg"
+  ],
+  "mining": [
+   "img/ind/prj-mining.jpg",
+   "img/ind/prj-mining-2.jpg"
+  ],
+  "agri": [
+   "img/ind/prj-agri.jpg",
+   "img/ind/prj-agri-2.jpg"
+  ],
+  "tunnel": [
+   "img/ind/prj-tunnel.jpg",
+   "img/ind/prj-tunnel-2.jpg"
+  ],
+  "airport": [
+   "img/ind/prj-airport.jpg",
+   "img/ind/prj-airport-2.jpg"
+  ]
+ },
+ "credits": {
+  "img/ind/adabiya-port.jpg": {
+   "title": "AdabyiaPrt.jpg",
+   "author": "אוסף מוזיאון ההעפלה וחיל הים",
+   "license": "CC BY-SA 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:AdabyiaPrt.jpg"
+  },
+  "img/ind/alex-free-zone.jpg": {
+   "title": "Alexandria Public Free Zone.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Alexandria_Public_Free_Zone.jpg"
+  },
+  "img/ind/alex-free-zone-2.jpg": {
+   "title": "Alexandria Public Free Zone 1.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Alexandria_Public_Free_Zone_1.jpg"
+  },
+  "img/ind/alexandria-port.jpg": {
+   "title": "Alexandria Port.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Alexandria_Port.jpg"
+  },
+  "img/ind/arish-port.jpg": {
+   "title": "KRI dr. Radjiman Wedyodiningrat-992 Arrived at El-Arish Port, Egypt.jpg",
+   "author": "Puspen TNI (Indonesian National Armed Forces Public Affairs Office)",
+   "license": "Public domain",
+   "source": "https://commons.wikimedia.org/wiki/File:KRI_dr._Radjiman_Wedyodiningrat-992_Arrived_at_El-Arish_Port,_Egypt.jpg"
+  },
+  "img/ind/armant-sugar-plant.jpg": {
+   "title": "Sugar plant Egypt.JPG",
+   "author": "Rémih",
+   "license": "CC BY-SA 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Sugar_plant_Egypt.JPG"
+  },
+  "img/ind/aswan-efaco-ferroalloys.jpg": {
+   "title": "Egypt EFACO Factory El-Atawany R01.jpg",
+   "author": "Marc Ryckaert",
+   "license": "CC BY 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Egypt_EFACO_Factory_El-Atawany_R01.jpg"
+  },
+  "img/ind/borg-farag-allah-1.jpg": {
+   "title": "Farag Allah factory 1.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Farag_Allah_factory_1.jpg"
+  },
+  "img/ind/borg-farag-allah-2.jpg": {
+   "title": "Farag Allah factory 2.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Farag_Allah_factory_2.jpg"
+  },
+  "img/ind/borg-tech-park.jpg": {
+   "title": "New Borg El Arab Technology Park.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:New_Borg_El_Arab_Technology_Park.jpg"
+  },
+  "img/ind/ccpp-construction.jpg": {
+   "title": "Combined Cycle Power Plant.jpg",
+   "author": "Nicolás Adamo",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Combined_Cycle_Power_Plant.jpg"
+  },
+  "img/ind/ccpp-piping.jpg": {
+   "title": "Piping Installation in a Power Plant.jpg",
+   "author": "Nicolás Adamo",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Piping_Installation_in_a_Power_Plant.jpg"
+  },
+  "img/ind/dabaa-construction.jpg": {
+   "title": "Al-Dabaa Reactor 5.jpg",
+   "author": "Управление пресс-службы и информации Президента России",
+   "license": "CC BY 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Al-Dabaa_Reactor_5.jpg"
+  },
+  "img/ind/dabaa-reactor-transport.jpg": {
+   "title": "Al-Dabaa Reactor 1.jpg",
+   "author": "Управление пресс-службы и информации Президента России",
+   "license": "CC BY 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Al-Dabaa_Reactor_1.jpg"
+  },
+  "img/ind/damietta-lng.jpg": {
+   "title": "Damietta - Egypt - panoramio.jpg",
+   "author": "Tutku Çetinel",
+   "license": "CC BY 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Damietta_-_Egypt_-_panoramio.jpg"
+  },
+  "img/ind/dekheila-port.jpg": {
+   "title": "The port of Dekheila, Alexandria.jpg",
+   "author": "Rana Yehia Rizk",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:The_port_of_Dekheila,_Alexandria.jpg"
+  },
+  "img/ind/machine-workshop.jpg": {
+   "title": "Machine45.jpg",
+   "author": "Shadooo",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Machine45.jpg"
+  },
+  "img/ind/maersk-damietta.jpg": {
+   "title": "Maersk Damietta (ship, 2008) 001.jpg",
+   "author": "Joe Mazzola",
+   "license": "CC BY-SA 2.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Maersk_Damietta_(ship,_2008)_001.jpg"
+  },
+  "img/ind/mog-factory.jpg": {
+   "title": "MOG For Developed Industries.jpg",
+   "author": "MOGFORDEVELOPEDINDUSTRIES",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:MOG_For_Developed_Industries.jpg"
+  },
+  "img/ind/nac-power-plant.jpg": {
+   "title": "New Administrative Capital Power Plant.jpg",
+   "author": "Ojan",
+   "license": "CC0",
+   "source": "https://commons.wikimedia.org/wiki/File:New_Administrative_Capital_Power_Plant.jpg"
+  },
+  "img/ind/ncc-cement-benisuef.jpg": {
+   "title": "Nccproductionplant17.png",
+   "author": "National Company For Cement in Beni Suef",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Nccproductionplant17.png"
+  },
+  "img/ind/phosphate-mine.jpg": {
+   "title": "Phosphate mine (52726859085).jpg",
+   "author": "Lars Plougmann from United States",
+   "license": "CC BY-SA 2.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Phosphate_mine_(52726859085).jpg"
+  },
+  "img/ind/port-tawfik-shipyard.jpg": {
+   "title": "Port Tawfik shipyard.jpg",
+   "author": "TheEgyptian",
+   "license": "CC BY-SA 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Port_Tawfik_shipyard.jpg"
+  },
+  "img/ind/sadat-ezz-steel.jpg": {
+   "title": "Ezz Steel-Sadat City.jpg",
+   "author": "Faris knight",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Ezz_Steel-Sadat_City.jpg"
+  },
+  "img/ind/sadat-prima.jpg": {
+   "title": "Prima-Sadat City.JPG",
+   "author": "Faris knight",
+   "license": "CC BY-SA 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Prima-Sadat_City.JPG"
+  },
+  "img/ind/smart-village.jpg": {
+   "title": "Smartvillagelandscape.JPG",
+   "author": "Smart Village",
+   "license": "Public domain",
+   "source": "https://commons.wikimedia.org/wiki/File:Smartvillagelandscape.JPG"
+  },
+  "img/ind/smart-village-2.jpg": {
+   "title": "Building in Smart Village.jpg",
+   "author": "Mohamed Ouda",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Building_in_Smart_Village.jpg"
+  },
+  "img/ind/sokhna-industrial-zone.jpg": {
+   "title": "Ain Sokhna Industrial Zone.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Ain_Sokhna_Industrial_Zone.jpg"
+  },
+  "img/ind/prj-wind.jpg": {
+   "title": "Wind turbine at Zaafarana by Hatem Moushir 11.JPG",
+   "author": "Hatem Moushir",
+   "license": "CC BY-SA 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Wind_turbine_at_Zaafarana_by_Hatem_Moushir_11.JPG"
+  },
+  "img/ind/prj-wind-2.jpg": {
+   "title": "Wind turbine at Zaafarana by Hatem Moushir 3.JPG",
+   "author": "Hatem Moushir",
+   "license": "CC BY-SA 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Wind_turbine_at_Zaafarana_by_Hatem_Moushir_3.JPG"
+  },
+  "img/ind/prj-solar.jpg": {
+   "title": "Rodnykove Solar Park.jpg",
+   "author": "Activ Solar",
+   "license": "CC BY-SA 2.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Rodnykove_Solar_Park.jpg"
+  },
+  "img/ind/prj-solar-2.jpg": {
+   "title": "Duna Solar Park 2, 2020 Százhalombatta.jpg",
+   "author": "Globetrotter19",
+   "license": "CC BY-SA 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Duna_Solar_Park_2,_2020_Sz%C3%A1zhalombatta.jpg"
+  },
+  "img/ind/prj-power.jpg": {
+   "title": "New Administrative Capital Power Plant.jpg",
+   "author": "Ojan",
+   "license": "CC0",
+   "source": "https://commons.wikimedia.org/wiki/File:New_Administrative_Capital_Power_Plant.jpg"
+  },
+  "img/ind/prj-power-2.jpg": {
+   "title": "Power plant, Aswan Dam, Aswan, Egypt.jpg",
+   "author": "Vyacheslav Argenberg",
+   "license": "CC BY 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Power_plant,_Aswan_Dam,_Aswan,_Egypt.jpg"
+  },
+  "img/ind/prj-water.jpg": {
+   "title": "Multi Stage Flash Desalination Plant at Jebel Ali G Station.jpg",
+   "author": "Starsend",
+   "license": "CC BY-SA 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Multi_Stage_Flash_Desalination_Plant_at_Jebel_Ali_G_Station.jpg"
+  },
+  "img/ind/prj-water-2.jpg": {
+   "title": "Aerial view of Victorian Desalination Plant.jpg",
+   "author": "JoelCarterRamadge",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Aerial_view_of_Victorian_Desalination_Plant.jpg"
+  },
+  "img/ind/prj-port.jpg": {
+   "title": "Alexandria Port.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Alexandria_Port.jpg"
+  },
+  "img/ind/prj-port-2.jpg": {
+   "title": "Chiwan Container Terminal 2006.jpg",
+   "author": "Niels Johannes",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Chiwan_Container_Terminal_2006.jpg"
+  },
+  "img/ind/prj-road.jpg": {
+   "title": "Bridge construction on Puerto Rico Highway 10 img 1.jpg",
+   "author": "Guaraguao",
+   "license": "CC BY 2.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Bridge_construction_on_Puerto_Rico_Highway_10_img_1.jpg"
+  },
+  "img/ind/prj-road-2.jpg": {
+   "title": "Railway bridge under construction in Qena, Egypt - 1994–1996-01.jpg",
+   "author": "Jaap Berk",
+   "license": "Public domain",
+   "source": "https://commons.wikimedia.org/wiki/File:Railway_bridge_under_construction_in_Qena,_Egypt_-_1994%E2%80%931996-01.jpg"
+  },
+  "img/ind/prj-rail.jpg": {
+   "title": "Railway bridge under construction in Qena, Egypt - 1994–1996-03.jpg",
+   "author": "Jaap Berk",
+   "license": "Public domain",
+   "source": "https://commons.wikimedia.org/wiki/File:Railway_bridge_under_construction_in_Qena,_Egypt_-_1994%E2%80%931996-03.jpg"
+  },
+  "img/ind/prj-rail-2.jpg": {
+   "title": "Egyptian Railways (ENR) 1.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Egyptian_Railways_(ENR)_1.jpg"
+  },
+  "img/ind/prj-housing.jpg": {
+   "title": "New Borg El Arab City 10.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:New_Borg_El_Arab_City_10.jpg"
+  },
+  "img/ind/prj-housing-2.jpg": {
+   "title": "New Borg El Arab City 36.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:New_Borg_El_Arab_City_36.jpg"
+  },
+  "img/ind/prj-industry.jpg": {
+   "title": "Combined Cycle Power Plant.jpg",
+   "author": "Nicolás Adamo",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Combined_Cycle_Power_Plant.jpg"
+  },
+  "img/ind/prj-industry-2.jpg": {
+   "title": "Ain Sokhna Industrial Zone.jpg",
+   "author": "Abdelrhman 1990",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Ain_Sokhna_Industrial_Zone.jpg"
+  },
+  "img/ind/prj-petro.jpg": {
+   "title": "Damietta - Egypt - panoramio.jpg",
+   "author": "Tutku Çetinel",
+   "license": "CC BY 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Damietta_-_Egypt_-_panoramio.jpg"
+  },
+  "img/ind/prj-petro-2.jpg": {
+   "title": "Petron Bataan Refinery facing Manila Bay.jpg",
+   "author": "Makubex1985",
+   "license": "CC0",
+   "source": "https://commons.wikimedia.org/wiki/File:Petron_Bataan_Refinery_facing_Manila_Bay.jpg"
+  },
+  "img/ind/prj-cement.jpg": {
+   "title": "Nccproductionplant17.png",
+   "author": "National Company For Cement in Beni Suef",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Nccproductionplant17.png"
+  },
+  "img/ind/prj-cement-2.jpg": {
+   "title": "Hoping Taiwan-Cement-Corporation-Hoping-Plant-01.jpg",
+   "author": "CEphoto, Uwe Aranas",
+   "license": "CC BY-SA 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Hoping_Taiwan-Cement-Corporation-Hoping-Plant-01.jpg"
+  },
+  "img/ind/prj-mining.jpg": {
+   "title": "Phosphate mine (52726859085).jpg",
+   "author": "Lars Plougmann from United States",
+   "license": "CC BY-SA 2.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Phosphate_mine_(52726859085).jpg"
+  },
+  "img/ind/prj-mining-2.jpg": {
+   "title": "Boron mine pit.jpg",
+   "author": "Marcin Wichary",
+   "license": "CC BY 2.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Boron_mine_pit.jpg"
+  },
+  "img/ind/prj-agri.jpg": {
+   "title": "Irrigation in the Egyptian Desert.jpg",
+   "author": "Christoph Strässler",
+   "license": "CC BY-SA 2.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Irrigation_in_the_Egyptian_Desert.jpg"
+  },
+  "img/ind/prj-agri-2.jpg": {
+   "title": "Center-pivot irrigation system - 1.jpg",
+   "author": "Killarnee",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Center-pivot_irrigation_system_-_1.jpg"
+  },
+  "img/ind/prj-tunnel.jpg": {
+   "title": "Ahmed Hamdi Tunnel - West entry.jpg",
+   "author": "Zehnfinger",
+   "license": "CC BY-SA 3.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Ahmed_Hamdi_Tunnel_-_West_entry.jpg"
+  },
+  "img/ind/prj-tunnel-2.jpg": {
+   "title": "2012 Eurotunnel tunnel boring machine 01.JPG",
+   "author": "Bärbel Miemietz",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:2012_Eurotunnel_tunnel_boring_machine_01.JPG"
+  },
+  "img/ind/prj-airport.jpg": {
+   "title": "Sphinx International Airport 01.jpg",
+   "author": "Nabbegat",
+   "license": "CC BY 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Sphinx_International_Airport_01.jpg"
+  },
+  "img/ind/prj-airport-2.jpg": {
+   "title": "Cairo Airport Terminal 3.jpg",
+   "author": "Alensha",
+   "license": "CC BY-SA 4.0",
+   "source": "https://commons.wikimedia.org/wiki/File:Cairo_Airport_Terminal_3.jpg"
+  }
+ }
+}

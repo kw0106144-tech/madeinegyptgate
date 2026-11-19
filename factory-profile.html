@@ -1,0 +1,733 @@
+<title>ملف المصنع – إيجيتك للكابلات</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: madeinegyptgate.com identity (deep green + gold, Cairo). Media slider → profile bar → facts strip → sticky section nav → stacked sections + sticky contact sidebar → RFQ → developer notes. */
+:root {
+  --bg: #F8FAFC;
+  --surface: #FFFFFF;
+  --sunken: #F1F5F9;
+  --fg: #0F172A;
+  --muted: #64748B;
+  --line: #E2E8F0;
+  --green-deep: #8E0B20;
+  --green: #C8102E;
+  --green-mid: #6E0A18;
+  --green-soft: #FDEEEF;
+  --gold: #C09300;
+  --gold-deep: #8C6A00;
+  --gold-soft: #FBF4DE;
+  --wa: #25D366;
+  --on-dark: #FFFFFF;
+  --font: "Cairo", Tahoma, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #120708; --surface: #1C0E10; --sunken: #261316; --fg: #F2E8E9; --muted: #A8989A; --line: #35201F;
+    --green: #F0566A; --green-mid: #3D0B12; --green-soft: #2B1013; --gold-soft: #2A2208; --gold-deep: #E8C766; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #120708; --surface: #1C0E10; --sunken: #261316; --fg: #F2E8E9; --muted: #A8989A; --line: #35201F;
+  --green: #F0566A; --green-mid: #3D0B12; --green-soft: #2B1013; --gold-soft: #2A2208; --gold-deep: #E8C766; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 15px; line-height: 1.75; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3, h4 { margin: 0; line-height: 1.35; text-wrap: balance; }
+p { margin: 0; }
+a { color: var(--green); text-decoration: none; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; border-radius: 6px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+svg.i { width: 1.15em; height: 1.15em; flex: none; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: 10px; padding: 10px 18px; font-weight: 700; font-size: .95rem; cursor: pointer; white-space: nowrap; transition: transform .15s ease, box-shadow .15s ease; }
+.btn:hover { transform: translateY(-1px); }
+.btn-gold { background: var(--gold); color: #1A1204; }
+.btn-wa { background: var(--wa); color: #fff; }
+.btn-green { background: var(--green); color: #fff; }
+.btn-line { background: var(--surface); border-color: var(--line); color: var(--fg); }
+.btn-sm { padding: 6px 12px; font-size: .85rem; border-radius: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 600; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+.chip-green { background: var(--green-soft); color: var(--green); }
+.chip-gold { background: var(--gold-soft); color: var(--gold-deep); }
+.chip-gray { background: var(--sunken); color: var(--muted); }
+.ph-note { font-size: .75rem; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; }
+.ph-note::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+
+/* Header (mirrors the live site) */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 40; background: var(--surface); }
+.site-hdr { background: var(--surface); border-bottom: 3px solid var(--green); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; }
+.site-hdr .wrap { display: flex; align-items: center; gap: 18px; padding-block: 10px; }
+.brand { display: flex; align-items: center; gap: 10px; flex: none; }
+.brand img { height: 50px; width: auto; }
+.brand b { display: block; color: var(--green); font-size: 1.05rem; line-height: 1.2; }
+.brand small { display: block; color: var(--muted); font-size: .72rem; }
+.site-nav { display: flex; gap: 2px; flex-wrap: wrap; margin-inline-start: auto; }
+.site-nav a { color: var(--fg); font-weight: 600; font-size: .9rem; padding: 6px 10px; border-radius: 8px; }
+.site-nav a:hover { background: var(--sunken); }
+.site-nav a.on { color: var(--green); }
+.hdr-acts { display: flex; gap: 6px; }
+.hdr-acts .intl { background: #1565C0; color: #fff; }
+@media (max-width: 1100px) { .site-nav { display: none; } .hdr-acts { margin-inline-start: auto; } }
+@media (max-width: 460px) { .hdr-acts .intl { display: none; } }
+
+.crumbs { font-size: .82rem; color: var(--muted); padding-block: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.crumbs a { color: var(--muted); }
+.crumbs span[aria-current] { color: var(--fg); font-weight: 600; }
+
+/* Slider */
+.slider { position: relative; border-radius: 18px; overflow: hidden; height: clamp(230px, 36vw, 440px); background: var(--green-deep); }
+.slide { position: absolute; inset: 0; opacity: 0; transition: opacity .7s ease; }
+.slide.on { opacity: 1; }
+.slide canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.slide .cap { position: absolute; bottom: 52px; inset-inline-start: 20px; background: rgba(0, 20, 10, .55); color: #fff; padding: 6px 14px; border-radius: 8px; font-size: .9rem; font-weight: 600; max-width: calc(100% - 40px); }
+.slide .kind { position: absolute; top: 16px; inset-inline-start: 16px; }
+.slide .play { position: absolute; inset: 0; margin: auto; width: 78px; height: 78px; border-radius: 50%; background: rgba(255,255,255,.94); color: var(--green-deep); border: 0; cursor: pointer; display: grid; place-items: center; box-shadow: 0 0 0 10px rgba(255,255,255,.18); }
+.s-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(255,255,255,.9); color: #8E0B20; font-size: 1.4rem; cursor: pointer; display: grid; place-items: center; }
+.s-prev { inset-inline-start: 14px; }
+.s-next { inset-inline-end: 14px; }
+.thumbs { position: absolute; bottom: 14px; inset-inline: 0; display: flex; justify-content: center; gap: 6px; }
+.thumbs button { width: 10px; height: 10px; border-radius: 99px; border: 0; padding: 0; background: rgba(255,255,255,.5); cursor: pointer; transition: width .2s ease; }
+.thumbs button.on { width: 28px; background: var(--gold); }
+.counter { position: absolute; top: 16px; inset-inline-end: 16px; background: rgba(0,0,0,.45); color: #fff; font-size: .8rem; padding: 2px 10px; border-radius: 99px; }
+
+/* Profile bar */
+.pbar { position: relative; margin-top: -54px; margin-inline: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; display: flex; flex-wrap: wrap; gap: 18px; align-items: center; box-shadow: 0 18px 40px -24px rgba(0, 51, 24, .35); }
+.plogo { width: 132px; height: 132px; border-radius: 16px; border: 1px solid var(--line); background: #fff; display: grid; place-items: center; padding: 14px; margin-top: -60px; box-shadow: 0 8px 20px -10px rgba(0,0,0,.25); flex: none; }
+.plogo img { max-width: 100%; max-height: 100%; }
+.plogo-av { width: 100%; height: 100%; border-radius: 10px; display: grid; place-items: center; background: var(--green-soft); color: var(--green); font-weight: 800; font-size: 1.6rem; letter-spacing: .04em; direction: ltr; }
+.ptitle { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ptitle .badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.ptitle h1 { font-size: clamp(1.4rem, 2.6vw, 1.9rem); font-weight: 800; color: var(--fg); }
+.ptitle h1 small { display: block; font-size: .95rem; font-weight: 600; color: var(--muted); direction: ltr; text-align: right; }
+html[dir="ltr"] .ptitle h1 small { text-align: left; }
+.ptitle .meta { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .88rem; color: var(--muted); }
+.ptitle .meta span { display: inline-flex; align-items: center; gap: 5px; }
+.pacts { display: flex; flex-wrap: wrap; gap: 8px; }
+.pacts .icon-btn { width: 42px; padding: 10px 0; }
+@media (max-width: 700px) { .pbar { margin-inline: 0; margin-top: -30px; } .plogo { width: 96px; height: 96px; margin-top: -48px; } .pacts { width: 100%; } .pacts .btn:not(.icon-btn) { flex: 1; } }
+
+/* Facts strip */
+.facts { margin-top: 18px; display: grid; grid-template-columns: repeat(6, 1fr); background: var(--green-deep); color: var(--on-dark); border-radius: 16px; overflow: hidden; }
+.facts div { padding: 16px 18px; display: flex; flex-direction: column; gap: 2px; border-inline-start: 1px solid rgba(255,255,255,.1); }
+.facts div:first-child { border-inline-start: 0; }
+.facts b { font-size: 1.45rem; font-weight: 800; color: #fff; line-height: 1.3; }
+.facts b small { font-size: .8rem; font-weight: 600; color: var(--gold); margin-inline-start: 3px; }
+.facts span { font-size: .8rem; opacity: .78; }
+.facts .pending b { color: rgba(255,255,255,.45); }
+@media (max-width: 1000px) { .facts { grid-template-columns: repeat(3, 1fr); } .facts div:nth-child(4) { border-inline-start: 0; } .facts div:nth-child(n+4) { border-top: 1px solid rgba(255,255,255,.1); } }
+@media (max-width: 520px) { .facts { grid-template-columns: repeat(2, 1fr); } .facts div { border-inline-start: 0 !important; border-top: 1px solid rgba(255,255,255,.1); } .facts div:nth-child(-n+2) { border-top: 0; } .facts div:nth-child(even) { border-inline-start: 1px solid rgba(255,255,255,.1) !important; } }
+
+/* Section nav */
+.snav { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 66px); z-index: 20; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); margin-top: 22px; border-bottom: 1px solid var(--line); }
+.snav .in { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-block: 8px; }
+.snav a { white-space: nowrap; color: var(--muted); font-weight: 600; font-size: .9rem; padding: 6px 14px; border-radius: 999px; }
+.snav a:hover { color: var(--fg); background: var(--sunken); }
+.snav a.on { background: var(--green); color: #fff; }
+
+/* Body grid */
+.pbody { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; padding-block: 22px 48px; align-items: start; }
+.main-col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.side-col { display: flex; flex-direction: column; gap: 16px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 128px); }
+@media (max-width: 980px) { .pbody { grid-template-columns: 1fr; } .side-col { position: static; } }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 14px; scroll-margin-top: 140px; }
+.card > header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.card h2 { font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+.card h2::before { content: ""; width: 5px; height: 22px; border-radius: 3px; background: var(--gold); }
+.card h3 { font-size: 1rem; font-weight: 700; }
+.lead { font-size: 1.05rem; font-weight: 700; color: var(--green); }
+.lang-toggle { display: inline-flex; background: var(--sunken); border-radius: 8px; padding: 3px; }
+.lang-toggle button { border: 0; background: transparent; padding: 3px 12px; border-radius: 6px; cursor: pointer; font-size: .8rem; font-weight: 600; color: var(--muted); }
+.lang-toggle button.on { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.en { direction: ltr; text-align: left; }
+.vm { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.vm div { background: var(--green-soft); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+.vm b { color: var(--green); }
+.values { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.values div { border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.values .ic { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; background: var(--gold-soft); color: var(--gold-deep); }
+.values p { font-size: .88rem; color: var(--muted); }
+@media (max-width: 640px) { .vm, .values { grid-template-columns: 1fr; } }
+
+/* Products */
+.prods { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.prod { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; background: var(--surface); }
+.prod .thumb { aspect-ratio: 4/3; max-width: 100%; position: relative; background: linear-gradient(135deg, #CFE8F0, #9CC6D6 55%, #6FA3B8); }
+.prod .thumb::after { content: ""; position: absolute; inset: 18% 22%; border: 2px solid rgba(255,255,255,.75); border-radius: 4px; background: linear-gradient(120deg, rgba(255,255,255,.55), rgba(255,255,255,0) 40%, rgba(255,255,255,.35) 60%, rgba(255,255,255,0)); transform: skewY(-6deg); }
+.prod .thumb .mm { position: absolute; bottom: 8px; inset-inline-end: 8px; z-index: 1; background: rgba(0,51,24,.85); color: #fff; font-size: .75rem; font-weight: 700; padding: 1px 8px; border-radius: 6px; }
+.prod .b { padding: 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.prod h3 { font-size: .95rem; }
+.prod .row { display: flex; justify-content: space-between; gap: 8px; font-size: .8rem; color: var(--muted); }
+.prod .acts { display: flex; gap: 6px; margin-top: auto; padding-top: 6px; }
+.prod .acts .btn { flex: 1; }
+.filter { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 3px 12px; font-size: .82rem; cursor: pointer; }
+.filter button.on { background: var(--green); color: #fff; border-color: var(--green); }
+@media (max-width: 760px) { .prods { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 420px) { .prods { grid-template-columns: 1fr; } }
+
+/* Capability */
+.cap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.cap-grid > * { min-width: 0; }
+.spec { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.spec th { text-align: start; font-weight: 600; color: var(--muted); padding: 8px 0; width: 45%; border-bottom: 1px solid var(--line); }
+.spec td { padding: 8px 0; border-bottom: 1px solid var(--line); font-weight: 600; }
+.gauge { display: flex; flex-direction: column; gap: 8px; }
+.thick { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding: 8px; border-radius: 12px; background: var(--sunken); }
+.thick div { flex: 1; background: linear-gradient(180deg, #A9D3E2, #6FA3B8); border-radius: 3px 3px 0 0; position: relative; }
+.thick div span { position: absolute; bottom: -22px; inset-inline: 0; text-align: center; font-size: .72rem; color: var(--muted); }
+@media (max-width: 640px) { .cap-grid { grid-template-columns: 1fr; } }
+
+/* Certs */
+.certs { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.cert { display: flex; gap: 10px; align-items: center; padding: 12px; border: 1px dashed var(--line); border-radius: 12px; }
+.cert .ic { width: 40px; height: 40px; border-radius: 10px; background: var(--gold-soft); color: var(--gold-deep); display: grid; place-items: center; flex: none; }
+.cert b { font-size: .9rem; display: block; line-height: 1.4; }
+.cert small { color: var(--muted); font-size: .78rem; }
+
+/* Markets */
+.mkts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.mkt { border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+.mkt.on { border-color: var(--green); background: var(--green-soft); }
+.mkt b { font-size: .95rem; }
+.mkt small { color: var(--muted); font-size: .78rem; }
+.mkt .st { font-size: .78rem; font-weight: 700; }
+.mkt.on .st { color: var(--green); }
+.mkt:not(.on) .st { color: var(--muted); }
+@media (max-width: 900px) { .mkts { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 520px) { .mkts { grid-template-columns: repeat(2, 1fr); } }
+
+/* Gallery */
+.gal { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.gal button { aspect-ratio: 1; max-width: 100%; border: 0; border-radius: 10px; cursor: pointer; padding: 0; position: relative; overflow: hidden; }
+.gal button canvas { width: 100%; height: 100%; display: block; }
+.gal button .t { position: absolute; bottom: 6px; inset-inline-start: 6px; background: rgba(0,0,0,.5); color: #fff; font-size: .72rem; padding: 1px 8px; border-radius: 6px; }
+.gal button .v { position: absolute; inset: 0; margin: auto; width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.9); color: var(--green-deep); display: grid; place-items: center; }
+.gal .wide { grid-column: span 2; grid-row: span 2; }
+@media (max-width: 560px) { .gal { grid-template-columns: repeat(2, 1fr); } }
+
+/* RFQ */
+.rfq { background: linear-gradient(135deg, var(--green-deep), var(--green-mid)); color: #fff; border: 0; }
+.rfq h2 { color: #fff; }
+.rfq .sub { opacity: .8; font-size: .9rem; }
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.f { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; }
+.f.full { grid-column: 1 / -1; }
+.f input, .f textarea, .f select { font: inherit; color: #0F172A; background: #fff; border: 1px solid #CBD5E1; border-radius: 10px; padding: 9px 12px; min-width: 0; }
+.f textarea { min-height: 90px; resize: vertical; }
+.ok { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); border-radius: 12px; padding: 14px 16px; }
+@media (max-width: 560px) { .fgrid { grid-template-columns: 1fr; } }
+
+/* Sidebar */
+.contact-list { display: flex; flex-direction: column; gap: 2px; }
+.ci { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.ci:last-child { border-bottom: 0; }
+.ci .ic { width: 36px; height: 36px; border-radius: 10px; background: var(--green-soft); color: var(--green); display: grid; place-items: center; flex: none; }
+.ci small { display: block; color: var(--muted); font-size: .76rem; }
+.ci b { font-weight: 700; font-size: .92rem; overflow-wrap: anywhere; }
+.ci .cp { margin-inline-start: auto; border: 0; background: var(--sunken); border-radius: 7px; font-size: .75rem; padding: 2px 8px; cursor: pointer; align-self: center; }
+.socials { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.socials a { aspect-ratio: 1; max-width: 100%; border-radius: 12px; display: grid; place-items: center; color: #fff; }
+.socials a.off { background: var(--sunken) !important; color: var(--muted); }
+.map { height: 160px; border-radius: 12px; position: relative; overflow: hidden; background: var(--sunken); }
+.map canvas { width: 100%; height: 100%; display: block; }
+.map .pin { position: absolute; top: 42%; left: 34%; transform: translate(-50%, -100%); color: var(--green); }
+.hours { width: 100%; font-size: .85rem; border-collapse: collapse; }
+.hours td { padding: 4px 0; }
+.hours td:last-child { text-align: end; color: var(--muted); }
+.similar { display: flex; flex-direction: column; gap: 8px; }
+.sim { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 10px; color: var(--fg); }
+.sim:hover { background: var(--sunken); }
+.sim .av { width: 40px; height: 40px; border-radius: 10px; background: var(--green-soft); color: var(--green); font-weight: 800; display: grid; place-items: center; flex: none; }
+.sim small { display: block; color: var(--muted); font-size: .76rem; }
+.owner { background: var(--gold-soft); border-color: transparent; }
+
+/* Dev notes */
+.dev { margin-top: 8px; border: 2px dashed var(--gold); background: var(--surface); }
+.dev summary { cursor: pointer; font-weight: 800; font-size: 1.05rem; color: var(--gold-deep); list-style: none; display: flex; justify-content: space-between; align-items: center; }
+.dev summary::-webkit-details-marker { display: none; }
+.dev summary::after { content: "+"; font-size: 1.4rem; }
+.dev[open] summary::after { content: "−"; }
+.dev .tbl { overflow-x: auto; }
+.dev table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: .85rem; }
+.dev th, .dev td { text-align: start; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.dev th { background: var(--sunken); font-weight: 700; }
+.dev code { direction: ltr; unicode-bidi: embed; font-family: ui-monospace, Menlo, monospace; font-size: .8rem; background: var(--sunken); padding: 1px 6px; border-radius: 5px; }
+.dev ol { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 6px; }
+
+/* Footer */
+.site-ftr { background: var(--green-deep); color: #F6E4E6; padding-block: 36px 20px; font-size: .88rem; }
+.site-ftr .cols { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1.2fr; gap: 24px; }
+.site-ftr .cols > * { min-width: 0; }
+.site-ftr h4 { color: var(--gold); font-size: .95rem; margin-bottom: 10px; }
+.site-ftr ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; opacity: .85; }
+.site-ftr .aff { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.site-ftr .aff img { width: 54px; height: 54px; background: #fff; border-radius: 50%; padding: 3px; }
+.site-ftr .bottom { margin-top: 26px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.12); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; opacity: .7; font-size: .8rem; }
+@media (max-width: 860px) { .site-ftr .cols { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) { .site-ftr .cols { grid-template-columns: 1fr; } }
+
+.toast { position: fixed; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); inset-inline: 0; margin: 0 auto; width: fit-content; max-width: calc(100% - 32px); background: var(--green-deep); color: #fff; padding: 10px 18px; border-radius: 10px; font-size: .9rem; z-index: 60; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
+
+.slide .svid, .slide .sbg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background-size: cover; background-position: center; }
+.slide::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,20,10,.55), rgba(0,20,10,0) 45%); pointer-events: none; }
+.slide .cap, .slide .kind, .slide .play { z-index: 2; }
+.gal button .gimg { position: absolute; inset: 0; background-size: cover; background-position: center; transition: transform .5s ease; }
+.gal button:hover .gimg { transform: scale(1.08); }
+.gal button .v, .gal button .t { z-index: 1; }
+.lbx { position: fixed; inset: 0; z-index: 90; background: rgba(2,10,6,.88); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.lbin { position: relative; width: min(1000px, 100%); display: flex; flex-direction: column; gap: 8px; animation: lbin .35s cubic-bezier(.2,.8,.2,1); }
+@keyframes lbin { from { opacity: .2; transform: scale(.94); } to { opacity: 1; transform: none; } }
+.lbin video, .lbin img { width: 100%; max-height: 78vh; object-fit: contain; border-radius: 14px; background: #000; }
+.lbin p { color: #fff; text-align: center; font-size: .9rem; opacity: .85; }
+.lbx-x { position: absolute; top: -14px; inset-inline-end: -10px; z-index: 2; width: 40px; height: 40px; border-radius: 50%; border: 0; background: #fff; cursor: pointer; font-size: 1rem; }
+.prod .thumb { background: #fff url(img/cat-cable.jpg) center / cover no-repeat !important; }
+.prod .thumb::after { display: none !important; }
+</style>
+
+<div dir="rtl" lang="ar">
+
+<header class="site-hdr">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="صنع في مصر">
+      <img src="img/logo-site.png" alt="منصة صنع في مصر">
+    </a>
+    <nav class="site-nav" aria-label="القائمة الرئيسية">
+      <a href="#top">الرئيسية</a>
+      <a href="#products">المنتجات</a>
+      <a href="#rfq">طلبات الأسعار</a>
+      <a href="#top" class="on">المصانع</a>
+      <a href="#top">المناطق الصناعية والحرة</a>
+      <a href="#top">المركز الإعلامي</a>
+      <a href="#contact">اتصل بنا</a>
+    </nav>
+    <div class="hdr-acts">
+      <a class="btn btn-sm intl" href="#top">المنصات الدولية</a>
+      <a class="btn btn-sm btn-green" href="#owner">دخول المصانع</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="top">
+  <nav class="crumbs" aria-label="مسار الصفحة">
+    <a href="#top">الرئيسية</a><span>›</span><a href="#top">المصانع</a><span>›</span><a href="#top">الكابلات والأسلاك الكهربائية</a><span>›</span><span aria-current="page">إيجيتك للكابلات</span>
+  </nav>
+
+  <!-- 1. Media slider -->
+  <div class="slider" id="slider" aria-roledescription="عرض صور وفيديو المصنع">
+    <div id="slides"></div>
+    <span class="counter num" id="sCount"></span>
+    <button class="s-nav s-prev" id="sPrev" aria-label="السابق">›</button>
+    <button class="s-nav s-next" id="sNext" aria-label="التالي">‹</button>
+    <div class="thumbs" id="sDots"></div>
+  </div>
+
+  <!-- 2. Profile bar -->
+  <div class="pbar">
+    <div class="plogo"><span class="plogo-av" role="img" aria-label="شعار إيجيتك للكابلات">ET</span></div>
+    <div class="ptitle">
+      <div class="badges">
+        <span class="chip chip-green">✓ بيانات من مصادر منشورة</span>
+        <span class="chip chip-gold">🏭 مصنع</span>
+        <span class="chip chip-gray">الدليل الصناعي المصري B2B</span>
+      </div>
+      <h1>إيجيتك للكابلات<small>Egytech Cables · Elsewedy Electric</small></h1>
+      <div class="meta">
+        <span><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>محافظة الشرقية · مدينة العاشر من رمضان (المنطقة الصناعية A3)</span>
+        <span><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>الصناعات الكهربائية › كابلات القوى والأسلاك</span>
+      </div>
+    </div>
+    <div class="pacts">
+      <a class="btn btn-gold" href="#rfq"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4z"/></svg>طلب عرض سعر (RFQ)</a>
+      <a class="btn btn-wa" id="waBtn" href="#rfq">✉️ راسل المصنع عبر المنصة</a>
+      <button class="mig-fbtn" type="button" data-follow-icon aria-label="تابع المصنع" title="تابع المصنع" data-follow-kind="factory" data-follow-id="egytech-cables" data-follow-label="إيجيتك للكابلات" data-follow-url="factory.html">☆</button>
+      <button class="btn btn-line icon-btn" aria-label="مشاركة" id="shareBtn"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></button>
+    </div>
+  </div>
+
+  <!-- 3. Facts strip -->
+  <div class="facts" aria-label="أرقام المصنع">
+    <div><b class="num">1998</b><span>سنة التأسيس</span></div>
+    <div><b class="num">150<small>ك.ف</small></b><span>أعلى جهد لكابلات الجهد العالي (HV)</span></div>
+    <div><b class="num">36<small>ك.ف</small></b><span>كابلات الجهد المتوسط (MV)</span></div>
+    <div><b class="num">1<small>ك.ف</small></b><span>الجهد المنخفض وكابلات التحكم</span></div>
+    <div><b>SWDY</b><span>سهم الشركة الأم في البورصة المصرية</span></div>
+    <div class="pending"><b class="num">—</b><span>عدد الموظفين</span></div>
+  </div>
+
+  <!-- 4. Section nav -->
+  <nav class="snav" aria-label="أقسام ملف المصنع">
+    <div class="in" id="snav">
+      <a href="#about" class="on">نبذة</a>
+      <a href="#products">المنتجات</a>
+      <a href="#capacity">القدرات الإنتاجية</a>
+      <a href="#certs">الشهادات</a>
+      <a href="#rfq">طلب عرض سعر</a>
+    </div>
+  </nav>
+
+  <div class="pbody">
+    <div class="main-col">
+
+      <section class="card" id="about">
+        <header>
+          <h2>نبذة عن المصنع</h2>
+          <div class="lang-toggle" role="group" aria-label="لغة النبذة"><button class="on" data-l="ar">عربي</button><button data-l="en">English</button></div>
+        </header>
+        <div id="aboutAr" style="display:flex;flex-direction:column;gap:10px">
+          <p class="lead">مصنع لكابلات القوى والأسلاك الكهربائية ضمن مجموعة السويدي إليكتريك في مدينة العاشر من رمضان</p>
+          <p>تأسست شركة إيجيتك للكابلات عام 1998، ويقع مصنعها في المنطقة الصناعية A3 بمدينة العاشر من رمضان في محافظة الشرقية، وهي من شركات مجموعة السويدي إليكتريك المدرجة في البورصة المصرية (رمز السهم SWDY).</p>
+          <p>يشمل نطاق إنتاجها المعتمد أسلاك المباني والتمديدات الداخلية، وكابلات التحكم والجهد المنخفض حتى 1 ك.ف، وكابلات الجهد المتوسط حتى 36 ك.ف، وكابلات الجهد العالي حتى 150 ك.ف، إضافةً إلى كابلات الجهد الفائق (EHV) لشبكات نقل الكهرباء.</p>
+        </div>
+        <div id="aboutEn" class="en" hidden style="display:flex;flex-direction:column;gap:10px">
+          <p class="lead">A power cable and electrical wire plant of the Elsewedy Electric group in 10th of Ramadan City, Egypt</p>
+          <p>Egytech Cables was established in 1998. Its plant is located in Industrial Zone A3 of 10th of Ramadan City, Sharqia Governorate, and it is part of Elsewedy Electric, listed on the Egyptian Exchange (ticker SWDY).</p>
+          <p>Its certified scope covers building and indoor wires, control and low-voltage cables up to 1 kV, medium-voltage cables up to 36 kV and high-voltage cables up to 150 kV, as well as extra-high-voltage (EHV) cables for transmission networks.</p>
+        </div>
+        <div class="vm">
+          <div><b>المجموعة الأم</b><p>إحدى شركات مجموعة السويدي إليكتريك المصرية، التي بدأت نشاطها عام 1938 في تجارة المعدات الكهربائية، وغيّرت اسمها من «السويدي للكابلات» إلى «السويدي إليكتريك» عام 2010.</p></div>
+          <div><b>الجودة والاعتماد</b><p>يحمل المصنع اعتمادات BASEC البريطانية لعدد من منتجاته وأنظمة إدارته، وشهادة ISO 37301 لنظام إدارة الامتثال.</p></div>
+        </div>
+        <h3>أبرز المحطات</h3>
+        <div class="values">
+          <div><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m11 17 2 2a1 1 0 1 0 3-3M14 14l2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4M21 3l1 11h-2M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3M3 4h8"/></svg></span><b>1938</b><p>بداية نشاط عائلة السويدي في تجارة المعدات الكهربائية بالقاهرة، نواة مجموعة السويدي إليكتريك.</p></div>
+          <div><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span><b>1998</b><p>تأسيس شركة إيجيتك للكابلات ومصنعها في مدينة العاشر من رمضان.</p></div>
+          <div><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 21h14M3 8l4 8H-1zM3 8h18M21 8l4 8h-8z" transform="translate(0 -1)"/></svg></span><b>2025</b><p>افتتاح المجموعة مصنع السويدي لكابلات الاتصالات بالعاشر من رمضان باستثمارات 2 مليار جنيه، بطاقة مخططة 4 ملايين كم من كابلات الألياف الضوئية و200 ألف كم من كابلات الاتصالات النحاسية سنوياً.</p></div>
+        </div>
+      </section>
+
+      <section class="card" id="products">
+        <header>
+          <h2>منتجات المصنع <span class="chip chip-gray num" id="pCount"></span></h2>
+          <div class="filter" id="pFilter"></div>
+        </header>
+        <div class="prods" id="prods"></div>
+        <span class="ph-note">فئات المنتجات وفق نطاق الاعتماد المنشور للمصنع: تُسحب تلقائياً من منتجات المصنع المسجلة في السوق، والمقاطع والمواصفات التفصيلية يحدّدها المصنع.</span>
+      </section>
+
+      <section class="card" id="capacity">
+        <header><h2>القدرات الإنتاجية</h2></header>
+        <div class="cap-grid">
+          <table class="spec">
+            <tr><th>الجهد المنخفض والتحكم</th><td class="num">حتى 1 ك.ف</td></tr>
+            <tr><th>الجهد المتوسط</th><td class="num">حتى 36 ك.ف</td></tr>
+            <tr><th>الجهد العالي</th><td class="num">حتى 150 ك.ف</td></tr>
+            <tr><th>أنواع المنتجات</th><td>أسلاك المباني والتمديدات الداخلية، كابلات التحكم، كابلات القوى منخفضة ومتوسطة وعالية وفائقة الجهد</td></tr>
+            <tr><th>مواقع الإنتاج</th><td>المنطقتان الصناعيتان A3 وA1 بمدينة العاشر من رمضان</td></tr>
+            <tr><th>الطاقة الإنتاجية السنوية</th><td>يؤكدها المصنع</td></tr>
+          </table>
+          <div class="gauge">
+            <b style="font-size:.9rem">نطاق الجهد المقنن (ك.ف)</b>
+            <div class="thick" id="thick" aria-label="حدود الجهد: 1 و36 و150 ك.ف والجهد الفائق"></div>
+            <span class="ph-note" style="margin-top:22px">حدود الجهد وفق نطاق شهادات BASEC المنشورة (الأعمدة غير متناسبة)؛ الحد الأقصى لكابلات الجهد الفائق يؤكده المصنع.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="certs">
+        <header><h2>الشهادات والمطابقة</h2></header>
+        <div class="certs">
+          <div class="cert"><span class="ic">★</span><div><b>اعتماد BASEC البريطاني</b><small>منتجات وأنظمة إدارة – وفق سجل BASEC</small></div></div>
+          <div class="cert"><span class="ic">★</span><div><b>ISO 37301</b><small>نظام إدارة الامتثال (Eurocert)</small></div></div>
+          <div class="cert"><span class="ic">★</span><div><b>شهادة نسبة المكون المحلي</b><small>لتفضيل المنتج المصري (القانون 5 لسنة 2015)</small></div></div>
+          <div class="cert"><span class="ic">★</span><div><b>السجل الصناعي</b><small>هيئة التنمية الصناعية – الرقم وتاريخ الانتهاء</small></div></div>
+        </div>
+        <span class="ph-note">أول شهادتين من مصادر منشورة؛ الخانتان الأخريان لمستندات بيرفعها المصنع بنفسه من لوحته (صورة أو PDF) لما الخدمة دي تتفعّل.</span>
+      </section>
+
+      <section class="card" id="markets" hidden>
+        <header><h2>أسواق التصدير</h2><span class="muted" style="font-size:.85rem">يحدّدها المصنع من لوحته</span></header>
+        <div class="mkts">
+          <div class="mkt on"><b>السوق المحلي</b><small>جمهورية مصر العربية</small><span class="st">✓ يبيع حالياً</span></div>
+          <div class="mkt on"><b>السوق الأفريقي</b><small>شمال وشرق وغرب أفريقيا…</small><span class="st">✓ يبيع حالياً</span></div>
+          <div class="mkt"><b>السوق العربي والخليجي</b><small>الدول العربية ودول مجلس التعاون</small><span class="st">مفتوح لطلبات جديدة</span></div>
+          <div class="mkt"><b>السوق الآسيوي</b><small>الهند، جنوب شرق آسيا…</small><span class="st">مفتوح لطلبات جديدة</span></div>
+          <div class="mkt"><b>السوق الأوروبي</b><small>دول الاتحاد الأوروبي</small><span class="st">مفتوح لطلبات جديدة</span></div>
+        </div>
+        <span class="ph-note">اختيارات توضيحية (تعمل مجموعة السويدي إليكتريك عبر منشآت صناعية في مصر والشرق الأوسط وأفريقيا). المشترون من كل سوق يرون المصنع في بحثهم حسب هذه الإعدادات.</span>
+      </section>
+
+      <section class="card" id="media" hidden>
+        <header><h2>الصور والفيديو</h2><span class="muted" style="font-size:.85rem">يرفعها المصنع من لوحته</span></header>
+        <div class="gal" id="gal"></div>
+        <span class="ph-note">صور توضيحية عامة وليست من داخل المصنع. في المنصة يرفع المصنع صوره وفيديوهاته من لوحته، وأول 5 منها تظهر في السلايدر أعلى الصفحة.</span>
+      </section>
+
+      <section class="card rfq" id="rfq">
+        <header><h2>إرسال طلب عرض سعر مباشر (RFQ)</h2></header>
+        <p class="sub">لو المصنع عضو مسجّل على المنصة، طلبك بيوصله تلقائياً بالإيميل (والواتساب لو مفعّله) وبيوصل كمان للمصانع المسجّلة المطابقة، وبتعرف العدد الحقيقي؛ والردود وعروض الأسعار بتتبعتلك تلقائياً على بريدك. أرقام المصانع الشخصية مش بتظهر.</p>
+        <form id="rfqForm" novalidate>
+          <div class="fgrid">
+            <label class="f">الاسم *<input id="r-name" required autocomplete="name"></label><label class="f">الشركة الطالبة<input id="r-co" autocomplete="organization"></label><label class="f">البريد الإلكتروني *<input id="r-mail" type="email" dir="ltr" required autocomplete="email"></label>
+            <label class="f">رقم الهاتف (واتساب) *<input id="r-phone" type="tel" dir="ltr" placeholder="+20 1X XXXX XXXX" required autocomplete="tel"></label>
+            <label class="f">المنتج المطلوب *<select id="r-prod"></select></label>
+            <label class="f">الكمية المطلوبة *<input id="r-qty" placeholder="مثلاً: 5 كم" required></label>
+            <label class="f">مدينة التسليم<input id="r-city" placeholder="مثلاً: الإسكندرية"></label>
+            <label class="f">موعد التسليم المطلوب<select id="r-when"><option>خلال أسبوعين</option><option>خلال شهر</option><option>خلال 3 أشهر</option></select></label>
+            <label class="f full">المواصفات الفنية أو شروط التسليم<textarea id="r-spec" placeholder="المواصفات الفنية وشروط التسليم…"></textarea></label>
+          </div>
+          <div id="rfqCons" style="margin-top:10px"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:14px">
+            <button class="btn btn-gold" type="submit">إرسال طلب السعر الآن</button>
+            <span style="font-size:.8rem;opacity:.75" id="rfqHint">الطلب بيتسجّل برقم متابعة ويوصلك إيصال على بريدك</span>
+            <p class="ferr" id="rfqErr" role="alert" hidden style="background:#FEF3F2;color:#B42318;font-weight:700;margin:0;width:100%;border-radius:10px;padding:8px 12px"></p>
+          </div>
+        </form>
+        <div class="ok" id="rfqOk" hidden></div>
+      </section>
+
+    </div>
+
+    <aside class="side-col" id="contact">
+      <div class="card">
+        <h2>بيانات التواصل</h2>
+        <div class="contact-list">
+          <div class="ci"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg></span><div><small>الهاتف</small><b class="muted">يضيفه المصنع من لوحته</b></div></div>
+          <div class="ci"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg></span><div><small>البريد الإلكتروني</small><b class="muted">يضيفه المصنع من لوحته</b></div></div>
+          <div class="ci"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg></span><div><small>الموقع الإلكتروني</small><b><a href="https://www.elsewedyelectric.com" rel="noopener">elsewedyelectric.com</a></b></div></div>
+          <div class="ci"><span class="ic"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg></span><div><small>العنوان</small><b>المنطقة الصناعية A3، مدينة العاشر من رمضان، محافظة الشرقية</b></div></div>
+        </div>
+        <div class="map" aria-label="خريطة موقع المصنع"><canvas id="mapC"></canvas><svg class="pin" width="34" height="34" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a8 8 0 0 0-8 8c0 6 8 12 8 12s8-6 8-12a8 8 0 0 0-8-8zm0 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg></div>
+        <span class="ph-note">الخريطة تُعرض من إحداثيات المصنع.</span>
+      </div>
+
+      <div class="card">
+        <h2>تابعنا</h2>
+        <div class="socials">
+          <a href="https://x.com" style="background:#0F1419" aria-label="إكس"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.2 2h3.4l-7.4 8.5L23 22h-6.8l-5.3-7-6.1 7H1.4l7.9-9L1 2h7l4.8 6.4zm-1.2 18h1.9L7.1 3.9H5.1z"/></svg></a>
+          <a href="https://linkedin.com" style="background:#0A66C2" aria-label="لينكدإن"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.1c.5-1 1.8-2 3.8-2 4 0 4.8 2.6 4.8 6V21h-4v-5.6c0-1.3 0-3-1.9-3s-2.1 1.4-2.1 2.9V21H9z"/></svg></a>
+          <a href="https://facebook.com" style="background:#1877F2" aria-label="فيسبوك"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M14 8h3V4h-3a4 4 0 0 0-4 4v2H8v4h2v8h4v-8h3l1-4h-4V8z"/></svg></a>
+          <a href="#contact" class="off" aria-label="إنستغرام (غير مضاف)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/></svg></a>
+          <a href="#contact" class="off" aria-label="يوتيوب (غير مضاف)"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M23 7.5a3 3 0 0 0-2.1-2.1C19 5 12 5 12 5s-7 0-8.9.4A3 3 0 0 0 1 7.5 31 31 0 0 0 .6 12 31 31 0 0 0 1 16.5a3 3 0 0 0 2.1 2.1C5 19 12 19 12 19s7 0 8.9-.4a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .4-4.5 31 31 0 0 0-.4-4.5zM9.8 15.2V8.8l5.7 3.2z"/></svg></a>
+        </div>
+
+      </div>
+
+      <div class="card">
+        <h2>مصانع مشابهة</h2>
+        <div class="similar">
+          <a class="sim" href="#top"><span class="av">ك</span><div><b>مصانع كابلات أخرى</b><small>من نفس القطاع الفرعي</small></div></a>
+          <a class="sim" href="#top"><span class="av">أ</span><div><b>الألمنيوم والنحاس</b><small>خامات مكمّلة</small></div></a>
+          <a class="sim" href="#top"><span class="av">م</span><div><b>المحولات والمعدات الكهربائية</b><small>القطاع الرئيسي</small></div></a>
+        </div>
+      </div>
+
+      <div class="card owner" id="owner">
+        <h2>هل هذا مصنعك؟</h2>
+        <p class="muted" style="font-size:.9rem">سجّل منشأتك على المنصة (الباقة الأساسية فأعلى) علشان طلبات المشترين المطابقة توصلك تلقائياً، وادخل بكود على الإيميل وكمّل ملف المصنع.</p>
+        <a class="btn btn-green" href="dashboard.html#profile">إدارة ملف المصنع</a>
+      </div>
+    </aside>
+  </div>
+<script src="data/mig-api.js"></script><script src="data/mig-forms.js"></script>
+</main>
+
+<footer class="site-ftr">
+  <div class="wrap">
+    <div class="cols">
+      <div>
+        <h4>منصة صنع في مصر</h4>
+        <p style="opacity:.85">المنصة الوطنية التي تربط كبرى المصانع والشركات الوطنية بالمشترين والمستثمرين محلياً وعالمياً، وتسهيل الصفقات الصناعية وطلبات التوريد (RFQ) بشفافية، دعماً للاستراتيجية الوطنية للصناعة وتعميق التصنيع المحلي ورؤية مصر 2030.</p>
+        <p style="opacity:.85">تديرها الجمعية المصرية للتنمية الصناعية.</p>
+      </div>
+      <div><h4>مواقع تهمك</h4><ul><li>وزارة الصناعة</li><li>هيئة التنمية الصناعية</li><li>الهيئة العامة للاستثمار والمناطق الحرة</li><li>الهيئة الاقتصادية لقناة السويس</li></ul></div>
+      <div><h4>القطاعات الصناعية</h4><ul><li>مواد البناء والإنشاءات</li><li>البتروكيماويات والبوليمرات</li><li>المعادن والصناعات الهندسية</li><li>الصناعات الغذائية والتغليف</li></ul></div>
+      <div><h4>تواصل معنا</h4><ul><li>الجيزة – مدينة السادس من أكتوبر – الحي 11 – وجه الثقافة والعلوم – عمارة 56 (الدور الثالث)، جمهورية مصر العربية</li><li>info@madeinegyptgate.com</li><li dir="ltr" style="text-align:right">01279188996</li></ul></div>
+    </div>
+    <div class="bottom"><span>جميع الحقوق محفوظة © 2026 منصة صنع في مصر</span><span>تصميم مقترح لصفحة المصنع</span></div>
+  </div>
+</footer>
+
+<div class="toast" id="toast" hidden></div>
+</div>
+
+<script>
+/* English for the strings changed in the honesty pass (this page is built outside PAGES, so it carries its own entries) */
+(function () { var D = window.I18N_EN; if (!D) return; var A = {
+  "أول شهادتين من مصادر منشورة؛ الخانتان الأخريان لمستندات بيرفعها المصنع بنفسه من لوحته (صورة أو PDF) لما الخدمة دي تتفعّل": "The first two certificates come from published sources; the other two slots are for documents the factory uploads itself from its dashboard (image or PDF) once that service opens",
+  "أول شهادتين من مصادر منشورة؛ الخانتان الأخريان لمستندات بيرفعها المصنع بنفسه من لوحته (صورة أو PDF) لما الخدمة دي تتفعّل.": "The first two certificates come from published sources; the other two slots are for documents the factory uploads itself from its dashboard (image or PDF) once that service opens.",
+  "يرفعها المصنع من لوحته": "Uploaded by the factory from its dashboard", "تابع المصنع": "Follow factory" };
+  for (var k in A) if (!(k in D)) D[k] = A[k]; })();
+(function () {
+  "use strict";
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var tt;
+  /* English equivalents for the Phase A strings of this page (merged into the i18n dictionary before translation) */
+(function(){var D=window.I18N_EN;if(!D)return;var A={"سجّل منشأتك على المنصة (الباقة الأساسية فأعلى) علشان طلبات المشترين المطابقة توصلك تلقائياً، وادخل بكود على الإيميل وكمّل ملف المصنع.": "Register your company on the platform (Basic plan or higher) so that matching buyer requests reach you automatically, then sign in with an e-mail code and complete the factory profile.", "راسل المصنع عبر المنصة": "Message the factory via the platform", "لو المصنع عضو مسجّل على المنصة، طلبك بيوصله تلقائياً بالإيميل (والواتساب لو مفعّله) وبيوصل كمان للمصانع المسجّلة المطابقة، وبتعرف العدد الحقيقي؛ والردود وعروض الأسعار بتتبعتلك تلقائياً على بريدك. أرقام المصانع الشخصية مش بتظهر.": "If the factory is a registered member, your request reaches it automatically by e-mail (and WhatsApp if enabled) and also reaches matching registered factories — you are told the true number; replies and quotes are forwarded to your e-mail automatically. Factories' personal numbers are never shown.", "الاسم *": "Name *", "الشركة الطالبة": "Requesting company", "البريد الإلكتروني *": "E-mail *", "مثلاً: {n} كم": "e.g. {n} km", "مثلاً: الإسكندرية": "e.g. Alexandria", "المواصفات الفنية وشروط التسليم…": "Technical specifications and delivery terms…", "الطلب بيتسجّل برقم متابعة ويوصلك إيصال على بريدك": "The request is recorded under a tracking number and a receipt is e-mailed to you", "تم نسخ رابط الملف": "Link copied"};for(var k in A)if(!(k in D))D[k]=A[k];})();
+  var EN = window.MIGLANG === "en", TEN = {};
+  /* which factory is on screen (Janna, follows, first-party beacons) */
+  if (window.MIGINQ) MIGINQ.ctx({ type: "factory", id: "egytech-cables", title: "إيجيتك للكابلات", url: "factory.html" });
+  function toast(m) { if (EN) m = TEN[m] || (window.MIGTR ? MIGTR(m) : m); var t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(function () { t.hidden = true; }, 2600); }
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-toast]"); if (b) toast(b.getAttribute("data-toast"));
+    var c = e.target.closest("[data-copy]");
+    if (c) { var v = c.getAttribute("data-copy"); try { navigator.clipboard.writeText(v).then(function () { toast("تم النسخ: " + v); }, function () { toast(v); }); } catch (x) { toast(v); } }
+  });
+  $("#shareBtn").onclick = function () { var u = location.href.split("#")[0]; try { navigator.clipboard.writeText(u).then(function () { toast(EN ? "Link copied" : "تم نسخ رابط الملف"); }, function () { toast(u); }); } catch (x) { toast(u); } };
+
+  /* ---- Plant scenes drawn on canvas (stand-ins for uploaded photos) ---- */
+  function scene(cv, kind, seed) {
+    var r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    var w = Math.max(r.width, 10), h = Math.max(r.height, 10);
+    cv.width = w * d; cv.height = h * d;
+    var x = cv.getContext("2d"); x.scale(d, d);
+    var s = seed; function rnd() { s = (s * 9301 + 49297) % 233280; return s / 233280; }
+    var g;
+    if (kind === "sea") {
+      g = x.createLinearGradient(0, 0, 0, h); g.addColorStop(0, "#9FD1E6"); g.addColorStop(.55, "#E8F3F2"); g.addColorStop(.56, "#2E7FA0"); g.addColorStop(1, "#174E66");
+      x.fillStyle = g; x.fillRect(0, 0, w, h);
+      x.fillStyle = "#D9CBAE"; x.fillRect(0, h * .62, w, h * .38);
+      var px = w * .08;
+      while (px < w * .95) { var bw = 50 + rnd() * 120, bh = 40 + rnd() * h * .25; x.fillStyle = rnd() > .5 ? "#E9ECEF" : "#C9D1D8"; x.fillRect(px, h * .62 - bh, bw, bh); if (rnd() > .55) { x.fillStyle = "#8A949C"; x.fillRect(px + bw * .7, h * .62 - bh - 60, 12, 60); x.fillStyle = "rgba(255,255,255,.6)"; x.beginPath(); x.arc(px + bw * .7 + 6, h * .62 - bh - 70, 14, 0, 7); x.fill(); } px += bw + 10; }
+      x.fillStyle = "#C8102E"; x.fillRect(0, h * .9, w, h * .1);
+    } else if (kind === "line") {
+      g = x.createLinearGradient(0, 0, w, h); g.addColorStop(0, "#0E2A1C"); g.addColorStop(1, "#1C3F2D"); x.fillStyle = g; x.fillRect(0, 0, w, h);
+      for (var i = 0; i < 9; i++) { x.fillStyle = "rgba(255,255,255,.04)"; x.fillRect(i * w / 9, 0, 2, h * .45); }
+      var y0 = h * .55;
+      g = x.createLinearGradient(0, y0, w, y0); g.addColorStop(0, "#FF8A2A"); g.addColorStop(.25, "#FFC56B"); g.addColorStop(.6, "#BFE3EE"); g.addColorStop(1, "#9CC6D6");
+      x.fillStyle = g; x.beginPath(); x.moveTo(0, y0); x.lineTo(w, y0 - h * .08); x.lineTo(w, y0 + h * .06); x.lineTo(0, y0 + h * .14); x.fill();
+      x.strokeStyle = "rgba(255,255,255,.5)"; x.lineWidth = 2; x.beginPath(); x.moveTo(0, y0 + 3); x.lineTo(w, y0 - h * .08 + 3); x.stroke();
+      for (var j = 0; j < 14; j++) { x.fillStyle = "#3A4A42"; x.beginPath(); x.arc(j * w / 13, y0 + h * .2 - j * h * .006, 8, 0, 7); x.fill(); }
+    } else if (kind === "lab") {
+      x.fillStyle = "#E8EEF2"; x.fillRect(0, 0, w, h);
+      x.fillStyle = "#CFD8DE"; x.fillRect(0, h * .65, w, h * .35);
+      for (var k = 0; k < 6; k++) { var lx = w * (.1 + k * .14); x.fillStyle = "rgba(111,163,184," + (.35 + rnd() * .3) + ")"; x.fillRect(lx, h * .25, w * .09, h * .4); x.strokeStyle = "#6FA3B8"; x.strokeRect(lx, h * .25, w * .09, h * .4); }
+      x.fillStyle = "#C8102E"; x.fillRect(w * .78, h * .3, w * .16, h * .35); x.fillStyle = "#C09300"; x.fillRect(w * .8, h * .34, w * .12, h * .14);
+    } else {
+      x.fillStyle = "#1A2B23"; x.fillRect(0, 0, w, h);
+      for (var m = 0; m < 7; m++) { var sx = w * (.05 + m * .135); x.fillStyle = "rgba(170,210,225," + (.25 + rnd() * .35) + ")"; x.beginPath(); x.moveTo(sx, h * .85); x.lineTo(sx + w * .03, h * .2); x.lineTo(sx + w * .1, h * .2); x.lineTo(sx + w * .07, h * .85); x.fill(); }
+      x.fillStyle = "#C09300"; x.fillRect(0, h * .85, w, 6);
+    }
+  }
+
+  /* ---- Slider ---- */
+  var GOV = window.MIGREG && MIGREG.img ? MIGREG.img("SHR") : "img/hero.jpg";
+  function src(k) { return k.indexOf("/") > -1 ? k : "img/" + k + ".jpg"; }
+  function bgs(k) { return "url(" + src(k) + "), url(img/hero.jpg)"; }
+  /* only a real photo with a true caption: the governorate the factory is in. Photos of the factory itself are uploaded by the factory
+     from its dashboard; stock pictures labelled «صورة توضيحية» are not shown (owner decision: remove what is not verified) */
+  var SL = [["i", GOV, "صورة", "محافظة الشرقية – موطن المصنع في مدينة العاشر من رمضان"]];
+  if (SL.length < 2) ["#sPrev", "#sNext", "#sDots", "#sCount"].forEach(function (q) { var el = $(q); if (el) el.hidden = true; });
+  var reducedM = reduced;
+  $("#slides").innerHTML = SL.map(function (s, i) {
+    var media = s[0] === "i" ? '<span class="sbg" style="background-image:' + bgs(s[1]) + '"></span>' : '<video class="svid" muted loop playsinline preload="' + (i ? "none" : "auto") + '" poster="img/' + s[1] + '.jpg"' + (reducedM ? "" : " autoplay") + '><source src="media/' + s[1] + '.mp4" type="video/mp4"></video>';
+    return '<div class="slide' + (i ? "" : " on") + '">' + media + '<span class="kind chip ' + (s[0] === "i" ? "chip-green" : "chip-gold") + '">' + (s[0] === "i" ? "📷 " : "🎬 ") + s[2] + '</span>' +
+      (s[0] === "tour" ? '<button class="play" aria-label="تشغيل الجولة الكاملة" data-tour="0"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>' : "") +
+      '<span class="cap">' + s[3] + '</span></div>';
+  }).join("");
+  $("#sDots").innerHTML = SL.map(function (s, i) { return '<button aria-label="شريحة ' + (i + 1) + '"' + (i ? "" : ' class="on"') + '></button>'; }).join("");
+  var cur = 0, timer;
+  function paintSlides() {}
+  function playCur() { $$("#slides .slide").forEach(function (el, i) { var v = el.querySelector("video"); if (!v) return; if (i === cur && !reducedM) { v.preload = "auto"; var p = v.play(); if (p && p.catch) p.catch(function () {}); } else v.pause(); }); }
+  function show(n) { cur = (n + SL.length) % SL.length; $$("#slides .slide").forEach(function (el, i) { el.classList.toggle("on", i === cur); }); $$("#sDots button").forEach(function (el, i) { el.classList.toggle("on", i === cur); }); $("#sCount").textContent = (cur + 1) + " / " + SL.length; playCur(); }
+  function auto() { clearInterval(timer); if (!reduced && SL.length > 1) timer = setInterval(function () { show(cur + 1); }, 5500); }
+  $("#sNext").onclick = function () { show(cur + 1); auto(); };
+  $("#sPrev").onclick = function () { show(cur - 1); auto(); };
+  $("#sDots").addEventListener("click", function (e) { var i = $$("#sDots button").indexOf(e.target); if (i > -1) { show(i); auto(); } });
+  show(0); auto();
+
+  /* ---- Gallery ---- */
+  /* the factory's own photos and videos (uploaded from its dashboard) — none yet, so the section stays hidden */
+  var G = [];
+  $("#gal").innerHTML = G.map(function (g, i) { return '<button class="' + (g[3] ? "wide" : "") + '" data-g="' + i + '" aria-label="' + g[1] + '"><span class="gimg" style="background-image:' + bgs(g[0]) + '"></span>' + (g[2] ? '<span class="v">▶</span>' : "") + '<span class="t">' + g[1] + '</span></button>'; }).join("");
+  function paintGal() {}
+  /* Lightbox: gallery photos */
+  var lb = document.createElement("div"); lb.className = "lbx"; lb.hidden = true; document.body.appendChild(lb);
+  function openLB(html) { lb.innerHTML = '<div class="lbin"><button class="lbx-x" type="button" aria-label="إغلاق">✕</button>' + html + '</div>'; lb.hidden = false; document.body.style.overflow = "hidden"; clearInterval(timer); var v = lb.querySelector("video"); if (v) { var p = v.play(); if (p && p.catch) p.catch(function () {}); } }
+  function closeLB() { var v = lb.querySelector("video"); if (v) v.pause(); lb.hidden = true; lb.innerHTML = ""; document.body.style.overflow = ""; auto(); }
+  lb.addEventListener("click", function (e) { if (e.target === lb || e.target.closest(".lbx-x")) closeLB(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !lb.hidden) closeLB(); });
+  document.addEventListener("click", function (e) {
+    var g = e.target.closest("[data-g]"); if (!g) return; var it = G[+g.dataset.g];
+    if (!it) return; openLB('<img src="' + src(it[0]) + '" onerror="this.onerror=null;this.src=\'img/hero.jpg\'" alt="' + it[1] + '"><p>' + it[1] + '</p>');
+  });
+
+  /* ---- Products ---- */
+  var P = [
+    ["أسلاك المباني والتمديدات الداخلية", "BW", "جهد منخفض", "حتى 1 ك.ف", "المباني السكنية والتجارية"], ["كابلات التحكم", "CTRL", "جهد منخفض", "حتى 1 ك.ف", "لوحات التحكم والمنشآت الصناعية"],
+    ["كابلات القوى منخفضة الجهد", "LV", "جهد منخفض", "حتى 1 ك.ف", "شبكات التوزيع والمباني"], ["كابلات القوى المسلحة بغلاف PVC", "LV-A", "جهد منخفض", "يحدّده المصنع", "التمديد الأرضي والمنشآت"],
+    ["كابلات الجهد المتوسط", "MV", "جهد متوسط", "حتى 36 ك.ف", "محطات وشبكات التوزيع"], ["كابلات الجهد العالي", "HV", "جهد عالٍ وفائق", "حتى 150 ك.ف", "شبكات النقل والمحطات"], ["كابلات الجهد الفائق", "EHV", "جهد عالٍ وفائق", "يحدّده المصنع", "شبكات النقل الرئيسية"]
+  ];
+  var cats = ["الكل", "جهد منخفض", "جهد متوسط", "جهد عالٍ وفائق"], pf = "الكل";
+  $("#pFilter").innerHTML = cats.map(function (c, i) { return '<button type="button" data-c="' + c + '"' + (i ? "" : ' class="on"') + '>' + c + '</button>'; }).join("");
+  function renderP() {
+    var list = P.filter(function (p) { return pf === "الكل" || p[2] === pf; });
+    $("#pCount").textContent = list.length;
+    $("#prods").innerHTML = list.map(function (p) {
+      return '<article class="prod"><div class="thumb"><span class="mm num" dir="ltr">' + p[1] + '</span></div><div class="b"><h3>' + p[0] + '</h3><div class="row"><span>الجهد المقنن</span><span>' + p[3] + '</span></div><div class="row"><span>الاستخدام</span><span>' + p[4] + '</span></div><div class="acts"><a class="btn btn-sm btn-green" href="#rfq" data-prod="' + p[1] + '">طلب سعر</a><button class="btn btn-sm btn-line" data-toast="يفتح صفحة المنتج في السوق">التفاصيل</button></div></div></article>';
+    }).join("");
+  }
+  $("#pFilter").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; pf = b.dataset.c; $$("#pFilter button").forEach(function (x) { x.classList.toggle("on", x === b); }); renderP(); });
+  renderP();
+  $("#r-prod").innerHTML = P.map(function (p) { return '<option value="' + p[1] + '"' + (p[1] === "MV" ? " selected" : "") + '>' + p[0] + ' (' + p[1] + ')</option>'; }).join("");
+  document.addEventListener("click", function (e) { var a = e.target.closest("[data-prod]"); if (a) $("#r-prod").value = a.getAttribute("data-prod"); });
+
+  /* ---- Voltage bars ---- */
+  $("#thick").innerHTML = [["1", 14], ["36", 45], ["150", 75], ["EHV", 100]].map(function (t) { return '<div style="height:' + t[1] + '%"><span class="num">' + t[0] + '</span></div>'; }).join("");
+
+  /* ---- About language toggle ---- */
+  document.querySelector(".lang-toggle").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    $$(".lang-toggle button").forEach(function (x) { x.classList.toggle("on", x === b); });
+    $("#aboutAr").hidden = b.dataset.l !== "ar"; $("#aboutEn").hidden = b.dataset.l !== "en";
+  });
+
+  /* ---- RFQ: a real inquiry (POST /api/inquiries, kind=rfq, addressed to this factory). The platform routes it automatically to this
+     factory if it is a registered member and to other matching registered factories; the buyer sees the true number. No WhatsApp hand-off. ---- */
+  var FN = (function () { var h = $(".ptitle h1"); return h && h.firstChild ? h.firstChild.textContent.trim() : ""; })();
+  /* English: the H1 already shows the English name, so the subtitle keeps only the group name */
+  if (EN) { var sm = $(".ptitle h1 small"), sp = sm ? sm.textContent.split(" · ") : []; if (sp.length > 1) sm.textContent = sp.slice(1).join(" · ") + " group"; }
+  if (EN) { $("#rfqHint").textContent = "The request is recorded under a tracking number and a receipt is e-mailed to you"; $("#waBtn").textContent = "✉️ Message the factory via the platform"; }
+  if (window.MIGINQ) { $("#rfqCons").innerHTML = MIGINQ.consentHTML("fr", "rfq"); MIGINQ.prefill({ name: "#r-name", email: "#r-mail", phone: "#r-phone", company: "#r-co" }); }
+  $("#rfqForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var f = { n: $("#r-name"), m: $("#r-mail"), p: $("#r-phone"), q: $("#r-qty") }, er = $("#rfqErr"), bad = null, msg = "", I = window.MIGINQ;
+    [f.n, f.m, f.p, f.q].forEach(function (x) { x.removeAttribute("aria-invalid"); });
+    if (!f.n.value.trim()) { bad = f.n; msg = EN ? "Please enter your name." : "اكتب الاسم."; }
+    else if (!/^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]{2,}$/.test(f.m.value.trim())) { bad = f.m; msg = EN ? "Please enter a valid e-mail — the receipt and replies go there." : "اكتب بريد إلكتروني صحيح — عليه بيوصلك الإيصال والردود."; }
+    else if ((f.p.value.match(/\d/g) || []).length < 8) { bad = f.p; msg = EN ? "Please enter a valid phone (WhatsApp) number." : "اكتب رقم هاتف (واتساب) صحيحاً."; }
+    else if (!f.q.value.trim()) { bad = f.q; msg = EN ? "Please enter the required quantity." : "اكتب الكمية المطلوبة."; }
+    if (bad) { er.textContent = msg; er.hidden = false; bad.setAttribute("aria-invalid", "true"); bad.focus(); return; }
+    if (!I) { er.textContent = EN ? "The sending service did not load, so nothing was sent. Please reload the page." : "خدمة الإرسال ماتحمّلتش، فمفيش حاجة اتبعتت. حدّث الصفحة."; er.hidden = false; return; }
+    er.hidden = true;
+    var pr = $("#r-prod"), pn = pr.options[pr.selectedIndex] ? pr.options[pr.selectedIndex].text : pr.value, wh = $("#r-when"), wn = wh.options[wh.selectedIndex].text, o = $("#rfqOk");
+    I.send({ kind: "rfq", target_type: "factory", target_id: "egytech-cables", target_name: FN, name: f.n.value.trim(), company: $("#r-co").value.trim(), email: f.m.value.trim(), phone: f.p.value.trim(), consent_wa: I.waChecked("fr"), message: $("#r-spec").value.trim(),
+      payload: { product: pn, qty: f.q.value.trim(), city: $("#r-city").value.trim(), deadline: wn, sector: "الصناعات الكهربائية – كابلات القوى والأسلاك", governorate: "SHR", market: "local" } },
+      { box: o, form: this, btn: this.querySelector("[type=submit]") }).catch(function () {});
+  });
+
+  /* ---- Map ---- */
+  function paintMap() {
+    var c = $("#mapC"), r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+    c.width = r.width * d; c.height = r.height * d; var x = c.getContext("2d"); x.scale(d, d);
+    var dark = getComputedStyle(document.documentElement).getPropertyValue("--surface").trim().toLowerCase() !== "#ffffff";
+    x.fillStyle = dark ? "#261316" : "#EEF3EF"; x.fillRect(0, 0, r.width, r.height);
+    x.fillStyle = dark ? "#3A2E1C" : "#EADFC6"; x.beginPath(); x.moveTo(0, 0); x.lineTo(r.width * .22, 0); x.bezierCurveTo(r.width * .3, r.height * .4, r.width * .18, r.height * .7, r.width * .28, r.height); x.lineTo(0, r.height); x.fill();
+    x.strokeStyle = dark ? "#2A4536" : "#D5DFD8"; x.lineWidth = 6;
+    [[.3, 0, .9, 1], [.25, .55, 1, .45], [.6, 0, .55, 1]].forEach(function (l) { x.beginPath(); x.moveTo(l[0] * r.width, l[1] * r.height); x.lineTo(l[2] * r.width, l[3] * r.height); x.stroke(); });
+    x.fillStyle = dark ? "#A8989A" : "#64748B"; x.font = "11px Cairo, sans-serif"; x.textAlign = "left"; x.fillText("العاشر من رمضان", 8, r.height - 12);
+  }
+
+  /* ---- Section nav scrollspy ---- */
+  var links = $$("#snav a"), secs = links.map(function (a) { return document.getElementById(a.getAttribute("href").slice(1)); });
+  function spy() {
+    var y = window.scrollY + 170, idx = 0;
+    secs.forEach(function (s, i) { if (s && s.getBoundingClientRect().top + window.scrollY <= y) idx = i; });
+    links.forEach(function (a, i) { a.classList.toggle("on", i === idx); });
+  }
+  window.addEventListener("scroll", spy, { passive: true });
+
+  function paintAll() { paintSlides(); paintGal(); paintMap(); }
+  paintAll();
+  var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(paintAll, 150); });
+  if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paintMap);
+})();
+</script>

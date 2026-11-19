@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: 
+Disallow: /cm*/
+Disallow: /sy*/
+Disallow: /*.jsp
+Disallow: /*.php
+Disallow: /*.aspx
+
+Sitemap: https://www.aiib.org/sitemap.xml

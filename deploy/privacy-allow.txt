@@ -1,0 +1,8 @@
+# deploy/privacy-allow.txt — reviewed false positives of the contact detector in deploy/stage.py (and smoke-test.sh).
+# The gate refuses phone numbers and e-mail addresses on generated pages, in JSON-LD, the sitemaps, the manifest and the
+# CSV downloads (owner rule: contact only through the RFQ form). When it flags something that is NOT a contact — a
+# reference number that looks like a landline, a public government hotline — add the exact text it printed here, one
+# per line, with a comment saying who checked it and why. Never add a company's real phone number or e-mail.
+#
+# Example:
+#   040226-0587        # purchase-inquiry number in a tender title, not a Tanta landline (checked by …, 2026-11-18)

@@ -1,0 +1,27 @@
+# Worker "migate-site": the deploy-1 site (build/pages-stage/site) served from R2 with Pages semantics (src/index.js).
+# Same bindings and vars as the Pages project (deploy/wrangler-pages.toml). Secrets (names only; values in the deploy secrets
+# file, set with `wrangler secret bulk`): ADVISOR_SECRET (same value as janna-lookup), SEO_PLATFORM_KEY, and only while
+# uploading DEPLOY_TOKEN (the /__deploy/ endpoint answers 404 without it).
+# NO routes here on purpose: the cutover adds madeinegyptgate.com/* and www.madeinegyptgate.com/* by API
+# (deploy/cutover-worker.sh), and deploy/rollback-worker.sh gives them back to mis-egypt.
+name = "migate-site"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[[r2_buckets]]
+binding = "SITE"
+bucket_name = "migate-site"
+
+[[kv_namespaces]]
+binding = "SEO_KV"
+id = "b321fb348f3447179c99b4380952e5ac"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "migate-db"
+database_id = "f86e00bb-9739-4985-a149-3dddb45b2b42"
+
+[vars]
+SITE_ORIGIN = "https://madeinegyptgate.com"
+ADMIN_EMAILS = "info@madeinegyptgate.com"   # keep identical to ADMIN_EMAILS in worker/wrangler.toml

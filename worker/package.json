@@ -1,0 +1,19 @@
+{
+  "name": "madeinegyptgate-worker",
+  "private": true,
+  "description": "Janna lookup API + AI Deal Advisor (/api/advisor) — Cloudflare Worker for madeinegyptgate.com",
+  "scripts": {
+    "test": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./test/json-loader.mjs --test --test-concurrency=1 test/*.test.mjs",
+    "deploy": "wrangler deploy",
+    "db:schema": "wrangler d1 execute migate-db --remote --file=./schema.sql"
+  },
+  "dependencies": {
+    "postal-mime": "4.2.1"
+  },
+  "devDependencies": {
+    "wrangler": "4.164.0"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

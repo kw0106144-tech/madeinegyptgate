@@ -1,0 +1,45 @@
+# Files that deploy/stage.py never copies from site/ into the Pages upload.
+# One glob per line, matched against the path relative to site/ (forward slashes, no leading slash).
+# A pattern without "/" matches a file or directory name at any depth; a pattern with "/" matches the whole path.
+# Hidden files and directories (names starting with ".") are always skipped, except .well-known/.
+# Lines starting with "#" are comments.
+
+# --- editor, OS and tool junk ---
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+*.bak
+*.orig
+*.rej
+*.tmp
+*.log
+__pycache__
+*.pyc
+*.py
+*.mjs.map
+node_modules
+
+# --- page sources that belong to the generator, not to the site ---
+*.part.py
+*.part.html
+*.src.html
+
+# --- build-only translation sources written by tools/gen_*.py; no page or script loads them (3.2 MB) ---
+data/i18n-old.json
+data/i18n-news.json
+data/i18n-real.json
+
+# --- retired demo / duplicate pages (SEO-SPEC 1.2–1.3): the edge answers them with a 301 ---
+# factory.html = the hard-coded demo profile «إيجيتك/السويدي» → /factories/ ; home.html = old copy of the home page → /
+factory.html
+home.html
+
+# --- legacy routes (deploy 1 AND deploy 2): the owner's old system keeps /panel.html and /login.html (deploy/legacy-live.txt;
+#     on madeinegyptgate.com the Worker mis-egypt answers those paths), so the upload never carries files at those paths. The new
+#     Admin Control Center is /admin/ (panel.part.py) and the sign-in page /login/ (signin.part.py); /admin.html is a 301 to /admin/
+#     from the build's _redirects, never a file. ---
+panel.html
+login.html
+admin.html

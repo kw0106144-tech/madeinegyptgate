@@ -1,0 +1,82 @@
+/* The 27 governorates of Egypt, shared by every page for the geographic split.
+   code, name, short profile, main cities (used to map any city text to its region). */
+(function () {
+  var L = [
+    ["CAI", "القاهرة", "العاصمة ومركز الأعمال: مدينة بدر الصناعية ومدينة 15 مايو ومدينة الجلود بالروبيكي والصناعات الهندسية والغذائية والدوائية.", ["القاهرة", "Cairo", "مدينة نصر", "حلوان", "Helwan", "15 مايو", "بدر", "Badr", "الروبيكي", "Robbiki", "التجمع", "القاهرة الجديدة", "New Cairo", "العاصمة الإدارية", "شبرا", "الظاهر", "المعادي", "Maadi", "عين شمس", "التبين"]],
+    ["GIZ", "الجيزة", "مدينة السادس من أكتوبر وأبو رواش والشيخ زايد: صناعات غذائية ودوائية وهندسية وسيارات.", ["الجيزة", "Giza", "السادس من أكتوبر", "6 أكتوبر", "اكتوبر", "أكتوبر", "6th of October", "October", "الشيخ زايد", "Sheikh Zayed", "أبو رواش", "ابو رواش", "Abu Rawash", "الحوامدية", "الصف", "العياط"]],
+    ["ALX", "الإسكندرية", "أكبر ميناء على المتوسط: برج العرب والعامرية والبتروكيماويات والغزل والنسيج والصناعات الغذائية.", ["الإسكندرية", "الاسكندرية", "Alexandria", "برج العرب", "Borg El Arab", "العامرية", "Amreya", "الدخيلة", "Dekheila", "سيدي كرير", "Sidi Kerir", "أبو قير", "ابو قير", "Abu Qir", "المكس", "اسكندرية", "إسكندرية"]],
+    ["QLB", "القليوبية", "شبرا الخيمة والعبور وقليوب: صناعات هندسية وغذائية وكيماوية ونسيجية.", ["القليوبية", "Qalyubia", "شبرا الخيمة", "Shubra El Kheima", "العبور", "Obour", "قليوب", "بنها", "Banha", "الخانكة", "أبو زعبل", "الخصوص", "قها", "Qaha"]],
+    ["SHR", "الشرقية", "مدينة العاشر من رمضان أكبر مدن مصر الصناعية، وبلبيس والصالحية الجديدة.", ["الشرقية", "Sharqia", "Sharkia", "العاشر من رمضان", "العاشر", "10th of Ramadan", "Ramadan", "بلبيس", "Belbeis", "الزقازيق", "Zagazig", "الصالحية", "منيا القمح"]],
+    ["DKH", "الدقهلية", "المنصورة وجمصة وطلخا: صناعات غذائية وأسمدة وصناعات صغيرة ومتوسطة.", ["الدقهلية", "Dakahlia", "المنصورة", "Mansoura", "جمصة", "Gamasa", "طلخا", "ميت غمر"]],
+    ["GHR", "الغربية", "المحلة الكبرى قلعة صناعة الغزل والنسيج، وطنطا وكفر الزيات.", ["الغربية", "Gharbia", "المحلة", "Mahalla", "طنطا", "Tanta", "كفر الزيات", "Kafr El Zayat", "السنطة"]],
+    ["MNF", "المنوفية", "مدينة السادات وقويسنا: صناعات هندسية وغذائية وكيماوية ومواد بناء.", ["المنوفية", "Menoufia", "Monufia", "السادات", "Sadat", "قويسنا", "Quesna", "شبين الكوم", "منوف"]],
+    ["BHR", "البحيرة", "دمنهور وكفر الدوار ووادي النطرون والنوبارية: غزل ونسيج وصناعات غذائية وزراعية.", ["البحيرة", "Beheira", "دمنهور", "Damanhour", "كفر الدوار", "Kafr El Dawar", "وادي النطرون", "النوبارية", "Nubaria"]],
+    ["KFS", "كفر الشيخ", "صناعات غذائية وسمكية وأعلاف وطاقة غاز في البرلس.", ["كفر الشيخ", "Kafr El Sheikh", "بلطيم", "البرلس", "دسوق", "الحامول"]],
+    ["DMT", "دمياط", "دمياط الجديدة وصناعة الأثاث والميناء والأسمدة والبتروكيماويات.", ["دمياط", "Damietta", "دمياط الجديدة", "New Damietta", "رأس البر"]],
+    ["PTS", "بورسعيد", "المنطقة الحرة وشرق بورسعيد ضمن المنطقة الاقتصادية لقناة السويس.", ["بورسعيد", "بور سعيد", "Port Said", "شرق بورسعيد", "East Port Said", "بورفؤاد"]],
+    ["ISM", "الإسماعيلية", "القنطرة غرب والمنطقة الصناعية بالإسماعيلية ووادي التكنولوجيا.", ["الإسماعيلية", "الاسماعيلية", "Ismailia", "القنطرة", "Qantara", "فايد"]],
+    ["SUZ", "السويس", "العين السخنة ومنطقة المنطقة الاقتصادية لقناة السويس: بتروكيماويات وصلب وأسمدة وتكرير.", ["السويس", "Suez", "العين السخنة", "السخنة", "Sokhna", "عتاقة", "عتاقه"]],
+    ["NSN", "شمال سيناء", "العريش والمنطقة الصناعية ببئر العبد: أسمنت ورخام وصناعات تعدينية.", ["شمال سيناء", "North Sinai", "العريش", "Arish", "بئر العبد"]],
+    ["JSN", "جنوب سيناء", "أبو زنيمة ورأس سدر: تعدين ومنجنيز وسياحة.", ["جنوب سيناء", "South Sinai", "شرم الشيخ", "طور سيناء", "أبو زنيمة", "رأس سدر"]],
+    ["FYM", "الفيوم", "كوم أوشيم الصناعية: صناعات غذائية وغزل ومواد بناء.", ["الفيوم", "Fayoum", "Faiyum", "كوم أوشيم", "كوم اوشيم", "قارون"]],
+    ["BNS", "بني سويف", "بني سويف الجديدة وبياض العرب: أسمنت ورخام وصناعات غذائية وغزل.", ["بني سويف", "Beni Suef", "بياض العرب", "الواسطى"]],
+    ["MNY", "المنيا", "المطاهرة والمنيا الجديدة: صناعات غذائية وأسمنت ومواد بناء.", ["المنيا", "Minya", "المطاهرة", "سمالوط", "ملوي", "بني مزار"]],
+    ["AST", "أسيوط", "عرب العوامر والصفا وأسيوط الجديدة: أسمنت وأسمدة وصناعات غذائية.", ["أسيوط", "اسيوط", "Assiut", "Asyut", "عرب العوامر", "الصفا"]],
+    ["SHG", "سوهاج", "الكوثر وغرب جرجا وسوهاج الجديدة: صناعات غذائية ونسيج ومواد بناء.", ["سوهاج", "Sohag", "الكوثر الصناعية", "جرجا"]],
+    ["QNA", "قنا", "قفط وهو ونجع حمادي: ألومنيوم وسكر وفوسفات.", ["قنا", "Qena", "نجع حمادي", "Nag Hammadi", "قفط", "قوص", "Qus", "مركز هو"]],
+    ["LXR", "الأقصر", "البغدادي وطيبة الجديدة: صناعات صغيرة وحرف ومواد بناء.", ["الأقصر", "الاقصر", "Luxor", "البغدادي", "إسنا", "أرمنت", "ارمنت", "Armant"]],
+    ["ASN", "أسوان", "كوم أمبو وبنبان للطاقة الشمسية وأسمدة كيما وسكر.", ["أسوان", "اسوان", "Aswan", "كوم أمبو", "Kom Ombo", "بنبان", "Benban", "إدفو"]],
+    ["BBA", "البحر الأحمر", "الغردقة وسفاجا والقصير: فوسفات وتعدين وبترول وموانئ.", ["البحر الأحمر", "البحر الاحمر", "Red Sea", "الغردقة", "Hurghada", "سفاجا", "Safaga", "رأس غارب", "القصير"]],
+    ["WAD", "الوادي الجديد", "الخارجة والداخلة: فوسفات أبو طرطور وصناعات تمور وزراعية.", ["الوادي الجديد", "New Valley", "الخارجة", "Kharga", "الداخلة", "أبو طرطور"]],
+    ["MTR", "مطروح", "العلمين الجديدة والضبعة ورأس الحكمة: مشروعات طاقة وتنمية عمرانية.", ["مطروح", "Matrouh", "مرسى مطروح", "مرسي مطروح", "العلمين", "Alamein", "الضبعة", "رأس الحكمة", "سيوة"]]
+  ];
+  var BY = {}; L.forEach(function (r) { BY[r[0]] = r; });
+  /* Names and aliases match whole words only (an optional و/ب/ل/ف/ك prefix is allowed: «بالعاشر من رمضان»),
+     so «قنا» does not match «قناة» and «إسنا» does not match «إسناد». */
+  var W = "0-9A-Za-z\u0620-\u065F\u0671-\u06D3", RX = {}, MEMO = {}, PIN = {};
+  function rx(a) { return RX[a] || (RX[a] = new RegExp("(?:^|[^" + W + "])[وبلفك]?" + a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?=$|[^" + W + "])", "i")); }
+  function of(t) {
+    t = String(t || "");
+    if (BY[t]) return t;
+    if (PIN[t]) return PIN[t];
+    if (MEMO[t] != null) return MEMO[t];
+    var r = "";
+    for (var i = 0; i < L.length && !r; i++) { if (rx(L[i][1]).test(t)) r = L[i][0]; }
+    for (i = 0; i < L.length && !r; i++) { for (var j = 0; j < L[i][3].length; j++) if (rx(L[i][3][j]).test(t)) { r = L[i][0]; break; } }
+    return (MEMO[t] = r);
+  }
+  /* a data file that knows the governorate of an exact location text pins it (e.g. «طريق الإسماعيلية - بورسعيد الزراعي» → ISM) */
+  function pin(t, c) { if (t && BY[c]) PIN[String(t)] = c; }
+  /* Sellers without an address in the sample data get a stable region from their name. */
+  var SELLER = {};
+  var MAIN = ["CAI", "GIZ", "ALX", "QLB", "SHR", "SHR", "GIZ", "MNF", "DKH", "GHR"];
+  function seller(name, city) {
+    var c = of(city); if (c) return c;
+    if (SELLER[name]) return SELLER[name];
+    c = of(name); if (c) return c;
+    var h = 0; String(name).split("").forEach(function (ch) { h = (h * 31 + ch.charCodeAt(0)) % 9973; });
+    return MAIN[h % MAIN.length];
+  }
+  function opts(sel, all) { return '<option value="">' + (all || "كل المحافظات") + '</option>' + L.map(function (r) { return '<option value="' + r[0] + '"' + (r[0] === sel ? " selected" : "") + '>' + r[1] + '</option>'; }).join(""); }
+  var IMG = {"CAI": ["img/gov/gv-CAI.jpg", "https://commons.wikimedia.org/wiki/File:Flickr_-_HuTect_ShOts_-_Citadel_of_Salah_El.Din_and_Masjid_Muhammad_Ali_%D9%82%D9%84%D8%B9%D8%A9_%D8%B5%D9%84%D8%A7%D8%AD_%D8%A7%D9%84%D8%AF%D9%8A%D9%86_%D8%A7%D9%84%D8%A3%D9%8A%D9%88%D8%A8%D9%8A_%D9%88%D9%85%D8%B3%D8%AC%D8%AF_%D9%85%D8%AD%D9%85%D8%AF_%D8%B9%D9%84%D9%8A_-_Cairo_-_Egypt_-_17_04_2010_(4).jpg"], "GIZ": ["img/gov/gv-GIZ.jpg", "https://commons.wikimedia.org/wiki/File:All_Gizah_Pyramids.jpg"], "ALX": ["img/gov/gv-ALX.jpg", "https://commons.wikimedia.org/wiki/File:Citadel_of_Qaitbay_alexandria1.jpg"], "QLB": ["img/gov/gv-QLB.jpg", "https://commons.wikimedia.org/wiki/File:%D8%A7%D9%84%D9%86%D9%82%D9%84_%D9%88%D8%A7%D9%84%D8%B5%D9%8A%D8%AF_%D9%81%D9%8A_%D8%A7%D9%84%D9%82%D9%86%D8%A7%D8%B7%D8%B1_%D8%A7%D9%84%D8%AE%D9%8A%D8%B1%D9%8A%D8%A9.jpg"], "SHR": ["img/gov/gv-SHR.jpg", "https://commons.wikimedia.org/wiki/File:%D9%85%D8%B3%D8%AC%D8%AF_%D8%A7%D9%84%D9%81%D8%AA%D8%AD_-_panoramio.jpg"], "DKH": ["img/gov/gv-DKH.jpg", "https://commons.wikimedia.org/wiki/File:Flickr_-_HuTect_ShOts_-_Train_Bridge_with_Nile_River_-_El.Mansoura_-_Egypt_-_04_04_2010.jpg"], "GHR": ["img/gov/gv-GHR.jpg", "https://commons.wikimedia.org/wiki/File:El-Sayed_el-Badawy_Mosque_-_Tanta_-_Egypt2.JPG"], "MNF": ["img/gov/gv-MNF.jpg", "https://commons.wikimedia.org/wiki/File:El-Kotamiya-2.jpg"], "BHR": ["img/gov/gv-BHR.jpg", "https://commons.wikimedia.org/wiki/File:Rashid_For_Wiki-24.jpg"], "KFS": ["img/gov/gv-KFS.jpg", "https://commons.wikimedia.org/wiki/File:Fishers_and_small_island_in_Lake_Burullus_-_Egypt.jpg"], "DMT": ["img/gov/gv-DMT.jpg", "https://commons.wikimedia.org/wiki/File:Damietta_City_and_the_Nile.jpg"], "PTS": ["img/gov/gv-PTS.jpg", "https://commons.wikimedia.org/wiki/File:Port_Said,_Egypt,_Suez_Canal_Authority.jpg"], "ISM": ["img/gov/gv-ISM.jpg", "https://commons.wikimedia.org/wiki/File:Suez_Canal_Bridge_(2008)_10.jpg"], "SUZ": ["img/gov/gv-SUZ.jpg", "https://commons.wikimedia.org/wiki/File:Suez_Canal_Entrance.jpg"], "NSN": ["img/gov/gv-NSN.jpg", "https://commons.wikimedia.org/wiki/File:Sina_Bardawil_village.jpg"], "JSN": ["img/gov/gv-JSN.jpg", "https://commons.wikimedia.org/wiki/File:Katharinenkloster_Sinai_BW_2.jpg"], "FYM": ["img/gov/gv-FYM.jpg", "https://commons.wikimedia.org/wiki/File:Waterfalls_of_Wadi_El_Rayan,_Fayoum,_Egypt.jpg"], "BNS": ["img/gov/gv-BNS.jpg", "https://commons.wikimedia.org/wiki/File:Meidoum03.jpg"], "MNY": ["img/gov/gv-MNY.jpg", "https://commons.wikimedia.org/wiki/File:%D8%A7%D9%84%D9%86%D9%8A%D9%84_%D9%81%D9%89_%D8%A7%D9%84%D9%85%D9%86%D9%8A%D8%A7_02.jpg"], "AST": ["img/gov/gv-AST.jpg", "https://commons.wikimedia.org/wiki/File:El-Khazan_Bridge_%D9%83%D9%88%D8%A8%D8%B1%D9%8A_%D8%A7%D9%84%D8%AE%D8%B2%D8%A7%D9%86_-_panoramio.jpg"], "SHG": ["img/gov/gv-SHG.jpg", "https://commons.wikimedia.org/wiki/File:Temple_of_Seti_I_at_Abydos_-_panoramio_(3).jpg"], "QNA": ["img/gov/gv-QNA.jpg", "https://commons.wikimedia.org/wiki/File:Temple_of_Hathor_at_Dendera_(2).jpg"], "LXR": ["img/gov/gv-LXR.jpg", "https://commons.wikimedia.org/wiki/File:Templo_de_Luxor,_Luxor,_Egipto,_2022-04-01,_DD_02.jpg"], "ASN": ["img/gov/gv-ASN.jpg", "https://commons.wikimedia.org/wiki/File:File,_Asu%C3%A1n,_Egipto,_2022-04-01,_DD_97.jpg"], "BBA": ["img/gov/gv-BBA.jpg", "https://commons.wikimedia.org/wiki/File:El_Gouna_R14.jpg"], "WAD": ["img/gov/gv-WAD.jpg", "https://commons.wikimedia.org/wiki/File:White_Desert,_Karst_rock_formations_2,_Egypt.jpg"], "MTR": ["img/gov/gv-MTR.jpg", "https://commons.wikimedia.org/wiki/File:Marsa_Matruh,_Qism_Moursy_Matrouh,_Matrouh_Governorate,_Egypt_-_panoramio_(7).jpg"]};
+  /* One id per tender for every opportunity link (opportunity.html#<id>): ASCII, unique, stable across data refreshes.
+     Local tenders: "ET" + the number of their record id (eg-tnd-003 → ET003); otherwise "MD" + position. */
+  window.MIGOID = function (t, i) { var m = t && /(\d+)$/.exec(String(t.id || "")); return m ? "ET" + m[1] : "MD" + ((i || 0) + 1); };
+  window.MIGREG = {
+    list: L, by: BY, of: of, pin: pin, seller: seller, opts: opts,
+    img: function (c) { return (IMG[c] || ["img/hero.jpg", ""])[0]; }, credit: function (c) { return (IMG[c] || ["", ""])[1]; },
+    name: function (c) { return BY[c] ? BY[c][1] : "غير محددة"; },
+    url: function (c) { return "region.html#" + c; },
+    /* remember the visitor's chosen region across pages */
+    /* one-time hand-off: the next page opens already filtered on this region */
+    set: function (c) { try { if (c) sessionStorage.setItem("mig-reg1", c); else sessionStorage.removeItem("mig-reg1"); } catch (e) {} },
+    take: function (hash) { var h = (hash || location.hash || "").replace("#", ""), c = ""; if (h.indexOf("reg-") === 0 && BY[h.slice(4).toUpperCase()]) c = h.slice(4).toUpperCase(); try { c = c || sessionStorage.getItem("mig-reg1") || ""; sessionStorage.removeItem("mig-reg1"); } catch (e) {} return BY[c] ? c : ""; },
+    get: function () { return ""; }
+  };
+})();
+
+/* Canonical sector names shared by the member directory, public-source factories, tenders and RFQs (data clean-up 2026-11-18). [Arabic, English] */
+window.MIGSECTORS = [["الصناعات الغذائية والمشروبات","Food & Beverage Industries"],["الزراعة والمعدات الزراعية","Agriculture & Farm Equipment"],["الأعلاف والأسمدة والمبيدات","Feed, Fertilizers & Pesticides"],["الكيماويات والبتروكيماويات","Chemicals & Petrochemicals"],["النفط والغاز والخدمات البترولية","Oil, Gas & Petroleum Services"],["المنظفات والصابون","Detergents & Soaps"],["الدهانات والأحبار","Paints & Inks"],["الأدوية والمستلزمات الطبية","Pharmaceuticals & Medical Supplies"],["الأجهزة الطبية والعلمية والمعملية","Medical, Scientific & Lab Equipment"],["الصناعات البلاستيكية والمطاط","Plastics & Rubber"],["التعبئة والتغليف والورق","Packaging & Paper"],["الطباعة والدعاية والإعلان","Printing & Advertising"],["الحديد والصلب والمعادن","Iron, Steel & Metals"],["التعدين والمحاجر","Mining & Quarrying"],["مواد البناء والتشييد","Building & Construction Materials"],["الرخام والجرانيت","Marble & Granite"],["الزجاج والسيراميك","Glass & Ceramics"],["المقاولات والإنشاءات","Contracting & Construction"],["الكهرباء والكابلات والإضاءة","Electrical, Cables & Lighting"],["الأجهزة المنزلية والإلكترونيات","Home Appliances & Electronics"],["تكنولوجيا المعلومات والأجهزة المكتبية","IT & Office Equipment"],["الأمن والسلامة ومكافحة الحريق","Security, Safety & Fire Protection"],["الماكينات والمعدات الصناعية","Industrial Machinery & Equipment"],["العدد والأدوات وأجهزة القياس","Tools, Instruments & Measurement"],["الضواغط والطلمبات والهيدروليك","Compressors, Pumps & Hydraulics"],["قطع الغيار ونقل الحركة","Spare Parts & Power Transmission"],["المعدات الثقيلة والرافعات والمصاعد","Heavy Equipment, Cranes & Elevators"],["التكييف والتبريد والغلايات","HVAC, Refrigeration & Boilers"],["المياه ومعالجتها","Water & Water Treatment"],["السيارات والصناعات المغذية","Automotive & Feeder Industries"],["الغزل والنسيج والملابس الجاهزة","Textiles & Ready-made Garments"],["الأثاث والأخشاب","Furniture & Wood"],["التجهيزات الفندقية ومعدات المطاعم","Hotel & Catering Equipment"],["الأدوات الرياضية والترفيهية","Sports & Leisure Goods"],["الاستشارات والخدمات","Consulting & Services"],["التأمين والخدمات المالية","Insurance & Financial Services"],["النقل والشحن والملاحة","Transport, Shipping & Navigation"],["التوريدات الصناعية العامة","General Industrial Supplies"]];
+/* Incomplete-data flags carried by records (MIGOLDFAC[11], MIGOLDP[7], MIGTEND[12], MIGRFQ[11]): MIGINC.list(flags) → the missing items; show «بيانات غير مكتملة» when flags ≠ 0. */
+window.MIGINC = { label: "بيانات غير مكتملة", bits: { 1: "المحافظة", 2: "وصف النشاط", 4: "موعد الإغلاق", 8: "اسم الجهة", 16: "المنشأة المنتجة", 32: "الكمية والتسليم والموعد", 64: "تفاصيل المنتج", 128: "صورة المنتج" }, list: function (f) { var o = []; f = +f || 0; for (var b in this.bits) if (f & +b) o.push(this.bits[b]); return o; } };
+(function () { if (window.MIGLANG !== "en" || !window.I18N_EN) return; var A = { "بيانات غير مكتملة": "Incomplete data", "المحافظة": "Governorate", "وصف النشاط": "Business description", "موعد الإغلاق": "Closing date", "اسم الجهة": "Entity name", "المنشأة المنتجة": "Producer", "الكمية والتسليم والموعد": "Quantity, delivery and deadline", "تفاصيل المنتج": "Product details", "صورة المنتج": "Product image", "غير محدد الموعد": "No deadline given", "بيانات غير مكتملة: {n}": "Incomplete data: {n}", "المحافظة غير محددة": "governorate not specified", "مصر — المحافظة غير محددة": "Egypt — governorate not specified", "بدون موعد إغلاق معلن": "without a published deadline", "منطقة صناعية واستثمارية وحرة": "industrial, investment & free zones", "منتجاً من أعضاء المنصة": "products from platform members", "طلبات عروض أسعار منشورة": "published RFQs", "مصنع وشركة في دليل المنصة": "factories & companies in the platform directory", "مصنعاً من مصادر عامة رسمية (غير مسجّلة في المنصة بعد)": "factories from official public sources (not yet registered)", "انضم إلى {n} منشأة عضو في دليل المنصة": "Join {n} member companies in the platform directory", "انضم إلى أكثر من {n} منشأة في دليل المنصة": "Join more than {n} companies in the platform directory" }; for (var k in A) if (I18N_EN[k] == null) I18N_EN[k] = A[k]; window.MIGSECTORS.forEach(function (s) { I18N_EN[s[0]] = s[1]; }); })();

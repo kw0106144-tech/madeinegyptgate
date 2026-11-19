@@ -1,0 +1,9 @@
+{
+  "name": "migate-site",
+  "private": true,
+  "type": "module",
+  "description": "Worker migate-site: the deploy-1 site from R2 with Cloudflare Pages semantics (functions/ unchanged in front).",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 \"test/*.test.mjs\""
+  }
+}

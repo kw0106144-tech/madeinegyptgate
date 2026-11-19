@@ -1,0 +1,3 @@
+{ "name": "migate-intel", "private": true, "type": "module",
+  "description": "Daily automatic intelligence pipeline (tenders, RFQs, projects, news) for madeinegyptgate.com",
+  "scripts": { "test": "node --disable-warning=ExperimentalWarning --test --test-concurrency=1 test/*.test.mjs", "shell": "node tools/make-shell.mjs", "seed": "node tools/seed-sql.mjs", "deploy": "npx wrangler deploy" } }

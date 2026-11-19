@@ -1,0 +1,681 @@
+<style>
+/* Member dashboard (dashboard.html): real accounts only. Everything here comes from the platform API (data/mig-api.js):
+   GET /api/me, /api/me/inquiries, /api/me/follows, /api/me/notifications, /api/me/incoming, /api/me/stats; PATCH /api/me; POST /api/me/prefs.
+   No sample numbers, POs, invoices or badges: an empty account shows honest empty states, an unreachable API says so. */
+.dash { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 22px; padding-block: 20px 48px; align-items: start; }
+.dnav { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 10px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 80px); }
+.who { display: flex; gap: 10px; align-items: center; padding: 8px 8px 14px; border-bottom: 1px solid var(--line); margin-bottom: 6px; min-width: 0; }
+.who .lg { width: 48px; height: 48px; border-radius: 12px; border: 1px solid var(--line); background: var(--green-soft); color: var(--green); display: grid; place-items: center; font-weight: 900; font-size: 1.2rem; flex: none; }
+.who b { display: block; font-size: .92rem; line-height: 1.4; overflow-wrap: anywhere; }
+.who small { color: var(--green); font-size: .76rem; font-weight: 700; display: block; }
+.who small.apl { color: var(--muted); font-weight: 600; }
+.who small.ast-wait, .who small.ast-exp, .ast-wait, .ast-exp { color: #9A6700; }
+.ph .ast { display: inline-block; border-radius: 99px; padding: 1px 10px; font-size: .78rem; font-weight: 800; background: var(--green-soft); color: var(--green); }
+.ph .ast.ast-wait, .ph .ast.ast-exp { background: #FFF4D6; color: #7A5A00; }
+.dnav button, .dnav a.nv { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; text-align: start; padding: 9px 10px; border-radius: 10px; cursor: pointer; color: var(--muted); font: inherit; font-weight: 600; font-size: .9rem; text-decoration: none; }
+.dnav button:hover, .dnav a.nv:hover { background: var(--sunken); color: var(--fg); }
+.dnav button.on { background: var(--green-soft); color: var(--green); }
+.dnav .badge { margin-inline-start: auto; background: #C8102E; color: #fff; font-size: .7rem; border-radius: 99px; padding: 0 8px; font-weight: 800; }
+.dnav .lk { margin-inline-start: auto; font-size: .7rem; }
+.dnav .sep { font-size: .72rem; color: var(--muted); padding: 10px 10px 2px; font-weight: 700; }
+.dnav .dadv { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 10px; font-weight: 800; font-size: .9rem; color: var(--gold-deep); background: var(--gold-soft); text-decoration: none; white-space: nowrap; }
+.dnav .dadv.lk2 { color: var(--muted); background: var(--sunken); border: 1px dashed var(--line); }
+.dnav .logout { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px; border-radius: 10px; border: 1px solid #F3C9C9; color: #B42318; font: inherit; font-weight: 800; background: #FFF5F5; cursor: pointer; }
+.dnav .logout:hover { background: #B42318; color: #fff; border-color: #B42318; }
+.panel { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.ph { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; }
+.ph h1 { font-size: clamp(1.3rem, 2.4vw, 1.7rem); font-weight: 800; }
+.ph p { color: var(--muted); max-width: 62em; }
+.dcard { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.dcard h2 { font-size: 1.08rem; font-weight: 800; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.kpis.k3 { grid-template-columns: repeat(3, 1fr); }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kpi span { font-size: .8rem; color: var(--muted); }
+.kpi b { font-size: 1.7rem; font-weight: 800; }
+.kpi small { font-size: .76rem; color: var(--muted); font-weight: 600; }
+.two { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+.two > * { min-width: 0; }
+.bar { height: 10px; border-radius: 99px; background: var(--sunken); overflow: hidden; }
+.bar b { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), var(--green)); border-radius: 99px; }
+.todo { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: .9rem; }
+.todo li { display: flex; align-items: center; gap: 8px; }
+.todo .ck { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--line); display: grid; place-items: center; font-size: .7rem; flex: none; }
+.todo li.done { color: var(--muted); }
+.todo li.done .ck { background: var(--green); border-color: var(--green); color: #fff; }
+.todo a { font-weight: 700; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fg { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.f { display: flex; flex-direction: column; gap: 4px; font-size: .85rem; font-weight: 700; min-width: 0; }
+.f.full { grid-column: 1 / -1; }
+.f input, .f select, .f textarea { font: inherit; font-weight: 400; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; min-width: 0; width: 100%; box-sizing: border-box; }
+.f textarea { min-height: 80px; resize: vertical; }
+.f small { font-weight: 400; color: var(--muted); }
+.chk { display: flex; gap: 8px; align-items: flex-start; font-size: .9rem; font-weight: 600; cursor: pointer; }
+.chk input { margin-top: 5px; flex: none; accent-color: var(--green); }
+.days { display: flex; flex-wrap: wrap; gap: 6px; }
+.days label { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); border-radius: 99px; padding: 3px 10px; font-size: .84rem; cursor: pointer; }
+.okbox { background: var(--green-soft); color: var(--green); border-radius: 12px; padding: 12px 14px; font-weight: 700; }
+.erbox { background: #FDECEC; color: #B42318; border-radius: 12px; padding: 12px 14px; font-weight: 700; }
+.empty { padding: 26px 16px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 14px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.ilist { display: flex; flex-direction: column; gap: 10px; }
+.inq { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 90px); }
+.inq > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; padding: 12px 14px; align-items: center; }
+.inq > summary::-webkit-details-marker { display: none; }
+.inq > summary b { font-size: .95rem; overflow-wrap: anywhere; }
+.inq > summary .sub, .sub { display: block; color: var(--muted); font-size: .78rem; font-weight: 500; }
+.inq[open] > summary { border-bottom: 1px solid var(--line); background: var(--sunken); }
+.inq .ib { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.inq.fx { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+.inq .msg { white-space: pre-line; background: var(--sunken); border-radius: 10px; padding: 10px 12px; font-size: .9rem; overflow-wrap: anywhere; }
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; font-size: .86rem; }
+.kv div { background: var(--sunken); border-radius: 10px; padding: 8px 10px; }
+.kv span { display: block; color: var(--muted); font-size: .74rem; }
+.frow { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--surface); }
+.frow > div { flex: 1; min-width: 0; }
+.frow a { font-weight: 800; overflow-wrap: anywhere; }
+.nrow { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: var(--surface); }
+.nrow.un { border-color: var(--gold); background: var(--gold-soft); }
+.nrow > div { flex: 1; min-width: 0; }
+.mks { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.mk { border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 4px; background: var(--surface); }
+.mk.on { border-color: var(--green); background: var(--green-soft); }
+.mk b { font-size: .92rem; }
+.mk small { color: var(--muted); font-size: .76rem; }
+.mks.gcs { grid-template-columns: repeat(6, 1fr); }
+.gcch3 { font-size: .95rem; font-weight: 800; margin: 14px 0 8px; }
+.gccdue { border-color: var(--gold); background: var(--gold-soft); }
+.gccdue h2 { font-size: 1.05rem; }
+.olinks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.olinks a { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: var(--surface); text-decoration: none; color: var(--fg); }
+.olinks a:hover { border-color: var(--green); background: var(--green-soft); }
+.olinks b { font-size: .95rem; }
+.olinks small { color: var(--muted); font-size: .8rem; line-height: 1.6; }
+.note { font-size: .84rem; color: var(--muted); line-height: 1.8; }
+.lgcard { max-width: 560px; margin: 10px auto; text-align: center; align-items: center; }
+.lgcard img { height: 46px; }
+.dk-mini { display: inline-flex; align-items: center; gap: 6px; border-radius: 99px; padding: 2px 10px; font-size: .76rem; font-weight: 800; background: var(--sunken); }
+.dash.solo { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, 1fr); } .mks, .mks.gcs { grid-template-columns: repeat(3, 1fr); } .olinks { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 900px) {
+  .dash { grid-template-columns: 1fr; }
+  .dnav { position: static; flex-direction: row; overflow-x: auto; scrollbar-width: thin; }
+  .who, .dnav .sep { display: none; }
+  .dnav button, .dnav a.nv, .dnav .dadv, .dnav .logout { white-space: nowrap; flex: none; margin-top: 0; }
+  .two { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) { .fg, .olinks { grid-template-columns: 1fr; } .mks, .mks.gcs { grid-template-columns: repeat(2, 1fr); } .kpis, .kpis.k3 { grid-template-columns: 1fr 1fr; } .kpi b { font-size: 1.35rem; } }
+
+.bsc { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: radial-gradient(120% 140% at 0% 0%, #1d3c6b 0%, #0b1f3a 60%, #06142a 100%); color: #fff; border: 1px solid rgba(192,147,0,.55); border-radius: 16px; padding: 14px 16px; }
+.bsc > img { width: 68px; height: 68px; border-radius: 50%; border: 3px solid #C09300; object-fit: cover; flex: none; background: #0b1f3a; }
+.bsc-t { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bsc-t b { font-size: 1.08rem; font-weight: 900; }
+.bsc-t small { color: #E2BE72; font-weight: 700; font-size: .8rem; }
+.bsc-p { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; font-size: .84rem; font-weight: 700; }
+.bsc-p em { font-style: normal; opacity: .75; font-weight: 600; font-size: .78rem; }
+.bsc-bar { flex: 1 1 120px; max-width: 220px; height: 8px; border-radius: 99px; background: rgba(255,255,255,.16); overflow: hidden; }
+.bsc-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #C09300, #F2D27A); }
+.bsc-a { display: flex; gap: 8px; flex-wrap: wrap; }
+.bsc .bsc-v { background: #c8102e; color: #fff; border-color: #c8102e; }
+.bsc .bsc-w { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.35); }
+@media (max-width: 560px) { .bsc-a { width: 100%; } .bsc-a > * { flex: 1 1 auto; text-align: center; } }
+</style>
+
+<main class="wrap dash" id="top">
+  <nav class="dnav" id="dnav" aria-label="لوحتي" hidden></nav>
+  <div class="panel" id="panel" aria-live="polite"><div class="dcard"><p class="note">⏳ جارٍ التحميل…</p></div></div>
+</main>
+<script src="data/mig-api.js"></script>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (s) { return document.querySelector(s); };
+  var EN = window.MIGLANG === "en", T = function (a, e) { return EN ? e : a; };
+  var A = window.MIGAPI, P = window.MIGPLAN, U = A.ui, esc = U.esc;
+  /* the static first paint (Arabic) in the page language right away */
+  (function () { var n = $("#dnav"), pl = $("#panel"); if (n) n.setAttribute("aria-label", T("لوحتي", "My dashboard")); if (pl && pl.querySelector(".note")) pl.querySelector(".note").textContent = "⏳ " + T("جارٍ التحميل…", "Loading…"); })();
+  var S = { tab: "overview", me: null, unread: 0, inq: null, fol: null, notif: null, inc: null, stats: null, msg: "", focus: "" };
+  var LV = A.LV;
+  function pk() { return S.me ? A.planOf(S.me) : "visitor"; }
+  function lv() { return LV[pk()] || 0; }
+  /* deploy 2: a capability of the member's plan from the live matrix (data/plans-live.js wraps MIGPLAN.can with the Control Center caps); level rule as fallback */
+  function capOn(f, minLv) { var P0 = window.MIGPLAN; return P0 && P0.can && window.MIGPLANS ? !!P0.can(f) : lv() >= minLv; }
+  /* a signed-in account without a plan is a buyer account (free), not a «visitor» */
+  function planName(k) { k = k || pk(); if (k === "visitor") return T("حساب مشتري (مجاني)", "Buyer account (free)"); return P && P.name ? P.name(k) : k; }
+  /* factory-only tabs: hidden for a buyer account (they register their company from «باقتي» instead) */
+  var FAC = { incoming: 1, stats: 1 };
+  /* the greeting: title + first name, else the company, else a neutral «أهلاً بيك» (never the e-mail's local part) */
+  function hello(u) { var t = U.titleOf ? U.titleOf(u) : "", f = String(u.name || "").trim().split(/\s+/)[0] || ""; return f ? T("أهلاً يا ", "Welcome, ") + '<span dir="auto" translate="no">' + esc((t ? t + " " : "") + f) + "</span>" : u.company ? T("أهلاً بيك يا ", "Welcome, ") + '<span dir="auto" translate="no">' + esc(u.company) + "</span>" : T("أهلاً بيك", "Welcome"); }
+  function scopeText() { return P && P.scopeText ? P.scopeText(pk()) : ""; }
+  /* the member's GCC coverage (data/plan.js gccOf → {pick, all, chosen, pending}): Premium = Egypt + the 3 GCC states he chose;
+     «pending» = not chosen yet (all six for now + a prompt to choose); Core Partner and up = all six */
+  function gst() { return P && P.gccOf ? P.gccOf(pk(), S.me) : { pick: 0, all: false, chosen: [], pending: false }; }
+  function gccW(n, en) { return P && P.gccCount ? P.gccCount(n, en) : n + (en ? " Gulf states" : " دول خليجية"); }
+  function head(eb, h, p, extra) { return '<div class="ph"><div><span class="chip chip-gold">' + eb + "</span><h1>" + h + "</h1>" + (p ? "<p>" + p + "</p>" : "") + "</div>" + (extra || "") + "</div>"; }
+  function errBox(e) { return '<div class="' + (e && e.code === "offline" ? "mig-off" : "erbox") + '" role="alert">' + esc(U.errText(e)) + "</div>"; }
+  function loading() { return '<div class="dcard"><p class="note">⏳ ' + T("جارٍ التحميل…", "Loading…") + "</p></div>"; }
+
+  /* ---------- tabs (level = minimum plan level; 0 = every signed-in account) ---------- */
+  var TABS = [
+    ["sep", "حسابي", "My account"],
+    ["overview", "🏠", "نظرة عامة", "Overview", 0],
+    ["inquiries", "📝", "طلباتي", "My requests", 0],
+    ["follows", "★", "متابعاتي", "My follows", 0],
+    ["notifications", "🔔", "الإشعارات", "Notifications", 0],
+    ["sep", "الفرص", "Opportunities"],
+    ["opps", "🌍", "الفرص في نطاقك", "Opportunities in your scope", 0],
+    ["sep", "مصنعي", "My factory"],
+    ["incoming", "📥", "طلبات واردة لي", "Requests routed to me", 2],
+    ["stats", "📊", "إحصائياتي", "My statistics", 2],
+    ["sep", "الإعدادات", "Settings"],
+    ["profile", "👤", "بياناتي", "My details", 0],
+    ["prefs", "💬", "الواتساب والإيميل", "WhatsApp & e-mail", 0],
+    ["plan", "⭐", "باقتي", "My plan", 0]
+  ];
+  var LEGACY = { tenders: "opps", rfq: "opps", projects: "opps", awards: "opps", markets: "opps", directory: "opps", consult: "inquiries", myrfq: "incoming", orders: "incoming", products: "profile", seo: "profile", billing: "plan", team: "prefs" };
+  function tabOK(k) { for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === k) return true; return false; }
+  /* deploy 2: self-service tabs plug in here (data/dash-products.js, data/dash-company.js — ACC-CONTRACT §1.7).
+     h0 = the tab the address asked for at load (dashboard.html#products): those tabs are added after this script, by then boot() may
+     already have mapped the hash to an old alias and rewritten it */
+  var XT = { status: null, ext: {}, h0: (function () { var h = ""; try { h = decodeURIComponent((location.hash || "").slice(1)); } catch (x) { h = (location.hash || "").slice(1); } var m = /(?:^|&)tab=([^&]+)/.exec(h); return m ? m[1] : h.split(/[=&:/]/)[0]; })() };
+  window.MIGDASH = {
+    addTab: function (d) { if (!d || !d.key || tabOK(d.key)) return; var at = TABS.length;
+      for (var i = 0; i < TABS.length; i++) if (TABS[i][0] === d.after) { at = i + 1; break; }
+      TABS.splice(at, 0, [d.key, d.icon || "•", d.ar, d.en, d.level || 0]); V[d.key] = d.view;
+      if (d.need) NEEDS[d.key] = d.need; if (d.done) XT.ext[d.key] = (XT.ext[d.key] || []).concat([d.done]);
+      (d.legacy || []).forEach(function (h) { LEGACY[h] = d.key; });
+      if (XT.h0 && (XT.h0 === d.key || (d.legacy || []).indexOf(XT.h0) > -1)) { XT.h0 = ""; S.tab = d.key; }
+      if (S.me) render(); },
+    extend: function (key, fn) { XT.ext[key] = (XT.ext[key] || []).concat([fn]); if (S.me && S.tab === key) render(); },
+    status: function (fn) { XT.status = fn; if (S.me) render(); },
+    me: function () { return S.me; }, lv: function () { return lv(); }, T: T, esc: esc, api: A, ui: U, render: function () { if (S.me) render(); }
+  };
+  /* the account status line, as on the live dashboard: «✓ حساب نشط» while a plan the platform activated is running,
+     «⏳ بانتظار إتمام الاشتراك» otherwise (no plan yet: the membership is completed by paying once the gateway is live), and an
+     honest «انتهى» once the plan's end date has passed (the server then answers plan = visitor with the old plan_expires) */
+  function acctState() { var st = acctState0(); try { if (XT.status) st = XT.status(st, S.me || {}) || st; } catch (x) {} return st; }
+  function acctState0() {
+    var u = S.me || {}, exp = u.plan_expires && Date.parse(u.plan_expires) < Date.now();
+    if (lv() >= 1) return { k: "ok", t: "✓ " + T("حساب نشط", "Active account") };
+    if (exp) return { k: "exp", t: "⏳ " + T("الاشتراك انتهى — بانتظار التجديد", "Plan ended — awaiting renewal") };
+    /* applied for a plan (registration form → a «signup» request) and not active yet; else a plain buyer account */
+    var sg = S.inq && S.inq.items && S.inq.items.some(function (x) { return x.kind === "signup"; });
+    if (sg) return { k: "wait", t: "⏳ " + T("بانتظار إتمام الاشتراك", "Awaiting subscription completion") };
+    return { k: "ok", t: "✓ " + T("حساب نشط", "Active account") };
+  }
+  function nav() {
+    var u = S.me, n = $("#dnav"), st = acctState(), h = '<div class="who"><span class="lg" aria-hidden="true">' + esc((u.company || u.name || u.email || "?").trim().charAt(0).toUpperCase()) + "</span><div><b>" + esc(u.company || U.shortName(u)) + '</b><small class="ast ast-' + st.k + '" id="whoS">' + esc(st.t) + (st.href ? ' <a href="' + esc(st.href) + '">' + esc(st.ht || "") + "</a>" : "") + '</small><small class="apl">' + esc(planName()) + "</small></div></div>";
+    var buyer = lv() < 1;
+    TABS.forEach(function (t) {
+      if (t[0] === "sep") { if (buyer && t[1] === "مصنعي") { h += '<span class="sep">' + T("منشأتك", "Your company") + '</span><a class="nv" href="register.html#plans">🏭 ' + T("سجّل منشأتك على المنصة", "Register your company") + "</a>"; return; } h += '<span class="sep">' + T(t[1], t[2]) + "</span>"; return; }
+      if (buyer && FAC[t[0]]) return;
+      var locked = lv() < t[4], badge = t[0] === "notifications" && S.unread ? '<span class="badge num">' + S.unread + "</span>" : t[0] === "incoming" && S.inc && S.inc.newN ? '<span class="badge num">' + S.inc.newN + "</span>" : locked ? '<span class="lk" aria-hidden="true">🔒</span>' : "";
+      h += '<button type="button" data-t="' + t[0] + '"' + (S.tab === t[0] ? ' class="on" aria-current="page"' : "") + "><span aria-hidden=\"true\">" + t[1] + "</span>" + T(t[2], t[3]) + badge + "</button>";
+      if (t[0] === "opps") h += lv() >= 4 ? '<a class="dadv" href="advisor.html">🤖 ' + T("المستشار الذكي (باسم)", "AI Advisor (Bassem)") + "</a>" : '<a class="dadv lk2" href="register.html#partner" title="' + esc(T("متاح لباقة الشريك الأساسي أو الاستراتيجي", "Core / Strategic Partner plans")) + '">🔒 ' + T("المستشار الذكي (باسم)", "AI Advisor (Bassem)") + "</a>";
+    });
+    /* the platform team (review UX-4, the same rule as mig-api.js staffLinks()): «لوحة التحكم» (/admin/, the Admin Control Center) for
+       staff_role owner / admin / editor / support, the team boards for seo / data (before migration 0006: the old members.role "admin"
+       flag), then — for admins — the requests console, the SEO workspace and the owner's OLD admin panel (/panel.html, the old system) */
+    var sr = typeof u.staff_role === "string" ? u.staff_role : (u.role === "admin" ? "admin" : ""), team = [];
+    if (sr === "owner" || sr === "admin" || sr === "editor" || sr === "support") team.push(["/admin/", "🛠️", "لوحة التحكم", "Control Center"]);
+    else if (sr === "seo") team.push(["/seo-team/", "🔎", "لوحة فريق الـ SEO", "SEO team board"]);
+    else if (sr === "data") team.push(["/data-desk/", "🗂️", "لوحة فريق الداتا", "Data team desk"]);
+    if (u.role === "admin") team.push(["inbox.html", "🛰️", "متابعة الطلبات", "Requests console"], ["seo-admin.html", "🔎", "مساحة SEO", "SEO workspace"], ["panel.html", "🗂️", "لوحة الإدارة (النظام القديم)", "Old admin panel (previous system)"]);
+    if (team.length) h += '<span class="sep">' + T("الإدارة", "Admin") + "</span>" + team.map(function (x) { return '<a class="nv" href="' + x[0] + '" rel="nofollow">' + x[1] + " " + T(x[2], x[3]) + "</a>"; }).join("");
+    h += '<button type="button" class="logout" data-out>🚪 ' + T("تسجيل الخروج", "Sign out") + "</button>";
+    n.innerHTML = h; n.hidden = false; n.setAttribute("aria-label", T("لوحتي", "My dashboard"));
+  }
+
+  /* ---------- «مستشارك: باسم» (data/bassem.js decides eligibility from the server-confirmed plan) ---------- */
+  function bsCard() {
+    var B = window.BASSEM, i = B && B.info ? B.info() : null; if (!i || !i.eligible) return "";
+    var fd = function (s) { return U.date(s); };
+    var pr = Math.max(2, Math.round(i.used * 100 / i.total)), left = i.expired ? T("انتهت مدة الخدمة", "Service period ended") : (EN ? i.left + " of 365 days left" : "فاضل " + i.left + " يوم من 365");
+    return '<section class="bsc" translate="no" dir="' + (EN ? "ltr" : "rtl") + '" aria-label="' + T("مستشارك: باسم", "Your advisor: Bassem") + '"><img src="' + B.headshot + '" alt="" width="68" height="68"><div class="bsc-t"><b>' + T("مستشارك: باسم", "Your advisor: Bassem") + "</b><small>" + esc(i.planName) + "</small>"
+      + '<div class="bsc-p"><span class="num">' + left + '</span><span class="bsc-bar" role="progressbar" aria-valuemin="0" aria-valuemax="365" aria-valuenow="' + i.used + '"><i style="width:' + pr + '%"></i></span><em>' + fd(i.start) + " – " + fd(i.end) + "</em></div></div>"
+      + '<div class="bsc-a">' + (i.expired ? '<a class="btn btn-gold btn-sm" href="register.html#' + i.plan + '">🔄 ' + T("جدّد الاشتراك", "Renew") + "</a>"
+        : '<a class="btn btn-gold btn-sm" href="advisor.html#brief">📰 ' + T("افتح المستشار", "Open the Advisor") + '</a><button class="btn btn-sm bsc-v" type="button" data-bsc="video">🎥 ' + T("كلّم باسم فيديو", "Video call with Bassem") + "</button>") + '<button class="btn btn-sm bsc-w" type="button" data-bsc="welcome">👋 ' + T("رسالة الترحيب", "Welcome note") + "</button></div></section>";
+  }
+  document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest("[data-bsc]"); if (!b || !window.BASSEM) return; if (b.dataset.bsc === "video") BASSEM.video(); else BASSEM.welcome(true); });
+  window.addEventListener("bassem:change", function () { if (S.me && S.tab === "overview") render(); });
+
+  /* ---------- data loaders (each tab asks the server; nothing is invented) ---------- */
+  function load(k, fn) { if (S[k] && !S[k].err) return Promise.resolve(S[k]); return fn().then(function (j) { S[k] = j; return j; }, function (e) { S[k] = { err: e }; return S[k]; }); }
+  function loadInq() { return load("inq", function () { return A.myInquiries().then(function (j) { return { items: j.items || [] }; }); }); }
+  function loadFol() { return load("fol", function () { return A.follows().then(function (it) { return { items: it || [] }; }); }); }
+  function loadNotif() { return load("notif", function () { return A.notifications().then(function (j) { S.unread = +j.unread || 0; return { items: j.items || [], unread: S.unread }; }); }); }
+  /* my answer to a routed request: my_status (new | replied | quoted | declined | closed) when the server sends it, else the route status */
+  function incSt(x) { var s = String(x.my_status || x.status || "sent").toLowerCase(); return s === "new" || s === "pending" || s === "failed" ? "sent" : s; }
+  function incClosed(x) { return !!x.closed || x.my_status === "closed" || x.inquiry_status === "closed" || x.inquiry_status === "blocked"; }
+  function loadInc() { return load("inc", function () { return A.incoming().then(function (j) { var it = j.items || []; return { items: it, newN: it.filter(function (x) { return incSt(x) === "sent" && !incClosed(x); }).length }; }); }); }
+  function loadStats() { return load("stats", function () { return A.stats(); }); }
+
+  /* ---------- views ---------- */
+  var V = {};
+  V.overview = function () {
+    var u = S.me, i = S.inq, f = S.fol, n = S.notif, c = S.inc;
+    var buyer = lv() < 1, gs = gst();
+    /* onboarding checklist computed from the real account state (a buyer account gets the buyer's steps only) */
+    var steps = [
+      [true, T("تأكيد البريد الإلكتروني (دخلت بكود)", "E-mail confirmed (you signed in with a code)"), ""],
+      [!!(u.name && u.title), T("الاسم واللقب", "Name and title"), "profile"],
+      [!!u.company, buyer ? T("اسم شركتك (اختياري)", "Your company name (optional)") : T("اسم الشركة / المصنع", "Company / factory name"), "profile"],
+      buyer ? null : [!!(u.sector && u.governorate), T("القطاع والمحافظة (عشان الطلبات المطابقة توصلك)", "Sector and governorate (so matching requests reach you)"), "profile"],
+      [!!u.phone, T("رقم الموبايل", "Mobile number"), "profile"],
+      [!!(u.prefs && (u.prefs.wa_optin != null || u.prefs.email_digest != null)), T("اختيار الإشعارات (إيميل / واتساب)", "Notification choices (e-mail / WhatsApp)"), "prefs"],
+      [!!(f && f.items && f.items.length >= 3), T("تابع 3 حاجات على الأقل (مصنع، مناقصة، محافظة…)", "Follow at least 3 things (factory, tender, governorate…)"), "opps"],
+      [!!(i && i.items && i.items.length), T("ابعت أول طلب من المنصة", "Send your first request through the platform"), "inquiries"],
+      gs.pick ? [!gs.pending, T("اختيار الـ" + gs.pick + " دول الخليجية", "Choose your " + gccW(gs.pick, true)), "plan"] : null
+    ].filter(Boolean);
+    var done = steps.filter(function (s) { return s[0]; }).length, pct = Math.round(done * 100 / steps.length);
+    var cnt = function (o) { return o && !o.err && o.items ? String(o.items.length) : "—"; };
+    var recent = i && i.items ? i.items.slice(0, 3) : [];
+    var st = acctState();
+    return head(T("لوحتي", "My dashboard"), hello(u), '<span class="ast ast-' + st.k + '">' + esc(st.t) + "</span>" + (st.href ? ' <a href="' + esc(st.href) + '">' + esc(st.ht || "") + "</a>" : st.k === "ok" ? "" : ' <a href="#plan">' + T("التفاصيل", "Details") + "</a>") + " · " + T("باقتك: ", "Your plan: ") + "<b>" + esc(planName()) + "</b>" + (lv() ? " · " + T("نطاقك الجغرافي: ", "Geographic scope: ") + "<b>" + esc(scopeText()) + "</b>" : "") + (u.plan_expires ? " · " + T("سارية لحد ", "valid until ") + esc(U.date(u.plan_expires)) : ""), '<a class="btn btn-line" href="contact.html#rfq-form">📝 ' + T("ابعت طلب عرض سعر", "Send a request for quotation") + "</a>")
+      + bsCard()
+      + (gs.pick && gs.pending ? '<div class="dcard gccdue" role="status"><h2>📍 ' + T(gs.pick === 3 ? "اختار دولك الخليجية التلاتة" : "اختار دولك الخليجية (" + gs.pick + ")", "Choose your " + gccW(gs.pick, true)) + "</h2><p>" + T("باقتك «" + esc(planName()) + "» فيها مصر + " + gccW(gs.pick, false) + " تختارها. لحد ما تختار، بتوصلك فرص كل دول الخليج مؤقتاً.", "Your «" + esc(planName()) + "» includes Egypt + " + gccW(gs.pick, true) + " of your choice. Until you choose, you receive the opportunities of all Gulf states for now.") + '</p><div class="tools"><a class="btn btn-gold btn-sm" href="#plan">🌍 ' + T("اختار الدول", "Choose the states") + "</a></div></div>" : "")
+      + '<div class="kpis' + (buyer ? " k3" : "") + '"><div class="kpi"><span>' + T("طلباتي", "My requests") + '</span><b class="num">' + cnt(i) + "</b><small>" + T("من حسابك على المنصة", "from your platform account") + '</small></div><div class="kpi"><span>' + T("إشعارات جديدة", "New notifications") + '</span><b class="num">' + (n && !n.err ? n.unread : S.unread) + '</b><small><a href="#notifications">' + T("افتح الإشعارات", "Open notifications") + '</a></small></div><div class="kpi"><span>' + T("متابعاتي", "My follows") + '</span><b class="num">' + cnt(f) + "</b><small>" + T("تنبيهات بالجديد الحقيقي بس", "alerts on real news only") + "</small></div>" + (buyer ? "" : '<div class="kpi"><span>' + T("طلبات واردة لي", "Requests routed to me") + '</span><b class="num">' + (lv() >= 2 ? cnt(c) : "🔒") + "</b><small>" + (lv() >= 2 ? T("بتتوزّع عليك تلقائي", "routed to you automatically") : T("من الباقة الأساسية", "from the Basic plan")) + "</small></div>") + "</div>"
+      + '<div class="two"><div class="dcard"><h2>' + T("آخر طلباتي", "My latest requests") + "</h2>" + (i && i.err ? errBox(i.err) : recent.length ? '<div class="ilist">' + recent.map(inqRow).join("") + '</div><div class="tools"><button class="btn btn-line btn-sm" type="button" data-go="inquiries">' + T("كل طلباتي", "All my requests") + "</button></div>" : '<div class="empty">' + T("لسه مابعتش طلبات من حسابك.", "You haven't sent any requests from your account yet.") + '<a class="btn btn-green btn-sm" href="contact.html#rfq-form">' + T("ابعت أول طلب", "Send your first request") + "</a></div>") + "</div>"
+      + '<div class="dcard"><h2>' + T("جاهزية حسابك", "Account readiness") + '</h2><div class="tools" style="justify-content:space-between"><b class="num">' + pct + '%</b><span class="sub">' + T(done + " من " + steps.length + " خطوات", done + " of " + steps.length + " steps") + '</span></div><div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '"><b style="width:' + pct + '%"></b></div><ul class="todo">'
+      + steps.map(function (s) { return '<li class="' + (s[0] ? "done" : "") + '"><span class="ck" aria-hidden="true">' + (s[0] ? "✓" : "") + "</span>" + (s[0] || !s[2] ? esc(s[1]) : '<a href="#' + s[2] + '">' + esc(s[1]) + "</a>") + "</li>"; }).join("") + "</ul></div></div>";
+  };
+
+  function inqRow(x, open) {
+    return '<details class="inq" data-ref="' + esc(x.ref) + '"' + (open ? " open" : "") + '><summary><div><b>' + esc(x.target_name || U.kindLabel(x.kind)) + '</b><span class="sub"><span class="num" dir="ltr">' + esc(x.ref) + "</span> · " + esc(U.kindLabel(x.kind)) + " · " + esc(U.date(x.created_at)) + "</span></div>" + U.statusChip(x.status) + '</summary><div class="ib">'
+      + (x.message ? '<div class="msg" dir="auto">' + esc(x.message) + "</div>" : "")
+      + (x.events ? U.timeline(x.events) : '<div class="tl-wait note">⏳ ' + T("جارٍ تحميل خط سير الطلب…", "Loading the request timeline…") + "</div>")
+      + '<div class="tools"><a class="btn btn-line btn-sm" href="track.html#' + encodeURIComponent(x.ref) + '">' + T("صفحة التتبع", "Tracking page") + "</a></div></div></details>";
+  }
+  V.inquiries = function () {
+    var i = S.inq;
+    return head(T("طلباتي", "My requests"), T("طلباتي وحالتها", "My requests and their status"), T("أي طلب بتبعته (طلب عرض سعر، تواصل، سلة مشتريات…) بيتسجّل هنا برقمه. المنصة بتبعته تلقائي للمصانع المسجّلة المطابقة وبتقولك العدد الحقيقي، والردود وعروض الأسعار بتوصلك هنا وعلى بريدك تلقائي.", "Every request you send (quotation, contact, basket…) is listed here with its number. The platform sends it automatically to matching registered factories and tells you the true number; replies and quotes reach you here and by e-mail automatically."))
+      + (!i ? loading() : i.err ? errBox(i.err) : i.items.length ? '<div class="ilist">' + i.items.map(function (x, k) { return inqRow(x, k === 0); }).join("") + "</div>" : '<div class="empty">' + T("مفيش طلبات على حسابك لسه.", "No requests on your account yet.") + '<a class="btn btn-green btn-sm" href="contact.html#rfq-form">' + T("ابعت طلب عرض سعر", "Send a request for quotation") + "</a></div>");
+  };
+  V.follows = function () {
+    var f = S.fol, KN = { factory: T("مصنع", "Factory"), company: T("شركة", "Company"), tender: T("مناقصة", "Tender"), rfq: T("طلب عرض سعر", "RFQ"), project: T("مشروع", "Project"), offer: T("عرض", "Offer"), entity: T("جهة", "Entity"), agency: T("جهة", "Entity"), region: T("محافظة", "Governorate"), governorate: T("محافظة", "Governorate"), city: T("منطقة", "Area"), product: T("منتج", "Product"), sector: T("قطاع", "Sector"), store: T("متجر", "Store"), event: T("معرض", "Exhibition"), news: T("خبر", "News"), award: T("ترسية", "Award"), opportunity: T("فرصة", "Opportunity"), lead: T("فرصة", "Lead"), radar: T("رادار قطاعي", "Sector radar"), search: T("بحث متابَع", "Saved search") };
+    return head(T("متابعاتي", "My follows"), T("اللي بتتابعه", "What you follow"), T("اضغط «☆ تابع» على أي مصنع أو مناقصة أو طلب أو مشروع أو محافظة. بنبعتلك تنبيه لما يظهر جديد حقيقي فيه (بند جديد أو ميعاد إغلاق قرّب) — ومفيش تنبيهات وهمية.", "Press “☆ Follow” on any factory, tender, request, project or governorate. You'll be alerted when something really new appears (a new item or an approaching deadline) — never fake alerts."))
+      /* the plan matrix: alerts (and digests) only on the plans that have them — Basic and up */
+      + (capOn("alerts", 2) ? "" : '<p class="note">🔔 ' + T("التنبيهات بالجديد بتشتغل من الباقة الأساسية وطالع", "Alerts on new items start with the Basic plan") + ' — <a href="register.html#plans">' + T("قارن الباقات", "Compare plans") + "</a></p>")
+      + (!f ? loading() : f.err ? errBox(f.err) : f.items.length ? '<div class="ilist">' + f.items.map(function (x) { return '<div class="frow"><span aria-hidden="true">★</span><div><a href="' + esc((U.fixUrl ? U.fixUrl(x.url) : x.url) || "#") + '" dir="auto">' + esc(x.label || x.ref_id) + '</a><span class="sub">' + esc(KN[x.kind] || x.kind) + (x.created_at ? " · " + T("من ", "since ") + esc(U.date(x.created_at)) : "") + '</span></div><button class="btn btn-line btn-sm" type="button" data-unf="' + esc(x.kind) + "|" + esc(x.ref_id) + '">' + T("إلغاء المتابعة", "Unfollow") + "</button></div>"; }).join("") + "</div>" : '<div class="empty">' + T("مش بتتابع حاجة لسه.", "You don't follow anything yet.") + '<div class="tools" style="justify-content:center"><a class="btn btn-line btn-sm" href="tenders.html">' + T("المناقصات", "Tenders") + '</a><a class="btn btn-line btn-sm" href="rfqs.html">' + T("طلبات الأسعار", "RFQs") + '</a><a class="btn btn-line btn-sm" href="factories.html">' + T("المصانع", "Factories") + "</a></div></div>");
+  };
+  V.notifications = function () {
+    var n = S.notif;
+    return head(T("الإشعارات", "Notifications"), T("الإشعارات", "Notifications"), T("كل إشعار هنا جاي من حدث حقيقي: رد على طلبك، عرض سعر، طلب اتوزّع عليك، تنبيه متابعة أو ميعاد.", "Every notification here comes from a real event: a reply to your request, a quote, a request routed to you, a follow alert or a deadline."), n && !n.err && n.unread ? '<button class="btn btn-line" type="button" data-readall>' + T("علّم الكل مقروء", "Mark all read") + "</button>" : "")
+      + (!n ? loading() : n.err ? errBox(n.err) : n.items.length ? '<div class="ilist">' + n.items.map(function (x) { var u = U.fixUrl ? U.fixUrl(x.url) : x.url; return '<div class="nrow' + (x.read_at ? "" : " un") + '"><span aria-hidden="true">' + (U.nIcon ? U.nIcon(x.kind) : "🔔") + '</span><div><a href="' + esc(u || (x.ref ? "#inquiries" : "#")) + '" data-nid="' + esc(x.id) + '"><b dir="auto">' + esc(U.nTitle ? U.nTitle(x) : (x.title || "")) + "</b></a>" + (x.body ? '<span class="sub" dir="auto">' + esc(x.body) + "</span>" : "") + '<span class="sub">' + esc(U.date(x.created_at, true)) + "</span></div></div>"; }).join("") + "</div>" : '<div class="empty">' + T("مفيش إشعارات لسه.", "No notifications yet.") + "</div>");
+  };
+  V.opps = function () {
+    var mk = P ? P.scope(pk()) : [], ALL = ["local", "gulf", "africa", "asia", "europe"], need = { local: "basic", gulf: "premium", africa: "partner", asia: "strategic", europe: "strategic" }, gs = gst();
+    var L = [["tenders.html", "🏛️", "المناقصات الحكومية", "Government tenders", "مناقصات وممارسات منشورة من مصادرها الرسمية.", "Tenders published from their official sources."], ["rfqs.html", "📋", "طلبات عروض الأسعار", "Requests for quotation", "طلبات شراء من مشترين ومقاولين.", "Purchase requests from buyers and contractors."], ["winners.html", "🏆", "الشركات الفائزة والترسيات", "Awards & winning companies", "مين كسب العقود ومين بيشتري المواد.", "Who won contracts and who buys materials."], ["project-news.html", "🏗️", "أخبار المشاريع", "Project news", "مشاريع معلنة هتحتاج توريد.", "Announced projects that will need supplies."], ["opportunity.html", "🔎", "كل الفرص المفتوحة", "All open opportunities", "الفرص المفتوحة في مكان واحد.", "Open opportunities in one place."], ["radar.html", "📡", "رادار الفرص", "Opportunity radar", "الفرص حسب القطاع.", "Opportunities by sector."], ["export-market.html", "🚢", "أسواق التصدير", "Export markets", "الأسواق الخارجية في نطاق باقتك.", "Foreign markets in your plan's scope."]];
+    var DIR = [["suppliers.html", "🏭", "دليل الموردين", "Suppliers directory", "دليل الموردين والمصانع.", "Suppliers and factories directory."], ["contractors.html", "👷", "دليل المقاولين", "Contractors directory", "دليل المقاولين والموردين والفائزين بالمنافسات.", "The directory of contractors, suppliers and tender winners."]];
+    var allK = P && P.allGulfKey ? P.allGulfKey() : "partner", olink = function (x) { return '<a href="' + x[0] + '"><b><span aria-hidden="true">' + x[1] + "</span> " + T(x[2], x[3]) + "</b><small>" + T(x[4], x[5]) + "</small></a>"; };
+    /* the Gulf chip of a pick plan: «3 دول اخترتها» (then the 6 states below), or «مؤقتاً كل الدول — اختار 3» while not chosen */
+    var gsub = function (on) { return !on ? "" : gs.all ? T("ضمن باقتك (الدول الست)", "in your plan (all six)") : gs.pick && gs.pending ? T("مؤقتاً كل الدول — اختار " + gs.pick, "all states for now — choose " + gs.pick) : gs.pick ? T(gs.chosen.length + " دول اخترتها", gs.chosen.length + " states you chose") : ""; };
+    return head(T("الفرص", "Opportunities"), T("الفرص في نطاقك", "Opportunities in your scope"), T("المناقصات وطلبات الأسعار والشركات الفايزة وأخبار المشاريع من الباقة الأساسية وطالع، والنطاق بيكبر مع كل باقة: مصر في الأساسية، و3 دول خليجية تختارها وأخبار المشتريات في المميزة، وكل دول الخليج وأفريقيا في الشريك الأساسي، وكل أسواق العالم في الشريك الاستراتيجي. أدلة الموردين والمقاولين مفتوحة للكل.", "Tenders, RFQs, winning companies and project news start with the Basic plan, and the scope grows with each plan: Egypt in Basic; 3 Gulf states of your choice and procurement news in Premium; all Gulf states and Africa in Core Partner; all world markets in Strategic Partner. The supplier and contractor directories are open to everyone."))
+      + '<div class="mks">' + ALL.map(function (m) { var on = mk.indexOf(m) > -1, sub = m === "gulf" ? gsub(on) : ""; return '<div class="mk' + (on ? " on" : "") + '"><b>' + (on ? "✓ " : "🔒 ") + esc(P ? P.mkName(m) : m) + "</b><small>" + (on ? esc(sub || T("ضمن باقتك", "in your plan")) : T("متاح من «", "From “") + esc(planName(P && P.needMarket ? P.needMarket(m) : need[m])) + T("»", "”")) + "</small></div>"; }).join("") + "</div>"
+      /* Premium with its states chosen: each of the 6 GCC states — ✓ in the plan, or 🔒 in the plan that covers all six */
+      + (gs.pick && !gs.pending && mk.indexOf("gulf") > -1 && P && P.GCC ? '<h3 class="gcch3">' + T("دول الخليج في باقتك", "The Gulf states in your plan") + '</h3><div class="mks gcs">' + P.GCC.map(function (r) { var on = gs.chosen.indexOf(r[0]) > -1; return '<div class="mk' + (on ? " on" : "") + '"><b>' + (on ? "✓ " : "🔒 ") + '<span aria-hidden="true">' + r[3] + "</span> " + esc(EN ? r[2] : r[1]) + "</b><small>" + (on ? T("ضمن باقتك", "in your plan") : T("متاح في «", "In “") + esc(planName(allK)) + T("»", "”")) + "</small></div>"; }).join("") + "</div>" : "")
+      + (lv() < 2 ? '<div class="dcard">' + (P ? P.lockHTML("tenders", lv() < 1 ? T("حسابك لسه مش على باقة", "Your account has no plan yet") : T("باقتك «" + esc(planName()) + "» مابتشملش الفرص", "Your «" + esc(planName()) + "» plan does not include opportunities")) : "") + "</div>" : "")
+      + '<div class="olinks">' + L.map(olink).join("") + "</div>"
+      /* the directories are open to everyone (owner 2026-11-18): not a plan perk */
+      + '<h3 class="gcch3">' + T("أدلة مفتوحة للكل", "Open to everyone") + '</h3><div class="olinks">' + DIR.map(olink).join("") + "</div>"
+      + '<p class="note">' + T("اضغط «☆ تابع» جوه أي فرصة عشان توصلك تنبيهات مواعيد الإغلاق والجديد فيها.", "Press “☆ Follow” inside any opportunity to get deadline and update alerts.") + "</p>";
+  };
+  V.incoming = function () {
+    if (!capOn("incoming", 2)) return head(T("مصنعي", "My factory"), T("طلبات واردة لي", "Requests routed to me"), "") + (P ? P.lockHTML("incoming", T("استقبال الطلبات متاح من الباقة الأساسية", "Receiving requests starts with the Basic plan")) : "");
+    var c = S.inc, pri = capOn("priority", 3);
+    return head(T("مصنعي", "My factory"), T("طلبات واردة لي", "Requests routed to me"), T("الطلبات دي اتوزّعت عليك تلقائي لأنها مطابقة لقطاعك ومنتجاتك ومحافظتك ونطاق باقتك (", "These requests were routed to you automatically because they match your sector, products, governorate and plan scope (") + esc(scopeText()) + T("). عرض السعر اللي بتبعته بيوصل للمشتري تلقائي على إيميله وفي صفحة التتبع، ورقمك الشخصي مش بيظهر.", "). The quote you send reaches the buyer automatically by e-mail and on the tracking page; your personal number is never shown."))
+      + '<p class="note">' + (pri ? "⭐ " + T("باقتك فيها أولوية: بتتصنّف أول في المطابقة والظهور.", "Your plan has priority: you rank first in matching and listings.") : T("الباقة المميزة فأعلى ليها أولوية في المطابقة والظهور.", "Premium and higher plans get priority in matching and listings.") + ' <a href="register.html#premium">' + T("ترقية", "Upgrade") + "</a>") + (!S.me.sector || !S.me.governorate ? ' · <a href="#profile">' + T("كمّل القطاع والمحافظة عشان المطابقة تشتغل صح", "Complete your sector and governorate so matching works") + "</a>" : "") + "</p>"
+      + (!c ? loading() : c.err ? errBox(c.err) : c.items.length ? '<div class="ilist">' + c.items.map(incRow).join("") + "</div>" : '<div class="empty">' + T("مفيش طلبات واردة لسه. أول ما يوصل طلب مطابق هيتبعتلك تلقائي هنا وعلى إيميلك (والواتساب لو مفعّل).", "No routed requests yet. As soon as a matching request arrives it is sent to you automatically here and by e-mail (and WhatsApp if enabled).") + "</div>");
+  };
+  /* one request routed to me (GET /api/me/incoming): {ref, kind, my_status, status, title, target_name (only when the buyer addressed it to me),
+     routed_at / received_at, buyer:{first_name, company}, message, items, payload / product, quantity, sector, governorate, market, quote,
+     quotes_left, closed}. The title is what is asked for — never the name of another factory the buyer may have chosen. */
+  /* a governorate code (GIZ) → its name in the page language; an unknown code or a name stays as given (never «غير محددة») */
+  function govName(g) {
+    g = String(g || ""); if (!g) return "";
+    var L = (window.MIGREG && MIGREG.list) || [];
+    for (var i = 0; i < L.length; i++) if (L[i][0] === g.toUpperCase() || L[i][1] === g) return EN ? (((L[i][3] || []).filter(function (x) { return !/[\u0600-\u06FF]/.test(x); })[0]) || L[i][1]) : L[i][1];
+    return g;
+  }
+  function incRow(x) {
+    var b = x.buyer || {}, p = x.payload || {}, st = incSt(x), closed = incClosed(x), items = x.items || [], q = x.quote || null;
+    var gov = x.governorate || p.governorate || "", govN = govName(gov); /* a code (GIZ) or already a name */
+    var prod = x.product || p.product || p.title || "", mk = x.market && x.market !== "local" ? (P && P.mkName ? P.mkName(x.market) : x.market) : "";
+    var kv = [[T("المنتج", "Product"), prod], [T("الكمية", "Quantity"), x.quantity || p.quantity || p.qty], [T("القطاع", "Sector"), x.sector || p.sector], [T("محافظة التسليم", "Delivery governorate"), govN], [T("سوق التسليم", "Delivery market"), mk], [T("مطلوب قبل", "Needed by"), p.deadline ? (/^\d{4}-\d{2}-\d{2}/.test(p.deadline) ? U.date(p.deadline) : p.deadline) : ""], [T("المشتري", "Buyer"), [b.first_name, b.company].filter(Boolean).join(" — ")]].filter(function (k) { return k[1]; });
+    var stTxt = closed ? '<span class="mig-st">' + T("الطلب اتقفل", "Request closed") + "</span>" : st === "quoted" ? '<span class="mig-st s-q">' + T("بعت عرضك", "Quote sent") + "</span>" : st === "replied" ? '<span class="mig-st s-q">' + T("رديت على المشتري", "You replied") + "</span>" : st === "declined" ? '<span class="mig-st s-w">' + T("اعتذرت", "Declined") + "</span>" : '<span class="mig-st s-ok">' + T("جديد", "New") + "</span>";
+    /* one quote, then revisions while the server says quotes_left > 0 (an older server: one quote only) */
+    var left = x.quotes_left != null ? +x.quotes_left : (q ? 0 : 1), active = !closed && st !== "declined";
+    var canQuote = active && left > 0, open = (active && st === "sent") || S.focus === String(x.ref).toUpperCase();
+    var qbox = q ? '<div class="okbox">' + T("آخر عرض بعته للمشتري", "The last quote you sent to the buyer") + (q.created_at ? " (" + esc(U.date(q.created_at, true)) + ")" : "") + ":<br>" + [q.price ? T("السعر: ", "Price: ") + esc(q.price) + " " + esc(q.currency || "") : "", q.moq ? T("أقل كمية: ", "MOQ: ") + esc(q.moq) : "", q.lead_time ? T("مدة التوريد: ", "Lead time: ") + esc(q.lead_time) : "", q.validity ? T("ساري لحد: ", "Valid until: ") + esc(q.validity) : ""].filter(Boolean).join(" · ") + (q.note ? '<div class="msg" dir="auto" style="margin-top:6px">' + esc(q.note) + "</div>" : "") + "</div>" : "";
+    return '<details class="inq" data-iref="' + esc(String(x.ref).toUpperCase()) + '"' + (open ? " open" : "") + '><summary><div><b dir="auto">' + esc(x.title || prod || U.kindLabel(x.kind)) + '</b><span class="sub"><span class="num" dir="ltr">' + esc(x.ref) + "</span> · " + esc(U.kindLabel(x.kind)) + (x.routed_at || x.received_at ? " · " + esc(U.date(x.routed_at || x.received_at, true)) : "") + (x.target_name && x.target_name !== x.title ? " · 🎯 " + T("موجّه لمصنعك بالاسم", "addressed to your factory") : "") + "</span></div>" + stTxt + '</summary><div class="ib">'
+      + (x.message ? '<div class="msg" dir="auto">' + esc(x.message) + "</div>" : "")
+      + (items.length ? '<div class="kv">' + items.map(function (it) { var qn = it.qty || it.quantity; return "<div><span>" + T("بند", "Item") + "</span>" + esc(it.name || it.product || it.title || "") + (qn ? " × " + esc(qn) + (it.unit ? " " + esc(it.unit) : "") : "") + "</div>"; }).join("") + "</div>" : "")
+      + (kv.length ? '<div class="kv">' + kv.map(function (k) { return "<div><span>" + k[0] + "</span>" + esc(k[1]) + "</div>"; }).join("") + "</div>" : "")
+      + qbox
+      + (st === "declined" && !closed ? '<p class="note">' + T("اعتذرت عن الطلب ده؛ مش هيوصلك عنه تذكير.", "You declined this request; you will not be reminded about it.") + "</p>" : "")
+      + (closed ? '<p class="note">' + T("الطلب اتقفل تلقائي (بعد 30 يوم أو لأن صاحبه قفله)، فمش بيستقبل ردود جديدة.", "The request was closed automatically (after 30 days, or by its owner), so it no longer takes answers.") + "</p>" : "")
+      + (q && canQuote ? '<p class="note">' + (EN ? "You can revise your quote " + left + (left === 1 ? " more time" : " more times") + "; the buyer gets the new version automatically." : "تقدر تعدّل عرضك " + (left === 1 ? "مرة كمان" : left + " مرات كمان") + "، والمشتري بيوصله العرض الجديد تلقائي.") + "</p>" : "")
+      + (canQuote ? quoteForm(x.ref, st === "sent", !!q) : "")
+      + (active ? replyForm(x.ref) : "") + "</div></details>";
+  }
+  /* a short message to the buyer (POST /api/me/incoming/:ref/reply) — relayed by the platform; personal numbers are never shown */
+  function replyForm(ref) {
+    return '<form class="rf" data-rref="' + esc(ref) + '" novalidate><label class="f full">' + T("رسالة للمشتري (سؤال أو توضيح)", "Message to the buyer (a question or a clarification)") + '<textarea name="message" maxlength="3000" style="min-height:64px"></textarea><small>' + T("بتوصل للمشتري تلقائي على إيميله وفي صفحة التتبع. ماتكتبش أرقام تليفونات شخصية.", "It reaches the buyer automatically by e-mail and on the tracking page. Don't write personal phone numbers.") + '</small></label><p class="er erbox" role="alert" hidden></p><div class="tools"><button class="btn btn-line btn-sm" type="submit">✉️ ' + T("ابعت الرسالة", "Send the message") + "</button></div></form>";
+  }
+  function quoteForm(ref, canDecline, revise) {
+    var cur = ["EGP", "USD", "EUR", "SAR", "AED"];
+    return '<form class="qf" data-qref="' + esc(ref) + '" novalidate><h3 style="font-size:1rem;font-weight:800">' + (revise ? T("عدّل عرضك", "Revise your quote") : T("ابعت عرض سعر", "Send a quote")) + '</h3><p class="note">' + T("راجعه قبل الإرسال: بيوصل للمشتري تلقائي على إيميله وفي صفحة تتبّع طلبه.", "Check it before sending: it reaches the buyer automatically by e-mail and on their tracking page.") + '</p><div class="fg">'
+      + '<label class="f">' + T("السعر *", "Price *") + '<input name="price" inputmode="decimal" dir="ltr" required></label>'
+      + '<label class="f">' + T("العملة", "Currency") + '<select name="currency">' + cur.map(function (c) { return "<option>" + c + "</option>"; }).join("") + "</select></label>"
+      + '<label class="f">' + T("أقل كمية للطلب (MOQ)", "Minimum order (MOQ)") + '<input name="moq"></label>'
+      + '<label class="f">' + T("مدة التوريد", "Lead time") + '<input name="lead_time" placeholder="' + esc(T("مثلاً: 14 يوم", "e.g. 14 days")) + '"></label>'
+      + '<label class="f">' + T("العرض ساري لحد", "Valid until") + '<input name="validity" type="date" dir="ltr"></label>'
+      + '<label class="f full">' + T("ملاحظة للمشتري", "Note to the buyer") + '<textarea name="note" maxlength="1500"></textarea><small>' + T("ماتكتبش أرقام تليفونات شخصية — التواصل بيكمل عن طريق المنصة.", "Don't write personal phone numbers — contact continues through the platform.") + "</small></label></div>"
+      + '<p class="er erbox" role="alert" hidden></p><div class="tools"><button class="btn btn-green" type="submit">📤 ' + T("ابعت العرض للمشتري", "Send the quote to the buyer") + "</button>" + (canDecline ? '<button class="btn btn-line" type="button" data-decl="' + esc(ref) + '">' + T("اعتذار عن الطلب", "Decline") + "</button>" : "") + "</div></form>";
+  }
+  V.stats = function () {
+    if (lv() < 2) return head(T("مصنعي", "My factory"), T("إحصائياتي", "My statistics"), "") + (P ? P.lockHTML("stats", T("الإحصائيات متاحة من الباقة الأساسية", "Statistics start with the Basic plan")) : "");
+    var s = S.stats;
+    var linked = !(s && !s.err && s.profile_linked === false), since = s && s.since ? " " + T("من ", "since ") + esc(U.date(s.since)) : "";
+    var body = !s ? loading() : s.err ? errBox(s.err) : !s.enough ? '<div class="empty"><b>' + T("بيانات غير كافية", "Not enough data yet") + "</b>"
+        + (linked ? T("بدأنا نعدّ الزيارات والضغطات الحقيقية على صفحتك", "We have been counting real visits and clicks on your page") + since + T("، والأرقام هتظهر هنا أول ما توصل للحد الأدنى. مفيش أرقام تقديرية.", "; the numbers appear here once they reach the minimum. No estimates.")
+          : T("بنعدّ الطلبات اللي اتوزّعت عليك", "We count the requests routed to you") + since + T("، والزيارات والضغطات هتتعد أول ما حسابك يتربط بصفحة منشأتك. الأرقام بتظهر هنا أول ما توصل للحد الأدنى، ومفيش أرقام تقديرية.", "; visits and clicks are counted once your account is linked to your company page. The numbers appear here once they reach the minimum; no estimates.")) + "</div>"
+      : '<div class="kpis">' + [["views", "زيارات صفحتك", "Page visits"], ["wa_clicks", "ضغطات واتساب", "WhatsApp clicks"], ["web_clicks", "ضغطات الموقع", "Website clicks"], ["inquiries", "طلبات اتبعتلك", "Requests sent to you"]].map(function (k) { var v = s.metrics ? s.metrics[k[0]] : null; return '<div class="kpi"><span>' + T(k[1], k[2]) + '</span><b class="num">' + (v == null ? "—" : Number(v).toLocaleString("en-US")) + "</b><small>" + T("منذ ", "since ") + esc(U.date(s.since)) + "</small></div>"; }).join("") + "</div>";
+    var link = !linked && s.enough ? '<p class="note">ℹ️ ' + T("حسابك لسه مش مربوط بصفحة منشأة على المنصة، فالأرقام دي هي الطلبات اللي اتوزّعت عليك بس؛ الزيارات والضغطات هتتعد أول ما الربط يتعمل (لما المنصة تفعّل باقتك على صفحة منشأتك).", "Your account is not linked to a company page on the platform yet, so these numbers are the requests routed to you only; visits and clicks are counted once the link is made (when the platform activates your plan on your company page).") + "</p>" : "";
+    return head(T("مصنعي", "My factory"), T("إحصائياتي", "My statistics"), T("أرقام حقيقية بس، متجمّعة من زيارات وضغطات فعلية (من غير ما نخزّن عناوين IP).", "Real numbers only, aggregated from actual visits and clicks (no IP addresses stored).")) + link + body;
+  };
+  var TITLES = [["أستاذ", "Mr."], ["دكتور", "Dr."], ["مهندس", "Eng."], ["مستشار", "Counsellor"], ["لواء", "Gen."], ["مدام", "Mrs."], ["آنسة", "Ms."]];
+  /* a change the server refused because this is a link session (403 full_login_required): the e-mail-code sign-in opens right away
+     and the same change is sent again with the full session (the page is not rebuilt meanwhile, so nothing typed is lost) */
+  function full(run) {
+    return run().then(null, function (x) {
+      if (!x || x.code !== "full_login_required") throw x;
+      S.hold = true;
+      return A.open({ email: (S.me && S.me.email) || "", why: T("عشان نحفظ التغيير ده، ادخل بكود يوصلك على بريدك (الدخول برابط الإيميل للرد على الطلبات بس).", "To save this change, sign in with a code sent to your e-mail (the e-mail link is for answering requests only).") })
+        .then(function () { return run(); }, function () { throw x; })
+        .then(function (j) { S.hold = false; return j; }, function (y) { S.hold = false; throw y; });
+    });
+  }
+  /* signed in by the e-mailed link (24 h, answering requests only): changes need the e-mail-code sign-in */
+  function linkNote() { return A.linkSession && A.linkSession() ? '<div class="erbox" style="background:#FFF4D6;color:#7A5A00" role="status">' + (A.legacySession && A.legacySession() ? "🔑 " + T("إنت داخل بالباسورد القديم: تقدر تتابع لوحتك وتدفع فواتيرك وترد على الطلبات. عشان تعدّل بياناتك أو منتجاتك أو ملف شركتك أو تكلّم باسم، ادخل بكود على بريدك.", "You signed in with your old password: you can follow your dashboard, pay your invoices and answer requests. To change your details, products or company profile, or to talk to Bassem, sign in with an e-mail code.") : "🔗 " + T("إنت داخل برابط من الإيميل: تقدر ترد على الطلبات وتبعت عروض أسعار. عشان تغيّر بياناتك أو اختياراتك، ادخل بكود على بريدك.", "You signed in with the e-mail link: you can answer requests and send quotes. To change your details or choices, sign in with an e-mail code.")) + ' <button class="btn btn-gold btn-sm" type="button" data-fulllogin>🔑 ' + T("ادخل بكود على بريدك", "Sign in with an e-mail code") + "</button></div>" : ""; }
+  V.profile = function () {
+    var u = S.me, other = u.title && !TITLES.some(function (t) { return t[0] === u.title; });
+    var gov = (window.MIGREG && MIGREG.list) || [];
+    /* sector suggestions: the request form's sectors (what buyers pick — contact.html) + the platform's canonical sectors (window.MIGSECTORS,
+       data/regions.js), stored in Arabic as the matching engine compares them; English pages show the English name as the label */
+    var SEC = [], seen = {}, addS = function (ar, en) { if (ar && !seen[ar]) { seen[ar] = 1; SEC.push([ar, en || ar]); } };
+    [["الصناعات الغذائية", "Food industries"], ["مواد البناء", "Building materials"], ["البلاستيك والتغليف", "Plastics & packaging"], ["الكهرباء والكابلات", "Electrical & cables"], ["المعادن والألمنيوم", "Metals & aluminium"], ["البتروكيماويات والكيماويات", "Petrochemicals & chemicals"], ["الأدوية والمستلزمات الطبية", "Pharmaceuticals & medical supplies"], ["الأثاث والأخشاب", "Furniture & wood"], ["الغزل والنسيج", "Spinning & textiles"], ["الورق والتغليف", "Paper & packaging"], ["الزجاج", "Glass"]].forEach(function (x) { addS(x[0], x[1]); });
+    (window.MIGSECTORS || []).forEach(function (x) { addS(x[0], x[1]); });
+    return head(T("الإعدادات", "Settings"), T("بياناتي", "My details"), T("الاسم واللقب بيستخدمهم «باسم» و«جنة» في الكلام معاك، والقطاع والمحافظة بيحددوا الطلبات اللي بتتوزّع عليك.", "Bassem and Janna address you by name and title; sector and governorate decide which requests are routed to you.")) + linkNote()
+      + '<form class="dcard" id="pfF" novalidate><div class="fg">'
+      + '<label class="f">' + T("اللقب", "Title") + '<select name="title"><option value="">' + T("— من غير لقب —", "— none —") + "</option>" + TITLES.map(function (t) { return '<option value="' + t[0] + '"' + (u.title === t[0] ? " selected" : "") + ">" + (EN ? t[1] : t[0]) + "</option>"; }).join("") + '<option value="_o"' + (other ? " selected" : "") + ">" + T("لقب تاني…", "Other…") + "</option></select></label>"
+      + '<label class="f" id="pfTO"' + (other ? "" : " hidden") + ">" + T("اكتب اللقب", "Your title") + '<input name="title_o" maxlength="20" value="' + esc(other ? u.title : "") + '"></label>'
+      + '<label class="f">' + T("الاسم *", "Name *") + '<input name="name" autocomplete="name" required maxlength="80" value="' + esc(u.name || "") + '"></label>'
+      + '<label class="f">' + T("الشركة / المصنع", "Company / factory") + '<input name="company" autocomplete="organization" maxlength="120" value="' + esc(u.company || "") + '"></label>'
+      + '<label class="f">' + T("الموبايل", "Mobile") + '<input name="phone" type="tel" inputmode="tel" dir="ltr" autocomplete="tel" maxlength="20" value="' + esc(u.phone || "") + '"><small>' + T("مش بيظهر لأي حد. بيستخدم لرسايل الواتساب لو وافقت عليها.", "Never shown to anyone. Used for WhatsApp messages only if you opt in.") + "</small></label>"
+      + '<label class="f">' + T("البريد الإلكتروني", "E-mail") + '<input value="' + esc(u.email || "") + '" dir="ltr" readonly aria-readonly="true"><small>' + T("ده بريد الدخول.", "This is your sign-in e-mail.") + "</small></label>"
+      + '<label class="f">' + T("القطاع", "Sector") + '<input name="sector" list="pfSec" maxlength="80" value="' + esc(u.sector || "") + '" translate="no"><datalist id="pfSec" translate="no">' + SEC.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (EN ? ' label="' + esc(x[1]) + '"' : "") + ">"; }).join("") + "</datalist>" + (EN ? "<small>" + T("", "Pick one from the list: it is stored in Arabic, which the matching uses.") + "</small>" : "") + "</label>"
+      + '<label class="f">' + T("المحافظة", "Governorate") + '<select name="governorate" translate="no"><option value="">—</option>' + gov.map(function (g) { var en = ((g[3] || []).filter(function (x) { return !/[\u0600-\u06FF]/.test(x); })[0]) || g[1]; return '<option value="' + esc(g[0]) + '"' + (u.governorate === g[0] || u.governorate === g[1] ? " selected" : "") + ">" + esc(EN ? en : g[1]) + "</option>"; }).join("") + "</select></label>"
+      + '</div><p class="er" role="alert"></p><div class="tools"><button class="btn btn-green" type="submit">' + T("حفظ", "Save") + "</button></div></form>";
+  };
+  /* days as the server stores them: 0 = Sunday … 6 = Saturday (Cairo); shown Saturday-first like the Egyptian week */
+  var DAYS = [[6, "السبت", "Sat"], [0, "الأحد", "Sun"], [1, "الإثنين", "Mon"], [2, "الثلاثاء", "Tue"], [3, "الأربعاء", "Wed"], [4, "الخميس", "Thu"], [5, "الجمعة", "Fri"]];
+  var DOLD = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+  function dayNums(a) { var o = []; (Array.isArray(a) ? a : []).forEach(function (d) { var n = typeof d === "number" ? d : DOLD[String(d).toLowerCase()] != null ? DOLD[String(d).toLowerCase()] : parseInt(d, 10); if (n >= 0 && n <= 6 && o.indexOf(n) < 0) o.push(n); }); return o; }
+  function todayCall(p) { var v = String(p.call_today_at || ""), d = ""; try { d = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()); } catch (e) {} return d && v.indexOf(d + "T") === 0 ? v.slice(11, 16) : ""; }
+  V.prefs = function () {
+    var p = S.me.prefs || {}, ds = dayNums(p.days), dsel = ds.length ? ds : [0, 1, 2, 3, 4, 5, 6], bas = lv() >= 4, rcv = lv() >= 2, paused = !!S.me.inbox_paused || p.incoming === false;
+    return head(T("الإعدادات", "Settings"), T("الواتساب والإيميل", "WhatsApp & e-mail"), T("إنت اللي بتختار إيه يوصلك. كل الرسايل بتتبعت تلقائي من المنصة، وكل إيميل فيه رابط إلغاء الاشتراك.", "You choose what reaches you. All messages are sent automatically by the platform, and every e-mail has an unsubscribe link."))
+      + linkNote()
+      + (rcv && paused ? '<div class="erbox" role="status">⏸️ ' + T("استقبال الطلبات الواردة موقوف لحسابك (ده بيحصل كمان لما رابط «إلغاء الاشتراك» في إيميل طلب وارد يتضغط). طول ما هو موقوف، الطلبات المطابقة مش بتتوزّع عليك — رجّعه من الاختيار اللي تحت.", "Receiving routed requests is paused for your account (this also happens when the unsubscribe link in a routed-request e-mail is used). While it is paused, matching requests are not routed to you — turn it back on below.") + "</div>" : "")
+      + '<form class="dcard" id="prF" novalidate>'
+      + (rcv ? '<label class="chk"><input type="checkbox" name="incoming"' + (paused ? "" : " checked") + "><span>" + T("استقبال الطلبات الواردة المطابقة لنشاطي (على الإيميل، وعلى الواتساب لو مفعّل)", "Receive matching routed requests (by e-mail, and on WhatsApp if enabled)") + "</span></label>" : "")
+      + '<label class="chk"><input type="checkbox" name="email_digest"' + (p.email_digest !== false ? " checked" : "") + "><span>" + T("ملخص يومي بالإيميل للجديد الحقيقي في متابعاتي", "A daily e-mail digest of real news on what I follow") + "</span></label>"
+      /* WhatsApp carries requests routed to the member (basic+) and Bassem's messages (partner / strategic) — nothing else yet */
+      + (rcv ? '<label class="chk"><input type="checkbox" name="wa_optin"' + (p.wa_optin ? " checked" : "") + "><span>" + T("موافق إن المنصة تبعتلي على الواتساب (من رقم المنصة الرسمي): الطلبات الواردة لي" + (bas ? " ورسايل باسم" : "") + ". أقدر أوقفها في أي وقت بكلمة «إيقاف».", "I agree to receive WhatsApp messages from the platform's official number: requests routed to me" + (bas ? " and Bassem's messages" : "") + ". I can stop them at any time by replying “STOP”.") + "</span></label>"
+        + (S.me.phone ? "" : '<p class="note">⚠️ ' + T("ضيف رقم موبايلك في «بياناتي» عشان الواتساب يشتغل.", "Add your mobile number in “My details” for WhatsApp to work.") + "</p>")
+        : '<p class="note">' + T("رسايل الواتساب من المنصة بتشتغل للأعضاء من الباقة الأساسية (الطلبات الواردة ليهم). تحديثات طلباتك بتوصلك على الإيميل وفي «طلباتي».", "WhatsApp messages from the platform start with the Basic plan (requests routed to the member). Updates on your requests reach you by e-mail and in “My requests”.") + "</p>")
+      + (bas ? '<div class="fg"><label class="f">' + T("ميعاد رسالة باسم الصباحية", "Time of Bassem's morning message") + '<input type="time" name="morning_time" dir="ltr" value="' + esc(p.morning_time || "09:00") + '"><small>' + T("بتوقيت القاهرة", "Cairo time") + "</small></label>"
+        + '<label class="f">' + T("ميعاد الشغل اليومي مع باسم", "Daily work time with Bassem") + '<input type="time" name="session_time" dir="ltr" value="' + esc(p.session_time || "") + '"><small>' + T("في الأيام اللي تحت: في الميعاد ده بيوصلك رابط مكالمة الفيديو معاه (على الإيميل، وعلى الواتساب لما يتفعّل). لو سبته فاضي، مفيش ميعاد ثابت.", "On the days below: at this time you get the link to a video call with him (by e-mail, and on WhatsApp once it is live). Leave it empty for no fixed time.") + "</small></label>"
+        + '<label class="f">' + T("النهارده بس: كلّمني الساعة", "Today only: call me at") + '<input type="time" name="call_today_at" dir="ltr" value="' + esc(todayCall(p)) + '"><small>' + T("بيغيّر ميعاد النهارده بس.", "Changes today's time only.") + "</small></label></div>"
+        + '<fieldset style="border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:6px"><legend class="f">' + T("أيام رسايل باسم", "Days for Bassem's messages") + '</legend><div class="days">' + DAYS.map(function (d) { return '<label><input type="checkbox" name="day" value="' + d[0] + '"' + (dsel.indexOf(d[0]) > -1 ? " checked" : "") + ">" + T(d[1], d[2]) + "</label>"; }).join("") + "</div></fieldset>" : "")
+      + (rcv ? '<label class="chk"><input type="checkbox" name="pause"' + (p.pause ? " checked" : "") + "><span>" + T("إيقاف مؤقت لرسايل الواتساب", "Pause WhatsApp messages") + "</span></label>" : "")
+      + '<p class="er" role="alert"></p><div class="tools"><button class="btn btn-green" type="submit">' + T("حفظ", "Save") + "</button></div></form>";
+  };
+  V.plan = function () {
+    var u = S.me, k = pk(), gp = (P && P.gccPickOf ? P.gccPickOf("premium") : 0) || 3, INC = [
+      [0, "تتصفح الصفحات العامة وتبعت طلبات", "Browse the public pages and send requests"],
+      [1, "ملف لشركتك في الدليل وفي نتائج البحث (الاسم والشعار والنبذة وبيانات التواصل الرسمية)", "Your company profile in the directory and in search results (name, logo, short profile, official contacts)"],
+      [2, "المناقصات وطلبات الأسعار والشركات الفايزة وأخبار المشاريع في نطاقك + تنبيهات وملخصات", "Tenders, RFQs, winning companies and project news in your scope + alerts and digests"],
+      [2, "ترد على المناقصات وطلبات الأسعار، والطلبات المطابقة بتتوزّع عليك تلقائي، وإحصائياتك الحقيقية", "Respond to tenders and RFQs, matching requests are routed to you automatically, and your real statistics", "incoming"],
+      [3, "أخبار المشتريات + " + gccW(gp, false) + " تختارها", "Procurement news + " + gccW(gp, true) + " of your choice", "procurement"],
+      [3, "أولوية في المطابقة والظهور", "Priority in matching and listings", "priority"],
+      [4, "كل دول الخليج + أفريقيا + باسم: مستشار أعمالك الشخصي لمدة 365 يوم", "All Gulf states + Africa + Bassem: your personal business advisor for 365 days", "bassem"],
+      [5, "كل أسواق العالم + باسم + كل الخدمات الاستشارية", "All world markets + Bassem + all consulting services"]
+    ];
+    /* «🌍 دولك الخليجية»: the states he chose (read-only: the team changes them), the picker while not chosen yet, or all six */
+    var gs = gst(), gcard = "";
+    if (lv() >= 1 && (gs.pick || gs.all)) {
+      gcard = '<div class="dcard" id="dGcc"><h2>🌍 ' + T("دولك الخليجية", "Your Gulf states") + "</h2>";
+      if (gs.all) gcard += "<p>" + T("باقتك بتغطي كل دول الخليج الست.", "Your plan covers all 6 Gulf states.") + "</p>";
+      else if (!gs.pending) gcard += "<p>" + T("باقتك بتغطي: مصر + ", "Your plan covers: Egypt + ") + "<b>" + esc(P.gccNames(gs.chosen)) + '</b>.</p><p class="note">' + T("لتغيير الدول كلّم فريق المنصة.", "To change the states, contact the platform team.") + "</p>";
+      else gcard += '<p class="note">' + T("باقتك فيها مصر + " + gccW(gs.pick, false) + " تختارها. لحد ما تختار، بتوصلك فرص كل دول الخليج مؤقتاً.", "Your plan includes Egypt + " + gccW(gs.pick, true) + " of your choice. Until you choose, you receive the opportunities of all Gulf states for now.") + "</p>"
+        + P.gccPicker({ id: "dgcc", pick: gs.pick }) + '<div class="tools" style="margin-top:10px"><button class="btn btn-green" type="button" id="dgccS">💾 ' + T("احفظ الدول", "Save the states") + '</button></div><p class="er" id="dgccE" role="alert"></p>';
+      gcard += "</div>";
+    }
+    var st = acctState(), signup = S.inq && S.inq.items ? S.inq.items.filter(function (x) { return x.kind === "signup"; })[0] : null;
+    return head(T("الإعدادات", "Settings"), T("باقتي", "My plan"), '<span class="ast ast-' + st.k + '">' + esc(st.t) + "</span>" + (st.href ? ' <a href="' + esc(st.href) + '">' + esc(st.ht || "") + "</a>" : ""), '<a class="btn btn-gold" href="register.html#plans">' + T("قارن الباقات", "Compare plans") + "</a>")
+      + '<div class="kpis"><div class="kpi"><span>' + T("باقتك الحالية", "Current plan") + '</span><b style="font-size:1.15rem">' + esc(planName(k)) + '</b></div><div class="kpi"><span>' + T("النطاق الجغرافي", "Geographic scope") + '</span><b style="font-size:1.05rem">' + esc(scopeText()) + '</b></div><div class="kpi"><span>' + T("سارية لحد", "Valid until") + '</span><b style="font-size:1.05rem">' + (u.plan_expires ? esc(U.date(u.plan_expires)) : "—") + '</b></div><div class="kpi"><span>' + T("بداية الاشتراك", "Activated on") + '</span><b style="font-size:1.05rem">' + (u.activated_at ? esc(U.date(u.activated_at)) : "—") + "</b></div></div>"
+      + gcard
+      /* payment: honest until the owner saves the gateway's merchant credentials — no card fields here, ever */
+      + '<div class="dcard"><h2>💳 ' + T("الدفع والتجديد", "Payment and renewal") + "</h2>"
+      + '<p class="erbox" style="background:#FFF4D6;color:#7A5A00" role="status">⏳ ' + T("بوابة الدفع لسه بتتجهّز.", "The payment gateway is still being set up.") + "</p>"
+      + '<p class="note">' + T("أول ما بوابة الدفع تشتغل، رابط الدفع الآمن بيوصلك تلقائي على بريدك المسجّل، والباقة بتتفعّل تلقائي بعد الدفع، والفاتورة الإلكترونية بتوصلك على نفس البريد. الدفع بيتم في صفحة بوابة الدفع نفسها؛ المنصة مش بتطلب ولا بتحفظ بيانات أي كارت.", "As soon as the payment gateway is live, the secure payment link reaches your registered e-mail automatically, your plan is activated automatically after payment, and the e-invoice reaches the same e-mail. Payment happens on the gateway's own page; the platform never asks for or stores card details.") + "</p>"
+      + (lv() < 1 ? (signup ? '<p class="okbox">✓ ' + T("طلب اشتراكك متسجّل برقم ", "Your membership application is recorded as ") + '<span class="num" dir="ltr">' + esc(signup.ref) + "</span>" + T(" — رابط الدفع هيوصلك عليه تلقائي.", " — the payment link will reach you automatically.") + "</p>" : '<div class="tools"><a class="btn btn-green" href="register.html#plans">✍️ ' + T("اختار باقتك وسجّل منشأتك", "Choose your plan and register your company") + "</a></div>") : "")
+      + "</div>"
+      + '<div class="dcard"><h2>' + T("باقتك بتفتحلك", "Your plan includes") + '</h2><ul class="todo">' + INC.map(function (x) { var on = x[3] ? capOn(x[3], x[0]) : lv() >= x[0]; return '<li class="' + (on ? "done" : "") + '"><span class="ck" aria-hidden="true">' + (on ? "✓" : "") + "</span>" + esc(T(x[1], x[2])) + (on ? "" : " 🔒") + "</li>"; }).join("") + "</ul>"
+      + '<p class="note">' + T("الفواتير والتجديد هيظهروا هنا أول ما الدفع الإلكتروني يشتغل.", "Invoices and renewals will appear here once online payment is live.") + "</p></div>";
+  };
+
+  /* ---------- render / routing ---------- */
+  var NEEDS = { overview: [loadInq, loadFol, loadNotif], inquiries: [loadInq], follows: [loadFol], notifications: [loadNotif], incoming: [loadInc], stats: [loadStats], plan: [loadInq] };
+  function render() {
+    if (!S.me) return;
+    if (!tabOK(S.tab) || (lv() < 1 && FAC[S.tab])) S.tab = "overview";
+    solo(false); nav(); $("#panel").innerHTML = V[S.tab]();
+    try { if (location.hash.slice(1) !== S.tab) history.replaceState(null, "", "#" + S.tab); } catch (x) {}
+    var need = FAC[S.tab] && lv() < 2 ? [] : (NEEDS[S.tab] || []).slice(); if (S.tab === "overview" && lv() >= 2) need.push(loadInc);
+    /* a buyer account: its requests tell whether a membership application is waiting (status line) */
+    if (lv() < 1 && need.indexOf(loadInq) < 0) need.push(loadInq);
+    var miss = need.filter(function (f) { return true; });
+    if (miss.length) Promise.all(miss.map(function (f) { return f(); })).then(function () { var t = S.tab; nav(); $("#panel").innerHTML = V[t](); after(); });
+    after();
+  }
+  /* «باقتي» → «احفظ الدول» (POST /api/me/gcc, once, while not chosen; afterwards the platform team changes them) */
+  function bindGcc() {
+    var f = document.getElementById("dgcc"), sv = document.getElementById("dgccS"), er = document.getElementById("dgccE"); if (!f || !sv || !P || !P.gccBind) return;
+    var gs = gst(), b = P.gccBind(f, { pick: gs.pick });
+    sv.onclick = function () {
+      er.className = "er"; er.textContent = "";
+      if (!b.ok()) { er.textContent = T("اختار " + gccW(gs.pick, false) + " بالظبط", "Choose exactly " + gccW(gs.pick, true)); b.bad(); return; }
+      sv.disabled = true;
+      A.request("/me/gcc", { method: "POST", body: { gcc: b.get() } }).then(function () {
+        return A.me(true).then(function (r) { if (r && r.user) S.me = r.user; }, function () {});
+      }).then(function () { if (U.toast) U.toast("✓ " + T("اتحفظت دولك", "Your Gulf states were saved")); render(); }, function (e) {
+        sv.disabled = false;
+        er.textContent = e && e.code === "gcc_locked" ? T("دولك متسجّلة بالفعل — لتغييرها كلّم فريق المنصة", "Your Gulf states are already set — contact the platform team to change them") : e && e.code === "gcc_required" ? T("اختار " + gccW(gs.pick, false) + " بالظبط", "Choose exactly " + gccW(gs.pick, true)) : U.errText(e);
+      });
+    };
+  }
+  function after() {
+    if (S.tab === "plan") bindGcc();
+    (XT.ext[S.tab] || []).forEach(function (f) { try { f($("#panel"), S.me); } catch (x) {} });
+    /* my requests: fetch each opened request's timeline (owner access, no last4 needed when signed in) */
+    [].forEach.call(document.querySelectorAll("#panel details.inq[data-ref][open]"), loadTl);
+    /* a request named in the link (#incoming=<ref>) is opened and scrolled to once its row exists */
+    if (S.focus && S.tab === "incoming" && S.inc && !S.inc.err) {
+      var d = document.querySelector('#panel details.inq[data-iref="' + S.focus.replace(/"/g, "") + '"]'), viaLink = S.viaLink; S.focus = ""; S.viaLink = false;
+      if (d) {
+        d.open = true; d.classList.add("fx");
+        setTimeout(function () {
+          try { d.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (x) { d.scrollIntoView(); }
+          /* opened from the e-mailed link: the quote form is ready to fill */
+          var pi = viaLink && d.querySelector('form.qf input[name="price"]'); if (pi) try { pi.focus({ preventScroll: true }); } catch (x) { pi.focus(); }
+        }, 80);
+      }
+      else U.toast(T("الطلب ده مش ضمن الطلبات اللي اتوزّعت على حسابك.", "This request is not among the requests routed to your account."));
+    }
+  }
+  function loadTl(d) {
+    var w = d.querySelector(".tl-wait"); if (!w || d.__tl) return; d.__tl = 1;
+    var ref = d.getAttribute("data-ref");
+    A.request("/inquiries/" + encodeURIComponent(ref)).then(function (j) {
+      var x = (S.inq && S.inq.items || []).filter(function (i) { return i.ref === ref; })[0]; if (x) x.events = j.events || [];
+      w.outerHTML = U.timeline(j.events || []);
+    }, function (e) { w.outerHTML = '<p class="note">' + esc(U.errText(e)) + "</p>"; });
+  }
+  /* #tab · #incoming=<REF> (e-mails / notifications) · #tab=incoming&ref=<REF> (the e-mailed login link, after mig-api.js took lt= out) */
+  function fromHash() {
+    var h = ""; try { h = decodeURIComponent((location.hash || "").slice(1)); } catch (x) { h = (location.hash || "").slice(1); }
+    if (/(^|&)(tab|ref)=/.test(h)) {
+      var q = {}; h.split("&").forEach(function (p) { var i = p.indexOf("="); if (i > 0) q[p.slice(0, i)] = p.slice(i + 1); });
+      if (q.ref && /^[A-Za-z0-9-]{6,20}$/.test(q.ref)) S.focus = q.ref.toUpperCase();
+      h = q.tab || (q.ref ? "incoming" : "");
+    }
+    var m = /^incoming[=:/]([A-Za-z0-9-]{6,20})$/.exec(h); if (m) { S.focus = m[1].toUpperCase(); h = "incoming"; }
+    if (LEGACY[h]) h = LEGACY[h]; if (tabOK(h)) S.tab = h;
+  }
+  window.addEventListener("hashchange", function () { fromHash(); render(); window.scrollTo(0, 0); });
+  document.addEventListener("toggle", function (e) { if (e.target && e.target.matches && e.target.matches("#panel details.inq[data-ref]") && e.target.open) loadTl(e.target); }, true);
+  $("#dnav").addEventListener("click", function (e) {
+    if (e.target.closest("[data-out]")) { A.logout().then(function () { location.reload(); }); return; }
+    var b = e.target.closest("button[data-t]"); if (b) { S.tab = b.dataset.t; render(); window.scrollTo(0, 0); }
+  });
+  $("#panel").addEventListener("click", function (e) {
+    var g = e.target.closest("[data-go]"); if (g) { S.tab = g.dataset.go; render(); window.scrollTo(0, 0); return; }
+    if (e.target.closest("[data-fulllogin]")) { A.open({ email: (S.me && S.me.email) || "", why: T("ادخل بكود يوصلك على بريدك عشان تقدر تغيّر بياناتك واختياراتك.", "Sign in with a code sent to your e-mail to change your details and choices.") }).catch(function () {}); return; }
+    var uf = e.target.closest("[data-unf]");
+    if (uf) { var kk = uf.getAttribute("data-unf").split("|"); uf.disabled = true; A.unfollow(kk[0], kk.slice(1).join("|")).then(function () { S.fol = null; render(); U.toast(T("وقّفنا المتابعة.", "Unfollowed.")); }, function (x) { uf.disabled = false; U.toast(U.errText(x)); }); return; }
+    if (e.target.closest("[data-readall]")) { A.readNotifications({ all: true }).then(function () { S.notif = null; S.unread = 0; render(); }, function (x) { U.toast(U.errText(x)); }); return; }
+    var ni = e.target.closest("[data-nid]"); if (ni) { A.request("/me/notifications/read", { method: "POST", body: { ids: [ni.getAttribute("data-nid")] } }).catch(function () {}); S.notif = null; }
+    /* decline: an in-page box with an optional reason (it reaches the buyer with the decline) — no browser prompt */
+    var dc = e.target.closest("[data-decl]");
+    if (dc) {
+      var f0 = dc.closest("form"), box = f0.querySelector(".dcl");
+      if (box) { box.querySelector("textarea").focus(); return; }
+      f0.insertAdjacentHTML("beforeend", '<div class="dcl dcard" style="background:var(--sunken)"><label class="f full">' + T("سبب الاعتذار (اختياري)", "Reason for declining (optional)") + '<textarea name="why" maxlength="500" dir="auto" style="min-height:60px"></textarea><small>' + T("بيوصل للمشتري تلقائي مع اعتذارك.", "It reaches the buyer automatically with your decline.") + '</small></label><div class="tools"><button class="btn btn-line" type="button" data-decl-go="' + esc(dc.getAttribute("data-decl")) + '" style="color:#B42318;border-color:#F3C9C9">✋ ' + T("تأكيد الاعتذار", "Confirm the decline") + '</button><button class="btn btn-line" type="button" data-decl-x>' + T("رجوع", "Back") + "</button></div></div>");
+      f0.querySelector(".dcl textarea").focus(); return;
+    }
+    if (e.target.closest("[data-decl-x]")) { var bx = e.target.closest(".dcl"); if (bx) bx.remove(); return; }
+    var dg = e.target.closest("[data-decl-go]");
+    if (dg) {
+      var f = dg.closest("form"), why = (f.querySelector(".dcl textarea") || { value: "" }).value.trim(); dg.disabled = true;
+      A.decline(dg.getAttribute("data-decl-go"), why).then(function (j) { if (!j || j.ok !== true) throw { code: "bad_response", error: T("الخادم ماأكدش.", "The server did not confirm.") }; S.inc = null; render(); U.toast(j.buyer_notified ? T("اتسجّل اعتذارك ووصل للمشتري تلقائي.", "Your decline was recorded and the buyer was told automatically.") : T("اتسجّل اعتذارك.", "Your decline was recorded.")); }, function (x) { dg.disabled = false; var er = f.querySelector(".er"); er.hidden = false; er.textContent = U.errText(x); });
+    }
+  });
+  $("#panel").addEventListener("change", function (e) { if (e.target.name === "title" && e.target.closest("#pfF")) { $("#pfTO").hidden = e.target.value !== "_o"; } });
+  $("#panel").addEventListener("submit", function (e) {
+    e.preventDefault(); var f = e.target, er = f.querySelector(".er"), btn = f.querySelector("button[type=submit]");
+    function fail(x) { btn.disabled = false; if (er) { er.hidden = false; er.className = "er erbox"; er.textContent = U.errText(x); if (x && x.code === "full_login_required") er.insertAdjacentHTML("beforeend", ' <button class="btn btn-gold btn-sm" type="button" data-fulllogin>🔑 ' + T("ادخل بكود على بريدك", "Sign in with an e-mail code") + "</button>"); } }
+    if (f.id === "pfF") {
+      var t = f.elements.title.value === "_o" ? f.elements.title_o.value.trim() : f.elements.title.value, o = { title: t, name: f.elements.name.value.trim(), company: f.elements.company.value.trim(), phone: f.elements.phone.value.trim(), sector: f.elements.sector.value.trim(), governorate: f.elements.governorate.value };
+      if (!o.name) { er.className = "er erbox"; er.textContent = T("اكتب اسمك.", "Enter your name."); f.elements.name.focus(); return; }
+      if (o.phone && !/^\+?[0-9 ()-]{8,20}$/.test(o.phone.replace(/[٠-٩]/g, function (c) { return "٠١٢٣٤٥٦٧٨٩".indexOf(c); }))) { er.className = "er erbox"; er.textContent = T("رقم الموبايل مش صحيح.", "The mobile number is not valid."); f.elements.phone.focus(); return; }
+      btn.disabled = true;
+      full(function () { return A.updateMe(o); }).then(function (j) { if (!j || !j.user) throw { code: "bad_response", error: T("الخادم ماأكدش الحفظ.", "The server did not confirm.") }; S.me = j.user; btn.disabled = false; er.className = "er okbox"; er.textContent = T("✓ اتحفظت بياناتك.", "✓ Your details were saved."); nav(); }, fail);
+    } else if (f.id === "prF") {
+      var E = f.elements, o2 = { email_digest: E.email_digest.checked };
+      if (E.wa_optin) o2.wa_optin = E.wa_optin.checked;
+      if (E.pause) o2.pause = E.pause.checked;
+      if (E.morning_time) o2.morning_time = E.morning_time.value || "09:00";
+      if (E.call_today_at) o2.call_today_at = E.call_today_at.value || "";
+      if (E.session_time) o2.session_time = E.session_time.value || "";
+      var wasPaused = !!S.me.inbox_paused || (S.me.prefs || {}).incoming === false;
+      if (E.incoming && E.incoming.checked === wasPaused) o2.incoming = E.incoming.checked; /* sent only when it changes */
+      var dayBoxes = f.querySelectorAll('input[name="day"]');
+      if (dayBoxes.length) {
+        o2.days = [].slice.call(f.querySelectorAll('input[name="day"]:checked')).map(function (x) { return +x.value; });
+        if (!o2.days.length && !o2.pause) { er.className = "er erbox"; er.textContent = T("اختار يوم واحد على الأقل، أو علّم «إيقاف مؤقت».", "Choose at least one day, or tick “Pause”."); return; }
+      }
+      btn.disabled = true;
+      full(function () { return A.prefs(o2); }).then(function (j) {
+        if (!j || !j.prefs) throw { code: "bad_response", error: T("الخادم ماأكدش الحفظ.", "The server did not confirm.") };
+        /* say "saved" only for what the server really stored */
+        var sd = dayNums(j.prefs.days), want = o2.days ? o2.days.slice().sort().join(",") : null;
+        if (want !== null && sd.slice().sort().join(",") !== want) throw { code: "bad_response", error: T("السيرفر ماحفظش الأيام اللي اخترتها.", "The server did not store the days you chose.") };
+        if (o2.incoming != null && j.prefs.incoming !== o2.incoming) throw { code: "bad_response", error: T("السيرفر ماحفظش اختيار استقبال الطلبات.", "The server did not store the routed-requests choice.") };
+        S.me.prefs = j.prefs; if (o2.incoming != null) S.me.inbox_paused = !o2.incoming;
+        btn.disabled = false; render(); var er2 = document.querySelector("#prF .er"); if (er2) { er2.className = "er okbox"; er2.textContent = T("✓ اتحفظت اختياراتك.", "✓ Your choices were saved."); }
+      }, fail);
+    } else if (f.classList.contains("rf")) {
+      var rref = f.getAttribute("data-rref"), msg = f.elements.message.value.trim();
+      if (!msg) { er.hidden = false; er.textContent = T("اكتب رسالتك.", "Write your message."); f.elements.message.focus(); return; }
+      btn.disabled = true;
+      A.request("/me/incoming/" + encodeURIComponent(rref) + "/reply", { method: "POST", body: { message: msg } }).then(function (j) {
+        if (!j || j.ok !== true) throw { code: "bad_response", error: T("الخادم ماأكدش الإرسال.", "The server did not confirm.") };
+        S.inc = null; S.focus = String(rref).toUpperCase(); render();
+        U.toast(j.buyer_notified ? T("رسالتك وصلت للمشتري تلقائي.", "Your message reached the buyer automatically.") : T("رسالتك اتسجّلت وظاهرة للمشتري في صفحة التتبع، بس إيميل التنبيه ماوصلوش دلوقتي.", "Your message is recorded and shown on the buyer's tracking page, but the e-mail alert did not reach them right now."));
+      }, fail);
+    } else if (f.classList.contains("qf")) {
+      var ref = f.getAttribute("data-qref"), q = { price: f.elements.price.value.trim(), currency: f.elements.currency.value, moq: f.elements.moq.value.trim(), lead_time: f.elements.lead_time.value.trim(), validity: f.elements.validity.value, note: f.elements.note.value.trim() };
+      if (!/^\d+([.,]\d+)?$/.test(q.price.replace(/[٠-٩]/g, function (c) { return "٠١٢٣٤٥٦٧٨٩".indexOf(c); }).replace(/,/g, ""))) { er.hidden = false; er.textContent = T("اكتب السعر بالأرقام.", "Enter the price as a number."); f.elements.price.focus(); return; }
+      btn.disabled = true;
+      A.quote(ref, q).then(function (j) {
+        if (!j || j.ok !== true) throw { code: "bad_response", error: T("الخادم ماأكدش الإرسال.", "The server did not confirm.") };
+        S.inc = null; S.focus = String(ref).toUpperCase(); render();
+        /* the quote is on the buyer's tracking page either way; the e-mail is reported only as the server reports it */
+        var what = j.revised ? T("عرضك المعدّل", "Your revised quote") : T("عرضك", "Your quote");
+        U.toast(j.buyer_notified ? what + T(" اتبعت للمشتري تلقائي على إيميله وفي صفحة تتبّع طلبه.", " was sent to the buyer automatically, by e-mail and on their tracking page.") : what + T(" اتسجّل وظاهر للمشتري في صفحة تتبّع طلبه، بس إيميل التنبيه ماوصلوش دلوقتي.", " is recorded and shown on the buyer's tracking page, but the e-mail alert did not reach them right now."));
+      }, fail);
+    }
+  });
+
+  /* ---------- sign-in / offline states ---------- */
+  function solo(on) { var m = $("#top"); if (m) m.classList.toggle("solo", !!on); }
+  function signedOut(offline, why) {
+    $("#dnav").hidden = true; solo(true);
+    /* an e-mailed login link that the server refused (used, expired, not this member's): say so, then the normal code sign-in */
+    var le = S.linkErr && S.linkErr.code !== "offline" ? '<div class="erbox" role="alert">🔗 ' + esc(U.errText(S.linkErr)) + '<br><small style="font-weight:600">' + T("تقدر كمان ترد على الطلب أو تبعت عرض سعر من رابط «رد سريع» اللي في نفس الإيميل، من غير تسجيل دخول.", "You can also answer or send a quote from the quick-reply link in the same e-mail, without signing in.") + "</small></div>" : "";
+    $("#panel").innerHTML = '<div class="dcard lgcard"><img src="img/logo-site.png" alt="' + esc(T("منصة صنع في مصر", "Made in Egypt Gate")) + '"><h1 style="font-size:1.4rem;font-weight:800">' + T("لوحتي", "My dashboard") + "</h1>" + le
+      + (offline ? '<div class="mig-off" role="status">' + esc(why && why.code !== "offline" ? U.errText(why) : U.offline()) + "</div>" : "<p>" + T("ادخل ببريدك الإلكتروني: هيوصلك كود من 6 أرقام. مفيش كلمة سر.", "Sign in with your e-mail: you'll receive a 6-digit code. No password.") + '</p><button class="btn btn-green" type="button" id="lgGo" style="min-width:220px">🔑 ' + T("الدخول بالبريد", "Sign in with e-mail") + "</button>")
+      + '<p class="note">' + T("مش مسجّل؟ ", "Not registered? ") + '<a href="register.html">' + T("سجّل شركتك", "Register your company") + "</a> · " + T("تقدر كمان تبعت طلب عرض سعر من غير حساب: ", "You can also send a request without an account: ") + '<a href="contact.html#rfq-form">' + T("ابعت طلب", "Send a request") + "</a></p></div>";
+    var b = $("#lgGo"); if (b) b.onclick = function () { A.open().catch(function () {}); };
+  }
+  function boot() {
+    fromHash();
+    /* opened from a routed-request e-mail (#lt=…): data/mig-api.js exchanges the one-time link for a session first */
+    var L = A.linkLogin ? A.linkLogin() : null;
+    if (L && !S.linkDone) {
+      S.linkDone = true; $("#dnav").hidden = true; solo(true);
+      $("#panel").innerHTML = '<div class="dcard lgcard"><p class="note">⏳ ' + T("بنسجّل دخولك من الرابط اللي وصلك على الإيميل…", "Signing you in from the link in your e-mail…") + "</p></div>";
+      L.then(function () { S.viaLink = true; boot(); }, function (e) {
+        S.linkErr = e; if (e && e.code === "offline") { signedOut(true); return; }
+        if (A.token()) setTimeout(function () { U.toast(U.errText(e)); }, 700); /* still signed in on this browser: the request is in «طلبات واردة لي» */
+        boot();
+      });
+      return;
+    }
+    if (!A.token()) {
+      /* is the platform API connected? (GET /api/auth/health: 200 JSON when it is — no /me call, so no 401 for a signed-out visitor) */
+      (A.ping ? A.ping() : Promise.reject({ code: "offline" })).then(function (j) {
+        if (j && j.auth === false) { signedOut(true, { code: "auth_off" }); return; }
+        signedOut(false); if (!S.linkErr) setTimeout(function () { if (!A.token()) A.open().catch(function () {}); }, 250);
+      }, function (e) { signedOut(!e || e.code === "offline" || e.status >= 500, e); });
+      return;
+    }
+    $("#panel").innerHTML = loading();
+    A.me().then(function (r) { if (!r || !r.user) { signedOut(false); return; } S.me = r.user; S.unread = r.unread || 0; render(); }, function (e) {
+      if (e && e.code === "offline") { var c = A.user(); $("#dnav").hidden = true; solo(true); $("#panel").innerHTML = '<div class="dcard lgcard"><h1 style="font-size:1.3rem;font-weight:800">' + T("لوحتي", "My dashboard") + (c ? " — " + esc(U.shortName(c)) : "") + '</h1><div class="mig-off" role="status">' + esc(U.offline()) + "</div></div>"; return; }
+      signedOut(false);
+    });
+  }
+  /* a sign-in on this page (code dialog). The e-mailed link's own sign-in is handled by boot() above. */
+  window.addEventListener("mig:login", function (e) { if (e && e.detail && e.detail.via === "link") return; if (S.hold) return; /* a save being retried after the code sign-in (full()) re-renders itself */ S = { tab: S.tab, focus: S.focus, me: null, unread: 0, linkDone: true }; boot(); });
+  window.addEventListener("mig:notif", function (e) { var n = e.detail ? +e.detail.unread || 0 : 0; if (S.me && n !== S.unread) { S.unread = n; S.notif = null; nav(); } });
+  /* every server answer about the signed-in member (MIGAPI.me / updateMe — e.g. after «باقتي» issued an invoice) keeps S.me current, so the
+     Gulf-states card, the overview prompt and the plan follow what the server stored (review B-1); the caller draws the page again */
+  window.addEventListener("mig:me", function (e) { var u = e && e.detail && e.detail.user; if (S.me && u && u.id === S.me.id) S.me = u; });
+  boot();
+})();
+</script>

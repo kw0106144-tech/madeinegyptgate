@@ -1,0 +1,52 @@
+// Builds worker/src/data.json — a compact search index of the platform's public directory data for Janna's lookup API.
+// Run: node worker/build-index.js   (after updating data/*.js). No phone numbers or personal data are included.
+const fs = require('fs'), vm = require('vm'), path = require('path');
+const D = path.join(__dirname, '..', 'data') + '/';
+const ctx = { window: {}, document: { createElement() { return {}; }, head: { appendChild() {} } }, console }; ctx.window = ctx; vm.createContext(ctx);
+// the published Control Center edits first (ACC-CONTRACT §4.6, P-T2): hidden rows are skipped by forEach, adds are indexed
+try { vm.runInContext(fs.readFileSync(D + 'mig-overlay.js', 'utf8'), ctx); const ov = process.env.MIG_OVERLAY_FILE || path.join(__dirname, '..', 'build', 'overlay.js'); if (fs.existsSync(ov)) vm.runInContext(fs.readFileSync(ov, 'utf8'), ctx); } catch (e) { console.error('overlay', e.message); }
+for (const f of ['regions', 'factories', 'facx', 'oldfac', 'oldprod', 'oldtend', 'oldrfq', 'offers', 'zones', 'real', 'videos']) try { vm.runInContext(fs.readFileSync(D + f + '.js', 'utf8'), ctx); } catch (e) { console.error(f, e.message); }
+const c = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
+const img = x => /\.(jpe?g|png|webp|gif)$/i.test(String(x).trim());
+const R = ctx.MIGREG || {}; const GN = k => { try { return (R.name && R.name(k)) || k || ''; } catch (e) { return k || ''; } };
+const out = { v: new Date().toISOString().slice(0, 10), f: [], p: [], t: [], q: [], o: [], z: [], i: [] };
+(ctx.MIGOLDFAC || []).forEach((f, i) => out.f.push([c(f[0]), c(f[3]), c(f[1]), c(f[2]) || GN(f[10]), (f[9] || []).filter(x => !img(x) && c(x) !== c(f[0])).slice(0, 10).map(c).join('، '), 'company.html#' + (f[16] || i)]));
+((ctx.MIGFACX && ctx.MIGFACX.list) || []).forEach((f, i) => out.f.push([c(f[0]), c(f[3]), c(f[1]), c(f[2]), c(f[4]).replace(/(\+?\d[\d\s-]{7,}\d)/g, '').slice(0, 160), 'company.html#x' + i]));
+(ctx.MIGOLDP || []).forEach(p => out.p.push([c(p[0]), c(p[1]), c(p[2])]));
+// tender status = the honest 4-value rule from the deadline, as of the build day (Cairo); the Worker recomputes it per request
+// (src/index.js tenderStatus): passed → منتهية, ≤ 7 days → تنتهي قريباً, later → سارية, no deadline → غير محدد الموعد
+const TODAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const IN7 = new Date(Date.parse(TODAY + 'T12:00:00Z') + 7 * 86400000).toISOString().slice(0, 10);
+const tst = dl => { const d = (/^(\d{4}-\d{2}-\d{2})/.exec(c(dl)) || [])[1]; return !d ? 'غير محدد الموعد' : d < TODAY ? 'منتهية' : d <= IN7 ? 'تنتهي قريباً' : 'سارية'; };
+(ctx.MIGTEND || []).forEach(t => out.t.push([c(t[0]), c(t[1]), tst(t[9]), c(t[3]), c(t[4]), c(t[5]) || GN(t[10]), c(t[6]), c(t[9])]));
+(ctx.MIGRFQ || []).filter(q => c(q[3]) || c(q[5])).forEach(q => out.q.push([c(q[0]), c(q[1]), c(q[2]), c(q[3]).replace(/(\+?\d[\d\s-]{7,}\d)/g, '').slice(0, 200), c(q[5])]));
+(ctx.MIGOFFERS || []).forEach(o => out.o.push([c(o.product_ar), c(o.brand), c(o.store_ar), o.price_egp, o.old_price_egp, c(o.category_ar), c(o.valid_to), 'offer.html#' + o.id]));
+(ctx.MIGZONES || []).forEach(z => out.z.push([c(z.name_ar), c(z.name_en), z.type, GN(z.region_code), c(z.city), [].concat(z.focus_sectors_ar || []).join('، '), 'city.html#' + z.id]));
+// i = dated, verified items for follow digests / deadline reminders / Bassem's morning count (src/digest.js):
+// [kind, id, date, sector, governorate, title, site url, deadline, market, entity, source url, aliases]
+// aliases = the ids the PAGES use for the same item, so a ☆ follow made on a page resolves to it (deadline reminders) and the
+// alert links open the item itself: opportunity.html#<et003|in4> (data/regions.js MIGOID / pages.part.py realIntl), and the interactive
+// lists at their clean URLs /tenders/search/#<ref> and /rfq/search/#<ref> (the /tenders/ and /rfq/ hubs do not open items).
+// The old page ids "OT-<ref>" / "OR-<ref>" stay as aliases so follows made with them still resolve.
+// Only sourced data. data/projects.js ("SAMPLE DATA") and data/deals.js (illustrative) are deliberately NOT included.
+const crypto = require('crypto'); const hid = s => crypto.createHash('sha1').update(String(s)).digest('hex').slice(0, 12);
+const day = s => { const m = String(s || '').match(/^(\d{4}-\d{2}-\d{2})/); return m ? m[1] : ''; };
+const I = (k, id, d, sec, gov, title, url, dl, mk, ent, src, al) => { if (!id || !c(title)) return; out.i.push([k, String(id).slice(0, 120), day(d), c(sec), c(gov), c(title).slice(0, 220), url || '', day(dl), mk || 'local', c(ent).slice(0, 120), src || '', (al || []).filter(Boolean).map(x => String(x).slice(0, 120))]); };
+const RL = ctx.REAL || {};
+const OID = (t, i) => (typeof ctx.MIGOID === 'function' ? ctx.MIGOID(t, i) : (/(\d+)$/.exec(String(t.id || '')) ? 'ET' + /(\d+)$/.exec(String(t.id || ''))[1] : 'MD' + (i + 1)));
+(RL.tenders || []).forEach((t, i) => { const a = OID(t, i); I('tender', t.id || t.ref, t.publish_date, t.sector_ar, GN(t.region_code), t.title_ar, 'opportunity.html#' + a.toLowerCase(), t.closing_date, 'local', t.entity_ar, t.source_url, [a]); });
+(RL.tenders_intl || []).forEach((t, i) => I('tender', t.ref || hid(t.title_ar), t.publish_date, t.sector_ar, c(t.country_ar), t.title_ar, 'opportunity.html#in' + (i + 1), t.closing_date, ['gulf', 'africa', 'asia', 'europe'].includes(t.market) ? t.market : 'local', t.entity_ar, t.source_url, ['IN' + (i + 1)]));
+const seenT = new Set(out.i.map(x => x[1]));
+(ctx.MIGTEND || []).forEach(t => { if (seenT.has(c(t[0]))) return; seenT.add(c(t[0])); I('tender', c(t[0]), '', t[6], c(t[5]) || GN(t[10]), t[3], 'tenders/search/#' + encodeURIComponent(c(t[0])), t[9], 'local', t[4], t[11], ['OT-' + c(t[0])]); });
+(ctx.MIGRFQ || []).forEach(q => I('rfq', c(q[0]), q[1], q[9], GN(q[7]), q[2], 'rfq/search/#' + encodeURIComponent(c(q[0])), q[6], 'local', '', q[8], ['OR-' + c(q[0])]));
+(RL.news || []).forEach(n => I('news', hid(n.url || n.title_ar), n.date, n.category_ar, GN(n.region_code), n.title_ar, 'news.html', '', 'local', n.source_name, n.url));
+(RL.events || []).forEach(e => I('event', e.id || hid(e.name_ar), e.start_date, e.sector_ar, GN(e.region_code) || c(e.city), e.name_ar, 'event.html#' + encodeURIComponent(e.id || ''), e.start_date, 'local', e.organizer || e.venue, e.source_url || e.url));
+(RL.awards || []).forEach(a => I('award', hid(a.title_ar + a.date), a.date, '', GN(a.region_code) || c(a.city), a.title_ar + (a.winner_ar ? ' — ' + a.winner_ar : ''), 'winners.html', '', 'local', a.awarding_entity_ar, a.source_url));
+(ctx.MIGOFFERS || []).forEach(o => I('offer', o.id, o.valid_from || o.checked_at || '', o.category_ar, (o.cities_ar || []).join('، '), o.product_ar + (o.store_ar ? ' — ' + o.store_ar : ''), 'offer.html#' + o.id, o.valid_to, 'local', o.store_ar, o.source_url || o.url));
+// visible counts for the Control Center statistics (acc §3.1.2 contentCounts; hidden rows of hole collections are skipped)
+const vis = a => (a || []).filter(Boolean).length;
+out.n = { news: vis(RL.news), events: vis(RL.events), awards: vis(RL.awards), videos: vis(ctx.MIGVIDS), products: vis(ctx.MIGOLDP) };
+fs.writeFileSync(path.join(__dirname, 'src', 'data.json'), JSON.stringify(out));
+console.log('index', Object.fromEntries(Object.entries(out).map(([k, v]) => [k, Array.isArray(v) ? v.length : v])), fs.statSync(path.join(__dirname, 'src', 'data.json')).size, 'bytes');
+// the full public records + clean page URLs for /api/janna/item and the lookup's open_url (worker/build-items.js → src/items.json)
+try { require('./build-items.js'); } catch (e) { console.error('items', e.message); }

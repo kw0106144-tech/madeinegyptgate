@@ -1,0 +1,156 @@
+<title>منظومة جنة وباسم</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&family=Readex+Pro:wght@500;700&display=swap">
+<style>
+/* Layout: single reading column (~70ch) with full-width status tables; RTL Arabic technical report */
+:root{
+  --bg:#f6f7f4; --surface:#ffffff; --fg:#17201b; --muted:#5b665f; --line:#dde3dc;
+  --accent:#0f6b4f; --accent-soft:#e3f1ea; --gold:#a46a00; --gold-soft:#fbf1dc; --red:#b3261e; --red-soft:#fbe7e5; --blue:#1f5fa8; --blue-soft:#e6eef8;
+  --f-body:"IBM Plex Sans Arabic",Tahoma,"Segoe UI",sans-serif; --f-head:"Readex Pro","IBM Plex Sans Arabic",Tahoma,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#101512; --surface:#171e1a; --fg:#e6ece7; --muted:#9aa79f; --line:#2a342e;
+  --accent:#4fc39a; --accent-soft:#16352a; --gold:#e3b14f; --gold-soft:#3a2d12; --red:#f08a82; --red-soft:#3d1c19; --blue:#7fb0ec; --blue-soft:#18283d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101512; --surface:#171e1a; --fg:#e6ece7; --muted:#9aa79f; --line:#2a342e;
+  --accent:#4fc39a; --accent-soft:#16352a; --gold:#e3b14f; --gold-soft:#3a2d12; --red:#f08a82; --red-soft:#3d1c19; --blue:#7fb0ec; --blue-soft:#18283d; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.85;direction:rtl}
+.wrap{max-width:980px;margin:0 auto;padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-direction:column;gap:6px;border-bottom:2px solid var(--fg);padding-bottom:18px}
+.eyebrow{font-size:.8rem;letter-spacing:.04em;color:var(--accent);font-weight:700}
+h1{font-family:var(--f-head);font-size:clamp(1.6rem,4vw,2.3rem);line-height:1.3;margin:0;text-wrap:balance}
+h2{font-family:var(--f-head);font-size:1.3rem;margin:0 0 10px;text-wrap:balance}
+h3{font-family:var(--f-head);font-size:1.05rem;margin:0 0 6px}
+p{margin:0;max-width:72ch}
+.lede{color:var(--muted);font-size:1.02rem}
+section{display:flex;flex-direction:column;gap:12px}
+.note{background:var(--gold-soft);border:1px solid color-mix(in srgb,var(--gold) 35%,transparent);border-radius:10px;padding:12px 14px;max-width:none}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{width:100%;min-width:640px;border-collapse:collapse;font-size:.93rem}
+th{background:color-mix(in srgb,var(--line) 45%,var(--surface));text-align:start;padding:9px 12px;font-weight:700;font-size:.84rem;color:var(--muted);white-space:nowrap}
+td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+td:first-child{font-weight:600;white-space:nowrap}
+.pill{display:inline-block;border-radius:99px;padding:1px 10px;font-size:.78rem;font-weight:700;white-space:nowrap}
+.ok{background:var(--accent-soft);color:var(--accent)} .part{background:var(--gold-soft);color:var(--gold)} .no{background:var(--red-soft);color:var(--red)} .you{background:var(--blue-soft);color:var(--blue)}
+ul,ol{margin:0;padding-inline-start:1.3em;display:flex;flex-direction:column;gap:4px;max-width:76ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.card .k{font-size:.8rem;color:var(--muted)}
+.phase{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:start}
+.phase .n{font-family:var(--f-head);font-weight:700;color:var(--accent);font-size:1.4rem;line-height:1.2;font-variant-numeric:tabular-nums}
+pre.mermaid{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;overflow-x:auto;direction:ltr;text-align:left;margin:0}
+.q{counter-reset:q;display:flex;flex-direction:column;gap:10px;list-style:none;padding:0}
+.q li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;counter-increment:q;max-width:none}
+.q li b::before{content:counter(q) ". ";color:var(--accent)}
+small,.muted{color:var(--muted)}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.85em;background:color-mix(in srgb,var(--line) 50%,transparent);padding:0 5px;border-radius:5px;direction:ltr;unicode-bidi:embed}
+footer{border-top:1px solid var(--line);padding-top:14px;font-size:.85rem;color:var(--muted)}
+</style>
+
+<div class="wrap">
+<header>
+  <span class="eyebrow">تقرير فني وخارطة تنفيذ · منصة صنع في مصر · 17 نوفمبر 2026</span>
+  <h1>منظومة جنة وباسم: إيه اللي اتعمل، وإيه الناقص، ونمشي إزاي</h1>
+  <p class="lede">التقرير ده مبني على فحص الكود الحالي للمنصة والوثيقة الرئيسية (Master Specification). هدفه إن قبل أي تغيير كبير يبقى واضح إيه الجاهز، وإيه اللي محتاج يتبني من الصفر، وإيه القرارات اللي محتاجاها منك.</p>
+</header>
+
+<section>
+  <h2>الخلاصة</h2>
+  <p>جنة شغالة فعلاً (شكل حقيقي واقف + فيديو لايف بيتكلم مصري وبيقنع وبيسجّل وبيحجز اجتماعات)، وباسم موجود كشخصية لايف، و«المستشار الذكي للصفقات» بيتبني دلوقتي. لكن <b>الموقع الحالي واجهة أمامية (static) من غير سيرفر حقيقي</b>: الدخول بكلمة السر والدفع وتفعيل العضوية تجريبيين داخل المتصفح. علشان رحلة العميل كلها تشتغل على بيانات حقيقية زي ما الوثيقة بتطلب، لازم نبني «طبقة خلفية» (Backend) واحدة: حسابات حقيقية، عضويات بمدة 365 يوم، قاعدة فرص مركزية، إيميل وواتساب. أنصح نبنيها على Cloudflare لأنكم شغالين عليه أصلاً.</p>
+  <p class="note">ملاحظة مهمة: الوثيقة مكتوب فيها اسم <b>GCC Tenders Gate</b>، والأرقام اللي فيها (41,267 شركة، 2,319 شركة نجاح، 1.1 مليون زيارة…) أرقام GCC Tenders Gate. التنفيذ الحالي على <b>منصة صنع في مصر</b>، فمش هنستخدم الأرقام دي فيها. نفس المنظومة تتنقل لـ GCC Tenders Gate بعدين بنفس الكود مع بياناتها.</p>
+</section>
+
+<section>
+  <h2>إيه اللي اتنفّذ وإيه الناقص</h2>
+  <div class="tw"><table>
+    <thead><tr><th>المكوّن</th><th>الحالة</th><th>التفاصيل</th></tr></thead>
+    <tbody>
+      <tr><td>جنة · الشكل الواقف</td><td><span class="pill ok">جاهز</span></td><td>من الصورة اللي بعتها: رمش، تنفّس، شفايف مع الكلام، بتشاور على الفقاعة، على كل الصفحات + صفحة هولوجرام سودا.</td></tr>
+      <tr><td>جنة لايف (فيديو)</td><td><span class="pill ok">جاهز</span></td><td>Anam عربي وإنجليزي، دور «مسؤولة التسجيل والتسويق»، 7 أدوات: فتح الأقسام، البحث، طلب سعر، تواصل، تسجيل، حجز اجتماع، إرسال بعد الموافقة.</td></tr>
+      <tr><td>قاعدة المعرفة</td><td><span class="pill part">مستني الرفع</span></td><td>18 ملف موثّق من محتوى المنصة (اتراجعت على المصدر). محتاجة تترفع في Anam Lab.</td></tr>
+      <tr><td>حجز الاجتماعات</td><td><span class="pill part">جزئي</span></td><td>جنة بتملا طلب الاجتماع وبيتبعت للفريق. الناقص: ربط تقويم حقيقي ومواعيد متاحة وتذكيرات.</td></tr>
+      <tr><td>باسم لايف (فيديو)</td><td><span class="pill ok">جاهز</span></td><td>شخصية Anam: مستشار أعمال لمدة سنة، صوت راجل عربي.</td></tr>
+      <tr><td>باسم · الشكل الواقف</td><td><span class="pill you">مستني صورتك</span></td><td>نفس طريقة جنة، محتاج الصورة بجودة عالية.</td></tr>
+      <tr><td>المستشار الذكي للصفقات</td><td><span class="pill part">قيد البناء</span></td><td>ملخص يومي من 123 فرصة حقيقية (61 مصرية + 62 دولية بمصادرها)، متابعة الصفقات بالمراحل، أدلة تعاقد لكل سوق من مصادر رسمية، كتابة وإرسال الإيميلات واستقبال الردود.</td></tr>
+      <tr><td>سيرفر بحث الدليل</td><td><span class="pill ok">جاهز (محتاج رفع)</span></td><td>Cloudflare Worker يخلي جنة وباسم يقولوا أسماء المصانع الحقيقية بأنفسهم.</td></tr>
+      <tr><td>الدخول والحسابات</td><td><span class="pill no">تجريبي</span></td><td>الدخول حالياً بيتأكد داخل المتصفح. محتاج سيرفر حسابات حقيقي (كلمات سر مشفّرة، جلسات، صلاحيات).</td></tr>
+      <tr><td>الدفع وتفعيل العضوية</td><td><span class="pill no">تجريبي</span></td><td>محتاج ربط بوابة الدفع الفعلية + تفعيل تلقائي + بداية مدة الـ365 يوم + التجديد والانتهاء.</td></tr>
+      <tr><td>رفع مستندات العميل</td><td><span class="pill no">غير موجود</span></td><td>تخزين آمن لكل عميل (Cloudflare R2) مع صلاحيات.</td></tr>
+      <tr><td>محرك الفرص المركزي</td><td><span class="pill no">غير موجود</span></td><td>الفرص الحالية «لقطة» مجمّعة يدوياً. المطلوب سحب تلقائي من مصادر رسمية + تنظيف + إزالة المكرر + تحديث الحالة.</td></tr>
+      <tr><td>المطابقة ونسبة الملاءمة</td><td><span class="pill part">مبدئي</span></td><td>ترتيب بالقطاع والمعاد. المطلوب نسبة 0–100 مع شرح الأسباب والمستندات الناقصة.</td></tr>
+      <tr><td>إشعارات واتساب</td><td><span class="pill no">غير موجود</span></td><td>محتاج حساب WhatsApp Business Platform وقوالب رسائل معتمدة.</td></tr>
+      <tr><td>ربط Gmail / Outlook</td><td><span class="pill no">غير موجود</span></td><td>المرحلة الأولى: الإرسال من بريد المنصة مع استقبال الردود. ربط بريد العميل نفسه بـ OAuth مرحلة لاحقة (محتاج موافقات جوجل ومايكروسوفت).</td></tr>
+      <tr><td>التقارير اليومية والأسبوعية</td><td><span class="pill no">غير موجود</span></td><td>بتتبني على محرك الفرص + الإيميل/واتساب بجدولة تلقائية.</td></tr>
+      <tr><td>لوحة الإدارة المركزية</td><td><span class="pill no">غير موجود</span></td><td>نسخة مصر مفيهاش لوحة إدارة. محتاجة: المعرفة، الإحصائيات، الباقات، العملاء، المصادر، المحادثات، الشكاوى، بدون تعديل كود.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>المعمارية المقترحة</h2>
+  <p>نحافظ على الموقع الحالي زي ما هو، ونضيف خلفه طبقة واحدة على Cloudflare: قاعدة بيانات واحدة مركزية للفرص (مش نسخة لكل عميل)، وكل عميل يشوف المطابق له بس.</p>
+  <pre class="mermaid">
+flowchart LR
+  V[Visitor] --> J[Janna - Anam live + site character]
+  J -->|register + pay| M[Membership API]
+  M -->|active 365 days| B[Bassem - Anam live + advisor dashboard]
+  B --> API[Worker API: auth, deals, email, docs]
+  API --> D1[(D1: members, profiles, deals, messages)]
+  API --> R2[(R2: documents)]
+  CRON[Scheduled ingestion] --> SRC[Official sources: World Bank, TED, UNGM, AfDB, ADB, national portals]
+  CRON --> OPP[(Central opportunities DB)]
+  OPP --> MATCH[Matching 0-100 + priority]
+  MATCH --> B
+  MATCH --> N[Notifications: WhatsApp + email digests]
+  ADMIN[Admin panel] --> D1
+  ADMIN --> OPP
+  </pre>
+  <p class="muted">بديل: لو المنصة الحالية على WordPress هتفضل هي «النظام الأساسي»، نربط بيها بدل ما نبني الحسابات من جديد. ده محتاج صلاحية دخول على قاعدة بياناتها.</p>
+</section>
+
+<section>
+  <h2>خطة التنفيذ على مراحل</h2>
+  <div class="grid">
+    <div class="card phase"><span class="n">1</span><div><h3>جنة</h3><p>تقريباً خلصت. الباقي: رفع قاعدة المعرفة، وربط تقويم حقيقي لحجز الاجتماعات بمواعيد وتذكيرات.</p><small>حوالي أسبوع</small></div></div>
+    <div class="card phase"><span class="n">2</span><div><h3>باسم + الحسابات الحقيقية</h3><p>تسجيل دخول حقيقي، تفعيل العضوية بعد الدفع، تعيين باسم 365 يوم، ملف الشركة ورفع المستندات، لوحة العميل، التجديد والانتهاء.</p><small>2–3 أسابيع</small></div></div>
+    <div class="card phase"><span class="n">3</span><div><h3>محرك الفرص العالمي</h3><p>سحب تلقائي من مصادر رسمية، تنظيف وإزالة المكرر، تصنيف، تحديث الحالة، مطابقة 0–100 مع الشرح، أولويات.</p><small>3–4 أسابيع</small></div></div>
+    <div class="card phase"><span class="n">4</span><div><h3>تطوير الأعمال</h3><p>الإيميل من المنصة والردود، واتساب، المتابعة، دعم تجهيز العروض، تتبع الصفقات. ثم ربط Gmail/Outlook بـ OAuth.</p><small>2–3 أسابيع + وقت موافقات Meta وجوجل</small></div></div>
+    <div class="card phase"><span class="n">5</span><div><h3>الإدارة والتحليلات</h3><p>لوحة الإدارة، تقارير العملاء والأداء، مراقبة الاشتراكات، المحادثات والأسئلة اللي ماتجاوبتش.</p><small>2–3 أسابيع</small></div></div>
+  </div>
+  <p class="muted">المدد تقديرية لوقت البرمجة، ومش شاملة الوقت اللي بتاخده جهات زي Meta وجوجل في الموافقات.</p>
+</section>
+
+<section>
+  <h2>اختبارات القبول الـ15: فين إحنا</h2>
+  <div class="tw"><table>
+    <thead><tr><th>الاختبار</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
+    <tbody>
+      <tr><td>1–3 جنة ترحب وتفهم وتشرح الباقات</td><td><span class="pill ok">ينجح</span></td><td>اتجرّب لايف عربي وإنجليزي.</td></tr>
+      <tr><td>4 التسجيل والاشتراك المؤهل</td><td><span class="pill part">تجريبي</span></td><td>محتاج الدفع الحقيقي (مرحلة 2).</td></tr>
+      <tr><td>5 تعيين باسم 365 يوم</td><td><span class="pill no">لم يُبنَ</span></td><td>مرحلة 2.</td></tr>
+      <tr><td>6 باسم يعرّف نفسه ويبني ملف الشركة</td><td><span class="pill part">جزئي</span></td><td>التعريف جاهز لايف؛ ملف الشركة المحفوظ على السيرفر مرحلة 2.</td></tr>
+      <tr><td>7–9 البحث والمطابقة وشرح السبب</td><td><span class="pill part">جزئي</span></td><td>البحث الحقيقي جاهز؛ النسبة والشرح مرحلة 3.</td></tr>
+      <tr><td>10–12 إيميل بموافقة، إرسال، تلخيص الرد</td><td><span class="pill part">قيد البناء</span></td><td>الإرسال والاستقبال من بريد المنصة في المستشار؛ التلخيص الآلي للرد مرحلة 4.</td></tr>
+      <tr><td>13 إشعار واتساب مصرّح</td><td><span class="pill no">لم يُبنَ</span></td><td>محتاج حساب WhatsApp Business.</td></tr>
+      <tr><td>14 تتبع الفرصة في المراحل</td><td><span class="pill part">قيد البناء</span></td><td>في المستشار الذكي للصفقات.</td></tr>
+      <tr><td>15 الانتهاء والتجديد</td><td><span class="pill no">لم يُبنَ</span></td><td>مرحلة 2.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>القرارات اللي محتاجاها منك</h2>
+  <ol class="q">
+    <li><b>السيرفر:</b> نبني الطبقة الخلفية على Cloudflare (أنصح بيه)، ولا نربط بنظام WordPress الحالي؟ في الحالتين محتاج صلاحية على الحساب (Cloudflare) أو قاعدة البيانات (WordPress).</li>
+    <li><b>بوابة الدفع:</b> أنهي بوابة بتستخدموها أو هتستخدموها (Paymob، فوري، Kashier…)؟ علشان التفعيل يبقى تلقائي بعد الدفع.</li>
+    <li><b>واتساب:</b> فيه حساب WhatsApp Business Platform للمنصة (رقم موثّق في Meta Business)؟ ولا نستخدم مزوّد معتمد؟</li>
+    <li><b>الإيميل:</b> نبدأ بالإرسال من بريد المنصة واستقبال الردود (أسرع، محتاج إعداد DNS للدومين)، وربط Gmail/Outlook بتاع العميل نفسه بعدين؟</li>
+    <li><b>Anam:</b> الباقة المجانية 30 دقيقة في الشهر و3 دقايق للمكالمة. للتشغيل الفعلي مع زوار وعملاء محتاجين باقة مدفوعة.</li>
+    <li><b>صورة باسم:</b> ابعتها تاني لوحدها بأعلى جودة علشان أعمله الشكل الواقف.</li>
+  </ol>
+</section>
+
+<footer>المرجع: <code>docs/janna/JANNA-BASSEM-MASTER-SPEC.md</code> · <code>JANNA-SPEC-EN.md</code> · <code>JANNA-PERSONA-AR.md</code> داخل ملفات المشروع.</footer>
+</div>

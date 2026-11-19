@@ -1,0 +1,243 @@
+{
+ "_about": "Tender categories for /tenders/category/<slug>/ (index when ≥ min_tender_cat tenders). Every canonical sector (seo/sectors.json) maps to exactly one category; 'factory_hubs' are the sector hubs linked from the category («مصانع يمكنها التوريد»). International tenders (REAL.tenders_intl, for exporters) form their own category.",
+ "version": 1,
+ "categories": [
+  {
+   "slug": "electrical",
+   "ar": "الكهرباء والكابلات والإضاءة",
+   "en": "Electrical, Cables & Lighting",
+   "sectors": [
+    "الكهرباء والكابلات والإضاءة",
+    "الأجهزة المنزلية والإلكترونيات"
+   ],
+   "factory_hubs": [
+    "electrical",
+    "home-appliances"
+   ]
+  },
+  {
+   "slug": "it-computers",
+   "ar": "أجهزة الحاسب وتكنولوجيا المعلومات",
+   "en": "Computers & IT",
+   "sectors": [
+    "تكنولوجيا المعلومات والأجهزة المكتبية"
+   ],
+   "factory_hubs": [
+    "it-office"
+   ]
+  },
+  {
+   "slug": "machinery-equipment",
+   "ar": "الماكينات والمعدات وقطع الغيار",
+   "en": "Machinery, Equipment & Spare Parts",
+   "sectors": [
+    "الماكينات والمعدات الصناعية",
+    "العدد والأدوات وأجهزة القياس",
+    "الضواغط والطلمبات والهيدروليك",
+    "قطع الغيار ونقل الحركة",
+    "المعدات الثقيلة والرافعات والمصاعد"
+   ],
+   "factory_hubs": [
+    "machinery",
+    "tools-instruments",
+    "pumps-compressors",
+    "spare-parts",
+    "heavy-equipment"
+   ]
+  },
+  {
+   "slug": "packaging-printing",
+   "ar": "التعبئة والتغليف والبلاستيك والطباعة",
+   "en": "Packaging, Plastics & Printing",
+   "sectors": [
+    "التعبئة والتغليف والورق",
+    "الطباعة والدعاية والإعلان",
+    "الصناعات البلاستيكية والمطاط"
+   ],
+   "factory_hubs": [
+    "packaging",
+    "printing",
+    "plastics"
+   ]
+  },
+  {
+   "slug": "medical-supplies",
+   "ar": "الأدوية والمستلزمات والأجهزة الطبية",
+   "en": "Medicines, Medical Supplies & Equipment",
+   "sectors": [
+    "الأدوية والمستلزمات الطبية",
+    "الأجهزة الطبية والعلمية والمعملية"
+   ],
+   "factory_hubs": [
+    "pharma",
+    "medical-equipment"
+   ]
+  },
+  {
+   "slug": "vehicles",
+   "ar": "السيارات وقطع غيارها",
+   "en": "Vehicles & Auto Parts",
+   "sectors": [
+    "السيارات والصناعات المغذية"
+   ],
+   "factory_hubs": [
+    "automotive"
+   ]
+  },
+  {
+   "slug": "petroleum",
+   "ar": "البترول والغاز",
+   "en": "Oil & Gas",
+   "sectors": [
+    "النفط والغاز والخدمات البترولية"
+   ],
+   "factory_hubs": [
+    "oil-gas"
+   ]
+  },
+  {
+   "slug": "general-supplies",
+   "ar": "التوريدات العامة",
+   "en": "General Supplies",
+   "sectors": [
+    "التوريدات الصناعية العامة"
+   ],
+   "factory_hubs": [
+    "general-supplies"
+   ]
+  },
+  {
+   "slug": "construction",
+   "ar": "مواد البناء والإنشاءات",
+   "en": "Construction & Building Materials",
+   "sectors": [
+    "مواد البناء والتشييد",
+    "الزجاج والسيراميك",
+    "الرخام والجرانيت",
+    "المقاولات والإنشاءات",
+    "التعدين والمحاجر"
+   ],
+   "factory_hubs": [
+    "building-materials",
+    "glass-ceramics",
+    "marble-granite",
+    "contracting",
+    "mining"
+   ]
+  },
+  {
+   "slug": "hvac",
+   "ar": "التكييف والتبريد والغلايات",
+   "en": "HVAC, Refrigeration & Boilers",
+   "sectors": [
+    "التكييف والتبريد والغلايات"
+   ],
+   "factory_hubs": [
+    "hvac"
+   ]
+  },
+  {
+   "slug": "safety-fire",
+   "ar": "الأمن والسلامة ومكافحة الحريق",
+   "en": "Safety & Fire Protection",
+   "sectors": [
+    "الأمن والسلامة ومكافحة الحريق"
+   ],
+   "factory_hubs": [
+    "safety-fire"
+   ]
+  },
+  {
+   "slug": "furniture",
+   "ar": "الأثاث والأخشاب",
+   "en": "Furniture & Wood",
+   "sectors": [
+    "الأثاث والأخشاب",
+    "التجهيزات الفندقية ومعدات المطاعم",
+    "الأدوات الرياضية والترفيهية"
+   ],
+   "factory_hubs": [
+    "furniture",
+    "hotel-equipment",
+    "sports-goods"
+   ]
+  },
+  {
+   "slug": "textiles",
+   "ar": "الغزل والنسيج والملابس",
+   "en": "Textiles & Garments",
+   "sectors": [
+    "الغزل والنسيج والملابس الجاهزة"
+   ],
+   "factory_hubs": [
+    "textiles"
+   ]
+  },
+  {
+   "slug": "steel-metal",
+   "ar": "الحديد والصلب والأعمال المعدنية",
+   "en": "Steel & Metal Works",
+   "sectors": [
+    "الحديد والصلب والمعادن"
+   ],
+   "factory_hubs": [
+    "steel-metals"
+   ]
+  },
+  {
+   "slug": "chemicals-water",
+   "ar": "الكيماويات ومعالجة المياه",
+   "en": "Chemicals & Water Treatment",
+   "sectors": [
+    "الكيماويات والبتروكيماويات",
+    "المياه ومعالجتها",
+    "المنظفات والصابون",
+    "الدهانات والأحبار"
+   ],
+   "factory_hubs": [
+    "chemicals",
+    "water-treatment",
+    "detergents",
+    "paints-inks"
+   ]
+  },
+  {
+   "slug": "food-agri",
+   "ar": "المواد الغذائية والزراعية",
+   "en": "Food & Agriculture",
+   "sectors": [
+    "الصناعات الغذائية والمشروبات",
+    "الزراعة والمعدات الزراعية",
+    "الأعلاف والأسمدة والمبيدات"
+   ],
+   "factory_hubs": [
+    "food",
+    "agriculture",
+    "feed-fertilizers"
+   ]
+  },
+  {
+   "slug": "services",
+   "ar": "الخدمات والنقل والتأمين",
+   "en": "Services, Transport & Insurance",
+   "sectors": [
+    "الاستشارات والخدمات",
+    "التأمين والخدمات المالية",
+    "النقل والشحن والملاحة"
+   ],
+   "factory_hubs": [
+    "consulting",
+    "insurance-finance",
+    "transport-shipping"
+   ]
+  },
+  {
+   "slug": "international",
+   "ar": "مناقصات دولية للمصدّرين",
+   "en": "International Tenders for Exporters",
+   "sectors": [],
+   "factory_hubs": [],
+   "intl": true
+  }
+ ]
+}

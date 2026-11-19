@@ -1,0 +1,350 @@
+{
+ "_what": "PREPARED — NOT APPLIED. One anam_tool_update (PUT https://api.anam.ai/v1/tools/{id}) per entry, sending `body` exactly (config REPLACES the whole stored config; expectedUpdatedAt = the tool's updatedAt read with anam_tool_get on 2026-11-19 ≈ 13:07 UTC → a 409 means someone changed it since: read it again and re-check before retrying).",
+ "read_at": "2026-11-19T13:05Z–13:12Z",
+ "count": 3,
+ "tools": [
+  {
+   "id": "99561b78-ad09-44b5-93b8-bdacde4d7192",
+   "name": "bassem_open_opportunity",
+   "currentUpdatedAt": "2026-11-17T22:23:44.763Z",
+   "usageCount": 1,
+   "used_by": [
+    "bassem"
+   ],
+   "why": "holo5: the call ANSWERS with what really opened (awaitResult, 12 s = LIMIT 10.5 s + 1.5 s); NOT holo4/holo5's source_url / intel_id — no client file reads them (grep: data/*.js), and intel results are not advisor cards (advisor.part.py OPPS = REAL.tenders / tenders_intl / MIGTEND / MIGRFQ), so the description now keeps intel results away from this tool (the live rule 5 sent them here: the screen jumped from the intel page to advisor.html — holo4 critic «screen conflict»)",
+   "needs_live_before_update": [
+    "Pages: data/bassem-live-tools.js 05f8cea9 (OBS bassem_open_opportunity → watchOpportunity, LIMIT 10.5 s) — before that an awaited call has no handler and stalls 12 s"
+   ],
+   "source": "holo5 anam/tools.json bassem_open_opportunity (awaitResult / timeout / honest-result wording) minus source_url / intel_id (holo4 critic: hold them until the client opens intel items by URL)",
+   "body": {
+    "description": "Open an opportunity from the member's advisor page (the opportunities of his plan's markets: tender, project, order, RFQ) on the shared screen, with its details and contracting guide, when he asks to see one («افتحلي مناقصة الحديد في السعودية»). query = words from its title, entity or product; market / kind only narrow it. The call waits for the screen and returns what really opened (title, buyer, value, deadline as shown): say only that. If it returns that nothing matched, say so honestly and never claim it is open. Not for bassem_intel results (the first one already opens by itself on the screen, in the Information Center). For an item found with janna_lookup, bassem_open_item opens its own page with all its fields: prefer it.",
+    "config": {
+     "awaitResult": true,
+     "toolTimeoutSeconds": 12,
+     "parameters": {
+      "type": "object",
+      "required": [
+       "query"
+      ],
+      "properties": {
+       "kind": {
+        "enum": [
+         "tender",
+         "project",
+         "order",
+         "rfq",
+         "any"
+        ],
+        "type": "string"
+       },
+       "query": {
+        "type": "string",
+        "description": "Words from the opportunity title, entity or product"
+       },
+       "market": {
+        "enum": [
+         "egypt",
+         "gulf",
+         "africa",
+         "asia",
+         "europe",
+         "any"
+        ],
+        "type": "string"
+       }
+      }
+     }
+    },
+    "disableInterruptions": false,
+    "expectedUpdatedAt": "2026-11-17T22:23:44.763Z"
+   },
+   "rollback_body": {
+    "description": "Open an opportunity (tender, project, order, RFQ) for the member on the advisor page and show its details and how to contract. Use whenever you talk about a specific opportunity or the member asks to see one («افتحلي مناقصة الحديد في السعودية»). Pass the title/entity words; you can narrow by market.",
+    "config": {
+     "parameters": {
+      "type": "object",
+      "required": [
+       "query"
+      ],
+      "properties": {
+       "kind": {
+        "enum": [
+         "tender",
+         "project",
+         "order",
+         "rfq",
+         "any"
+        ],
+        "type": "string"
+       },
+       "query": {
+        "type": "string",
+        "description": "Words from the opportunity title, entity or product"
+       },
+       "market": {
+        "enum": [
+         "egypt",
+         "gulf",
+         "africa",
+         "asia",
+         "europe",
+         "any"
+        ],
+        "type": "string"
+       }
+      }
+     },
+     "awaitResult": false
+    },
+    "disableInterruptions": false,
+    "expectedUpdatedAt": "<the updatedAt this update returns>"
+   }
+  },
+  {
+   "id": "9286b2c5-b52c-44d1-8572-4fd4b9d47b1a",
+   "name": "bassem_draft_email",
+   "currentUpdatedAt": "2026-11-17T22:23:45.432Z",
+   "usageCount": 1,
+   "used_by": [
+    "bassem"
+   ],
+   "why": "holo5's version (10 languages, never read aloud, signed as «بيانات العضو», strict `to`; it already carries holo4's T2) + the consolidation's composer (MERGE-NOTES BROWSER §2 / §6): no deal → the composer on the shared screen, the member sends it himself; the live description still says «read the key points to the member», which made him read e-mails aloud",
+   "needs_live_before_update": [
+    "Pages: data/janna-live.js 8003d2ef (composer cmpOpen :1595 / cmpAsk :1626, #mLang LTR template; holo.js 3da08eef badge = the e-mail's language). awaitResult stays false: no handler answers this tool"
+   ],
+   "source": "holo5 anam/tools.json bassem_draft_email + MERGE-NOTES BROWSER §6 composer sentence",
+   "body": {
+    "description": "Write an e-mail for the member and put it ON THE SCREEN - it is NOT sent. For a deal (its deal room open, or `deal` = one of his deals) it fills that deal room; with no deal it opens in the e-mail composer on the shared screen, where he reviews, edits or copies it and sends it himself with its «ابعت» button (his own mail app). Subject and full body in `language`, signed with the member's title, name and company exactly as the platform gives them («بيانات العضو») or as he said them - the company keeps its own name in every language; products and sizes exactly as he said. Never read the body aloud, nor translate or summarise it aloud. Then one short sentence: deal room → «كتبتلك الإيميل وهو قدامك على الشاشة، تحب أبعته؟» and bassem_send_email only after his explicit OK; composer → tell him to review it and press ابعت himself (never call bassem_send_email for it, never say it was sent). For a Saudi/Gulf reader write language ar in formal Gulf-friendly Arabic; your own speech stays Egyptian.",
+    "config": {
+     "awaitResult": false,
+     "parameters": {
+      "type": "object",
+      "required": [
+       "subject",
+       "body"
+      ],
+      "properties": {
+       "to": {
+        "type": "string",
+        "description": "ONLY an e-mail address that appears in the opportunity / deal data or that the member dictated himself; otherwise leave it out. Never invent one or use an example address (the screen offers a guessed address only, never fills it in)."
+       },
+       "body": {
+        "type": "string",
+        "description": "Complete professional e-mail text in `language` (shown on screen, never spoken)"
+       },
+       "deal": {
+        "type": "string",
+        "description": "Words identifying one of his deals; empty = the deal open on screen, or the composer when no deal room is open"
+       },
+       "purpose": {
+        "enum": [
+         "intro",
+         "request_documents",
+         "clarification",
+         "quotation",
+         "follow_up",
+         "negotiation",
+         "other"
+        ],
+        "type": "string"
+       },
+       "subject": {
+        "type": "string",
+        "description": "Subject line in `language`"
+       },
+       "language": {
+        "enum": [
+         "ar",
+         "en",
+         "fr",
+         "zh",
+         "es",
+         "de",
+         "tr",
+         "ru",
+         "pt",
+         "it"
+        ],
+        "type": "string",
+        "description": "The language the subject and body are actually written in: ar Arabic, en English, fr French, zh Chinese, es Spanish, de German, tr Turkish, ru Russian, pt Portuguese, it Italian"
+       }
+      }
+     }
+    },
+    "disableInterruptions": false,
+    "expectedUpdatedAt": "2026-11-17T22:23:45.432Z"
+   },
+   "rollback_body": {
+    "description": "Write an email for the member inside the deal room (to the buyer, entity, supplier or partner) and fill it on screen: recipient, subject and full body in Arabic or English, signed with the member's name and company. It is NOT sent: read the key points to the member and ask for approval, then call bassem_send_email.",
+    "config": {
+     "parameters": {
+      "type": "object",
+      "required": [
+       "subject",
+       "body"
+      ],
+      "properties": {
+       "to": {
+        "type": "string",
+        "description": "Recipient email if known from the opportunity (never invent one)"
+       },
+       "body": {
+        "type": "string",
+        "description": "Complete professional email text"
+       },
+       "deal": {
+        "type": "string",
+        "description": "Words identifying the deal/opportunity; empty = the deal open on screen"
+       },
+       "purpose": {
+        "enum": [
+         "intro",
+         "request_documents",
+         "clarification",
+         "quotation",
+         "follow_up",
+         "negotiation",
+         "other"
+        ],
+        "type": "string"
+       },
+       "subject": {
+        "type": "string"
+       },
+       "language": {
+        "enum": [
+         "ar",
+         "en"
+        ],
+        "type": "string"
+       }
+      }
+     },
+     "awaitResult": false
+    },
+    "disableInterruptions": false,
+    "expectedUpdatedAt": "<the updatedAt this update returns>"
+   }
+  },
+  {
+   "id": "96ea605d-1689-4cdd-a730-4666d6b68243",
+   "name": "bassem_set_work_time",
+   "currentUpdatedAt": "2026-11-17T22:39:34.768Z",
+   "usageCount": 1,
+   "used_by": [
+    "bassem"
+   ],
+   "why": "LIVE BUG (holo4 critic §8): the live tool sends `morning_message_time`, which the page ignores (data/janna-live.js:1653 reads morning_time), and `days` as text, which POST /api/me/prefs refuses with 400 invalid_days (worker/src/me.js:204) — so the whole save fails whenever days is sent",
+   "needs_live_before_update": [
+    "none (the page and the Worker already take this shape)"
+   ],
+   "source": "holo4 anam/tools.json bassem_set_work_time",
+   "body": {
+    "description": "Save when the member likes to work with you: the daily time of your good-morning message (WhatsApp or e-mail) and the time(s) he will be online for your daily work session / video call. Use when he tells you («كلمني كل يوم الساعة 10»، «هكون أونلاين بعد الضهر»). Call it BEFORE you say it is saved, then confirm the time back to him.",
+    "config": {
+     "awaitResult": false,
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "days": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "enum": [
+          "sun",
+          "mon",
+          "tue",
+          "wed",
+          "thu",
+          "fri",
+          "sat"
+         ]
+        },
+        "description": "Days he works with you; every day = all seven"
+       },
+       "pause": {
+        "type": "boolean",
+        "description": "true if he wants to stop the daily messages"
+       },
+       "session_time": {
+        "type": "string",
+        "description": "HH:MM Egypt time he will be online to work together / for the video call"
+       },
+       "call_today_at": {
+        "type": "string",
+        "description": "HH:MM if he wants a call / video session later today"
+       },
+       "morning_time": {
+        "type": "string",
+        "description": "HH:MM Egypt time for the daily good-morning message (default 09:00)"
+       }
+      }
+     }
+    },
+    "disableInterruptions": false,
+    "expectedUpdatedAt": "2026-11-17T22:39:34.768Z"
+   },
+   "rollback_body": {
+    "description": "Save when the member likes to work with you: the daily time for your morning WhatsApp message and the time(s) he will be online for your daily work session / video call. Use when the member tells you («كلمني كل يوم الساعة 10»، «هكون أونلاين بعد الضهر»). Confirm the time back to him.",
+    "config": {
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "days": {
+        "type": "string",
+        "description": "e.g. daily, sun-thu"
+       },
+       "pause": {
+        "type": "boolean",
+        "description": "true if he wants to stop the daily messages"
+       },
+       "session_time": {
+        "type": "string",
+        "description": "HH:MM Egypt time he will be online to work together / for the video call"
+       },
+       "call_today_at": {
+        "type": "string",
+        "description": "HH:MM if he wants a call/video session later today"
+       },
+       "morning_message_time": {
+        "type": "string",
+        "description": "HH:MM Egypt time for the daily good-morning WhatsApp (default 09:00)"
+       }
+      }
+     },
+     "awaitResult": false
+    },
+    "disableInterruptions": false,
+    "expectedUpdatedAt": "<the updatedAt this update returns>"
+   }
+  }
+ ],
+ "not_changed": [
+  {
+   "id": "1aef2a57-a4bd-4663-abd1-46190a995204",
+   "name": "bassem_intel",
+   "updatedAt": "2026-11-18T22:58:36.526Z",
+   "why": "already updated live at 22:58 (after holo4's T1): one English word, days 30, market codes, the tool widens by itself, brief only with a query. holo4's T1 is older (brief with `sector`, its critic replaced that by `query`): keep the live one."
+  },
+  {
+   "id": "3fd11ab3-b7cc-4229-b32a-8c17e55d3bed",
+   "name": "bassem_start_deal",
+   "why": "holo4's source_url / intel_id are held: no client file reads them (holo4 critic). It finds advisor cards by title (platform tenders / RFQs) — enough for platform items; intel results are kept away by the prompt."
+  },
+  {
+   "id": "a00e4d99-df41-4a43-8c66-39bdfa3d2495",
+   "name": "bassem_send_email",
+   "why": "unchanged: for a composer draft the page never sends (cmpAsk points at «ابعت», data/janna-live.js:1626) and the prompt tells Bassem not to call it for that draft."
+  },
+  {
+   "id": "0773f450-f996-4729-9309-af54b753a049 / 6b87a213-3e8f-4fde-b215-18e362916642 / 3f43d0f1-a685-4311-927b-34fa1a4adc9e / 29fd5087-5eff-4919-afb2-3d01b8cc70de",
+   "name": "janna_search / janna_navigate / janna_follow / janna_lookup (shared)",
+   "why": "unchanged for Janna AR / EN; Bassem gets his own copies (tools.create.json *@bassem). awaitResult on the shared tools would stall Janna (no handler in her calls) and the widget fallback."
+  },
+  {
+   "id": "e436c233-7437-40ce-918f-c06c4135f548",
+   "name": "janna_fill_registration",
+   "why": "owned by the plans workflow (scratchpad/plans/anam/tool-janna_fill_registration.json, gcc_countries) — not touched here."
+  }
+ ]
+}

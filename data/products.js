@@ -1,0 +1,2 @@
+/* Product catalogue shared by the homepage search (UAE: real member products are loaded from data/oldprod.js). id,name,cat,factory,img,price,unit,verified,region */
+window.MIGP={cats:{"food": "الصناعات الغذائية", "build": "مواد البناء", "plastic": "البلاستيك والتغليف", "elec": "الكهرباء والتكييف", "glass": "الزجاج", "metal": "المعادن والألمنيوم", "petro": "البتروكيماويات", "med": "الطبي والأدوية", "furn": "الأثاث"},items:[]};

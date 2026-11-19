@@ -1,0 +1,58 @@
+# Cloudflare Pages project «madeinegyptgate» — static site (site/) + Pages Functions (functions/).
+#
+# deploy/deploy.sh copies this file to <stage>/wrangler.toml next to <stage>/site and <stage>/functions and runs
+# `wrangler pages deploy` from <stage>. Pages only reads its configuration from the directory wrangler runs in
+# (`wrangler pages deploy --config …` is refused), and the repository root must not get a second wrangler.toml
+# that could be mistaken for the Worker's (worker/wrangler.toml).
+#
+# This file is the source of truth for the project's bindings and plain variables: every deployment uploads them
+# with the Functions bundle (wrangler reads the top level for production, [env.preview] for every other branch), so
+# the dashboard shows them as read-only. Secrets are NOT here; they are set per environment with
+# `deploy/deploy.sh secrets --set NAME` (production) and only reach the next deployment.
+
+name = "madeinegyptgate"
+pages_build_output_dir = "./site"
+compatibility_date = "2026-10-01"
+
+# ---------------------------------------------------------------------------------------------------- production
+# Edge SEO overrides: keys seo:bundle, seo:bundle:prev, seo:log … — read by functions/_middleware.js on every page,
+# written by the /api/seo/* admin API (functions/api/seo/[[path]].js). Namespace title on the account: "migate-seo".
+[[kv_namespaces]]
+binding = "SEO_KV"
+id = "b321fb348f3447179c99b4380952e5ac"
+
+# The Worker's own D1 database (sessions, members, roles, blocks). The SEO admin API only reads it to check who is
+# signed in and whether that member is an admin or has the "seo" role, so logouts, blocks and role changes match the
+# Worker exactly.
+[[d1_databases]]
+binding = "DB"
+database_name = "migate-db"
+database_id = "f86e00bb-9739-4985-a149-3dddb45b2b42"
+
+[vars]
+SITE_ORIGIN = "https://madeinegyptgate.com"
+ADMIN_EMAILS = "info@madeinegyptgate.com"   # keep identical to ADMIN_EMAILS in worker/wrangler.toml
+# SEO_TTL = "60"                            # seconds each isolate keeps the SEO bundle (5–600, default 60)
+# SEO_PUBLIC_CONTACTS = ""                  # extra public phone numbers / e-mails / @domains admin overrides may contain
+
+# ------------------------------------------------------------------------------------------------------ previews
+# Every deployment that is not on the production branch "main" (<hash>.madeinegyptgate.pages.dev,
+# preview.madeinegyptgate.pages.dev) runs code that nobody has reviewed yet on a public URL. It therefore gets NO
+# production binding and NO production secret: no SEO KV (the pages are served exactly as built, /api/seo answers
+# 503 kv_off) and no D1 (members, sessions). Bindings and vars are never inherited by an [env.*] block, so the empty
+# lists below are explicit; wrangler prints "SEO_KV / DB exists at the top level, but not on env.preview" — that is
+# the intent. deploy/stage.py refuses a stage whose preview binds the production KV or D1.
+[env.preview]
+kv_namespaces = []
+d1_databases = []
+
+[env.preview.vars]
+SITE_ORIGIN = "https://madeinegyptgate.com"
+ADMIN_EMAILS = "info@madeinegyptgate.com"
+
+# To try the SEO workspace (/seo-admin/) on a preview, give previews their OWN namespace instead of the empty list:
+#   npx wrangler kv namespace create migate-seo-preview        (prints the id)
+#   kv_namespaces = [ { binding = "SEO_KV", id = "<id of migate-seo-preview>" } ]
+#   and in [env.preview.vars]: SEO_PREVIEW_WRITES = "1", SEO_ADMIN_IDS = "<member id of the tester>"
+#   plus a preview-only secret: deploy/deploy.sh secrets --set ADVISOR_SECRET --env preview (a value used nowhere else)
+# Never put the production KV id or the production D1 here.

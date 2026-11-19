@@ -1,0 +1,168 @@
+{
+ "_about": "The 27 governorates (codes and Arabic names from data/regions.js MIGREG.list / site.py NAV). Hub paths: /governorates/<slug>/; sector × governorate hubs: /factories/<sector>/<slug>/. The build asserts exactly 27.",
+ "version": 1,
+ "governorates": [
+  {
+   "code": "CAI",
+   "ar": "القاهرة",
+   "en": "Cairo",
+   "slug": "cairo"
+  },
+  {
+   "code": "GIZ",
+   "ar": "الجيزة",
+   "en": "Giza",
+   "slug": "giza"
+  },
+  {
+   "code": "ALX",
+   "ar": "الإسكندرية",
+   "en": "Alexandria",
+   "slug": "alexandria"
+  },
+  {
+   "code": "QLB",
+   "ar": "القليوبية",
+   "en": "Qalyubia",
+   "slug": "qalyubia"
+  },
+  {
+   "code": "SHR",
+   "ar": "الشرقية",
+   "en": "Sharqia",
+   "slug": "sharqia"
+  },
+  {
+   "code": "DKH",
+   "ar": "الدقهلية",
+   "en": "Dakahlia",
+   "slug": "dakahlia"
+  },
+  {
+   "code": "GHR",
+   "ar": "الغربية",
+   "en": "Gharbia",
+   "slug": "gharbia"
+  },
+  {
+   "code": "MNF",
+   "ar": "المنوفية",
+   "en": "Monufia",
+   "slug": "monufia"
+  },
+  {
+   "code": "BHR",
+   "ar": "البحيرة",
+   "en": "Beheira",
+   "slug": "beheira"
+  },
+  {
+   "code": "KFS",
+   "ar": "كفر الشيخ",
+   "en": "Kafr El Sheikh",
+   "slug": "kafr-el-sheikh"
+  },
+  {
+   "code": "DMT",
+   "ar": "دمياط",
+   "en": "Damietta",
+   "slug": "damietta"
+  },
+  {
+   "code": "PTS",
+   "ar": "بورسعيد",
+   "en": "Port Said",
+   "slug": "port-said"
+  },
+  {
+   "code": "ISM",
+   "ar": "الإسماعيلية",
+   "en": "Ismailia",
+   "slug": "ismailia"
+  },
+  {
+   "code": "SUZ",
+   "ar": "السويس",
+   "en": "Suez",
+   "slug": "suez"
+  },
+  {
+   "code": "NSN",
+   "ar": "شمال سيناء",
+   "en": "North Sinai",
+   "slug": "north-sinai"
+  },
+  {
+   "code": "JSN",
+   "ar": "جنوب سيناء",
+   "en": "South Sinai",
+   "slug": "south-sinai"
+  },
+  {
+   "code": "FYM",
+   "ar": "الفيوم",
+   "en": "Faiyum",
+   "slug": "faiyum"
+  },
+  {
+   "code": "BNS",
+   "ar": "بني سويف",
+   "en": "Beni Suef",
+   "slug": "beni-suef"
+  },
+  {
+   "code": "MNY",
+   "ar": "المنيا",
+   "en": "Minya",
+   "slug": "minya"
+  },
+  {
+   "code": "AST",
+   "ar": "أسيوط",
+   "en": "Asyut",
+   "slug": "asyut"
+  },
+  {
+   "code": "SHG",
+   "ar": "سوهاج",
+   "en": "Sohag",
+   "slug": "sohag"
+  },
+  {
+   "code": "QNA",
+   "ar": "قنا",
+   "en": "Qena",
+   "slug": "qena"
+  },
+  {
+   "code": "LXR",
+   "ar": "الأقصر",
+   "en": "Luxor",
+   "slug": "luxor"
+  },
+  {
+   "code": "ASN",
+   "ar": "أسوان",
+   "en": "Aswan",
+   "slug": "aswan"
+  },
+  {
+   "code": "BBA",
+   "ar": "البحر الأحمر",
+   "en": "Red Sea",
+   "slug": "red-sea"
+  },
+  {
+   "code": "WAD",
+   "ar": "الوادي الجديد",
+   "en": "New Valley",
+   "slug": "new-valley"
+  },
+  {
+   "code": "MTR",
+   "ar": "مطروح",
+   "en": "Matrouh",
+   "slug": "matrouh"
+  }
+ ]
+}

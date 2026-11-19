@@ -1,0 +1,1398 @@
+<style>
+/* Live home: night-hub hero with animated network + cycling onboarding card → count-up stats → live opportunities board (3 cols) → video → moving sponsors → markets cards → members directory → reports (bars + donut + awards) → steps demo → winners table → platforms → products → news */
+.util { background: var(--green-deep); color: #F6E4E6; font-size: .8rem; }
+.util .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 18px; padding-block: 6px; }
+.util .g { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.util button { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2); color: #fff; border-radius: 6px; padding: 0 9px; cursor: pointer; font-size: .78rem; line-height: 1.8; }
+.live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3DDC84; box-shadow: 0 0 0 0 rgba(61,220,132,.7); animation: pulse 1.8s infinite; vertical-align: middle; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(61,220,132,.6); } 70% { box-shadow: 0 0 0 9px rgba(61,220,132,0); } 100% { box-shadow: 0 0 0 0 rgba(61,220,132,0); } }
+.ticker { background: var(--surface); border-bottom: 1px solid var(--line); overflow: hidden; display: flex; align-items: stretch; font-size: .84rem; }
+.ticker .lbl { flex: none; background: var(--gold); color: #1A1204; font-weight: 800; padding: 6px 14px; display: flex; align-items: center; gap: 6px; z-index: 1; }
+.ticker .lbl.g { background: var(--green); color: #fff; }
+.ticker .track { flex: 1; overflow: hidden; }
+.ticker .run { display: inline-flex; gap: 36px; white-space: nowrap; padding: 6px 0; animation: tick 70s linear infinite; }
+.ticker:hover .run { animation-play-state: paused; }
+.up { color: #C8102E; font-weight: 700; } .dn { color: #C0392B; font-weight: 700; }
+@keyframes tick { from { transform: translateX(0); } to { transform: translateX(50%); } }
+@keyframes tickl { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+html[dir=ltr] .ticker .run, html[dir=ltr] .sprun, html[dir=ltr] .plogos-track, html[dir=ltr] .fpx-track { animation-name: tickl; }
+.ticker .track { display: flex !important; justify-content: flex-start; }
+.ticker .run { flex: none; }
+
+/* HERO */
+.hero { position: relative; overflow: hidden; background: #1A0306; color: #fff; }
+.hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(4,25,14,.15), rgba(4,25,14,.75) 70%); pointer-events: none; }
+.hero .wrap { position: relative; z-index: 1; display: grid; grid-template-columns: 1.15fr 1fr; gap: 40px; align-items: center; padding-block: 56px 30px; }
+.hero .wrap > * { min-width: 0; }
+.hero .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: var(--gold); font-weight: 700; font-size: .9rem; }
+.hero h1 { font-size: clamp(2.2rem, 5.4vw, 4rem); font-weight: 800; line-height: 1.15; margin-top: 10px; }
+.hero h1 .rot { color: var(--gold); display: inline-block; min-width: 4ch; transition: opacity .35s ease, transform .35s ease; }
+.hero h1 .rot.out { opacity: 0; transform: translateY(10px); }
+.hero .lede { margin-top: 14px; font-size: 1.05rem; opacity: .9; max-width: 34em; }
+.hchips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.hchips span { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); border-radius: 999px; padding: 4px 14px; font-size: .85rem; backdrop-filter: blur(4px); }
+.hchips b { color: var(--gold); }
+.onb { background: #fff; color: #0F172A; border-radius: 18px; padding: 18px; box-shadow: 0 30px 60px -20px rgba(0,0,0,.6); display: flex; flex-direction: column; gap: 12px; max-width: 430px; justify-self: start; width: 100%; }
+.onb .top { display: flex; justify-content: space-between; align-items: center; font-size: .82rem; color: #64748B; }
+.onb .top b { color: #0F172A; font-size: .95rem; }
+.onb .stage { display: flex; gap: 12px; align-items: center; background: #F0FDF4; border-radius: 12px; padding: 12px; }
+.onb .stage .ic { width: 44px; height: 44px; border-radius: 12px; background: #C8102E; color: #fff; display: grid; place-items: center; font-size: 1.3rem; flex: none; }
+.onb .stage b { display: block; font-size: 1rem; }
+.onb .stage small { color: #64748B; font-size: .8rem; }
+.onb .co { border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.onb .co .r { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.onb .co .lg { width: 40px; height: 40px; border-radius: 10px; background: #8E0B20; color: #fff; display: grid; place-items: center; font-weight: 800; }
+.onb .obar { height: 8px; border-radius: 99px; background: #F1F5F9; overflow: hidden; }
+.onb .obar b { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #C09300, #C8102E); transition: width .8s ease; }
+.onb ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: .86rem; }
+.onb li { display: flex; gap: 8px; align-items: center; color: #94A3B8; transition: color .3s ease; }
+.onb li .ck { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #CBD5E1; display: grid; place-items: center; font-size: .7rem; transition: all .3s ease; flex: none; }
+.onb li.done { color: #0F172A; }
+.onb li.done .ck { background: #C8102E; border-color: #C8102E; color: #fff; }
+.onb .dots { display: flex; gap: 5px; }
+.onb .dots i { flex: 1; height: 4px; border-radius: 99px; background: #E2E8F0; transition: background .3s ease; }
+.onb .dots i.on { background: #C8102E; }
+.badge-ok { display: inline-flex; align-items: center; gap: 4px; background: #C8102E; color: #fff; font-size: .72rem; font-weight: 700; padding: 1px 8px; border-radius: 99px; transform: scale(0); transition: transform .3s cubic-bezier(.3,1.6,.6,1); }
+.badge-ok.show { transform: scale(1); }
+.sbox { grid-column: 1 / -1; background: #fff; border-radius: 16px; padding: 10px; color: #0F172A; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 20px 50px -20px rgba(0,0,0,.6); }
+.stabs { display: flex; gap: 4px; flex-wrap: wrap; }
+.stabs button { border: 1px solid #E2E8F0; background: #F8FAFC; border-radius: 8px; padding: 4px 12px; font-weight: 700; font-size: .85rem; cursor: pointer; color: #475569; }
+.stabs button.on { background: #C8102E; border-color: #C8102E; color: #fff; }
+.srow { display: flex; gap: 8px; flex-wrap: wrap; }
+.srow input, .srow select { font: inherit; color: #0F172A; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px 12px; background: #fff; min-width: 0; }
+.srow input { flex: 2 1 220px; }
+.srow select { flex: 1 1 150px; }
+.kpis { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.kpis a { display: block; } .kpis a > div { transition: transform .2s ease, background .2s ease; } .kpis a:hover > div { transform: translateY(-3px); background: rgba(255,255,255,.12); }
+.kpis div { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; backdrop-filter: blur(6px); }
+.kpis .ic { width: 42px; height: 42px; border-radius: 10px; background: rgba(192,147,0,.18); color: var(--gold); display: grid; place-items: center; font-size: 1.2rem; flex: none; }
+.kpis b { display: block; font-size: 1.6rem; font-weight: 800; line-height: 1.2; }
+.kpis span { font-size: .8rem; opacity: .8; }
+@media (max-width: 960px) { .hero .wrap { grid-template-columns: 1fr; } .onb { justify-self: stretch; max-width: none; } .kpis { grid-template-columns: repeat(2, 1fr); } }
+
+/* sections */
+.sec { padding-block: 52px; }
+.sec.alt { background: var(--surface); border-block: 1px solid var(--line); }
+.sec.dark { background: var(--green-deep); color: #fff; }
+.sh { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px; margin-bottom: 24px; }
+.sh > div { display: flex; flex-direction: column; gap: 4px; max-width: 48em; }
+.sh h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); font-weight: 800; }
+.sh .eb { color: var(--gold-deep); font-weight: 700; font-size: .85rem; }
+.sec.dark .sh .eb { color: var(--gold); }
+.sh p { color: var(--muted); }
+.sec.dark .sh p { color: rgba(255,255,255,.75); }
+.more { font-weight: 700; color: var(--green); white-space: nowrap; }
+.reveal { transition: transform .6s ease, opacity .6s ease; }
+.reveal.pre { transform: translateY(18px); opacity: .55; }
+.chip-red { background: #FDECEC; color: #C0392B; }
+.chip-amber { background: #FFF4E0; color: #A86400; }
+.note { font-size: .76rem; color: var(--muted); margin-top: 10px; display: inline-flex; gap: 5px; align-items: center; }
+.note::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+
+/* Live board */
+.board { display: grid; grid-template-columns: 250px minmax(0, 1fr) 250px; gap: 16px; align-items: start; }
+.board > * { min-width: 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.panel h3 { font-size: .98rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.panel h3 .ic { width: 28px; height: 28px; border-radius: 8px; background: var(--green-soft); color: var(--green); display: grid; place-items: center; font-size: .85rem; }
+.mini { border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 4px; font-size: .82rem; }
+.mini b { font-size: .86rem; line-height: 1.5; }
+.mini small { color: var(--muted); }
+.mini .ref { font-size: .72rem; color: var(--gold-deep); font-weight: 700; direction: ltr; text-align: right; }
+.cd { font-variant-numeric: tabular-nums; font-weight: 800; color: #C0392B; font-size: .85rem; }
+.feed-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.feed-tools input, .feed-tools select { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; min-width: 0; }
+.feed-tools input { flex: 1 1 200px; }
+.seg { display: inline-flex; background: var(--sunken); border-radius: 10px; padding: 4px; flex-wrap: wrap; }
+.seg button { border: 0; background: transparent; padding: 5px 14px; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: .85rem; color: var(--muted); }
+.seg button.on { background: var(--surface); color: var(--green); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.feed { display: flex; flex-direction: column; gap: 8px; }
+.ti { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; display: flex; flex-direction: column; gap: 4px; transition: border-color .3s ease, box-shadow .3s ease; }
+.ti { cursor: pointer; }
+.ti:hover { border-color: var(--green); box-shadow: 0 10px 24px -16px rgba(0,0,0,.3); }
+.ti.flash { animation: flash 2.2s ease; }
+@keyframes flash { 0% { background: #FFF6DE; transform: translateY(-6px); } 100% { background: var(--surface); transform: none; } }
+.ti .r1 { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+.ti .ref { font-size: .75rem; color: var(--gold-deep); font-weight: 700; direction: ltr; }
+.ti h4 { font-size: .9rem; font-weight: 800; line-height: 1.45; }
+.ti .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; font-size: .76rem; }
+.ti .r3 .btn { padding: 3px 12px; font-size: .78rem; border-radius: 8px; } .ti .chip { font-size: .7rem; }
+.ti .meta small { display: block; color: var(--muted); font-size: .72rem; }
+.ti .r3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.secl { display: flex; flex-direction: column; gap: 4px; }
+.secl button { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 0; background: transparent; padding: 7px 8px; border-radius: 8px; cursor: pointer; text-align: start; font-size: .85rem; color: var(--fg); }
+.secl button:hover { background: var(--sunken); }
+.secl button.on { background: var(--green-soft); color: var(--green); font-weight: 700; }
+.secl button span:last-child { background: var(--sunken); border-radius: 99px; padding: 0 8px; font-size: .72rem; font-weight: 700; color: var(--muted); }
+.board-more { display: flex; justify-content: center; margin-top: 6px; }
+@media (max-width: 1100px) { .board { grid-template-columns: minmax(0, 1fr) 250px; } .board .lcol { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } }
+@media (max-width: 760px) { .board { grid-template-columns: 1fr; } .board .lcol { grid-template-columns: 1fr; } .ti .meta { grid-template-columns: 1fr 1fr; } }
+
+/* Video */
+.vids { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.vid { border-radius: 18px; overflow: hidden; position: relative; aspect-ratio: 16/9; max-width: 100%; border: 2px solid rgba(192,147,0,.6); background: #1A0306; cursor: pointer; }
+.vid canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.vid .cap { position: absolute; inset-inline: 16px; bottom: 14px; display: flex; justify-content: space-between; align-items: end; gap: 10px; }
+.vid .cap b { font-size: 1.15rem; }
+.vid .play { position: absolute; inset: 0; margin: auto; width: 74px; height: 74px; border-radius: 50%; background: rgba(255,255,255,.95); color: #8E0B20; display: grid; place-items: center; box-shadow: 0 0 0 0 rgba(255,255,255,.5); animation: ring 2.4s infinite; }
+@keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.45); } 80% { box-shadow: 0 0 0 22px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+.vid .sound { position: absolute; top: 12px; inset-inline-start: 12px; background: rgba(0,0,0,.5); color: #fff; font-size: .78rem; border-radius: 99px; padding: 2px 10px; }
+.vacts { display: flex; justify-content: center; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+@media (max-width: 760px) { .vids { grid-template-columns: 1fr; } }
+
+/* recently registered factories strip */
+.spstrip { background: var(--surface); border-block: 1px solid var(--line); overflow: hidden; padding-block: 14px 16px; }
+.sphead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+.sphead h3 { font-size: 1.05rem; display: flex; align-items: center; gap: 10px; color: var(--fg); }
+.sphead h3 .live { width: 9px; height: 9px; border-radius: 50%; background: #22C55E; box-shadow: 0 0 0 0 rgba(34,197,94,.6); animation: nfpulse 1.8s ease-out infinite; }
+@keyframes nfpulse { to { box-shadow: 0 0 0 10px rgba(34,197,94,0); } }
+.sphead h3 small { font-size: .78rem; font-weight: 600; color: var(--muted); }
+.sphead a { font-size: .85rem; font-weight: 700; }
+.sprun { display: inline-flex; gap: 14px; animation: tick 50s linear infinite; }
+.spstrip:hover .sprun { animation-play-state: paused; }
+.sp { width: 290px; min-height: 100px; border-radius: 12px; display: flex; align-items: center; gap: 12px; padding: 24px 14px 10px; flex: none; background: var(--surface); border: 1px solid var(--line); border-inline-start: 4px solid var(--green); color: var(--fg); position: relative; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.sp:hover { transform: translateY(-3px); box-shadow: 0 12px 24px -16px rgba(142,11,32,.45); border-color: var(--green); }
+.sp b { font-size: .92rem; display: block; line-height: 1.4; }
+.sp small { color: var(--muted); font-size: .76rem; display: block; }
+.sp .lg { width: 50px; height: 50px; border-radius: 10px; background: var(--green-soft); color: var(--green); display: grid; place-items: center; font-weight: 800; font-size: 1.2rem; flex: none; overflow: hidden; border: 1px solid var(--line); }
+.sp .lg img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.sp .lg .splg { display: block; width: 100%; height: 100%; background-color: #fff; background-size: 1000% 1000%; background-repeat: no-repeat; }
+.sp .when { position: absolute; top: 8px; inset-inline-end: 10px; font-size: .68rem; font-weight: 700; color: var(--green); background: var(--green-soft); border-radius: 99px; padding: 0 8px; }
+.sp.cta { border-inline-start-color: var(--gold); background: var(--gold-soft); }
+.sp.cta .lg { background: var(--gold); color: #1A1204; border-color: transparent; }
+
+/* Markets cards */
+.mcards { display: grid; grid-template-columns: repeat(6, 1fr); grid-auto-rows: 210px; gap: 14px; }
+.mc { position: relative; border-radius: 16px; overflow: hidden; color: #fff; grid-column: span 2; cursor: pointer; display: block; }
+.mc.big { grid-column: span 3; grid-row: span 1; }
+.mc canvas { position: absolute; inset: 0; width: 100%; height: 100%; transition: transform .6s ease; }
+.mc:hover canvas { transform: scale(1.06); }
+.mc::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(4,25,14,.85), rgba(4,25,14,.1) 60%); }
+.mc .in { position: absolute; inset: auto 16px 14px; z-index: 1; display: flex; flex-direction: column; gap: 4px; }
+.mc .code { position: absolute; top: 12px; inset-inline-end: 12px; z-index: 1; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3); border-radius: 8px; padding: 0 8px; font-size: .75rem; font-weight: 800; }
+.mc h3 { font-size: 1.35rem; font-weight: 800; }
+.mc p { font-size: .82rem; opacity: .88; line-height: 1.5; }
+.mc .ft { display: flex; justify-content: space-between; align-items: center; font-size: .8rem; margin-top: 4px; }
+.mc .ft .go { width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255,255,255,.5); display: grid; place-items: center; transition: background .2s ease; }
+.mc:hover .ft .go { background: var(--gold); border-color: var(--gold); color: #fff; }
+@media (max-width: 900px) { .mcards { grid-template-columns: 1fr 1fr; grid-auto-rows: 190px; } .mc, .mc.big { grid-column: span 1; } .mc.big:first-child { grid-column: span 2; } }
+@media (max-width: 520px) { .mcards { grid-template-columns: 1fr; } .mc.big:first-child { grid-column: span 1; } }
+
+/* Members */
+.mfilter { display: grid; grid-template-columns: 2fr 1.2fr 1fr 1fr auto; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 14px; }
+.mfilter input, .mfilter select { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; min-width: 0; }
+.members { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.mem { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 8px; transition: transform .2s ease, box-shadow .2s ease; }
+.mem:hover { transform: translateY(-3px); box-shadow: 0 16px 30px -18px rgba(0,0,0,.35); }
+.mem .top { display: flex; gap: 10px; align-items: center; margin-top: -40px; position: relative; }
+.mem .cv { display: block; height: 104px; margin: -16px -16px 0; border-radius: 14px 14px 0 0; background-size: cover; background-position: center; position: relative; }
+.mem .cv::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: linear-gradient(0deg, rgba(4,25,14,.55), rgba(4,25,14,0) 60%); }
+.mem .top h3 { padding-top: 34px; }
+.mem .lg { width: 58px; height: 58px; box-shadow: 0 6px 16px -8px rgba(0,0,0,.4); border-radius: 12px; border: 1px solid var(--line); background: #fff; display: grid; place-items: center; font-weight: 800; color: #C8102E; padding: 3px; flex: none; overflow: hidden; }
+.mem .lg img { max-width: 100%; max-height: 100%; }
+.mem h3 { font-size: .92rem; font-weight: 800; line-height: 1.45; }
+.mem .sec { padding: 0; font-size: .76rem; color: var(--gold-deep); font-weight: 700; }
+.mem p { font-size: .82rem; color: var(--muted); flex: 1; }
+.mem .tags { display: flex; gap: 5px; flex-wrap: wrap; }
+@media (max-width: 1000px) { .members { grid-template-columns: repeat(2, minmax(0, 1fr)); } .mfilter { grid-template-columns: 1fr 1fr; } .mfilter input { grid-column: 1 / -1; } }
+.mprods { display: flex; flex-wrap: wrap; gap: 5px; } .mprods span { font-size: .74rem; background: var(--gold-soft); color: var(--gold-deep); border-radius: 6px; padding: 1px 8px; font-weight: 700; } .mprods span.hit { background: var(--green); color: #fff; }
+@media (max-width: 520px) { .members { grid-template-columns: 1fr; } .mfilter { grid-template-columns: 1fr; } }
+
+/* Reports */
+.reports { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.reports .rmap { grid-column: 1 / -1; }
+.reports > * { min-width: 0; }
+.rcard { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.rcard h3 { font-size: 1rem; font-weight: 800; }
+.rcard h3 small { display: block; font-size: .76rem; color: var(--muted); font-weight: 500; }
+.hbars { display: flex; flex-direction: column; gap: 6px; }
+.hb { display: grid; grid-template-columns: 110px 1fr 42px; gap: 8px; align-items: center; font-size: .78rem; }
+.hb .t { height: 12px; background: var(--sunken); border-radius: 6px; overflow: hidden; }
+.hb .t i { display: block; height: 100%; border-radius: 6px; width: 0; transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+.hb .v { font-weight: 800; font-variant-numeric: tabular-nums; text-align: end; }
+.donut { display: grid; grid-template-columns: 120px 1fr; gap: 12px; align-items: center; }
+.donut svg { width: 120px; height: 120px; max-width: 100%; }
+.legend { display: flex; flex-direction: column; gap: 1px; font-size: .76rem; }
+.legend button { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; border: 0; background: transparent; text-align: start; padding: 2px 4px; border-radius: 6px; cursor: pointer; }
+.legend button:hover, .legend button.on { background: var(--sunken); }
+.legend i { width: 12px; height: 12px; border-radius: 3px; }
+.legend b { font-variant-numeric: tabular-nums; }
+.awlist { display: flex; flex-direction: column; gap: 8px; max-height: 236px; overflow: hidden; position: relative; }
+.awrun { display: flex; flex-direction: column; gap: 8px; animation: vscroll 26s linear infinite; }
+.awlist:hover .awrun { animation-play-state: paused; }
+@keyframes vscroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+.aw { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border: 1px solid var(--line); border-radius: 10px; font-size: .84rem; }
+.aw .ic { color: var(--gold-deep); }
+.rstats { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.rstats a { color: inherit; display: block; } .rstats a > div { transition: transform .2s ease, border-color .2s ease; height: 100%; } .rstats a:hover > div { transform: translateY(-3px); border-color: var(--gold); }
+a.hb { color: inherit; border-radius: 8px; padding: 2px 4px; transition: background .2s ease; } a.hb:hover { background: var(--sunken); }
+a.ev { display: flex; } a.aw:hover { border-color: var(--gold); }
+.rstats div { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; border-inline-start: 4px solid var(--green); }
+.rstats b { display: block; font-size: 1.6rem; font-weight: 800; }
+.rstats span { font-size: .8rem; color: var(--muted); }
+@media (max-width: 1100px) { .reports { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 900px) { .reports { grid-template-columns: 1fr; } .rstats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .donut { grid-template-columns: 1fr; justify-items: center; } .hb { grid-template-columns: 100px 1fr 40px; } }
+
+/* Steps demo */
+.steps-wrap { display: grid; grid-template-columns: 1fr 1.1fr; gap: 24px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 24px; }
+.steps-wrap > * { min-width: 0; }
+.stl { display: flex; flex-direction: column; gap: 10px; }
+.st { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 14px; border: 1px solid var(--line); cursor: pointer; text-align: start; background: var(--surface); transition: all .3s ease; }
+.st .n { width: 40px; height: 40px; border-radius: 12px; background: var(--sunken); color: var(--muted); display: grid; place-items: center; font-weight: 800; flex: none; transition: all .3s ease; }
+.st b { display: block; font-size: 1rem; }
+.st small { color: var(--muted); font-size: .84rem; }
+.st.on { border-color: var(--green); background: var(--green-soft); box-shadow: 0 10px 24px -16px rgba(0,0,0,.3); }
+.st.on .n { background: var(--green); color: #fff; }
+.demo { background: #1A0306; border-radius: 18px; padding: 18px; min-height: 340px; position: relative; overflow: hidden; }
+.screen { background: #fff; color: #0F172A; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; position: relative; }
+.screen .hd { display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
+.mrow { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border: 1px solid #E2E8F0; border-radius: 9px; font-size: .86rem; transition: all .25s ease; }
+.mrow.hot { border-color: #C09300; background: #FBF4DE; }
+.mrow.pick { border-color: #C8102E; background: #EAF7EF; }
+.mrow span:last-child { font-size: .75rem; font-weight: 700; color: #C8102E; }
+.cursor { position: absolute; width: 22px; height: 22px; pointer-events: none; transition: left .7s cubic-bezier(.4,0,.2,1), top .7s cubic-bezier(.4,0,.2,1); z-index: 3; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+.dbox { margin-top: 10px; background: #C8102E; color: #fff; border-radius: 10px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; font-size: .86rem; transform: translateY(8px); opacity: 0; transition: all .35s ease; }
+.dbox.show { transform: none; opacity: 1; }
+@media (max-width: 860px) { .steps-wrap { grid-template-columns: 1fr; } }
+
+/* Winners */
+.wtools { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.wtools input, .wtools select { font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; min-width: 0; flex: 1 1 200px; }
+.tw { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+.tw table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: .86rem; }
+.tw th { text-align: start; background: var(--sunken); color: var(--muted); font-weight: 700; font-size: .78rem; padding: 10px 12px; white-space: nowrap; }
+.tw td { padding: 11px 12px; border-top: 1px solid var(--line); }
+.tw tr:hover td { background: var(--green-soft); }
+.pager { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px; font-size: .86rem; }
+
+/* Events */
+.evs { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; scrollbar-width: thin; }
+.ev { flex: 0 0 280px; scroll-snap-align: start; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; }
+.ev canvas { width: 100%; height: 140px; display: block; }
+.ev .dt { background: var(--green); color: #fff; font-weight: 800; font-size: .85rem; padding: 4px 12px; }
+.ev .b { padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.ev .b b { font-size: .95rem; line-height: 1.5; }
+.ev .b small { color: var(--muted); font-size: .78rem; }
+.evnav { display: flex; gap: 6px; }
+.evnav button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: 1.1rem; }
+
+/* Platforms + products + news */
+.plats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.plat { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 8px; color: var(--fg); border-bottom: 4px solid var(--green); transition: transform .2s ease, box-shadow .2s ease; }
+.plat:hover { transform: translateY(-4px); box-shadow: 0 16px 30px -18px rgba(0,0,0,.35); }
+.plat:nth-child(even) { border-bottom-color: var(--gold); }
+.plat .ic { width: 46px; height: 46px; border-radius: 12px; background: var(--green-soft); color: var(--green); display: grid; place-items: center; font-size: 1.3rem; transition: transform .3s ease; }
+.plat:hover .ic { transform: rotate(-8deg) scale(1.1); }
+.plat h3 { font-size: 1.02rem; font-weight: 800; }
+.plat p { font-size: .86rem; color: var(--muted); flex: 1; }
+@media (max-width: 1000px) { .plats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .plats { grid-template-columns: 1fr; } }
+.mcx { background: var(--surface); }
+.mcx-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.mcx-arrows { display: flex; gap: 8px; }
+.mcx-arrows button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--green); font-size: 1.3rem; cursor: pointer; transition: background .2s ease, color .2s ease; }
+.mcx-arrows button:hover { background: var(--green); color: #fff; border-color: var(--green); }
+.mcx-track { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(270px, calc((100% - 48px) / 4)); gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; padding-bottom: 8px; scrollbar-width: thin; }
+.nc { scroll-snap-align: start; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; color: var(--fg); transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+.nc:hover { transform: translateY(-4px); box-shadow: 0 18px 30px -22px rgba(142,11,32,.55); border-color: var(--green); }
+.nc .im { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: var(--sunken); }
+.nc .im img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
+.nc:hover .im img { transform: scale(1.06); }
+.nc .im .chip { position: absolute; top: 10px; inset-inline-start: 10px; background: var(--green); color: #fff; }
+.nc .bd { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.nc .src { font-size: .74rem; color: var(--muted); }
+.nc h4 { font-size: .98rem; line-height: 1.5; }
+.nc p { font-size: .84rem; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.nc .more { margin-top: auto; font-size: .82rem; font-weight: 700; color: var(--green); }
+.mcx-vh { display: flex; justify-content: space-between; align-items: center; margin: 34px 0 14px; }
+.mcx-vh h3 { font-size: 1.2rem; }
+.mcx-vh a { font-weight: 700; font-size: .88rem; }
+.mcx-vis { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; }
+.mcx-feat { position: relative; margin: 0; border-radius: 18px; overflow: hidden; background: #000; min-height: 340px; }
+.mcx-feat video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.mcx-feat::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(4,24,13,.88), rgba(4,24,13,.1) 55%); pointer-events: none; }
+.mcx-feat figcaption { position: absolute; inset-inline: 0; bottom: 0; z-index: 2; padding: 20px 22px; color: #fff; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.mcx-feat figcaption b { font-size: 1.25rem; }
+.mcx-feat figcaption small { opacity: .8; }
+.mcx-feat figcaption a { color: var(--gold); font-weight: 700; font-size: .86rem; }
+.mcx-play { position: absolute; z-index: 3; top: 42%; left: 50%; transform: translate(-50%, -50%); width: 74px; height: 74px; border-radius: 50%; border: 0; background: rgba(255,255,255,.92); color: var(--green-deep); font-size: 1.6rem; cursor: pointer; box-shadow: 0 0 0 10px rgba(255,255,255,.18); transition: transform .2s ease; }
+.mcx-play:hover { transform: translate(-50%, -50%) scale(1.08); }
+.mcx-feat.playing .mcx-play { opacity: 0; pointer-events: none; }
+.mcx-vlist { display: flex; flex-direction: column; gap: 10px; }
+.vi { display: grid; grid-template-columns: 132px 1fr; gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--fg); transition: border-color .2s ease, background .2s ease; }
+.vi:hover { border-color: var(--green); background: var(--green-soft); }
+.vi .th { position: relative; aspect-ratio: 16 / 10; border-radius: 10px; overflow: hidden; }
+.vi .th img { width: 100%; height: 100%; object-fit: cover; }
+.vi .th::after { content: "▶"; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 1.1rem; background: rgba(0,0,0,.25); }
+.vi .th i { position: absolute; bottom: 4px; inset-inline-end: 4px; z-index: 1; background: rgba(0,0,0,.7); color: #fff; font-style: normal; font-size: .68rem; padding: 0 5px; border-radius: 4px; }
+.vi b { font-size: .86rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.vi small { color: var(--muted); font-size: .74rem; }
+.plogos { background: var(--sunken); border-top: 1px solid var(--line); padding-block: 26px 30px; overflow: hidden; }
+.plogos-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.plogos-h h3 { font-size: 1.1rem; }
+.plogos-h a { font-weight: 700; font-size: .86rem; }
+.plogos-run { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.plogos-track { display: inline-flex; gap: 16px; animation: tick 38s linear infinite; }
+.plogos-run:hover .plogos-track { animation-play-state: paused; }
+.pl { flex: none; width: 190px; height: 92px; border-radius: 14px; background: #fff; border: 1px solid var(--line); display: grid; place-items: center; padding: 12px 16px; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.pl:hover { transform: translateY(-3px); border-color: var(--green); box-shadow: 0 12px 22px -16px rgba(142,11,32,.5); }
+.pl img { max-width: 100%; max-height: 64px; object-fit: contain; filter: grayscale(.25); transition: filter .2s ease; }
+.pl:hover img { filter: none; }
+.pl { grid-template-rows: 1fr auto; gap: 4px; height: 112px; }
+.pl .plg { width: 66px; height: 66px; border-radius: 10px; }
+.pl .pln { font-size: .7rem; font-weight: 700; color: #475569; text-align: center; line-height: 1.25; max-width: 160px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+.pl .wm { font-weight: 800; font-size: 1.15rem; letter-spacing: .02em; text-align: center; line-height: 1.2; }
+.pl .wm small { display: block; font-size: .62rem; font-weight: 600; color: #64748B; letter-spacing: 0; }
+@media (max-width: 900px) { .mcx-vis { grid-template-columns: 1fr; } .mcx-feat { min-height: 240px; } .mcx-track { grid-auto-columns: 78%; } }
+@media (prefers-reduced-motion: reduce) { .plogos-track { animation: none; } }
+@media (max-width: 860px) { .join { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .ticker .run, .sprun, .awrun, .live-dot, .vid .play { animation: none !important; } }
+
+/* Strong motion layer */
+@keyframes heroIn { from { opacity: .25; transform: translateY(34px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes cardIn { from { opacity: .3; transform: translateX(-60px) rotate(-3deg) scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes shine { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.hero .eyebrow, .hero h1, .hero .lede, .hchips, .sbox, .kpis { animation: heroIn .9s cubic-bezier(.2,.8,.2,1) both; }
+.hero h1 { animation-delay: .12s; } .hero .lede { animation-delay: .24s; } .hchips { animation-delay: .36s; } .sbox { animation-delay: .48s; } .kpis { animation-delay: .6s; }
+.onb { animation: cardIn 1s cubic-bezier(.2,.8,.2,1) .3s both; }
+.hero h1 .rot { color: #E2BE72; text-shadow: 0 0 24px rgba(192,147,0,.45); }
+.stag > * { transition: transform .75s cubic-bezier(.2,.8,.2,1), opacity .75s ease, box-shadow .25s ease, border-color .25s ease; }
+.stag.pre > * { opacity: .35; transform: translateY(46px) scale(.95); }
+.reveal { transition: transform .9s cubic-bezier(.2,.8,.2,1), opacity .9s ease; }
+.reveal.pre { transform: translateY(50px) scale(.97); opacity: .4; }
+.sh h2::after { content: ""; display: block; height: 4px; width: 0; margin-top: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--gold), var(--green)); transition: width 1s cubic-bezier(.2,.8,.2,1) .2s; }
+.sh.lined h2::after { width: 90px; }
+.sh[style*="center"] h2::after { margin-inline: auto; }
+.ti, .mem, .plat, .mc, .mini, .aw { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
+.mini:hover, .aw:hover { transform: translateX(-4px); border-color: var(--gold); }
+.btn { position: relative; overflow: hidden; }
+.btn::after { content: ""; position: absolute; inset: 0; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.35) 50%, transparent 70%); transform: translateX(120%); transition: transform .6s ease; pointer-events: none; }
+.btn:hover::after { transform: translateX(-120%); }
+.scroll-prog { position: fixed; top: env(safe-area-inset-top, 0px); inset-inline: 0; height: 3px; z-index: 50; background: linear-gradient(90deg, var(--gold), var(--green)); transform-origin: right; transform: scaleX(0); }
+.totop { position: fixed; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); inset-inline-start: calc(18px + env(safe-area-inset-left, 0px)); width: 46px; height: 46px; border-radius: 50%; border: 0; background: var(--green); color: #fff; font-size: 1.2rem; cursor: pointer; z-index: 45; box-shadow: 0 10px 24px -8px rgba(0,0,0,.4); transform: translateY(90px); transition: transform .35s cubic-bezier(.2,.8,.2,1); }
+.totop.show { transform: none; }
+.site-hdr { transition: box-shadow .3s ease; }
+.site-hdr.scrolled { box-shadow: 0 8px 24px -14px rgba(0,0,0,.35); }
+@media (prefers-reduced-motion: reduce) { .hero .eyebrow, .hero h1, .hero .lede, .hchips, .sbox, .kpis, .onb, .hero h1 .rot { animation: none !important; } .hero h1 .rot { color: var(--gold); background: none; } .stag.pre > *, .reveal.pre { transform: none; opacity: 1; } }
+
+/* Real photos */
+.hero { background: #1A0306 url(img/hero-poster.jpg) center / cover no-repeat; }
+.hero-vid { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+.hero canvas { opacity: .55; }
+.hero::after { background: linear-gradient(90deg, rgba(4,25,14,.55), rgba(4,25,14,.88) 70%); }
+.hero canvas { z-index: 0; }
+.mc .bg, .ev .bg, .vid .bg { position: absolute; inset: 0; background-size: cover; background-position: center; transition: transform .8s cubic-bezier(.2,.8,.2,1); }
+.mc:hover .bg { transform: scale(1.08); }
+.ev .ph { height: 140px; position: relative; overflow: hidden; }
+.ev:hover .bg { transform: scale(1.08); }
+.vid .bg { filter: brightness(.7); }
+.vid:hover .bg { transform: scale(1.04); filter: brightness(.85); }
+.sp .lg img { max-width: 100%; max-height: 100%; }
+.sp .lg { overflow: hidden; padding: 4px; }
+.prow { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; scrollbar-width: thin; }
+.prod2 { flex: 0 0 220px; scroll-snap-align: start; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; transition: transform .25s ease, box-shadow .25s ease; }
+.prod2:hover { transform: translateY(-6px); box-shadow: 0 18px 32px -18px rgba(0,0,0,.4); }
+.prod2 .im { height: 180px; background: #fff; display: grid; place-items: center; overflow: hidden; position: relative; }
+.prod2 .im img { max-width: 92%; max-height: 92%; transition: transform .5s ease; }
+.prod2:hover .im img { transform: scale(1.08); }
+.prod2 .im .chip { position: absolute; top: 8px; inset-inline-start: 8px; }
+.prod2 .b { padding: 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; border-top: 1px solid var(--line); }
+.prod2 h3 { font-size: .9rem; font-weight: 800; line-height: 1.5; }
+.prod2 small { color: var(--muted); font-size: .76rem; }
+.prod2 .btn { margin-top: auto; }
+
+/* ===== Own identity: Hub orbit, radar, export map, deal journey ===== */
+.orbit { position: relative; width: min(460px, 100%); aspect-ratio: 1; justify-self: center; margin-bottom: 40px; }
+.orbit svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.orbit .ring { fill: none; stroke: rgba(192,147,0,.35); stroke-dasharray: 2 6; }
+.orbit .ring2 { fill: none; stroke: rgba(255,255,255,.12); }
+.orbit .spoke { stroke: rgba(255,255,255,.14); stroke-width: .6; }
+.orb-core { position: absolute; left: 50%; top: 50%; width: 32%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle at 35% 30%, #12955A, #8E0B20 70%); border: 3px solid var(--gold); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 2px; box-shadow: 0 0 0 10px rgba(200,16,46,.25), 0 0 60px rgba(200,16,46,.6); z-index: 2; }
+.orb-core b { font-size: clamp(1rem, 2.4vw, 1.35rem); font-weight: 800; }
+.orb-core small { font-size: .72rem; opacity: .85; line-height: 1.4; padding-inline: 8px; }
+.orb-core.beat { animation: beat .6s ease; }
+@keyframes beat { 40% { transform: translate(-50%, -50%) scale(1.08); } }
+.orb-node { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px; z-index: 2; width: 92px; text-align: center; }
+.orb-node .ic { width: 52px; height: 52px; border-radius: 16px; background: rgba(255,255,255,.95); color: #8E0B20; display: grid; place-items: center; font-size: 1.4rem; box-shadow: 0 8px 20px -6px rgba(0,0,0,.5); transition: transform .3s ease, box-shadow .3s ease; }
+.orb-node span { font-size: .78rem; font-weight: 700; background: rgba(4,25,14,.6); padding: 0 8px; border-radius: 99px; white-space: nowrap; }
+.orb-node.ping .ic { transform: scale(1.18); box-shadow: 0 0 0 6px rgba(192,147,0,.45), 0 8px 20px -6px rgba(0,0,0,.5); }
+.orb-log { position: absolute; inset-inline: 0; bottom: -46px; display: flex; justify-content: center; z-index: 3; }
+.orb-log div { background: #fff; color: #0F172A; border-radius: 12px; padding: 8px 14px; font-size: .84rem; font-weight: 600; box-shadow: 0 14px 30px -12px rgba(0,0,0,.6); display: flex; gap: 8px; align-items: center; max-width: 100%; transition: transform .35s ease, opacity .35s ease; }
+.orb-log div.swap { transform: translateY(8px); opacity: .2; }
+@media (max-width: 960px) { .orbit { width: min(380px, 100%); margin-top: 10px; } }
+@media (max-width: 420px) { .orb-node { width: 70px; } .orb-node .ic { width: 42px; height: 42px; font-size: 1.1rem; } .orb-node span { font-size: .68rem; } }
+
+.radar-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 22px; align-items: start; }
+.radar-card { background: var(--green-deep); color: #fff; border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 10px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); }
+.mysec { display: flex; flex-wrap: wrap; gap: 6px; }
+.mysec button { border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.06); color: #fff; border-radius: 99px; padding: 3px 12px; font-size: .8rem; font-weight: 700; cursor: pointer; transition: all .2s ease; }
+.mysec button.on { background: var(--gold); border-color: var(--gold); color: #fff; }
+.radar { position: relative; width: 100%; max-width: 300px; aspect-ratio: 1; margin: 0 auto; }
+.radar svg { width: 100%; height: 100%; overflow: visible; }
+.radar .sweep { transform-origin: 50% 50%; animation: sweep 4s linear infinite; }
+@keyframes sweep { to { transform: rotate(360deg); } }
+.blip { cursor: pointer; transition: r .2s ease; }
+.blip-new { animation: blipIn 1.6s ease-out; transform-box: fill-box; transform-origin: center; }
+@keyframes blipIn { 0% { transform: scale(3); opacity: .2; } 100% { transform: scale(1); opacity: 1; } }
+.rsum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.rsum a > div { transition: background .2s ease; } .rsum a:hover > div { background: rgba(255,255,255,.14); }
+.rsum div { background: rgba(255,255,255,.07); border-radius: 12px; padding: 8px 10px; }
+.rsum b { display: block; font-size: 1.35rem; font-weight: 800; color: var(--gold); }
+.rsum span { font-size: .74rem; opacity: .8; }
+.rlegend { display: flex; flex-wrap: wrap; gap: 10px; font-size: .74rem; opacity: .85; justify-content: center; }
+.rlegend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-inline-end: 4px; vertical-align: middle; }
+.ti.sel { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(192,147,0,.3); }
+.list-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; }
+.cd { font-variant-numeric: tabular-nums; font-weight: 800; color: #C0392B; font-size: .82rem; }
+@media (max-width: 900px) { .radar-wrap { grid-template-columns: 1fr; } .radar-card { position: static; } }
+
+.xmap { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
+.xcanvas { position: relative; border-radius: 20px; overflow: hidden; min-height: 460px; background: #04182A; border: 1px solid rgba(255,255,255,.1); }
+.xcanvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.xlist { display: flex; flex-direction: column; gap: 10px; }
+.xm { display: grid; grid-template-columns: 74px 1fr auto; gap: 12px; align-items: center; padding: 8px; border-radius: 14px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: #fff; cursor: pointer; text-align: start; transition: all .25s ease; }
+.xm:hover { background: rgba(255,255,255,.1); }
+.xm.on { border-color: var(--gold); background: rgba(192,147,0,.14); transform: translateX(-6px); }
+.xm .ph { width: 74px; height: 56px; border-radius: 10px; background-size: cover; background-position: center; }
+.xm b { display: block; font-size: .95rem; }
+.xm small { opacity: .75; font-size: .76rem; }
+.xm .n { font-size: 1.3rem; font-weight: 800; color: var(--gold); text-align: center; line-height: 1.1; }
+.xm .n small { display: block; font-size: .65rem; font-weight: 600; }
+.xinfo { margin-top: 4px; background: #fff; color: #0F172A; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.xinfo .row { display: flex; justify-content: space-between; gap: 8px; font-size: .85rem; }
+.xinfo .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+@media (max-width: 900px) { .xmap { grid-template-columns: 1fr; } .xcanvas { min-height: 300px; } }
+
+.journey { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 24px; display: flex; flex-direction: column; gap: 22px; }
+.track { position: relative; display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding-top: 44px; }
+.track::before { content: ""; position: absolute; top: 66px; inset-inline: 8%; height: 4px; border-radius: 4px; background: var(--sunken); }
+.track .fill { position: absolute; top: 66px; inset-inline-start: 8%; height: 4px; border-radius: 4px; background: linear-gradient(270deg, var(--gold), var(--green)); width: 0; transition: width .8s cubic-bezier(.2,.8,.2,1); }
+.pkg { position: absolute; top: 0; font-size: 1.6rem; transform: translateX(50%); transition: right .8s cubic-bezier(.2,.8,.2,1); filter: drop-shadow(0 4px 6px rgba(0,0,0,.25)); }
+.stg { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; border: 0; background: transparent; cursor: pointer; padding: 0; }
+.stg .dot { width: 48px; height: 48px; border-radius: 50%; background: var(--surface); border: 3px solid var(--line); display: grid; place-items: center; font-size: 1.2rem; transition: all .35s ease; z-index: 1; }
+.stg b { font-size: .85rem; }
+.stg small { font-size: .72rem; color: var(--muted); }
+.stg.done .dot { border-color: var(--green); background: var(--green-soft); }
+.stg.on .dot { border-color: var(--gold); background: var(--gold); transform: scale(1.15); box-shadow: 0 0 0 8px rgba(192,147,0,.2); }
+.jdetail { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; align-items: center; background: var(--green-soft); border-radius: 16px; padding: 18px; }
+.jdetail > * { min-width: 0; }
+.jdetail h3 { font-size: 1.15rem; font-weight: 800; }
+.jdetail p { color: var(--muted); }
+.who2 { display: flex; flex-wrap: wrap; gap: 8px; }
+.who2 span { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; font-weight: 700; font-size: .85rem; }
+.jfade { animation: jf .45s ease; }
+@keyframes jf { from { opacity: .2; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (max-width: 760px) { .track { grid-template-columns: repeat(3, 1fr); row-gap: 18px; } .track::before, .track .fill, .pkg { display: none; } .jdetail { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .radar .sweep { animation: none; } }
+
+.pjg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.pjc { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; color: var(--fg); display: flex; flex-direction: column; transition: transform .25s ease, box-shadow .25s ease; animation: cin2 .5s ease both; }
+.pjc:hover { transform: translateY(-5px); box-shadow: 0 18px 34px -20px rgba(0,0,0,.4); }
+.pjc .t { min-height: 150px; padding: 14px; background: linear-gradient(135deg, var(--green-deep), var(--green)); color: #fff; display: flex; flex-direction: column; gap: 4px; }
+.pjc .t b { line-height: 1.5; }
+.pjc .b { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: .86rem; }
+.sbar2 { display: flex; gap: 3px; } .sbar2 i { flex: 1; height: 6px; border-radius: 99px; background: var(--sunken); } .sbar2 i.on { background: var(--green); } .sbar2 i.now { background: var(--gold); }
+.ld { display: grid; grid-template-columns: 46px minmax(0,1fr) auto; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; margin-bottom: 10px; color: var(--fg); animation: cin2 .5s ease both; transition: border-color .2s ease, transform .2s ease; }
+.ld:hover { border-color: var(--gold); transform: translateX(-4px); }
+.ld .av { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 1.3rem; background: var(--green-soft); }
+.nwl { display: flex; flex-direction: column; gap: 10px; }
+.nwl a { display: grid; grid-template-columns: 130px 1fr; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; color: var(--fg); animation: cin2 .5s ease both; }
+.nwl a:hover { border-color: var(--green); }
+@keyframes cin2 { from { opacity: .2; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (max-width: 900px) { .pjg { grid-template-columns: 1fr; } .nwl a { grid-template-columns: 1fr; } .ld { grid-template-columns: 40px minmax(0,1fr); } .ld .btn { grid-column: 1 / -1; } }
+
+/* Tickers – live-site style */
+.ticker .track { display: flex !important; justify-content: flex-start; padding: 0 !important; grid-template-columns: none !important; gap: 0 !important; position: static !important; }
+.ticker .track::before, .ticker .track .fill { display: none !important; }
+.ticker { align-items: stretch; }
+.ticker .lbl { display: flex; align-items: center; }
+.tick-wrap { background: var(--surface); padding: 0; }
+.tick-wrap .in { width: 100%; border-bottom: 1px solid var(--line); overflow: hidden; background: var(--surface); }
+.ticker { border-bottom: 0 !important; font-size: .86rem !important; min-height: 34px; }
+.ticker + .ticker { border-top: 1px solid var(--line); }
+.ticker .lbl { padding: 0 14px 0 24px !important; font-size: .84rem; white-space: nowrap; clip-path: polygon(0 0, 100% 0, 100% 100%, 16px 100%); }
+.ticker .lbl { padding-inline-start: max(18px, env(safe-area-inset-right, 0px)) !important; }
+.ticker .lbl.g { background: var(--green) !important; color: #fff !important; clip-path: polygon(0 0, 100% 0, 100% 100%, 16px 100%); }
+.ticker .run { gap: 22px !important; padding: 5px 0 !important; align-items: center; }
+.ticker .run .nw { font-weight: 800; color: var(--fg); } .ticker .run a.nw:hover { color: var(--green); text-decoration: underline; }
+.ticker .run .sep { color: var(--gold-deep); font-weight: 800; }
+.ticker .run .pr { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: var(--fg); }
+.ticker .run .pr b { font-weight: 800; } .ticker .run a.pr:hover { color: var(--green); }
+.pill { display: inline-flex; align-items: center; gap: 4px; font-size: .74rem; font-weight: 800; padding: 0 7px; line-height: 1.6; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.pill.up { background: #FBE7E9; color: #C8102E; } .pill.dn { background: #FDECEC; color: #C0392B; } .pill.st { background: var(--gold-soft); color: var(--gold-deep); }
+@media (max-width: 600px) { .ticker .lbl { font-size: .76rem; padding: 0 8px 0 18px !important; } .ticker { font-size: .8rem !important; min-height: 30px; } }
+
+.psearch { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 18px; align-items: start; }
+.pfilter { background: var(--green-deep); color: #fff; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 12px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 84px); }
+.pfilter h3 { font-size: 1.05rem; font-weight: 800; }
+.pf { display: flex; flex-direction: column; gap: 6px; font-size: .84rem; font-weight: 700; }
+.pf input, .pf select { font: inherit; font-weight: 500; color: #0F172A; background: #fff; border: 0; border-radius: 10px; padding: 9px 12px; min-width: 0; }
+.pchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pchips button { border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.06); color: #fff; border-radius: 99px; padding: 3px 10px; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.pchips button.on { background: var(--gold); border-color: var(--gold); color: #fff; }
+.pchk { display: flex; gap: 8px; align-items: center; font-size: .86rem; }
+.pres { background: rgba(255,255,255,.08); border-radius: 10px; padding: 8px 12px; font-size: .9rem; }
+.pres b { color: var(--gold); font-size: 1.3rem; }
+.pfilter .btn-line { background: transparent; color: #fff; border-color: rgba(255,255,255,.3); }
+.prod2 .fac2 { font-size: .78rem; color: var(--green); font-weight: 700; }
+.prod2 .rg { font-size: .74rem; color: var(--muted); }
+.prod2 .ico { width: 70%; height: 70%; }
+.psearch .prow { display: grid; grid-template-rows: repeat(2, auto); grid-auto-flow: column; grid-auto-columns: 220px; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; }
+.psearch .prow .prod2 { flex: none; }
+.psearch .prow .prod2 .im { height: 150px; }
+.psearch .prow .pempty { grid-row: 1 / -1; }
+@media (max-width: 520px) { .psearch .prow { grid-auto-columns: 170px; } .psearch .prow .prod2 .im { height: 120px; } }
+.pempty { padding: 30px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 14px; width: 100%; }
+@media (max-width: 900px) { .psearch { grid-template-columns: minmax(0, 1fr); } .pfilter { position: static; } .pf select { width: 100%; } }
+
+/* 27 governorates: one horizontally scrollable row */
+.hreg { background: var(--surface); padding-block: 40px; }
+.hrgrid { display: grid; grid-auto-flow: column; grid-auto-columns: 158px; gap: 10px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding-bottom: 8px; scrollbar-width: thin; min-width: 0; }
+.hrgrid .hr { scroll-snap-align: start; }
+.hr { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 64px 12px 10px; isolation: isolate; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--fg); overflow: hidden; transition: transform .2s ease, border-color .2s ease, background .2s ease; }
+.hr:hover { transform: translateY(-3px); border-color: var(--green); background: var(--green-soft); }
+.hr::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 58px; background: var(--rimg) center / cover no-repeat, linear-gradient(135deg, #8E0B20, #C8102E 55%, #C09300); z-index: -1; transition: height .3s ease; }
+.hr:hover::before { height: 64px; }
+.hr.all::before { display: none; } .hr.all { padding-top: 12px; }
+.hr small { font-size: .66rem; font-weight: 800; letter-spacing: .06em; color: var(--gold-deep); }
+.hr b { font-size: .95rem; }
+.hr span { font-size: .72rem; color: var(--muted); }
+.hr.all { background: var(--green); border-color: var(--green); color: #fff; justify-content: center; } .hr.all span, .hr.all small { color: rgba(255,255,255,.8); }
+.reg-sel { font: inherit; font-size: .82rem; border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; background: var(--surface); color: var(--fg); }
+@media (max-width: 520px) { .hrgrid { grid-auto-columns: 136px; } }
+
+
+/* featured products strip */
+html[lang=en] .hero h1::first-letter { text-transform: uppercase; }
+.fpx { background: var(--surface); border-block: 1px solid var(--line); padding-block: 14px 16px; overflow: hidden; }
+.fpx-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.fpx-h h3 { font-size: 1.05rem; } .fpx-h a { font-weight: 700; font-size: .85rem; }
+.fpx-run { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); }
+.fpx-track { display: inline-flex; gap: 12px; animation: tick 60s linear infinite; }
+.fpx-run:hover .fpx-track { animation-play-state: paused; }
+.fp { flex: none; width: 150px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; display: flex; flex-direction: column; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.fp:hover { transform: translateY(-4px); border-color: var(--green); box-shadow: 0 14px 24px -18px rgba(142,11,32,.55); }
+.fp .im { display: block; width: 150px; height: 120px; background: var(--sunken); position: relative; }
+.fp .im img { width: 100%; height: 100%; object-fit: cover; }
+.fp .im .pr { position: absolute; bottom: 6px; inset-inline-start: 6px; background: rgba(6,46,25,.85); color: #fff; font-size: .72rem; font-weight: 800; border-radius: 6px; padding: 0 6px; }
+.fp .tx { padding: 7px 9px 9px; display: flex; flex-direction: column; gap: 2px; }
+.fp .tx a.n { color: var(--fg); font-size: .78rem; font-weight: 800; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.8em; }
+.fp .tx a.f { color: var(--green); font-size: .7rem; font-weight: 700; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .fpx-track { animation: none; } .fpx-run { overflow-x: auto; } }
+
+/* latest offers slider */
+.dlx { background: linear-gradient(180deg, var(--gold-soft), var(--surface)); border-block: 1px solid var(--line); padding-block: 14px 16px; }
+.dlx-h { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-bottom: 10px; }
+.dlx-h h3 { font-size: 1.05rem; }
+.dlx-t { background: #B42318; color: #fff; border-radius: 8px; padding: 1px 10px; font-size: .8rem; font-weight: 700; }
+.dlx-nav { display: flex; gap: 6px; margin-inline-start: auto; }
+.dlx-nav button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface); color: var(--green); cursor: pointer; font-size: 1.1rem; }
+.dlx-h > a { font-weight: 700; font-size: .85rem; }
+.dlx-row { display: grid; grid-auto-flow: column; grid-auto-columns: 168px; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; padding-bottom: 2px; }
+.dlx-row::-webkit-scrollbar { display: none; }
+.dl { scroll-snap-align: start; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; color: var(--fg); position: relative; transition: transform .2s ease, border-color .2s ease; }
+.dl:hover { transform: translateY(-3px); border-color: var(--gold); }
+.dl .im { height: 112px; flex: none; position: relative; overflow: hidden; background: var(--sunken); display: grid; place-items: center; font-size: 2.4rem; }
+.dl .im img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.dl .off { position: absolute; z-index: 2; top: 8px; inset-inline-start: 8px; background: #B42318; color: #fff; font-size: .72rem; font-weight: 800; border-radius: 6px; padding: 0 7px; }
+.dl .tx { padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 3px; }
+.dl b.n { font-size: .78rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.8em; }
+.dl .pr { display: flex; gap: 6px; align-items: baseline; } .dl .pr b { color: #B42318; font-size: .95rem; } .dl .pr s { color: var(--muted); font-size: .74rem; }
+.dl .sl { font-size: .68rem; color: var(--green); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.spimg { display: block; width: 100%; height: 100%; aspect-ratio: 1; background-size: 1000% 1000%; background-repeat: no-repeat; background-color: #fff; }
+</style>
+
+<div class="scroll-prog" id="sprog"></div><button class="totop" id="totop" aria-label="العودة للأعلى">↑</button>
+<main id="top">
+  <div class="tick-wrap"><div class="in">
+  <div class="ticker" aria-label="عاجل الصناعة المصرية"><span class="lbl">⚡ عاجل الصناعة المصرية</span><div class="track"><div class="run" id="newsRun"></div></div></div>
+  <div class="ticker" aria-label="البورصة المصرية وأسهم الصناعة"><a class="lbl g" href="bourse.html" style="text-decoration:none">📊 البورصة المصرية · EGX30 · EGX70</a><div class="track"><div class="run" id="priceRun" style="animation-duration:50s"></div></div></div>
+  </div></div>
+
+  <section class="hero">
+    <video class="hero-vid" id="heroVid" autoplay muted loop playsinline poster="img/hero-poster.jpg" aria-hidden="true"><source src="media/hero.mp4" type="video/mp4"></video>
+    <canvas id="heroC" aria-hidden="true"></canvas>
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">منصة صنع في مصر</span>
+        <h1>من المصنع المصري<br>إلى <span class="rot" id="rot">الأسواق المحلية</span></h1>
+        <p class="lede">المنصة الوطنية الموحدة B2B التي تربط المصانع والموردين المصريين بالمشترين المحليين والدوليين في محافظات مصر الـ27، وتضع أمامك المناقصات وطلبات عروض الأسعار من الأسواق المحلية والعربية والأفريقية والعالمية في مكان واحد.</p>
+        <div class="hchips"><a href="factories.html" style="color:#fff"><span>🏭 <b class="num" data-count="%%N_DIR%%" data-k="dir">%%N_DIRF%%</b> منشأة عضو في دليل المنصة</span></a><a href="cities.html" style="color:#fff"><span>📍 <b class="num" data-count="%%N_ZONES%%" data-k="zones">%%N_ZONESF%%</b> منطقة صناعية واستثمارية وحرة</span></a><a href="region.html" style="color:#fff"><span>🇪🇬 <b class="num" data-count="27">27</b> محافظة</span></a></div>
+      </div>
+      <div class="orbit" id="orbit" aria-label="المصنع في مركز المنظومة">
+        <svg class="lines" viewBox="0 0 400 400" aria-hidden="true"><circle class="ring2" cx="200" cy="200" r="190"/><circle class="ring" cx="200" cy="200" r="150"/><circle class="ring2" cx="200" cy="200" r="100"/><g id="spokes"></g><g id="dots"></g></svg>
+        <a class="orb-core" id="orbCore" href="factory.html" style="color:#fff"><b>مصنعك</b><small>في مركز المنظومة</small></a>
+        <div id="orbNodes"></div>
+      </div>
+      <form class="sbox" id="sbox" role="search">
+        <div class="stabs" id="stabs"><button type="button" class="on">الكل</button><button type="button">مصانع</button><button type="button">شركات وموردون</button><button type="button">منتجات</button><button type="button">مناقصات وطلبات أسعار</button></div>
+        <div class="srow"><input id="sq" type="search" placeholder="ابحث عن مصنع، منتج، أو طلب توريد…" aria-label="كلمة البحث"><select id="scity" aria-label="المحافظة"></select><select id="ssec" aria-label="القطاع"></select><button class="btn btn-green" type="submit">بحث</button></div>
+      </form>
+      <div class="kpis">
+        <a href="market.html" style="color:#fff"><div><span class="ic">📦</span><div><b class="num" data-count="%%N_PROD%%" data-k="prod">%%N_PRODF%%</b><span>منتج صناعي في سوق المنصة</span></div></div></a>
+        <a href="winners.html" style="color:#fff"><div><span class="ic">🏆</span><div><b class="num" data-count="0" data-k="aw">—</b><span>ترسية منشورة بمصدرها</span></div></div></a>
+        <a href="/tenders/#open" style="color:#fff"><div><span class="ic">⏳</span><div><b class="num" id="kClose">0</b><span id="kCloseL">مناقصة تنتهي خلال 7 أيام</span></div></div></a>
+        <a href="export-market.html" style="color:#fff"><div><span class="ic">🌍</span><div><b class="num" data-count="5">5</b><span>أسواق: محلي، عربي وخليجي، أفريقي، آسيوي، أوروبي</span></div></div></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec hreg" id="regions">
+    <div class="wrap">
+      <div class="sh"><div><span class="eb">محافظات مصر الـ27</span><h2>27 محافظة · سوق صناعي واحد</h2><p>اختر محافظة لتعرض مناقصاتها وطلبات الأسعار فيها، ومصانعها ومناطقها الصناعية والحرة ومشاريعها. اسحب الشريط لعرض كل المحافظات.</p></div><a href="region.html">كل المحافظات ←</a></div>
+      <div class="hrgrid" id="hrgrid"></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sh"><div><span class="eb"><span class="live-dot"></span> رادار الفرص</span><h2>اختر قطاعك، ويرصد لك الرادار الفرص</h2><p>كل نقطة فرصة: اتجاهها هو السوق، وقربها من المركز هو قرب موعد إغلاقها.</p></div><a class="more" href="dashboard.html">كل الفرص في لوحتك ←</a></div>
+      <div class="radar-wrap">
+        <div class="radar-card">
+          <div><small style="opacity:.8">قطاعك</small><div class="mysec" id="mysec"></div></div>
+          <div class="radar"><svg viewBox="0 0 400 400" id="radarSvg" role="img" aria-label="رادار الفرص"></svg></div>
+          <div class="rlegend"><span><i style="background:#3DDC84"></i>مناقصة حكومية</span><span><i style="background:#E2BE72"></i>طلب عرض سعر</span><span>الحلقات: 3 أيام · 10 أيام · 30 يوم</span></div>
+          <a class="btn btn-gold" id="secRep" href="radar.html#build" style="justify-content:center">📊 تقرير رادار القطاع الكامل ←</a><div class="rsum"><a href="opportunity.html" style="color:#fff"><div><b class="num" id="rsAll">0</b><span>فرصة لقطاعك</span></div></a><a href="tenders.html" style="color:#fff"><div><b class="num" id="rsSoon">0</b><span>تغلق خلال 3 أيام</span></div></a><a href="export-market.html" style="color:#fff"><div><b class="num" id="rsMk">0</b><span>أسواق مفتوحة</span></div></a></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+          <div class="list-head"><div class="seg" id="fk"><button class="on" data-k="">الكل</button><button data-k="gov">مناقصات حكومية</button><button data-k="pvt">طلبات عروض أسعار</button></div><select id="fReg" class="reg-sel" aria-label="المحافظة"></select><span class="chip chip-gray" id="fCount"></span></div>
+          <div class="feed" id="feed"></div>
+        </div>
+      </div>
+      <span class="note">فرص منشورة من مصادرها الرسمية (بوابة التعاقدات العامة والبنك الدولي وبوابات المشتريات)؛ الدائرة الأقرب للمركز = أقرب موعد إغلاق.</span>
+    </div>
+  </section>
+
+  <!--STRAT-->
+
+  <section class="sec dark">
+    <div class="wrap">
+      <div class="sh" style="justify-content:center;text-align:center"><div style="align-items:center"><span class="eb">فيديو تعريفي</span><h2>من التسجيل إلى أول صفقة</h2><p>فيديوهات المنصة والمركز الإعلامي.</p></div></div>
+      <div class="vids">
+        <a class="vid" href="media-center.html#videos" style="color:#fff;display:block"><span class="bg" style="background-image:url(img/hero-poster.jpg)"></span><span class="sound">🔇 شغّل الصوت</span><span class="play"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><div class="cap"><b>من المصنع المصري إلى الأسواق المحلية والعربية والعالمية</b><span class="chip chip-gold">فيلم المنصة</span></div></a>
+        <a class="vid" href="media-center.html#videos" style="color:#fff;display:block"><span class="bg" style="background-image:url(img/m0.jpg)"></span><span class="sound">🔇 شغّل الصوت</span><span class="play"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><div class="cap"><b>لقاءات وجولات مرئية في القطاع الصناعي المصري</b><span class="chip chip-gold">المرئيات</span></div></a>
+      </div>
+      <div class="vacts"><a class="btn btn-gold" href="dashboard.html">سجّل مصنعك الآن</a><a class="btn" style="background:rgba(255,255,255,.12);color:#fff" href="#steps">رحلة الصفقة</a><a class="btn" style="background:rgba(255,255,255,.12);color:#fff" href="tenders.html">تصفح المناقصات</a></div>
+    </div>
+  </section>
+
+  <div class="spstrip" aria-label="مصانع من دليل المصانع"><div class="wrap sphead"><h3>🏭 مصانع مصرية في دليل المنصة <small>من محافظات مصر</small></h3><a href="factories.html">دليل المصانع كاملاً ←</a></div><div class="sprun" id="sprun"></div></div>
+
+  <section class="sec dark">
+    <div class="wrap">
+      <div class="sh"><div><span class="eb" id="export-map">خريطة التصدير الحية</span><h2>من مصنعك إلى خمسة أسواق</h2><p>اختر سوقاً لترى مسار الشحن، والطلب المفتوح، والقطاعات الأكثر طلباً.</p></div></div>
+      <div class="xmap">
+        <div class="xcanvas"><canvas id="xmapC" aria-label="مسارات التصدير من جمهورية مصر العربية إلى الأسواق الخمسة"></canvas></div>
+        <div><div class="xlist" id="xlist"></div><div class="xinfo" id="xinfo"></div></div>
+      </div>
+      <span class="note" style="color:rgba(255,255,255,.7)">عدد الفرص المفتوحة المنشورة لكل سوق من مصادرها الرسمية؛ الفرص خارج مصر بتظهر حسب النطاق الجغرافي لباقتك.</span>
+    </div>
+  </section>
+
+  <!--PARTNER-->
+
+  <section class="sec alt">
+    <div class="wrap">
+      <div class="sh"><div><span class="eb">دليل المصانع</span><h2>مصانع مصرية من محافظات مصر الـ27</h2><p><b class="num" data-count="%%N_FAC%%" data-k="fac">%%N_FACF%%</b> <span id="facLbl">مصنعاً موثّقاً ببيانات من مصادرها الرسمية</span></p></div><a class="btn btn-green" href="factories.html">عرض الكل</a></div>
+      <div class="mfilter"><input id="mq" type="search" placeholder="ابحث باسم المصنع أو المنتج أو التخصص…" aria-label="بحث عن مصنع أو منتج"><select id="mp" aria-label="المنتج"><option value="">كل المنتجات</option></select><select id="mc" aria-label="المحافظة"></select><select id="ms" aria-label="القطاع"><option value="">كل القطاعات</option></select><button class="btn btn-line" id="mreset" type="button">مسح الفلاتر</button></div>
+      <div class="members" id="members"></div><div style="text-align:center;margin-top:12px"><a class="btn btn-line" id="mmore" href="factories.html"></a></div>
+    </div>
+  </section>
+
+
+  <section class="fpx" aria-label="منتجات مميزة">
+    <div class="wrap fpx-h"><h3>⭐ منتجات مميزة</h3><a href="market.html#deals">كل المنتجات المميزة ←</a></div>
+    <div class="fpx-run"><div class="fpx-track" id="fpx"></div></div>
+  </section>
+
+  <section class="dlx" aria-label="آخر العروض">
+    <div class="wrap dlx-in">
+      <div class="dlx-h"><h3>⚡ آخر العروض</h3><span class="dlx-t">ينتهي خلال <b class="num" id="dlxT">--:--:--</b></span><span class="dlx-nav"><button type="button" id="dlxP" aria-label="السابق">›</button><button type="button" id="dlxN" aria-label="التالي">‹</button></span><a href="offers.html">كل العروض ←</a></div>
+      <div class="dlx-row" id="dlx"></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sh"><div><span class="eb">السوق الإلكتروني</span><h2>أحدث المنتجات الوطنية</h2><p>ابحث في منتجات المصانع حسب القطاع والمحافظة، ثم أكمل الطلب في السوق الإلكتروني.</p></div><a class="btn btn-gold" href="market.html" id="goMarket">الذهاب إلى السوق الإلكتروني ←</a></div>
+      <div class="psearch">
+        <form class="pfilter" id="pfilter" role="search" aria-label="محرك بحث المنتجات">
+          <h3>🔎 محرك بحث المنتجات</h3>
+          <label class="pf">المنتج أو المصنع<input type="search" id="hq" placeholder="زجاج، كابلات، أسمدة، منسوجات…"></label>
+          <div class="pf"><span>القطاع</span><div class="pchips" id="hcat"></div></div>
+          <label class="pf">المحافظة<select id="hreg"></select></label>
+          <label class="pf">المصنع<select id="hfac"><option value="">كل المصانع</option></select></label>
+          <input type="checkbox" id="hver" hidden>
+          <div class="pres"><b class="num" id="hcount">0</b> منتج مطابق</div>
+          <button class="btn btn-green" type="submit">عرض النتائج في السوق ←</button>
+          <button class="btn btn-line btn-sm" type="button" id="hclear">مسح الفلاتر</button>
+        </form>
+        <div style="min-width:0;display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="muted" id="hsum">كل المنتجات اللي ليها صور</span><div class="evnav"><button type="button" id="prP" aria-label="السابق">›</button><button type="button" id="prN" aria-label="التالي">‹</button></div></div>
+          <div class="prow" id="prow"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="sec alt">
+    <div class="wrap">
+      <div class="sh"><div><span class="eb">📈 المرصد الصناعي</span><h2>نبض الصناعة الوطنية بالأرقام</h2><p>اضغط على أي قطاع لتتغير الأرقام.</p></div></div>
+      <div class="reports" id="reports">
+        <div class="rcard"><h3>المصانع والشركات حسب المحافظة<small>من دليل المنصة · أعلى 8 محافظات</small></h3><div class="hbars" id="hbars"></div></div>
+        <div class="rcard"><h3>الفرص المفتوحة الآن حسب القطاع<small>اضغط على قطاع</small></h3><div class="donut"><svg viewBox="0 0 42 42" id="donut" role="img" aria-label="الفرص حسب القطاع"></svg><div class="legend" id="legend"></div></div></div>
+        <div class="rcard"><h3>أحدث الترسيات وعقود المشاريع<small>تتحدث تلقائياً · <a href="winners.html">كل الترسيات ←</a></small></h3><div class="awlist"><div class="awrun" id="awrun"></div></div></div>
+        <div class="rcard rmap"><h3>🗺️ خريطة المناطق الصناعية والحرة<small>خريطة تفاعلية ثلاثية الأبعاد · اضغط على أي موقع · <a href="map.html">خريطة الفرص الكاملة في كل محافظة ←</a></small></h3><div id="saMap"></div></div>
+        <div class="rstats"><a href="opportunity.html"><div><b class="num" data-count="0" data-k="tend">—</b><span>مناقصة وفرصة منشورة بمصدرها ←</span></div></a><a href="/tenders/#open"><div><b class="num" data-count="0" data-k="open">—</b><span><i data-k="openl" style="font-style:normal">مناقصة سارية الآن في مصر</i> ←<small data-k="openi" style="display:block;font-weight:600;opacity:.8"></small></span></div></a><a href="cities.html"><div><b class="num" data-count="27">27</b><span>محافظة مغطاة ←</span></div></a><a href="winners.html"><div><b class="num" data-count="0" data-k="aw">—</b><span>ترسية منشورة ←</span></div></a></div>
+      </div>
+      <span class="note">توزيع المصانع والشركات من دليل المنصة؛ الفرص حسب القطاع محسوبة من الفرص المفتوحة المنشورة؛ مواقع الخريطة تقريبية.</span>
+    </div>
+  </section>
+
+  <section class="sec alt" id="steps">
+    <div class="wrap">
+      <div class="sh"><div><span class="eb">رحلة الصفقة</span><h2>من أول طلب سعر… حتى وصول الشحنة</h2><p>المنصة معك في كل مرحلة، وتدلّك على الطرف الذي تحتاجه: المشتري، ودليل جهات التمويل، وشركات الشحن والتأمين.</p></div></div>
+      <div class="journey">
+        <div class="track" id="track"><span class="fill" id="tfill"></span><span class="pkg" id="pkg" aria-hidden="true">📦</span></div>
+        <div class="jdetail" id="jdetail"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="wrap">
+      <div class="sh"><div><span class="eb">🏆 سجل الترسيات</span><h2>من فاز، وبكم؟</h2><p>اقرأ السوق قبل تسعير عرضك القادم.</p></div></div>
+      <div class="wtools"><input id="wq" type="search" placeholder="ابحث باسم المناقصة أو الشركة الفائزة…" aria-label="بحث في الترسيات"><select id="wr" aria-label="المحافظة"><option value="">كل المحافظات</option></select></div>
+      <div class="tw"><table><thead><tr><th>المناقصة</th><th>الشركة الفائزة</th><th>المحافظة / الجهة</th><th>القيمة (جنيه)</th><th>تاريخ الترسية</th><th>الرقم</th></tr></thead><tbody id="wbody"></tbody></table></div>
+      <span class="note" id="wNote">لسه مفيش ترسيات منشورة بمصدرها؛ أول ما تتنشر هتظهر هنا.</span>
+      <div class="pager"><button class="btn btn-sm btn-line" id="wp">السابق</button><span id="wpg" class="num"></span><button class="btn btn-sm btn-line" id="wn">التالي</button></div>
+    </div>
+  </section>
+
+
+  <section class="sec alt" id="sa-projects">
+    <div class="wrap">
+      <div class="sh"><div><span class="eb"><span class="live-dot"></span> مشاريع وطلبات توريد في مصر</span><h2>مشاريع تحتاج منتجك الآن</h2><p>المشاريع الحكومية والخاصة في محافظات مصر الـ27، والمواد التي يطلبها المقاولون والاستشاريون فيها.</p></div><a class="more" href="projects.html">كل المشاريع ←</a></div>
+      <div class="seg" id="pjTabs" style="margin-bottom:14px"><button class="on" data-k="p">🏗️ أحدث المشاريع</button><button data-k="l">📦 طلبات المواد</button><button data-k="n">📰 أخبار المشاريع</button></div>
+      <div id="pjBox"></div>
+      <span class="note">مشاريع معلنة من مصادرها الرسمية، ورابط المصدر في صفحة كل مشروع.</span>
+    </div>
+  </section>
+  <section class="sec alt">
+    <div class="wrap">
+      <div class="sh"><div><span class="eb">منصات صنع في مصر</span><h2>كل ما يحتاجه المصنع تحت بوابة واحدة</h2></div></div>
+      <div class="plats" id="plats"></div>
+    </div>
+  </section>
+
+  <section class="sec mcx" id="media">
+    <div class="wrap">
+      <div class="sh"><div><span class="eb">المركز الإعلامي</span><h2>أخبار الصناعة والمحتوى المرئي</h2><p>آخر أخبار القطاع الصناعي في مصر، ولقاءات وجولات مرئية داخل المصانع المصرية.</p></div><a class="btn btn-green" href="media-center.html">تصفّح المركز الإعلامي ←</a></div>
+      <div class="mcx-bar"><div class="seg" id="mcxTabs"><button class="on" data-k="">الكل</button><button data-k="أخبار">أخبار</button><button data-k="تقارير">تقارير</button><button data-k="فعاليات">فعاليات</button></div><div class="mcx-arrows"><button type="button" id="mcxP" aria-label="السابق">›</button><button type="button" id="mcxN" aria-label="التالي">‹</button></div></div>
+      <div class="mcx-track" id="mcxTrack" tabindex="0" aria-label="آخر الأخبار"></div>
+
+      <div class="mcx-vh"><h3>🎬 المرئيات</h3><a href="media-center.html#videos">كل الفيديوهات ←</a></div>
+      <div class="mcx-vis">
+        <figure class="mcx-feat" id="mcxFeat">
+          <video id="mcxVid" muted loop playsinline preload="none" poster="img/hero-poster.jpg"><source src="media/hero.mp4" type="video/mp4"></video>
+          <button type="button" class="mcx-play" id="mcxPlay" aria-label="تشغيل الفيلم التعريفي">▶</button>
+          <figcaption><span class="chip chip-gold">فيلم المنصة</span><b>من المصنع المصري إلى الأسواق المحلية والعربية والعالمية</b><small>جولة مرئية في خطوط الإنتاج الصناعية</small><a href="media-center.html#videos">كل فيديوهات المركز الإعلامي ←</a></figcaption>
+        </figure>
+        <div class="mcx-vlist" id="mcxVlist"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="plogos" aria-label="أعضاء المنصة">
+    <div class="wrap plogos-h"><h3>أعضاء المنصة</h3><a href="factories.html">كل المصانع ←</a></div>
+    <div class="plogos-run"><div class="plogos-track" id="plTrack"></div></div>
+  </section>
+</main>
+
+<script src="data/mig-api.js"></script><script src="data/mig-forms.js"></script>
+<script>
+/* English equivalents for the Phase A strings of this page (merged into the i18n dictionary before translation) */
+(function(){var D=window.I18N_EN;if(!D)return;var A={"🏭 مصانع مصرية في دليل المنصة": "🏭 Egyptian factories in the platform directory", "مصانع مصرية في دليل المنصة": "Egyptian factories in the platform directory", "المصانع والشركات حسب المحافظة": "Factories and companies by governorate", "من دليل المنصة · أعلى {n} محافظات": "From the platform directory · top {n} governorates", "المستشار الذكي «باسم»": "The AI advisor «Bassem»", "ملف لكل مصنع وشركة في الدليل ببياناته ومنتجاته.": "A profile for every factory and company in the directory, with its data and products.", "طلبات شراء من القطاع الخاص منشورة على المنصة.": "Private-sector purchase requests published on the platform.", "لأعضاء الشريك: فرص يومية حقيقية ومتابعة الصفقات وصياغة الإيميلات.": "For partner members: real daily opportunities, deal follow-up and e-mail drafting.", "المشتري بيبعت طلب السعر (المنتج والكمية والمحافظة)، والمنصة بتبعته تلقائياً للمصانع المسجّلة المطابقة وبتقوله العدد الحقيقي.": "The buyer sends the price request (product, quantity, governorate); the platform routes it automatically to the matching registered factories and tells the buyer the true number.", "المصنع بيبعت عرضه بالسعر والحد الأدنى ومدة التوريد من «طلبات واردة لي» أو بالرد على الإيميل، والعرض بيوصل المشتري تلقائياً.": "The factory sends its quote (price, minimum order, lead time) from “Requests sent to me” or by replying to the e-mail, and the quote reaches the buyer automatically.", "المشتري بيقارن العروض ويتفق مع المصنع ويصدر أمر الشراء.": "The buyer compares the quotes, agrees with the factory and issues the purchase order.", "الشحنة بتوصل والسداد بيتم حسب الاتفاق بين الطرفين.": "The shipment arrives and payment is made as agreed between the two parties.", "التسليم والسداد": "Delivery and payment", "عرض السعر": "The quote", "مصنع وشركة في دليل المنصة": "factories & companies in the platform directory", "ترسية منشورة بمصدرها": "awards published with a source", "مناقصة وفرصة منشورة بمصدرها ←": "tenders & opportunities published with a source →", "ترسية منشورة ←": "published awards →", "فرص منشورة من مصادرها الرسمية (بوابة التعاقدات العامة والبنك الدولي وبوابات المشتريات)؛ الدائرة الأقرب للمركز = أقرب موعد إغلاق.": "Opportunities published by their official sources (Egypt's public procurement portal, the World Bank and procurement portals); the ring closest to the centre = the nearest closing date.", "توزيع الأعضاء من دليل المنصة؛ الفرص حسب القطاع محسوبة من الفرص المفتوحة المنشورة؛ مواقع الخريطة تقريبية.": "Members by governorate from the platform directory; opportunities by sector are counted from the open published opportunities; map positions are approximate.", "لسه مفيش ترسيات منشورة بمصدرها.": "No awards published with a source yet.", "لسه مفيش ترسيات منشورة بمصدرها؛ أول ما تتنشر هتظهر هنا.": "No awards published with a source yet; they appear here as soon as they are published.", "مشاريع معلنة من مصادرها الرسمية، ورابط المصدر في صفحة كل مشروع.": "Projects announced by their official sources; the source link is on each project page.", "فرصة مفتوحة": "open opportunities", "أكثر القطاعات في الفرص المنشورة": "Top sectors in published opportunities", "مفيش فرص مفتوحة منشورة للسوق ده دلوقتي.": "No open published opportunities for this market right now.", "عدد الفرص المفتوحة المنشورة لكل سوق من مصادرها الرسمية؛ الفرص خارج مصر بتظهر حسب النطاق الجغرافي لباقتك.": "The number of open opportunities published by official sources for each market; opportunities outside Egypt are shown according to your plan's geographic scope.", "من دليل المنصة": "From the platform directory", "له مصدر منشور": "Published source", "مناقصة تنتهي خلال {n} أيام": "tenders closing within {n} days", "مناقصة سارية الآن في مصر": "tenders open now in Egypt", "عرض المنتج": "View product", "و{n} مناقصة دولية للمصدّرين": "+ {n} international tenders for exporters"};for(var k in A)if(!(k in D))D[k]=A[k];})();
+(function () {
+  "use strict";
+  var $ = function (s) { return document.querySelector(s); };
+  var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
+  var reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /* clean links, no legacy *.html stub (sweep 2026-11-19 #24 #28): a member factory opens its own page — the generator writes it at
+     the slug of the directory record's old URL (data/oldfac.js row 7, seo_build.part.py), rows the Control Center added after the build
+     (row 16) have none yet — and anything else opens the directory search, which reads #q= (the hub /factories/ does not read the old
+     sessionStorage «mig-q»). Stub targets that need a map are opened through data/link-fix.js (MIGLINK.go), never the redirect screen. */
+  function FPG(i) { var f = i != null && window.MIGOLDFAC ? MIGOLDFAC[i] : null, m = f && !f[16] ? /^https?:\/\/(?:www\.)?madeinegyptgate\.com\/factories\/([^\/?#]+)\/?$/i.exec(String(f[7] || "")) : null, s; if (!m) return ""; s = m[1]; try { s = decodeURIComponent(s); } catch (x) {} if (s.normalize) s = s.normalize("NFC"); return "/factories/" + encodeURIComponent(s) + "/"; }
+  function FQ(q) { q = String(q == null ? "" : q).replace(/^\s+|\s+$/g, ""); return q ? "/factories/search/#q=" + encodeURIComponent(q) : "/factories/search/"; }
+  function GO(u) { if (window.MIGLINK && MIGLINK.go) MIGLINK.go(u); else location.href = u; }
+  /* a product of the old platform has its own page at the slug of its old URL (data/oldprod.js row 5, seo_build.part.py) */
+  function PPG(i) { var o = i != null && window.MIGOLDP ? MIGOLDP[i] : null, m = o ? /^https?:\/\/(?:www\.)?madeinegyptgate\.com\/industrial_products\/([^\/?#]+)\/?$/i.exec(String(o[5] || "")) : null, s; if (!m || o[10]) return ""; s = m[1]; try { s = decodeURIComponent(s); } catch (x) {} if (s.normalize) s = s.normalize("NFC"); return "/industrial_products/" + encodeURIComponent(s) + "/"; }
+  var fmt = new Intl.NumberFormat("en-US");
+  var tt; function toast(m) { var t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(function () { t.hidden = true; }, 2600); }
+  document.addEventListener("click", function (e) { var b = e.target.closest("[data-toast]"); if (b) toast(b.getAttribute("data-toast")); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Enter" && e.target.matches(".vid")) toast(e.target.getAttribute("data-toast")); });
+  var DASH = "dashboard.html", PROFILE = "factory.html";
+  document.addEventListener("click", function (e) { var a = e.target.closest("[data-openp]"); if (a) { try { sessionStorage.setItem("mig-open", a.dataset.openp); } catch (x) {} } var m = e.target.closest("[data-setmk]"); if (m) { try { sessionStorage.setItem("mig-market", m.dataset.setmk); } catch (x) {} } });
+  var NOW = new Date();
+
+  /* Tickers */
+  /* fallback: latest industry news published on the platform (madeinegyptgate.com, November 2026) until REAL.news is loaded */
+  var NEWS = ["تعرف على المنظومة الرقمية الموحدة لدعم المصنعين بوزارة الصناعة", "رئيس الوزراء يستعرض مقترحات اتحاد الصناعات المصرية بشأن توصيات ومخرجات «منتدى مصر 2026»", "رئيس الوزراء يستعرض محاور خطة توطين صناعة السيارات والصناعات المغذية", "مساعد وزير الصناعة ومدير مركز تحديث الصناعة يلتقي أعضاء جمعية مستثمري مدينة السادات", "رئيس الوزراء يلتقي مسؤولي مجموعة «منصور» لاستعراض مستجدات إنشاء مصنع «ماك لتصنيع وسائل النقل» بمدينة السادس من أكتوبر", "وزير الصناعة يشارك في افتتاح قمة الصلب العربي التاسعة عشرة المنعقدة بالقاهرة", "تنفيذاً لمبادرة «دولة الابتكار»: برامج جديدة لدعم الباحثين والمبتكرين وتعزيز التعاون مع القطاع الصناعي"];
+  /* Egyptian Exchange (EGX) indices and industrial names shown without a price until the live market feed (REAL.market) is loaded */
+  var PRICES = [["مؤشر EGX30", null, 0, "EGX30", "EGX"], ["مؤشر EGX70 متساوي الأوزان", null, 0, "EGX70EWI", "EGX"], ["حديد عز (ESRS)", null, 0, "ESRS", "EGX"], ["أبوقير للأسمدة (ABUK)", null, 0, "ABUK", "EGX"], ["مصر لإنتاج الأسمدة – موبكو (MFPC)", null, 0, "MFPC", "EGX"], ["السويدي إليكتريك (SWDY)", null, 0, "SWDY", "EGX"], ["الشرقية – إيسترن كومباني (EAST)", null, 0, "EAST", "EGX"], ["جهينة للصناعات الغذائية (JUFO)", null, 0, "JUFO", "EGX"], ["النساجون الشرقيون (ORWE)", null, 0, "ORWE", "EGX"], ["سيدي كرير للبتروكيماويات (SKPC)", null, 0, "SKPC", "EGX"]];
+  /* news located outside Egypt's governorates (stale data) are skipped */
+  /* procurement news («أخبار المشتريات») only for the plans that have it (Premium and up — data/plan.js newsOK) */
+  var RNEWS = window.REAL && REAL.news ? REAL.news.filter(function (n) { return n && inEG(n.region_code) && (!window.MIGPLAN || !MIGPLAN.newsOK || MIGPLAN.newsOK(n)); }) : [];
+  if (RNEWS.length) NEWS = RNEWS.slice(0, 12).map(function (n) { return [n.title_ar, REAL.news.indexOf(n)]; });
+  /* only Egyptian Exchange instruments (EGX) and commodity references are shown */
+  var RMK = window.REAL && REAL.market && REAL.market.length ? REAL.market.filter(function (m) { var src = (m.source_url || "") + " " + (m.exchange || "") + " " + (m.unit || "") + " " + m.symbol; return /EGX|egx\.com\.eg/i.test(src) || /LME|REBAR/i.test(m.symbol || "") || m.type === "commodity"; }) : null;
+  if (RMK && !RMK.some(function (m) { return /EGX|egx\.com\.eg/i.test((m.exchange || "") + " " + (m.source_url || "")); })) RMK = null;
+  if (RMK && !RMK.length) RMK = null;
+  function isIdx(m) { return /^EGX\d+/i.test(m.symbol) || m.type === "index" || /^مؤشر/.test(m.name_ar || ""); }
+  if (RMK) PRICES = RMK.map(function (m) { var al = /LME/.test(m.symbol), rb = /REBAR/.test(m.symbol), ix = isIdx(m), nm = ix ? (m.name_ar || m.symbol).replace(/ \(.*\)$/, "") : rb ? "حديد التسليح (طن)" : al ? "الألومنيوم LME ($/طن)" : (m.name_ar || m.symbol).replace(/ \(.*\)$/, "").replace(/ «.*$/, "") + " (" + m.symbol + ")"; return [nm, m.close, typeof m.change_pct === "number" && isFinite(m.change_pct) ? m.change_pct : null, m.symbol, m.exchange || "", ix]; });
+  $("#newsRun").innerHTML = (function (h) { var x = h; while (h && x.length < 9000) x += h; return x + x; })(NEWS.map(function (x) { return '<a class="nw" href="' + (Array.isArray(x) ? "article.html#" + x[1] : "/news/") + '">' + (Array.isArray(x) ? x[0] : x) + '</a><span class="sep">● صنع في مصر ●</span>'; }).join(""));
+  setTimeout(function () { ["#newsRun", "#priceRun"].forEach(function (id) { var r = $(id); if (r && r.scrollWidth) r.style.animationDuration = Math.max(30, Math.round(r.scrollWidth / 2 / 55)) + "s"; }); }, 400);
+  /* a change in % with the fewest decimals (1–4) that still shows it: +0.02 stays «+0.02», never «+0.0» */
+  function pct(v) { var d = 1; while (d < 4 && +Math.abs(v).toFixed(d) === 0) d++; return v.toFixed(d); }
+  function renderPrices() {
+    var PID = PRICES.map(function (p) { return /REBAR/.test(p[3]) ? "rebar" : /LME/.test(p[3]) ? "aluminum" : "s-" + p[3]; });
+    var h = PRICES.map(function (x, pi) { if (x[1] == null) return '<a class="pr" href="/bourse/#' + PID[pi] + '">' + x[0] + ' <span class="pill st">' + x[4] + '</span></a>'; var c = x[2] > 0 ? "up" : x[2] < 0 ? "dn" : "st", unit = x[5] ? " نقطة" : /\$/.test(x[0]) ? " $" : " ج.م", v = x[1] > 1000 ? fmt.format(Math.round(x[1])) : x[1].toFixed(2); return '<a class="pr" href="/bourse/#' + PID[pi] + '">' + x[0].replace(/ \(\$\/طن\)/, " ($/طن)") + ': <b class="num">' + v + unit + '</b>' + (x[2] == null ? '' : '<span class="pill ' + c + '">' + (x[2] > 0 ? "▲ +" + pct(x[2]) + "%" : x[2] < 0 ? "▼ " + pct(x[2]) + "%" : "● مستقر") + '</span>') + '</a>'; }).join("");
+    var asof = ""; (RMK || []).forEach(function (m) { if (m.as_of_date && m.as_of_date > asof) asof = m.as_of_date; });
+    if (h) h = '<span class="pr">📅 ' + (asof ? "آخر إغلاق " + asof + " · " : "") + "المصدر: البورصة المصرية (EGX)" + '</span>' + h;
+    var hx = h; while (h && hx.length < 6000) hx += h; $("#priceRun").innerHTML = hx + hx;
+  }
+  renderPrices();
+  /* prices change only when the data file (REAL.market) is refreshed from its source; never simulated in the browser */
+
+  /* Live counts from the data files (factories directory, industrial & free zones) */
+  if (window.MIGLANG === "en" && $("#facLbl")) $("#facLbl").textContent = "verified factories with data from their official sources";
+  $$('[data-k="fac"]').forEach(function (el) { if (window.MIGFAC && MIGFAC.length) { el.dataset.count = MIGFAC.length; el.textContent = MIGFAC.length; } });
+  $$('[data-k="zones"]').forEach(function (el) { if (window.MIGZONES && MIGZONES.length) { el.dataset.count = MIGZONES.length; el.textContent = MIGZONES.length; } });
+  (function () { var R0 = window.REAL || {}, n = { dir: (window.MIGOLDFAC || []).length || (window.MIGFAC || []).length, aw: (R0.awards || []).length, tend: (R0.tenders || []).length + (R0.tenders_intl || []).length };
+    Object.keys(n).forEach(function (k) { $$('[data-k="' + k + '"]').forEach(function (el) { if (n[k]) { el.dataset.count = n[k]; el.textContent = n[k]; } else { var a = el.closest("a"); if (a) a.hidden = true; } }); }); })();
+  $$('[data-k="prod"]').forEach(function (el) { if (window.MIGOLDP && MIGOLDP.length) { var pn = window.MIGOVL ? MIGOVL.count("prod") : MIGOLDP.length; el.dataset.count = pn; el.textContent = pn; } });
+
+  /* Count-up */
+  function countUp(el) { var to = +el.dataset.count; if (reduced) { el.textContent = fmt.format(to); return; } var t0 = performance.now(), dur = 1400; (function f(t) { var k = Math.min(1, (t - t0) / dur); el.textContent = fmt.format(Math.round(to * (1 - Math.pow(1 - k, 3)))); if (k < 1) requestAnimationFrame(f); })(t0); }
+  var cio = "IntersectionObserver" in window ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { countUp(e.target); cio.unobserve(e.target); } }); }, { threshold: .4 }) : null;
+  $$("[data-count]").forEach(function (el) { cio ? cio.observe(el) : countUp(el); });
+
+  /* Rotating word */
+  var ROT = ["الأسواق المحلية", "الأسواق العربية", "الأسواق الأفريقية", "الأسواق الآسيوية", "الأسواق الأوروبية", "الأسواق العالمية"], ri = 0;
+  if (!reduced) setInterval(function () { var r = $("#rot"); r.classList.add("out"); setTimeout(function () { ri = (ri + 1) % ROT.length; r.textContent = ROT[ri]; r.classList.remove("out"); }, 350); }, 2600);
+
+  /* Hub orbit */
+  var ORB = [["🚚", "الموردون", "/market/#suppliers"], ["🏬", "منافذ البيع", "/market/#outlets"], ["🏛️", "الحكومة", "/tenders/"], ["🚢", "الشحن", "/deal/#shipping"], ["🛡️", "التأمين", "/deal/#insurance"], ["🏦", "جهات التمويل", "/deal/#finance"]];
+  /* the pulses are decoration only: no invented events are written next to them (the former «live» feed is removed) */
+  var LOG = [[1], [2], [0], [5], [3], [4]];
+  var orbA = 0, orbNodes = [];
+  $("#orbNodes").innerHTML = ORB.map(function (o) { return '<a class="orb-node" href="' + o[2] + '" style="color:#fff"><span class="ic">' + o[0] + '</span><span>' + o[1] + '</span></a>'; }).join("");
+  orbNodes = $$("#orbNodes .orb-node");
+  function orbPos() {
+    var sp = "";
+    orbNodes.forEach(function (n, i) { var a = orbA + i * Math.PI / 3, x = 50 + 37.5 * Math.cos(a), y = 50 + 37.5 * Math.sin(a); n.style.left = x + "%"; n.style.top = y + "%"; n._x = x * 4; n._y = y * 4; sp += '<line class="spoke" x1="200" y1="200" x2="' + n._x + '" y2="' + n._y + '"/>'; });
+    $("#spokes").innerHTML = sp;
+  }
+  orbPos();
+  var orbPulses = [], li = 0;
+  function orbSend() {
+    var e = LOG[li % LOG.length]; li++;
+    var inbound = li % 2 === 1;
+    orbPulses.push({ n: e[0], t: 0, inb: inbound });
+  }
+  function orbFrame() {
+    if (!reduced) orbA += .0016;
+    orbPos();
+    var h = "";
+    orbPulses = orbPulses.filter(function (p) {
+      p.t += .018; var n = orbNodes[p.n]; var k = p.inb ? 1 - p.t : p.t;
+      var x = 200 + (n._x - 200) * k, y = 200 + (n._y - 200) * k;
+      h += '<circle cx="' + x + '" cy="' + y + '" r="6" fill="#E2BE72" opacity=".35"/><circle cx="' + x + '" cy="' + y + '" r="3.2" fill="#3DDC84"/>';
+      if (p.t >= 1) {
+        if (p.inb) { var c = $("#orbCore"); c.classList.remove("beat"); void c.offsetWidth; c.classList.add("beat"); }
+        else { n.classList.add("ping"); setTimeout(function () { n.classList.remove("ping"); }, 600); }
+        return false;
+      }
+      return true;
+    });
+    $("#dots").innerHTML = h;
+  }
+  if (!reduced) { setInterval(orbSend, 1800); orbSend(); } else { var hv = document.getElementById("heroVid"); if (hv) { hv.removeAttribute("autoplay"); hv.pause(); } }
+  (function oloop() { if (!document.hidden) orbFrame(); requestAnimationFrame(oloop); })();
+
+
+  var CITIES = window.MIGZONES ? MIGZONES.map(function (z) { return z.name_ar; }) : [];
+  var SECS = [["مواد البناء", 26, "#C8102E"], ["الصناعات الغذائية", 19, "#C09300"], ["البلاستيك والمطاط", 14, "#8E0B20"], ["الكهرباء والكابلات", 11, "#5FAE7E"], ["البتروكيماويات", 9, "#8C6A00"], ["المعادن والألمنيوم", 8, "#1F4E6B"], ["الزجاج", 6, "#7FB8C9"], ["الأدوية والطبي", 5, "#8B2E2E"], ["الأثاث", 4, "#94A3B8"]];
+  $("#scity").innerHTML = MIGREG.opts(MIGREG.get(), "كل المحافظات");
+  $("#ssec").innerHTML = "<option>كافة القطاعات</option>" + SECS.map(function (s) { return "<option>" + s[0] + "</option>"; }).join("");
+  $("#stabs").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; $$("#stabs button").forEach(function (x) { x.classList.toggle("on", x === b); }); });
+  $("#sbox").addEventListener("submit", function (e) { e.preventDefault(); var q = $("#sq").value.trim(), ti = $$("#stabs button").indexOf($("#stabs .on")), tab = ["الكل", "مصانع", "شركات وموردون", "منتجات", "مناقصات وطلبات أسعار"][ti] || "الكل"; try { sessionStorage.setItem("mig-q", q); } catch (x) {} var rg = $("#scity").value; MIGREG.set(rg); if (rg && !q && tab === "الكل") { GO(MIGREG.url(rg)); return; } location.href = tab === "مصانع" ? FQ(q) : tab === "شركات وموردون" ? "/suppliers/" : tab.indexOf("مناقصات") === 0 ? (/طلب\s*(عرض\s*)?(سعر|أسعار|توريد)|rfq/i.test(q) ? "/rfq/search/" : "/tenders/search/") : "/market/#results"; });
+
+  /* 27 governorates row */
+  function hrSub(r) { var nz = function (x) { return String(x).replace(/[أإآ]/g, "ا").replace(/\s+/g, ""); }, seen = [nz(r[1])], out = []; (r[3] || []).forEach(function (c) { if (out.length < 2 && /[\u0600-\u06FF]/.test(c) && seen.indexOf(nz(c)) < 0) { seen.push(nz(c)); out.push(c); } }); if (!out.length) out = ["مدن ومناطق صناعية"]; return out.join(" · "); }
+  $("#hrgrid").innerHTML = MIGREG.list.map(function (r) { return '<a class="hr" href="region.html#' + r[0] + '" style="--rimg:url(' + MIGREG.img(r[0]) + ')" title="محافظة ' + r[1] + '"><small>' + r[0] + '</small><b>' + r[1] + '</b><span>' + hrSub(r) + '</span></a>'; }).join("");
+  /* Opportunity radar */
+  var MKS = ["المحلي", "الخليجي", "الأفريقي", "الآسيوي", "الأوروبي"];
+  var T = [
+    ["MSG-GT4417", "gov", "توريد مواسير HDPE ووصلات PN16 لشبكة مياه", "جهة حكومية – قطاع مياه الشرب", "الجيزة", "المحلي", "مواد البناء", 3],
+    ["MSG-RF8210", "pvt", "حديد قنوات (Channels) بدرجة S275JR لمشروع صناعي", "مقاول عام – المنامة", "البحرين", "الخليجي", "المعادن والألمنيوم", 1],
+    ["MSG-GT4390", "gov", "زجاج آمن مقسّى لمبانٍ صحية", "جهة حكومية – قطاع الصحة", "الإسكندرية", "المحلي", "الزجاج", 6],
+    ["MSG-RF8197", "pvt", "كابلات نحاس جهد منخفض مع Datasheet وشهادات اختبار", "مقاول كهرباء – العاشر من رمضان", "الشرقية", "المحلي", "الكهرباء والكابلات", 2],
+    ["MSG-RF8174", "pvt", "تمور مصرية معبأة 1 كجم لسلسلة متاجر", "سلسلة تجزئة – الكويت", "الكويت", "الخليجي", "الصناعات الغذائية", 9],
+    ["MSG-GT4352", "gov", "أثاث مدرسي لـ 40 مدرسة", "جهة حكومية – قطاع التعليم", "أسيوط", "المحلي", "الأثاث", 14],
+    ["MSG-RF8160", "pvt", "عبوات بلاستيك للأغذية 500 مل", "مصنع عصائر – مسقط", "عُمان", "الخليجي", "البلاستيك والمطاط", 5],
+    ["MSG-RF8142", "pvt", "بلوك أسمنتي معزول – 200 ألف حبة", "مستورد مواد بناء – نيروبي", "كينيا", "الأفريقي", "مواد البناء", 11],
+    ["MSG-GT4318", "gov", "محاليل وريدية لمستشفيات حكومية", "جهة حكومية – قطاع الصحة", "المنيا", "المحلي", "الأدوية والطبي", 0],
+    ["MSG-RF8101", "pvt", "حبيبات بولي إيثيلين HDPE – 500 طن", "مصنع عبوات – هو تشي منه", "فيتنام", "الآسيوي", "البتروكيماويات", 16],
+    ["MSG-RF8093", "pvt", "قطاعات ألمنيوم لواجهات فندق", "مطوّر عقاري – ميلانو", "إيطاليا", "الأوروبي", "المعادن والألمنيوم", 20],
+    ["MSG-RF8088", "pvt", "ألواح PVC للأسقف", "مقاول – طرابلس", "ليبيا", "الأفريقي", "البلاستيك والمطاط", 7],
+    ["MSG-GT4301", "gov", "خرسانة جاهزة لمشروع طرق", "جهة حكومية – قطاع النقل", "الدقهلية", "المحلي", "مواد البناء", 24],
+    ["MSG-RF8070", "pvt", "زيت عباد الشمس 1 لتر – 3 حاويات", "موزع أغذية – الدوحة", "قطر", "الخليجي", "الصناعات الغذائية", 4],
+    ["MSG-RF8061", "pvt", "ميثانول صناعي – 2,000 طن", "مصنع كيماويات – روتردام", "هولندا", "الأوروبي", "البتروكيماويات", 27]
+  ]; var T0_ = T.slice();
+  /* only records located in one of Egypt's 27 governorates (or with no governorate code) are used from the data files */
+  function inEG(c) { return !c || !!(window.MIGREG && MIGREG.by && MIGREG.by[c]); }  function realOpps(openOnly) {
+    if (!(window.REAL && REAL.tenders && REAL.tenders.length)) return null;
+    var now = new Date(); now.setHours(0, 0, 0, 0);
+    return REAL.tenders.filter(function (t) { return inEG(t.region_code); }).map(function (t, i) {
+      var d = t.closing_date ? Math.round((new Date(t.closing_date + "T00:00:00") - now) / 864e5) : 0, v = t.estimated_value_egp != null ? t.estimated_value_egp : t.estimated_value != null ? t.estimated_value : null;
+      var vs = v ? (v >= 1e9 ? (v / 1e9).toFixed(1) + " مليار" : (v / 1e6).toFixed(1) + " مليون") : "";
+      var j = REAL.tenders.indexOf(t);
+      return [(t.ref ? "ET" + t.ref : "MD" + (i + 1)), t.kind, t.title_ar, t.entity_ar, t.city || (window.MIGREG ? MIGREG.name(t.region_code) : ""), "المحلي", t.sector_ar, d, vs, t.source_url, t.ref, t.procurement_type, t.publish_date, t.closing_date, window.MIGOID ? MIGOID(t, j) : "MD" + (j + 1)];
+    }).filter(function (o) { return !openOnly || (o[13] && o[7] >= 0); });
+  }
+  function realIntl(openOnly) {
+    if (!(window.REAL && REAL.tenders_intl && REAL.tenders_intl.length)) return null;
+    var MK = { gulf: "الخليجي", africa: "الأفريقي", asia: "الآسيوي", europe: "الأوروبي" }, now = new Date(); now.setHours(0, 0, 0, 0);
+    return REAL.tenders_intl.map(function (t, i) {
+      var d = t.closing_date ? Math.round((new Date(t.closing_date + "T00:00:00") - now) / 864e5) : 0;
+      var vs = t.estimated_value ? Math.round(t.estimated_value).toLocaleString("en-US") + " " + (t.currency || "") : "";
+      return ["IN" + (i + 1), t.kind || "gov", t.title_ar, t.entity_ar, (t.city ? t.city + " – " : "") + t.country_ar, MK[t.market] || "الخليجي", t.sector_ar, d, vs, t.source_url, t.ref, t.source_name, t.publish_date, t.closing_date, "IN" + (i + 1)];
+    }).filter(function (o) { return !openOnly || (o[13] && o[7] >= 0); });
+  }
+  
+  
+  var RT_ = realOpps(true), RI2_ = realIntl(true); if (RT_ && !RT_.length) RT_ = null; if (RI2_ && !RI2_.length) RI2_ = null; if (RT_ || RI2_) { var SM = { "البلاستيك والتغليف": "البلاستيك والمطاط" }; T = (RT_ || []).concat(RI2_ || []).map(function (o) { return [o[0], o[1], o[2], o[3], o[4], o[5], SM[o[6]] || o[6], o[7], o[14], o[5] !== "المحلي"]; }); }
+  if (!(RT_ || RI2_)) T = []; /* the illustrative MSG-* list above is never shown (owner decision: hide anything unverified) */
+
+  var NEWQ = [["MSG-RF8305", "pvt", "مضخات طرد مركزي لمحطة معالجة", "شركة مياه – البحيرة", "البحيرة", "المحلي", "مواد البناء", 12], ["MSG-GT4460", "gov", "إنارة LED لطرق داخلية", "جهة حكومية – سوهاج", "سوهاج", "المحلي", "الكهرباء والكابلات", 18], ["MSG-RF8311", "pvt", "عصائر معبأة لفنادق", "مجموعة فنادق – مسقط", "عُمان", "الخليجي", "الصناعات الغذائية", 8], ["MSG-RF8320", "pvt", "أنابيب ري HDPE 63 مم", "مزارع – الخرطوم", "السودان", "الأفريقي", "البلاستيك والمطاط", 13], ["MSG-RF8333", "pvt", "زجاج شفاف 6 مم – حاويتان", "مستورد – مومباي", "الهند", "الآسيوي", "الزجاج", 15]];
+  var nq = 0, F = { k: "", s: "", sel: "", fresh: "" };
+  var MYS = ["الكل", "مواد البناء", "الصناعات الغذائية", "البلاستيك والمطاط", "البتروكيماويات", "المعادن والألمنيوم", "الكهرباء والكابلات", "الزجاج"];
+  $("#mysec").innerHTML = MYS.map(function (m, i) { return '<button' + (i ? "" : ' class="on"') + ' data-s="' + (i ? m : "") + '">' + m + '</button>'; }).join("");
+  /* the opportunity's page (stub key = the platform id, MIGOID / IN<n>, as in /_seo/hash/opportunity.json) */
+  function OPU(t) { return "opportunity.html#" + String(t[8] || t[0]).toLowerCase(); }
+  function OPI(id) { for (var i = 0; i < T.length; i++) if (T[i][0] === id) return OPU(T[i]); return "opportunity.html#" + String(id).toLowerCase(); }
+  function closeOf(t) { var x = new Date(NOW); x.setDate(x.getDate() + t[7]); x.setHours(15, 0, 0, 0); return x; }
+  function dAr(x) { return new Intl.DateTimeFormat("ar-EG-u-ca-gregory-nu-latn", { day: "numeric", month: "long" }).format(x); }
+  function chipDays(t) { var d = t[7]; return '<span class="chip ' + (d <= 3 ? "chip-red" : d <= 10 ? "chip-amber" : "chip-green") + '">' + (d === 0 ? "تغلق اليوم" : d === 1 ? "تغلق بكرة" : d === 2 ? "تغلق بعد يومين" : d <= 10 ? "تغلق بعد " + d + " أيام" : "تغلق بعد " + d + " يوم") + '</span>'; }
+  function matched() { return T.filter(function (t) { return (!F.s || t[6] === F.s) && (!F.k || t[1] === F.k) && (!F.r || MIGREG.of(t[4]) === F.r); }); }
+  function blipXY(t, i) { var a = (-90 + MKS.indexOf(t[5]) * 72 + 14 + ((i * 37) % 44)) * Math.PI / 180, r = 22 + Math.min(t[7], 30) / 30 * 150; return [200 + r * Math.cos(a), 200 + r * Math.sin(a)]; }
+  function renderRadar() {
+    var l = matched(), h = "";
+    h += '<defs><radialGradient id="rg"><stop offset="0" stop-color="#C8102E" stop-opacity=".5"/><stop offset="1" stop-color="#1A0306" stop-opacity="0"/></radialGradient><linearGradient id="sw" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3DDC84" stop-opacity="0"/><stop offset="1" stop-color="#3DDC84" stop-opacity=".45"/></linearGradient></defs>';
+    h += '<circle cx="200" cy="200" r="190" fill="url(#rg)"/>';
+    [[3, "3 أيام"], [10, "10 أيام"], [30, "30 يوم"]].forEach(function (r) { var R = 22 + r[0] / 30 * 150; h += '<circle cx="200" cy="200" r="' + R + '" fill="none" stroke="rgba(255,255,255,.18)" stroke-dasharray="3 5"/><text x="203" y="' + (200 - R - 3) + '" font-size="9" fill="rgba(255,255,255,.55)" font-family="Cairo">' + r[1] + '</text>'; });
+    MKS.forEach(function (m, i) { var a = (-90 + i * 72) * Math.PI / 180, a2 = (-90 + i * 72 + 36) * Math.PI / 180; h += '<line x1="200" y1="200" x2="' + (200 + 185 * Math.cos(a)) + '" y2="' + (200 + 185 * Math.sin(a)) + '" stroke="rgba(255,255,255,.1)"/><text data-mki="' + i + '" style="cursor:pointer" x="' + (200 + 196 * Math.cos(a2)) + '" y="' + (200 + 196 * Math.sin(a2) + 4) + '" text-anchor="middle" font-size="12" font-weight="700" fill="#E2BE72" font-family="Cairo"><title>فرص السوق ' + m + '</title>' + m + '</text>'; });
+    h += '<g class="sweep"><path d="M200 200 L390 200 A190 190 0 0 0 334 66 Z" fill="url(#sw)"/></g>';
+    h += '<circle cx="200" cy="200" r="16" fill="#C8102E" stroke="#E2BE72" stroke-width="2"/><text x="200" y="204" text-anchor="middle" font-size="11" fill="#fff" font-family="Cairo" font-weight="800">أنت</text>';
+    l.forEach(function (t, i) { var p = blipXY(t, T.indexOf(t)), on = F.sel === t[0]; h += '<circle class="blip' + (t[0] === F.fresh ? " blip-new" : "") + '" data-id="' + t[0] + '" cx="' + p[0] + '" cy="' + p[1] + '" r="' + (on ? 9 : 6) + '" fill="' + (t[1] === "gov" ? "#3DDC84" : "#E2BE72") + '" stroke="' + (on ? "#fff" : "rgba(0,0,0,.4)") + '" stroke-width="' + (on ? 2.5 : 1) + '"><title>' + t[2] + '</title></circle>'; });
+    $("#radarSvg").innerHTML = h;
+    $("#rsAll").textContent = l.length; $("#rsSoon").textContent = l.filter(function (t) { return t[7] <= 3; }).length;
+    var mk = {}; l.forEach(function (t) { mk[t[5]] = 1; }); $("#rsMk").textContent = Object.keys(mk).length;
+  }
+  function renderFeed() {
+    var l = matched().sort(function (a, b) { return a[7] - b[7]; });
+    $("#fCount").textContent = l.length + " فرصة" + (F.s ? " في " + F.s : "") + (F.r ? " · " + MIGREG.name(F.r) : "");
+    $("#feed").innerHTML = l.slice(0, 4).map(function (t) {
+      return '<article class="ti' + (F.sel === t[0] ? " sel" : "") + (F.fresh === t[0] ? " flash" : "") + '" data-id="' + t[0] + '"><div class="r1"><span class="ref">رقم الفرصة: ' + t[0] + '</span><div style="display:flex;gap:6px;flex-wrap:wrap">' + (F.fresh === t[0] ? '<span class="chip chip-gold">جديد الآن</span>' : '') + '<span class="chip ' + (t[1] === "gov" ? "chip-green" : "chip-gold") + '">' + (t[1] === "gov" ? "مناقصة حكومية" : "طلب عرض سعر") + '</span>' + chipDays(t) + '</div></div><h4>' + t[2] + '</h4><div class="meta"><div><small>الجهة</small>' + t[3] + '</div><div><small>السوق</small>' + t[5] + ' · ' + t[4] + '</div><div><small>الإغلاق</small>' + dAr(closeOf(t)) + ' <span class="cd" data-end="' + closeOf(t).getTime() + '"></span></div></div><div class="r3"><span class="chip chip-gray">' + t[6] + '</span><a class="btn btn-sm btn-green" href="' + OPU(t) + '">قدّم عرضك</a></div></article>';
+    }).join("") || '<div class="panel" style="text-align:center;color:var(--muted)">لم يرصد الرادار فرصاً بهذا الفلتر. جرّب قطاعاً آخر.</div>';
+    tickCd();
+  }
+  function renderOpp() { renderRadar(); renderFeed(); }
+  function tickCd() { $$(".cd").forEach(function (el) { var ms = +el.dataset.end - Date.now(); if (ms < 0) { el.textContent = ""; return; } if (ms > 3 * 864e5) { el.textContent = ""; return; } var h = Math.floor(ms / 36e5), m = Math.floor(ms % 36e5 / 6e4), sc = Math.floor(ms % 6e4 / 1e3); el.textContent = "⏳ " + h + ":" + String(m).padStart(2, "0") + ":" + String(sc).padStart(2, "0"); }); }
+  var SKEY = { "مواد البناء": "build", "الصناعات الغذائية": "food", "البلاستيك والتغليف": "plastic", "البلاستيك والمطاط": "plastic", "الكهرباء والكابلات": "elec", "البتروكيماويات": "petro", "المعادن والألمنيوم": "metal", "الزجاج": "glass", "الأثاث": "furn" };
+  $("#mysec").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; F.s = b.dataset.s; $("#secRep").href = "/radar/#" + (SKEY[F.s] || "metal"); F.sel = ""; $$("#mysec button").forEach(function (x) { x.classList.toggle("on", x === b); }); renderOpp(); });
+  $("#fk").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; F.k = b.dataset.k; $$("#fk button").forEach(function (x) { x.classList.toggle("on", x === b); }); renderOpp(); });
+  $("#radarSvg").addEventListener("click", function (e) { var c = e.target.closest(".blip"); if (c) { GO(OPI(c.getAttribute("data-id"))); return; } var m = e.target.closest("[data-mki]"); if (m) { try { sessionStorage.setItem("mig-market", m.getAttribute("data-mki")); } catch (x) {} GO("export-market.html#" + (["local", "gulf", "africa", "asia", "europe"][+m.getAttribute("data-mki")] || "gulf")); } });
+  $("#feed").addEventListener("click", function (e) { var a = e.target.closest(".ti"); if (a && !e.target.closest("a")) GO(OPI(a.dataset.id)); });
+  $("#feed").addEventListener("mouseover", function (e) { var a = e.target.closest(".ti"); if (a && a.dataset.id !== F.sel) { F.sel = a.dataset.id; renderRadar(); } });
+  $("#fReg").innerHTML = MIGREG.opts(""); $("#fReg").addEventListener("change", function () { F.r = this.value; renderOpp(); });
+  renderOpp(); setInterval(tickCd, 1000);
+  /* the counts that link to /tenders/ use its own split: local tenders open now / closing within 7 days, and the international ones apart */
+  var TLOC = T.filter(function (t) { return !t[9] && t[7] >= 0; }), TINT = T.filter(function (t) { return t[9] && t[7] >= 0; });
+  var ENT = window.MIGLANG === "en", NSOON = TLOC.filter(function (t) { return t[7] <= 7; }).length, NI = TINT.length;
+  function arn(n, a1, a2, a3, a11) { var m = n % 100; return n === 1 ? a1 : n === 2 ? a2 : m >= 3 && m <= 10 ? a3 : a11; }
+  $("#kClose").textContent = NSOON;
+  if ($("#kCloseL")) $("#kCloseL").textContent = ENT ? (NSOON === 1 ? "tender closing within 7 days" : "tenders closing within 7 days") : arn(NSOON, "مناقصة تنتهي خلال 7 أيام", "مناقصتان تنتهيان خلال 7 أيام", "مناقصات تنتهي خلال 7 أيام", "مناقصة تنتهي خلال 7 أيام");
+  $$('[data-k="open"]').forEach(function (el) { var n = TLOC.length; el.dataset.count = n; el.textContent = fmt.format(n); });
+  $$('[data-k="openl"]').forEach(function (el) { var n = TLOC.length; el.textContent = ENT ? (n === 1 ? "tender open now in Egypt" : "tenders open now in Egypt") : arn(n, "مناقصة سارية الآن في مصر", "مناقصتان ساريتان الآن في مصر", "مناقصات سارية الآن في مصر", "مناقصة سارية الآن في مصر"); });
+  $$('[data-k="openi"]').forEach(function (el) { if (!NI) { el.hidden = true; return; } el.textContent = ENT ? "+ " + fmt.format(NI) + (NI === 1 ? " international tender for exporters" : " international tenders for exporters") : NI === 1 ? "ومناقصة دولية واحدة للمصدّرين" : NI === 2 ? "ومناقصتان دوليتان للمصدّرين" : "و" + fmt.format(NI) + " " + arn(NI, "", "", "مناقصات دولية", "مناقصة دولية") + " للمصدّرين"; });
+  /* the former simulated «new opportunity detected» feed is gone: the radar shows only published opportunities */
+
+
+  /* platform member factories with their real logos (old platform, data/oldfac.js), then the research directory as fallback */
+  var NF = (function () { var out = [], seen = {}; (window.MIGOLDFAC || []).forEach(function (o, oi) { if (out.length < 14 && o[5] >= 0 && o[3] === "مصنع" && !seen[o[0]]) { seen[o[0]] = 1; out.push([o[0], o[1], o[2].split("،").pop().trim(), '<i class="splg" style="background-image:url(img/old/lg' + o[5] + '.jpg);background-position:' + (o[6] % 10) * 100 / 9 + '% ' + Math.floor(o[6] / 10) * 100 / 9 + '%"></i>', o[10] ? MIGREG.name(o[10]) : "عضو في المنصة", oi]); } }); if (!out.length) (window.MIGFAC || []).filter(function (f) { return inEG(f.region_code); }).slice(0, 12).forEach(function (f) { out.push([f.name_ar, f.sector_ar, f.city, f.name_ar.charAt(0), MIGREG.name(f.region_code)]); }); return out; })();
+
+  var sp = NF.map(function (s) { return '<a class="sp" href="' + (s[5] != null ? FPG(s[5]) || "company.html#" + s[5] : FQ(s[0])) + '"><span class="when">' + s[4] + '</span><span class="lg">' + s[3] + '</span><span><b>' + s[0] + '</b><small>' + s[1] + ' · ' + s[2] + '</small><small style="color:var(--green);font-weight:700">📇 من دليل المنصة</small></span></a>'; }).join("")
+    + '<a class="sp cta" href="register.html"><span class="lg">+</span><span><b>سجّل مصنعك الآن</b><small>اظهر هنا مع المصانع المصرية ↗</small></span></a>';
+  $("#sprun").innerHTML = sp + sp;
+  /* Media center: news carousel + visuals + partner logos */
+  var MCN = [
+    ["تقنية", "img/m0.jpg", "منصة صنع في مصر · 2026-11-09", "تعرف على المنظومة الرقمية الموحدة لدعم المصنعين بوزارة الصناعة", "باقة متكاملة من الخدمات الصناعية الرقمية لدعم المستثمر الصناعي في جميع مراحل المشروع."],
+    ["صناعة", "img/e0.jpg", "منصة صنع في مصر · 2026-11-09", "رئيس الوزراء يستعرض محاور خطة توطين صناعة السيارات والصناعات المغذية", "استعراض أهم محاور خطة توطين صناعة السيارات والصناعات المغذية في مصر."],
+    ["استثمار", "img/m1.jpg", "منصة صنع في مصر · 2026-11-09", "رئيس الوزراء يستعرض مقترحات اتحاد الصناعات المصرية بشأن توصيات ومخرجات «منتدى مصر 2026»", "مقترحات اتحاد الصناعات المصرية لدعم القطاع الصناعي."],
+    ["صناعة", "img/m4.jpg", "منصة صنع في مصر · 2026-11-04", "وزير الصناعة يشارك في افتتاح قمة الصلب العربي التاسعة عشرة المنعقدة بالقاهرة", "افتتاح القمة والمعرض الدولي للحديد والصلب المصاحب لها بالقاهرة."],
+    ["استثمار", "img/e2.jpg", "منصة صنع في مصر · 2026-11-04", "رئيس الوزراء يلتقي مسؤولي مجموعة «منصور» لاستعراض مستجدات إنشاء مصنع «ماك لتصنيع وسائل النقل» بمدينة السادس من أكتوبر", "متابعة مستجدات إنشاء مصنع لتصنيع وسائل النقل بمدينة السادس من أكتوبر."],
+    ["صناعة", "img/m3.jpg", "منصة صنع في مصر · 2026-11-04", "مساعد وزير الصناعة ومدير مركز تحديث الصناعة يلتقي أعضاء جمعية مستثمري مدينة السادات", "استعراض الإجراءات والتيسيرات المقدمة من وزارة الصناعة ومركز تحديث الصناعة للمستثمرين."]
+  ];
+  if (RNEWS.length) { var MIMG = ["img/e0.jpg", "img/m1.jpg", "img/m4.jpg", "img/e2.jpg", "img/m3.jpg", "img/m0.jpg", "img/e4.jpg", "img/hero.jpg", "img/e1.jpg", "img/m2.jpg"]; MCN = RNEWS.slice(0, 10).map(function (n, i) { return [n.category_ar, n.image_file || MIMG[i % MIMG.length], n.source_name + " · " + n.date, n.title_ar, n.summary_ar, REAL.news.indexOf(n)]; }); }
+  function renderMcx(k) {
+    $("#mcxTrack").innerHTML = MCN.filter(function (n) { return !k || n[0] === k; }).map(function (n, i) { return '<a class="nc" href="' + (n[5] != null ? "article.html#" + n[5] : "/news/") + '"><div class="im"><img src="' + n[1] + '" alt="" loading="lazy"><span class="chip">' + n[0] + '</span></div><div class="bd"><span class="src">' + n[2] + '</span><h4>' + n[3] + '</h4><p>' + n[4] + '</p><span class="more">اقرأ الخبر ←</span></div></a>'; }).join("");
+    $("#mcxTrack").scrollLeft = 0;
+  }
+  /* category tabs follow the news actually loaded (3 most frequent categories) */
+  (function () { var cnt = {}; MCN.forEach(function (n) { cnt[n[0]] = (cnt[n[0]] || 0) + 1; }); var ks = Object.keys(cnt).sort(function (a, b) { return cnt[b] - cnt[a]; }).slice(0, 3); $("#mcxTabs").innerHTML = '<button class="on" data-k="">الكل</button>' + ks.map(function (k) { return '<button data-k="' + k + '">' + k + '</button>'; }).join(""); })();
+  renderMcx("");
+  $("#mcxTabs").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; $$("#mcxTabs button").forEach(function (x) { x.classList.toggle("on", x === b); }); renderMcx(b.dataset.k); });
+  function mcxStep(d) { var t = $("#mcxTrack"), c = t.querySelector(".nc"); if (!c) return; t.scrollBy({ left: d * (c.offsetWidth + 16), behavior: "smooth" }); }
+  $("#mcxN").onclick = function () { mcxStep(-1 * (document.documentElement.dir === "ltr" ? -1 : 1)); }; $("#mcxP").onclick = function () { mcxStep((document.documentElement.dir === "ltr" ? -1 : 1)); };
+  var mcxT = setInterval(function () { var t = $("#mcxTrack"); if (!t || t.matches(":hover")) return; var max = t.scrollWidth - t.clientWidth; if (Math.abs(t.scrollLeft) >= max - 4) t.scrollTo({ left: 0, behavior: "smooth" }); else mcxStep(-1 * (document.documentElement.dir === "ltr" ? -1 : 1)); }, 5000);
+  var MVID = []; /* only real videos (data/videos.js); no illustrative fallback */
+  if (window.MIGVIDS && MIGVIDS.length) MVID = MIGVIDS.slice(0, 6).map(function (v) { return [v.thumb, v.title_ar, v.channel + (v.duration ? " · " + v.duration : ""), "فيديو", v.url]; });
+  $("#mcxVlist").innerHTML = MVID.map(function (v) { return '<a class="vi" href="' + (v[4] || "/videos/") + '"' + (v[4] ? ' target="_blank" rel="noopener"' : '') + '><span class="th"><img src="' + v[0] + '" alt="" loading="lazy"><i>' + v[3] + '</i></span><span><b>' + v[1] + '</b><small>' + v[2] + '</small></span></a>'; }).join("");
+  $("#mcxPlay").onclick = function () { var v = $("#mcxVid"); v.muted = false; v.controls = true; v.play(); $("#mcxFeat").classList.add("playing"); };
+  /* «أعضاء المنصة»: member companies with logos on the platform (skips the factories already shown in the strip above); the platform's
+     partners (site.py STRAT / PARTNER) follow right below in the footer's «شركاء المنصة» strip */
+  var PL = (function () { var out = [], seen = {}; NF.forEach(function (n) { seen[n[0]] = 1; }); (window.MIGOLDFAC || []).forEach(function (o, oi) { if (out.length < 18 && o[5] >= 0 && !seen[o[0]]) { seen[o[0]] = 1; out.push(['<i class="splg plg" style="background-image:url(img/old/lg' + o[5] + '.jpg);background-position:' + (o[6] % 10) * 100 / 9 + '% ' + Math.floor(o[6] / 10) * 100 / 9 + '%"></i>', o[0], FPG(oi) || "company.html#" + oi]); } }); return out; })();
+  var pl = PL.map(function (p) { return '<a class="pl" href="' + p[2] + '" title="' + p[1] + '" aria-label="' + p[1] + '">' + p[0] + '<span class="pln">' + p[1] + '</span></a>'; }).join("");
+  if (false) pl = PL.concat(PL, PL).map(function (p) { return '<a class="pl" href="' + p[2] + '"' + (p[2].indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : '') + '>' + (p[0] ? '<img src="' + p[0] + '" alt="' + p[1] + '" loading="lazy">' : '<span class="wm">' + p[1] + '</span>') + '</a>'; }).join("");
+  $("#plTrack").innerHTML = pl + pl;
+  $("#plTrack").addEventListener("click", function (e) { var a = e.target.closest("a[data-q]"); if (a) try { sessionStorage.setItem("mig-q", a.dataset.q); } catch (x) {} });
+
+  /* Canvas scenes */
+  function prep(c) { var r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1; c.width = Math.max(1, r.width * d); c.height = Math.max(1, r.height * d); var x = c.getContext("2d"); x.setTransform(d, 0, 0, d, 0, 0); return [x, r.width, r.height]; }
+  function rng(seed) { var s = seed; return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+  function skyline(c, seed, sky1, sky2, ground, extra) {
+    var a = prep(c), x = a[0], W = a[1], H = a[2], r = rng(seed);
+    var g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, sky1); g.addColorStop(1, sky2); x.fillStyle = g; x.fillRect(0, 0, W, H);
+    if (extra === "sun") { x.fillStyle = "rgba(255,210,140,.7)"; x.beginPath(); x.arc(W * .25, H * .35, H * .12, 0, 7); x.fill(); }
+    if (extra === "stars") { for (var i = 0; i < 60; i++) { x.fillStyle = "rgba(255,255,255," + (.2 + r() * .6) + ")"; x.fillRect(r() * W, r() * H * .5, 1.4, 1.4); } }
+    var px = 0; while (px < W) { var w = 26 + r() * 70, h = H * (.18 + r() * .45); x.fillStyle = ground; x.fillRect(px, H - h, w, h); if (extra === "stars" || extra === "night") { for (var k = 0; k < 6; k++) { x.fillStyle = "rgba(255,214,140," + (r() * .8) + ")"; x.fillRect(px + 4 + r() * (w - 8), H - h + 6 + r() * (h - 12), 2.5, 2.5); } } if (r() > .6) { x.fillRect(px + w * .6, H - h - H * .15, 7, H * .15); } px += w + 4; }
+  }
+  var MC = [["السوق المحلي", "محافظات مصر الـ27", 486, "1–3 أيام برّاً", ["مواد البناء", "الغذائية", "البلاستيك"], .58, .52], ["السوق الخليجي", "دول مجلس التعاون الخليجي الست", 312, "3–7 أيام بحراً عبر البحر الأحمر", ["الغذائية", "مواد البناء", "المنسوجات"], .74, .44], ["السوق الأفريقي", "ليبيا، السودان، كينيا، تنزانيا ودول الكوميسا…", 158, "5–20 يوماً برّاً وبحراً", ["مواد البناء", "الأدوية", "الغذائية"], .2, .78], ["السوق الآسيوي", "الهند، الصين، فيتنام…", 121, "15–25 يوماً بحراً", ["الأسمدة", "البتروكيماويات", "المنسوجات"], .93, .62], ["السوق الأوروبي", "إيطاليا، إسبانيا، ألمانيا، هولندا…", 68, "4–12 يوماً بحراً عبر المتوسط", ["المنسوجات", "الحاصلات الزراعية المصنعة", "الأسمدة"], .22, .12]];
+  /* each market card shows the open published opportunities counted from T and the sectors that appear most among them */
+  MC.forEach(function (m, i) { var mk = MKS[i], l = T.filter(function (t) { return t[5] === mk && t[7] >= 0; }), c = {}; l.forEach(function (t) { if (t[6]) c[t[6]] = (c[t[6]] || 0) + 1; }); m[2] = l.length; m[3] = ""; m[4] = Object.keys(c).sort(function (a, b) { return c[b] - c[a]; }).slice(0, 3); });
+  var xsel = 1;
+  $("#xlist").innerHTML = MC.map(function (m, i) { return '<button class="xm' + (i === xsel ? " on" : "") + '" data-i="' + i + '"><span class="ph" style="background-image:url(img/m' + i + '.jpg)"></span><span><b>' + m[0] + '</b><small>' + m[1] + '</small></span><span class="n num">' + m[2] + '<small>فرصة مفتوحة</small><small style="color:#E2BE72;margin-top:2px">التفاصيل ←</small></span></button>'; }).join("");
+  function xInfo() { var m = MC[xsel]; $("#xinfo").innerHTML = '<div class="row"><b>' + m[0] + '</b><span class="chip chip-green num">' + m[2] + ' فرصة مفتوحة</span></div>' + (m[4].length ? '<div class="row"><span class="muted">أكثر القطاعات في الفرص المنشورة</span><div class="tags">' + m[4].map(function (t) { return '<span class="chip chip-gold">' + t + '</span>'; }).join("") + '</div></div>' : '<div class="row"><span class="muted">مفيش فرص مفتوحة منشورة للسوق ده دلوقتي.</span></div>') + '<a class="btn btn-sm btn-green" href="export-market.html#' + ["local", "gulf", "africa", "asia", "europe"][xsel] + '">صفحة ' + m[0] + ' ←</a>'; }
+  xInfo();
+  var MKEY = ["local", "gulf", "africa", "asia", "europe"];
+  function pickX(b) { xsel = +b.dataset.i; $$(".xm").forEach(function (x) { x.classList.toggle("on", x === b); }); xInfo(); }
+  $("#xlist").addEventListener("mouseover", function (e) { var b = e.target.closest(".xm"); if (b && +b.dataset.i !== xsel) pickX(b); });
+  $("#xlist").addEventListener("click", function (e) { var b = e.target.closest(".xm"); if (!b) return; if (+b.dataset.i !== xsel && !matchMedia("(hover: hover)").matches) { pickX(b); return; } GO("export-market.html#" + MKEY[+b.dataset.i]); });
+  /* Real map (Natural Earth outlines, own Mercator projection on canvas) */
+  var xc = $("#xmapC"), xx, XW, XH, xt = 0;
+  /* Egyptian logistics hubs: Mediterranean ports, the Suez Canal economic zone ports and Greater Cairo */
+  var HUB = { alex: [29.88, 31.18, "الإسكندرية"], damietta: [31.76, 31.47, "دمياط"], portsaid: [32.33, 31.25, "بورسعيد"], sokhna: [32.36, 29.60, "العين السخنة"], cairo: [31.24, 30.04, "القاهرة"] };
+  var DEST = [
+    { o: ["cairo", "alex"], d: [[31.74, 30.30, "العاشر من رمضان"], [31.18, 27.18, "أسيوط"], [32.90, 24.09, "أسوان"], [27.24, 31.35, "مرسى مطروح"], [33.81, 27.26, "الغردقة"]], box: [24.5, 21.6, 37.2, 32.2], hl: ["818"] },
+    { o: ["sokhna"], d: [[39.17, 21.54, "جدة"], [46.72, 24.69, "الرياض"], [47.98, 29.37, "الكويت"], [51.53, 25.29, "الدوحة"], [58.41, 23.59, "مسقط"]], box: [27, 14, 62, 33], hl: ["682", "414", "634", "512", "048"] },
+    { o: ["sokhna", "alex"], d: [[37.22, 19.62, "بورتسودان"], [43.15, 11.59, "جيبوتي"], [39.67, -4.04, "مومباسا"], [39.27, -6.80, "دار السلام"], [13.18, 32.89, "طرابلس"]], box: [8, -12, 52, 36], hl: ["729", "262", "404", "834", "434"] },
+    { o: ["sokhna", "portsaid"], d: [[72.88, 19.08, "مومباي"], [106.70, 10.78, "هو تشي منه"], [121.47, 31.23, "شنغهاي"], [79.86, 6.93, "كولومبو"], [101.69, 3.14, "كوالالمبور"]], box: [26, -2, 124, 40], hl: ["356", "704", "156", "144", "458"] },
+    { o: ["alex", "damietta"], d: [[4.48, 51.92, "روتردام"], [8.93, 44.41, "جنوة"], [13.40, 52.52, "برلين"], [2.17, 41.39, "برشلونة"], [23.73, 37.98, "أثينا"]], box: [-6, 22, 40, 56], hl: ["528", "380", "276", "724", "300"] }
+  ];
+  var GCC = { "682": 1, "634": 1, "414": 1, "512": 1, "048": 1, "784": 1 };
+  var view = DEST[1].box.slice(), from = view.slice(), to = view.slice(), tw = 1, shownSel = -1, base = null, baseView = "";
+  function merc(lat) { return Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)); }
+  function proj(lon, lat) { var R = Math.PI / 180, b = view, x0 = b[0] * R, x1 = b[2] * R, y0 = merc(b[1]), y1 = merc(b[3]); var k = Math.min(XW / (x1 - x0), XH / (y1 - y0)); var ox = (XW - (x1 - x0) * k) / 2, oy = (XH - (y1 - y0) * k) / 2; return [ox + (lon * R - x0) * k, XH - oy - (merc(lat) - y0) * k]; }
+  function xInit() { var a = prep(xc); xx = a[0]; XW = a[1]; XH = a[2]; base = document.createElement("canvas"); base.width = xc.width; base.height = xc.height; baseView = ""; }
+  function drawBase() {
+    var key = view.join(",") + "|" + xsel + "|" + XW; if (key === baseView) return; baseView = key;
+    var d = window.devicePixelRatio || 1, b = base.getContext("2d"); b.setTransform(d, 0, 0, d, 0, 0); b.clearRect(0, 0, XW, XH);
+    var g = b.createLinearGradient(0, 0, 0, XH); g.addColorStop(0, "#06263F"); g.addColorStop(1, "#04182A"); b.fillStyle = g; b.fillRect(0, 0, XW, XH);
+    b.strokeStyle = "rgba(255,255,255,.05)"; b.lineWidth = 1;
+    for (var lo = -20; lo <= 130; lo += 10) { var p1 = proj(lo, -20), p2 = proj(lo, 65); b.beginPath(); b.moveTo(p1[0], p1[1]); b.lineTo(p2[0], p2[1]); b.stroke(); }
+    for (var la = -10; la <= 60; la += 10) { var q1 = proj(-20, la), q2 = proj(130, la); b.beginPath(); b.moveTo(q1[0], q1[1]); b.lineTo(q2[0], q2[1]); b.stroke(); }
+    var hl = {}; DEST[xsel].hl.forEach(function (h) { hl[h] = 1; });
+    (window.WORLD || []).forEach(function (c) {
+      var sa = c.id === "818", gc = GCC[c.id], on = hl[c.id] && !sa;
+      b.beginPath();
+      c.c.forEach(function (poly) { poly.forEach(function (ring) { ring.forEach(function (pt, k) { var q = proj(pt[0], pt[1]); k ? b.lineTo(q[0], q[1]) : b.moveTo(q[0], q[1]); }); b.closePath(); }); });
+      b.fillStyle = sa ? "#C8102E" : on ? "rgba(192,147,0,.55)" : gc ? "#1E5A3A" : "#16362A";
+      b.fill("evenodd"); b.strokeStyle = sa ? "#E2BE72" : "rgba(255,255,255,.22)"; b.lineWidth = sa ? 1.6 : .6; b.stroke();
+    });
+    var sl = proj(29.6, 26.4), cn = window.MIGTR ? MIGTR("جمهورية مصر العربية") : "جمهورية مصر العربية"; b.font = "800 " + Math.max(11, Math.min(xsel ? 15 : 20, XW / 40)) + "px Cairo, sans-serif"; var cw = Math.max(60, b.measureText(cn).width / 2 + 10); sl[0] = Math.max(cw, Math.min(XW - cw, sl[0])); var egW = proj(35, 26)[0] - proj(25, 26)[0]; if (xsel && egW < b.measureText(cn).width * 1.1) return; b.textAlign = "center"; b.fillStyle = "rgba(255,255,255,.9)"; b.fillText(cn, sl[0], sl[1]);
+  }
+  function arcPts(a, c) { var mx = (a[0] + c[0]) / 2, my = (a[1] + c[1]) / 2, dx = c[0] - a[0], dy = c[1] - a[1], L = Math.sqrt(dx * dx + dy * dy); return [mx - dy * .22, my + dx * .22 - L * .08]; }
+  function bez(a, m, c, u) { return [(1 - u) * (1 - u) * a[0] + 2 * (1 - u) * u * m[0] + u * u * c[0], (1 - u) * (1 - u) * a[1] + 2 * (1 - u) * u * m[1] + u * u * c[1]]; }
+  function xFrame() {
+    if (!xx) return;
+    if (shownSel !== xsel) { from = view.slice(); to = DEST[xsel].box.slice(); tw = 0; shownSel = xsel; }
+    if (tw < 1) { tw = Math.min(1, tw + (reduced ? 1 : .035)); var e = 1 - Math.pow(1 - tw, 3); view = from.map(function (v, k) { return v + (to[k] - v) * e; }); }
+    xt += .006; drawBase();
+    xx.setTransform(1, 0, 0, 1, 0, 0); xx.clearRect(0, 0, xc.width, xc.height); xx.drawImage(base, 0, 0);
+    var d = window.devicePixelRatio || 1; xx.setTransform(d, 0, 0, d, 0, 0);
+    var D = DEST[xsel], fs = Math.max(11, Math.min(15, XW / 55)), lbl = [];
+    D.d.forEach(function (dst, i) {
+      var oh = HUB[D.o[i % D.o.length]], a = proj(oh[0], oh[1]), c = proj(dst[0], dst[1]), m = arcPts(a, c);
+      xx.beginPath(); xx.moveTo(a[0], a[1]); xx.quadraticCurveTo(m[0], m[1], c[0], c[1]); xx.strokeStyle = "rgba(226,190,114,.85)"; xx.lineWidth = 2; xx.setLineDash([6, 5]); xx.lineDashOffset = -xt * 60; xx.stroke(); xx.setLineDash([]);
+      for (var k = 0; k < 2; k++) { var u = (xt * .9 + k / 2 + i * .13) % 1, pt = bez(a, m, c, u); xx.fillStyle = k ? "#3DDC84" : "#E2BE72"; xx.fillRect(pt[0] - 5, pt[1] - 3.5, 10, 7); xx.strokeStyle = "rgba(0,0,0,.4)"; xx.lineWidth = 1; xx.strokeRect(pt[0] - 5, pt[1] - 3.5, 10, 7); }
+      var pr = (xt * 1.8 + i * .2) % 1; xx.strokeStyle = "rgba(226,190,114," + (1 - pr) + ")"; xx.lineWidth = 2; xx.beginPath(); xx.arc(c[0], c[1], 5 + pr * 14, 0, 7); xx.stroke();
+      xx.fillStyle = "#E2BE72"; xx.beginPath(); xx.arc(c[0], c[1], 5, 0, 7); xx.fill();
+      xx.font = "700 " + fs + "px Cairo, sans-serif"; xx.textAlign = "center"; xx.lineWidth = 3; xx.strokeStyle = "rgba(4,24,42,.9)"; xx.strokeText(dst[2], c[0], c[1] - 10); xx.fillStyle = "#fff"; xx.fillText(dst[2], c[0], c[1] - 10); lbl.push([c[0], c[1] - 10, xx.measureText(window.MIGTR ? MIGTR(dst[2]) : dst[2]).width]);
+    });
+    D.o.concat(Object.keys(HUB).filter(function (h) { return D.o.indexOf(h) < 0; })).forEach(function (h) { var q = proj(HUB[h][0], HUB[h][1]), used = D.o.indexOf(h) > -1, pulse = 6 + (Math.sin(xt * 8) + 1) * 3; if (used) { xx.fillStyle = "rgba(61,220,132,.3)"; xx.beginPath(); xx.arc(q[0], q[1], pulse + 4, 0, 7); xx.fill(); } xx.fillStyle = used ? "#3DDC84" : "#fff"; xx.strokeStyle = "#1A0306"; xx.lineWidth = 2; xx.beginPath(); xx.arc(q[0], q[1], used ? 6 : 4, 0, 7); xx.fill(); xx.stroke(); if (xsel && !used) return; xx.font = "700 " + (fs - 1) + "px Cairo, sans-serif"; var lw = xx.measureText(window.MIGTR ? MIGTR(HUB[h][2]) : HUB[h][2]).width, hit = function (y) { return lbl.some(function (p) { return Math.abs(p[0] - q[0]) < (p[2] + lw) / 2 + 4 && Math.abs(p[1] - y) < fs + 2; }); }, ly = q[1] + 18; if (hit(ly)) { ly = q[1] - 10; if (hit(ly)) return; } lbl.push([q[0], ly, lw]); xx.lineWidth = 3; xx.strokeStyle = "rgba(4,24,42,.9)"; xx.strokeText(HUB[h][2], q[0], ly); xx.fillStyle = used ? "#3DDC84" : "rgba(255,255,255,.85)"; xx.fillText(HUB[h][2], q[0], ly); });
+    xx.font = "600 11px Cairo, sans-serif"; xx.textAlign = "start"; xx.fillStyle = "rgba(255,255,255,.55)"; xx.fillText("المسارات تقريبية · حدود الدول: Natural Earth", 10, XH - 10);
+  }
+  xInit();
+  var xRun = true; if ("IntersectionObserver" in window) new IntersectionObserver(function (e) { xRun = e[0].isIntersecting; }).observe(xc);
+  (function xl() { if (xRun && !document.hidden) { if (reduced) { if (xl.s !== xsel) { xl.s = xsel; tw = 1; view = DEST[xsel].box.slice(); shownSel = xsel; xFrame(); } } else xFrame(); } requestAnimationFrame(xl); })();
+  var MEM = [];
+  var MPROD = {};
+  if (window.MIGFAC) MIGFAC.forEach(function (f) { if (!inEG(f.region_code)) return; if (MEM.some(function (x) { return x[0] === f.name_ar; })) return; MEM.push([f.name_ar, f.sector_ar, f.city, (f.main_products_ar || []).join("، ") + ".", 0, 0, f.region_code]); MPROD[f.name_ar] = f.main_products_ar || []; });
+  var allP = []; MEM.forEach(function (m) { (MPROD[m[0]] || []).forEach(function (x) { if (allP.indexOf(x) < 0) allP.push(x); }); });
+  $("#mp").innerHTML += allP.map(function (x) { return "<option>" + x + "</option>"; }).join("");
+  $("#mc").innerHTML = MIGREG.opts("");
+  var msecs = []; MEM.forEach(function (m) { if (msecs.indexOf(m[1]) < 0) msecs.push(m[1]); }); msecs.sort(function (a, b) { return a.localeCompare(b, "ar"); });
+  $("#ms").innerHTML += msecs.map(function (s) { return "<option>" + s + "</option>"; }).join("");
+  var CVS = [["زجاج", "cat-glass"], ["غذ", "m2"], ["أغذية", "m2"], ["ألبان", "m2"], ["أسمنت", "m3"], ["بناء", "cat-build"], ["ألمنيوم", "cat-metal"], ["معادن", "cat-metal"], ["حديد", "m4"], ["صلب", "m4"], ["بلاستيك", "cat-plastic"], ["تغليف", "p6"], ["تكييف", "cat-ac"], ["كابلات", "cat-cable"], ["كهرب", "e2"], ["كيما", "m1"], ["بتروك", "m1"], ["دهان", "m1"], ["سيارات", "e0"], ["مركبات", "e0"], ["أدوية", "e1"], ["دوائ", "e1"], ["ورق", "m3"]];
+  function CV(m) { for (var i = 0; i < CVS.length; i++) if ((m[1] + " " + m[0]).indexOf(CVS[i][0]) > -1) return CVS[i][1]; return "e3"; }
+  function renderMem() {
+    var q = $("#mq").value.trim(), c = $("#mc").value, s = $("#ms").value, pp = $("#mp").value;
+    var l = MEM.filter(function (m) { var pr = (MPROD[m[0]] || []).join(" "); return (!c || (m[6] || MIGREG.seller(m[0], m[2])) === c) && (!s || m[1] === s) && (!pp || pr.indexOf(pp) > -1) && (!q || (m[0] + m[3] + m[1] + " " + pr + MIGHAY(m[0] + " | " + m[1] + " | " + m[2]) + (MPROD[m[0]] || []).map(MIGHAY).join("")).toLowerCase().indexOf(q.toLowerCase()) > -1); });
+    var tot = l.length; l = l.slice(0, 8); $("#mmore").textContent = window.MIGLANG === "en" ? "Showing " + l.length + " of " + tot + " verified factories · Browse the full directory →" : "عرض " + l.length + " من " + tot + " مصنعاً موثّقاً · تصفّح الدليل الكامل ←"; $("#members").innerHTML = l.length ? l.map(function (m) { return '<article class="mem"><span class="cv" style="background-image:url(img/' + CV(m) + '.jpg)"></span><div class="top"><span class="lg">' + (window.MIGLANG === "en" ? MIGTR(m[0]).replace(/^(The|Company|Factory|Group)\s+/i, "").replace(/^[«"(]/, "").charAt(0).toUpperCase() : m[0].replace(/^(مصنع|شركة|الشركة|مجموعة|مؤسسة)\s+/, "").replace(/^[«"(]/, "").charAt(0)) + '</span><div><h3>' + m[0] + '</h3><span class="sec">' + m[1] + '</span></div></div><p>' + m[3] + '</p><div class="mprods">' + (MPROD[m[0]] || []).map(function (x) { var hit = (pp && x === pp) || (q && x.toLowerCase().indexOf(q.toLowerCase()) > -1); return '<span class="' + (hit ? "hit" : "") + '">📦 ' + x + '</span>'; }).join("") + '</div><div class="tags"><span class="chip chip-gray">📍 ' + m[2] + '</span>' + (m[6] ? '<span class="chip chip-green">' + MIGREG.name(m[6]) + '</span>' : '') + '</div><a class="btn btn-sm btn-green" href="' + FQ(m[0]).replace(/"/g, "&quot;") + '">عرض في دليل المصانع</a></article>'; }).join("") : '<div class="panel" style="grid-column:1/-1;text-align:center;color:var(--muted)">لا توجد مصانع بهذه الفلاتر.</div>';
+  }
+  ["#mq", "#mc", "#ms", "#mp"].forEach(function (id) { $(id).addEventListener(id === "#mq" ? "input" : "change", renderMem); });
+  $("#mreset").onclick = function () { $("#mq").value = ""; $("#mc").value = ""; $("#ms").value = ""; $("#mp").value = ""; renderMem(); };
+  renderMem();
+
+  /* Reports */
+  /* member factories & companies per governorate, counted from the platform's member directory (data/oldfac.js) */
+  var RCOL = ["#8E0B20", "#C8102E", "#C09300", "#5FAE7E", "#8C6A00", "#7FB8C9", "#1F4E6B", "#94A3B8"];
+  var REG = (function () { var c = {}; (window.MIGOLDFAC || []).forEach(function (o) { if (o[10] && MIGREG.by[o[10]]) c[o[10]] = (c[o[10]] || 0) + 1; }); return Object.keys(c).sort(function (a, b) { return c[b] - c[a]; }).slice(0, 8).map(function (k, i) { return [MIGREG.name(k), c[k], RCOL[i % RCOL.length], k]; }); })();
+  if (!REG.length) REG = MIGREG.list.slice(0, 8).map(function (g, i) { return [g[1], 0, RCOL[i % RCOL.length], g[0]]; });
+  $("#hbars").innerHTML = REG.map(function (r) { return '<a class="hb" href="region.html#' + r[3] + '" title="محافظة ' + r[0] + '"><span>' + r[0] + '</span><span class="t"><i data-w="' + (REG[0][1] ? r[1] / REG[0][1] * 100 : 0) + '" style="background:' + r[2] + '"></i></span><span class="v">' + fmt.format(r[1]) + '</span></a>'; }).join("");
+  var rio = "IntersectionObserver" in window ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { $$("#hbars i").forEach(function (i) { i.style.width = i.dataset.w + "%"; }); drawDonut(); rio.disconnect(); } }); }, { threshold: .25 }) : null;
+  rio ? rio.observe($("#reports")) : setTimeout(function () { $$("#hbars i").forEach(function (i) { i.style.width = i.dataset.w + "%"; }); }, 50);
+  var dsel = -1;
+  function drawDonut() {
+    var tot = SECS.reduce(function (a, s) { return a + s[1]; }, 0), off = 25, h = '<circle cx="21" cy="21" r="15.9" fill="none" stroke="var(--sunken)" stroke-width="5"/>';
+    SECS.forEach(function (s, i) { var p = s[1] / tot * 100; h += '<circle cx="21" cy="21" r="15.9" fill="none" stroke="' + s[2] + '" stroke-width="' + (i === dsel ? 7 : 5) + '" stroke-dasharray="' + p + ' ' + (100 - p) + '" stroke-dashoffset="' + off + '" style="transition:stroke-width .2s ease"/>'; off -= p; });
+    var v = dsel < 0 ? tot : SECS[dsel][1];
+    h += '<text x="21" y="21" text-anchor="middle" font-size="7" font-weight="800" fill="var(--fg)" font-family="Cairo, sans-serif">' + v + '</text><text x="21" y="27" text-anchor="middle" font-size="2.8" fill="var(--muted)" font-family="Cairo, sans-serif">' + (dsel < 0 ? "فرصة مفتوحة" : SECS[dsel][0]) + '</text>';
+    $("#donut").innerHTML = h;
+    $("#legend").innerHTML = SECS.map(function (s, i) { return '<button data-i="' + i + '"' + (i === dsel ? ' class="on"' : '') + '><i style="background:' + s[2] + '"></i><span>' + s[0] + '</span><b>' + s[1] + '</b></button>'; }).join("") + '<a class="btn btn-sm btn-green" style="margin-top:6px" href="opportunity.html">' + (dsel < 0 ? "كل الفرص المفتوحة ←" : window.MIGLANG === "en" ? MIGTR(SECS[dsel][0]) + " opportunities →" : "فرص قطاع " + SECS[dsel][0] + " ←") + '</a>';
+  }
+  /* opportunities per sector: counted from the published open opportunities (T), not typed in */
+  (function () { var nz = function (x) { return String(x || "").replace(/^ال/, "").replace(/[أإآ]/g, "ا"); };
+    SECS.forEach(function (s) { var k = nz(s[0].split(" ")[0]); s[1] = T.filter(function (t) { return t[7] >= 0 && (t[6] === s[0] || nz(t[6]).indexOf(k) > -1); }).length; });
+    SECS = SECS.filter(function (s) { return s[1] > 0; }); })();
+  drawDonut();
+  $("#legend").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; dsel = dsel === +b.dataset.i ? -1 : +b.dataset.i; drawDonut(); });
+  /* illustrative samples (EGP) until the real awards (REAL.awards) are loaded */
+  var AW = []; /* published awards only (REAL.awards); the former illustrative examples are gone */
+  var RAW_ = window.REAL && REAL.awards ? REAL.awards.filter(function (a) { return inEG(a.region_code); }) : [];
+  if (RAW_.length) AW = RAW_.map(function (a) { var vm = a.value_egp_million; return [a.city, a.title_ar + " — " + a.winner_ar + (vm ? " · " + (vm >= 1000 ? (vm / 1000).toFixed(1) + " مليار" : vm + " مليون") + " جنيه" : ""), a.source_url]; });
+  var AWL = ["c4", "c11", "c9", "c1", "c5", "c2"];
+  var aw = AW.map(function (a, i) { return '<a class="aw" href="' + (a[2] || "entity.html#" + AWL[i % AWL.length]) + '"' + (a[2] ? ' target="_blank" rel="noopener"' : '') + ' style="color:inherit"><span class="ic">🏆</span><div><b>' + a[1] + '</b><br><small class="muted">' + a[0] + ' · تفاصيل الترسية ←</small></div></a>'; }).join("");
+  $("#awrun").innerHTML = AW.length ? aw + aw : '<p class="muted" style="padding:12px">لسه مفيش ترسيات منشورة بمصدرها. <a href="winners.html">الشركات الفائزة ←</a></p>';
+  if (window.MIGSAMap) MIGSAMap.mount(document.getElementById("saMap"));
+
+  /* Deal journey */
+  var JL = [["/deal/#rfq", "تفاصيل طلب السعر"], ["/deal/#offer", "تفاصيل عرض السعر"], ["/deal/#agreement", "الاتفاق وشروط التسليم"], ["/deal/#finance", "دليل جهات التمويل"], ["/deal/#shipping", "شركات الشحن والتأمين"], ["/deal/#delivery", "التسليم والسداد"]];
+  var JR = [["📨", "طلب سعر", "المشتري يطلب", "المشتري بيبعت طلب السعر (المنتج والكمية والمحافظة)، والمنصة بتبعته تلقائياً للمصانع المسجّلة المطابقة وبتقوله العدد الحقيقي.", [["🏗️", "المشتري"], ["🏭", "المصانع المطابقة"]]], ["💬", "عرض سعر", "المصنع يرد", "المصنع بيبعت عرضه بالسعر والحد الأدنى ومدة التوريد من «طلبات واردة لي» أو بالرد على الإيميل، والعرض بيوصل المشتري تلقائياً.", [["🏭", "المصنع"], ["📧", "عرض السعر"]]], ["🤝", "اتفاق", "أمر الشراء", "المشتري بيقارن العروض ويتفق مع المصنع ويصدر أمر الشراء.", [["🏗️", "المشتري"], ["🏭", "المصنع"]]], ["🏦", "تمويل", "دليل الجهات", "يطّلع المصنع على دليل جهات التمويل ويتقدّم مباشرة للجهة المناسبة؛ المنصة لا تقدّم التمويل ولا تتوسط فيه.", [["📚", "دليل جهات التمويل"], ["🏭", "المصنع"]]], ["🚢", "شحن وتأمين", "في الطريق", "تستلم شركة شحن من الدليل البضاعة، وتغطي شركة تأمين الشحنة.", [["🚢", "شركة الشحن"], ["🛡️", "التأمين"]]], ["✅", "تسليم", "صفقة مكتملة", "الشحنة بتوصل والسداد بيتم حسب الاتفاق بين الطرفين.", [["🏗️", "المشتري"], ["🏭", "المصنع"]]]];
+  var js = 0;
+  $("#track").insertAdjacentHTML("beforeend", JR.map(function (j, i) { return '<button class="stg" data-i="' + i + '"><span class="dot">' + j[0] + '</span><b>' + j[1] + '</b><small>' + j[2] + '</small></button>'; }).join(""));
+  function setJ(i) {
+    js = i; var stg = $$("#track .stg");
+    stg.forEach(function (b, k) { b.classList.toggle("on", k === i); b.classList.toggle("done", k < i); });
+    var t = $("#track").getBoundingClientRect(), d = stg[i].getBoundingClientRect();
+    var fromRight = t.right - (d.left + d.width / 2);
+    $("#pkg").style.right = (fromRight) + "px";
+    $("#tfill").style.width = Math.max(0, fromRight - t.width * .08) + "px";
+    var j = JR[i], dt = $("#jdetail");
+    dt.innerHTML = '<div><span class="chip chip-gold">المرحلة ' + (i + 1) + ' من 6</span><h3 style="margin-top:6px">' + j[0] + ' ' + j[1] + ': ' + j[2] + '</h3><p>' + j[3] + '</p></div><div class="who2">' + j[4].map(function (w) { return '<span>' + w[0] + ' ' + w[1] + '</span>'; }).join("") + '<a class="btn btn-sm btn-green" href="' + JL[i][0] + '">' + JL[i][1] + ' ←</a></div>';
+    dt.classList.remove("jfade"); void dt.offsetWidth; dt.classList.add("jfade");
+  }
+  $("#track").addEventListener("click", function (e) { var b = e.target.closest(".stg"); if (!b) return; var i = +b.dataset.i; if (i === js) { location.href = JL[i][0]; return; } setJ(i); clearInterval(jT); });
+  var jT; function jAuto() { clearInterval(jT); if (!reduced) jT = setInterval(function () { setJ((js + 1) % JR.length); }, 3200); }
+  setJ(0); jAuto();
+
+
+  /* sample rows; replaced by the real awards (REAL.awards) when the data file is loaded */
+  var WIN = []; /* published awards only; the former example rows are gone */
+  if (RAW_.length) $("#wNote").hidden = true;
+  if (RAW_.length) WIN = RAW_.map(function (a, i) { var vm = a.value_egp_million, dt = a.date ? new Date(a.date + "T00:00:00") : null; return [a.title_ar, a.winner_ar, (window.MIGREG && a.region_code ? MIGREG.name(a.region_code) : a.city || "") + (a.awarding_entity_ar ? " – " + a.awarding_entity_ar : ""), vm ? fmt.format(Math.round(vm * 1e6)) : "—", dt && !isNaN(dt) ? new Intl.DateTimeFormat("ar-EG-u-ca-gregory-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(dt) : (a.date || ""), "AW-" + (i + 1), REAL.awards.indexOf(a)]; });
+  var regs = []; WIN.forEach(function (w) { var r = w[2].split(" – ")[0]; if (regs.indexOf(r) < 0) regs.push(r); });
+  $("#wr").innerHTML += regs.map(function (r) { return "<option>" + r + "</option>"; }).join("");
+  var wp = 0;
+  function renderWin() {
+    var q = $("#wq").value.trim(), r = $("#wr").value;
+    var l = WIN.filter(function (w) { return (!r || w[2].indexOf(r) === 0) && (!q || (w[0] + " " + w[1] + MIGHAY(w[0] + " | " + w[1])).toLowerCase().indexOf(q.toLowerCase()) > -1); });
+    var pages = Math.max(1, Math.ceil(l.length / 5)); wp = Math.min(wp, pages - 1);
+    $("#wbody").innerHTML = l.slice(wp * 5, wp * 5 + 5).map(function (w) { var wl = w[6] >= 0 ? "winner.html#" + w[6] : "/awards/"; return '<tr class="wrow" data-href="' + wl + '" style="cursor:pointer"><td><a href="' + wl + '" style="color:inherit"><b>' + w[0] + '</b></a></td><td style="font-weight:700"><a href="' + wl + '" style="color:var(--green)">' + w[1] + ' ←</a></td><td>' + w[2] + '</td><td class="num" style="font-weight:800">' + w[3] + '</td><td>' + w[4] + '</td><td><a class="chip chip-gray" dir="ltr" href="' + wl + '">' + w[5] + '</a></td></tr>'; }).join("") || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">لا توجد نتائج.</td></tr>';
+    $("#wpg").textContent = "صفحة " + (wp + 1) + " من " + pages;
+    $("#wp").disabled = wp === 0; $("#wn").disabled = wp >= pages - 1;
+  }
+  $("#wq").addEventListener("input", function () { wp = 0; renderWin(); });
+  $("#wbody").addEventListener("click", function (e) { if (e.target.closest("a")) return; var r = e.target.closest("tr[data-href]"); if (r) GO(r.dataset.href); });
+  $("#wr").addEventListener("change", function () { wp = 0; renderWin(); });
+  $("#wp").onclick = function () { wp--; renderWin(); }; $("#wn").onclick = function () { wp++; renderWin(); };
+  renderWin();
+
+  /* Platforms */
+  var PL = [["🛒", "السوق الإلكتروني", "منتجات المصانع والموردين ومنافذ البيع مقسّمة بالقطاعات.", "/market/"], ["🏭", "دليل المصانع والصادرات", "ملف لكل مصنع وشركة في الدليل ببياناته ومنتجاته.", "/factories/"], ["🏛️", "المناقصات الحكومية", "طلبات التوريد الحكومية المطابقة لقطاعك.", "/tenders/"], ["📝", "طلبات عروض الأسعار", "طلبات شراء من القطاع الخاص منشورة على المنصة.", "/rfq/"], ["📈", "المشاريع الكبرى", "المشاريع ومراحلها، لتعرف أين سيكون الطلب.", "/projects/"], ["🏆", "نتائج الترسيات", "من فاز وبكم، لتسعّر عروضك بثقة.", "/awards/"], ["🤝", "دليل المقاولين والخدمات", "مقاولون واستشاريون وشحن وتأمين ودليل جهات التمويل.", "/contractors/"], ["💡", "المستشار الذكي «باسم»", "لأعضاء الشريك: فرص يومية حقيقية ومتابعة الصفقات وصياغة الإيميلات.", "/advisor/"]];
+  $("#plats").innerHTML = PL.map(function (p) { return '<a class="plat" href="' + p[3] + '"><span class="ic">' + p[0] + '</span><h3>' + p[1] + '</h3><p>' + p[2] + '</p><span class="more" style="font-size:.86rem">اكتشف المزيد ←</span></a>'; }).join("");
+
+  /* Hero network animation: factories (nodes) linking to markets */
+  var hc = $("#heroC"), hx, HW, HH, nodes = [], pulses = [];
+  function heroInit() {
+    var a = prep(hc); hx = a[0]; HW = a[1]; HH = a[2];
+    var r = rng(7); nodes = [];
+    for (var i = 0; i < 46; i++) nodes.push({ x: r() * HW, y: r() * HH, vx: (r() - .5) * .25, vy: (r() - .5) * .25, big: r() > .86 });
+  }
+  function heroFrame() {
+    hx.clearRect(0, 0, HW, HH);
+    var g = hx.createRadialGradient(HW * .3, HH * .45, 10, HW * .3, HH * .45, HW * .6); g.addColorStop(0, "rgba(200,16,46,.45)"); g.addColorStop(1, "rgba(4,25,14,0)"); hx.fillStyle = g; hx.fillRect(0, 0, HW, HH);
+    for (var i = 0; i < nodes.length; i++) { var n = nodes[i]; n.x += n.vx; n.y += n.vy; if (n.x < 0 || n.x > HW) n.vx *= -1; if (n.y < 0 || n.y > HH) n.vy *= -1;
+      for (var j = i + 1; j < nodes.length; j++) { var m = nodes[j], dx = n.x - m.x, dy = n.y - m.y, d = dx * dx + dy * dy; if (d < 22000) { hx.strokeStyle = "rgba(192,147,0," + (0.22 * (1 - d / 22000)) + ")"; hx.lineWidth = 1; hx.beginPath(); hx.moveTo(n.x, n.y); hx.lineTo(m.x, m.y); hx.stroke(); } } }
+    nodes.forEach(function (n) { hx.fillStyle = n.big ? "rgba(192,147,0,.95)" : "rgba(255,255,255,.55)"; hx.beginPath(); hx.arc(n.x, n.y, n.big ? 3.4 : 1.8, 0, 7); hx.fill(); });
+    if (Math.random() < .06) { var a = nodes[Math.floor(Math.random() * nodes.length)], b = nodes[Math.floor(Math.random() * nodes.length)]; pulses.push({ a: a, b: b, t: 0 }); }
+    pulses = pulses.filter(function (p) { p.t += .02; if (p.t > 1) return false; var x = p.a.x + (p.b.x - p.a.x) * p.t, y = p.a.y + (p.b.y - p.a.y) * p.t; hx.fillStyle = "rgba(61,220,132,.9)"; hx.beginPath(); hx.arc(x, y, 2.4, 0, 7); hx.fill(); return true; });
+    var r = rng(3), px = 0; hx.fillStyle = "rgba(0,0,0,.35)";
+    while (px < HW) { var w = 30 + r() * 70, h = 20 + r() * 60; hx.fillRect(px, HH - h, w, h); px += w + 4; }
+  }
+  heroInit(); heroFrame();
+  var running = true;
+  if ("IntersectionObserver" in window) new IntersectionObserver(function (e) { running = e[0].isIntersecting; }).observe(hc);
+  (function loop() { if (!reduced && running && !document.hidden) heroFrame(); requestAnimationFrame(loop); })();
+
+  /* Video thumbs */
+  function paintVid() {
+    $$(".vid canvas").forEach(function (c) { var i = +c.dataset.v; skyline(c, 21 + i * 6, i ? "#0B2A1A" : "#071426", i ? "#0E3B24" : "#163256", "rgba(0,0,0,.7)", "stars"); var a = c.getContext("2d"), r = c.getBoundingClientRect(); a.fillStyle = "rgba(4,25,14,.35)"; a.fillRect(0, 0, r.width, r.height); });
+  }
+  function paintStatic() {
+    $$(".mc canvas").forEach(function (c) { var m = MC[+c.dataset.m][5]; skyline(c, 5 + +c.dataset.m * 9, m[0], m[1], m[2], m[3]); });
+    $$(".ev canvas").forEach(function (c) { var e = EV[+c.dataset.e]; skyline(c, e[4], e[3], "#1A0306", "rgba(0,0,0,.45)", "night"); });
+    paintVid();
+  }
+  paintStatic();
+  var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(function () { heroInit(); heroFrame(); paintStatic(); xInit(); setJ(js); }, 150); });
+
+  /* Reveal on scroll (from a visible resting state) */
+  if (false) {
+    var rv = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.remove("pre"); rv.unobserve(e.target); } }); }, { threshold: .08 });
+    $$(".sec .wrap > .sh, .board, .vids, .mcards, .members, .reports, .steps-wrap, .tw, .plats, .join").forEach(function (el) { if (el.getBoundingClientRect().top > innerHeight) { el.classList.add("reveal", "pre"); rv.observe(el); } });
+  }
+
+  /* Utility bar */
+  try { $("#hijri").textContent = new Intl.DateTimeFormat("ar-EG-u-ca-islamic-umalqura-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(NOW); } catch (e) {}
+  $("#greg").textContent = new Intl.DateTimeFormat("ar-EG-u-ca-gregory-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(NOW);
+  function clock() { $("#clk").textContent = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Africa/Cairo" }).format(new Date()); }
+  clock(); setInterval(clock, 1000);
+  var fs = 15; function setFs(v) { fs = Math.max(13, Math.min(19, v)); document.body.style.fontSize = fs + "px"; }
+  $("#fsUp").onclick = function () { setFs(fs + 1); }; $("#fsDn").onclick = function () { setFs(fs - 1); };
+  $("#thm").onclick = function () { var r = document.documentElement, c = r.getAttribute("data-theme"); var dark = c ? c === "dark" : matchMedia("(prefers-color-scheme: dark)").matches; r.setAttribute("data-theme", dark ? "light" : "dark"); };
+
+  /* Strong motion: staggered grids, heading lines, tilt, scroll progress */
+  if ("IntersectionObserver" in window && !reduced) {
+    var sio = new IntersectionObserver(function (es) { es.forEach(function (e) { if (!e.isIntersecting) return; var el = e.target; if (el.classList.contains("stag")) { Array.prototype.forEach.call(el.children, function (c, i) { c.style.transitionDelay = (i * 90) + "ms"; }); el.classList.remove("pre"); setTimeout(function () { Array.prototype.forEach.call(el.children, function (c) { c.style.transitionDelay = ""; }); }, 1600); } else if (el.classList.contains("reveal")) { el.classList.remove("pre"); } else el.classList.add("lined"); sio.unobserve(el); }); }, { threshold: .08 });
+    $$(".plats, .members, .xlist, .rstats, .vids, .evs, .prow, .pjg").forEach(function (el) { if (el.getBoundingClientRect().top > innerHeight * .9) { el.classList.add("stag", "pre"); sio.observe(el); } });
+    $$(".sh").forEach(function (el) { if (el.getBoundingClientRect().top < innerHeight) el.classList.add("lined"); else sio.observe(el); });
+    $$(".radar-wrap, .reports, .journey, .xmap, .tw, .join").forEach(function (el) { if (el.getBoundingClientRect().top > innerHeight) { el.classList.add("reveal", "pre"); sio.observe(el); } });
+    if (matchMedia("(hover: hover)").matches) document.addEventListener("pointermove", function (e) {
+      var c = e.target.closest(".mem, .plat, .prod2"); $$(".tilting").forEach(function (x) { if (x !== c) { x.style.transform = ""; x.classList.remove("tilting"); } });
+      if (!c) return; var r = c.getBoundingClientRect(), px = (e.clientX - r.left) / r.width - .5, py = (e.clientY - r.top) / r.height - .5;
+      c.classList.add("tilting"); c.style.transform = "perspective(800px) rotateY(" + (px * 7) + "deg) rotateX(" + (-py * 7) + "deg) translateY(-4px)";
+    });
+  } else { $$(".sh").forEach(function (el) { el.classList.add("lined"); }); }
+  var hdr = document.querySelector(".site-hdr");
+  function onScroll() { var h = document.documentElement, k = h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight); $("#sprog").style.transform = "scaleX(" + k + ")"; $("#totop").classList.toggle("show", h.scrollTop > 700); if (hdr) hdr.classList.toggle("scrolled", h.scrollTop > 10); }
+  window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+  $("#totop").onclick = function () { window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" }); };
+
+  /* Product search engine (linked to factories and the marketplace) */
+  (function () {
+    if (!window.MIGP && !window.MIGFAC) return;
+    var C = window.MIGP ? MIGP.cats : { food: "الصناعات الغذائية", build: "مواد البناء", plastic: "البلاستيك والتغليف", elec: "الكهرباء والتكييف", glass: "الزجاج", metal: "المعادن والألمنيوم", petro: "البتروكيماويات", med: "الطبي والأدوية", furn: "الأثاث" }, hs = { cat: "" };
+    /* catalogue items located in one of Egypt's 27 governorates; otherwise the main products of the factories directory (data/factories.js), price on request */
+    var IT = (window.MIGP ? MIGP.items : []).filter(function (p) { return MIGREG.of(p[8]); });
+    /* real products of platform members with their photos (old platform, data/oldprod.js) come first */
+    if (window.MIGOLDP) { var OP = [], OF = {}, OFI = {}; (window.MIGOLDFAC || []).forEach(function (f, fi) { if (!OF[f[0]]) { OF[f[0]] = f; OFI[f[0]] = fi; } }); MIGOLDP.forEach(function (o, i) { var mf = /^من إنتاج\s+(.+)$/.exec(o[1] || ""), of = mf && OF[mf[1].trim()]; if (o[3] >= 0 && C[o[2]]) OP.push(["op" + i, o[0], o[2], of ? of[0] : "مورد في دليل المنصة", "SP:" + o[3] + ":" + o[4], null, "", 0, of && of[10] && MIGREG.by[of[10]] ? MIGREG.name(of[10]) : "", of ? OFI[of[0]] : null, i]); }); IT = OP.concat(IT); }
+    if (IT.length < 6 && window.MIGFAC) {
+      var CK = [[/زجاج/, "glass"], [/أثاث/, "furn"], [/أدوية|دوائ|طبي|الحيوية/, "med"], [/غذ|ألبان|تمور|زيوت|مشروبات/, "food"], [/أسمنت|بناء|سيراميك|محاجر|عزل/, "build"], [/بلاستيك|تغليف|ورق|مركبة/, "plastic"], [/كابلات|كهرب|تكييف|تبريد/, "elec"], [/بتروكيم|كيماو|دهان|أسمدة/, "petro"], [/ألمنيوم|حديد|صلب|معادن|أنابيب/, "metal"]];
+      IT = []; MIGFAC.forEach(function (f, fi) { var ck = ""; if (!inEG(f.region_code)) return; for (var k = 0; k < CK.length; k++) if (CK[k][0].test(f.sector_ar || "")) { ck = CK[k][1]; break; } if (!ck) return; (f.main_products_ar || []).slice(0, 2).forEach(function (x, xi) { IT.push(["f" + fi + "-" + xi, x, ck, f.name_ar, "", null, "", 0, MIGREG.name(f.region_code)]); }); });
+    }
+    function sp(p) { return String(p[4]).indexOf("SP:") === 0; }
+    /* where a card leads: the factory's page (p[9] = its data/oldfac.js row) or the directory search (the product, or the factory's name) */
+    function known(p) { return !!p[3] && p[3] !== "مورد في دليل المنصة"; }
+    /* a product whose maker is not in the data opens its own page (the only real page about it), never an empty directory search */
+    function fhref(p) { var u = p[9] != null ? FPG(p[9]) : ""; return u || (known(p) ? FQ(p[3]) : PPG(p[10]) || FQ(p[1])); }
+    function pa(p) { return p[5] == null ? '' : ' data-openp="' + p[0] + '"'; }
+    function phref(p) { return p[10] != null ? "/market/?open=" + p[10] : "/market/#results"; }
+    function spImg(p) { var a = String(p[4]).split(":"), c = +a[2]; return '<span class="spimg" role="img" aria-label="' + String(p[1]).replace(/"/g, "") + '" style="background-image:url(img/old/pr' + a[1] + '.jpg);background-position:' + (c % 10) * 100 / 9 + '% ' + Math.floor(c / 10) * 100 / 9 + '%"></span>'; }
+    var ICO = { food: "M4 10h16v10H4zM6 10V7a6 3 0 0 1 12 0v3", build: "M3 21h18M5 21V9h14v12M9 9V5h6v4", plastic: "M9 3h6v4l2 3v11H7V10l2-3z", elec: "M13 2 4 14h7l-1 8 9-12h-7z", glass: "M4 4h16v16H4zM4 4l16 16M14 4l6 6", metal: "M3 7h18v4H3zM3 13h18v4H3z", petro: "M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3", med: "M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z", furn: "M5 10h14v4H5zM7 14v6M17 14v6M7 10V5h10v5" };
+    function th(p) { return sp(p) ? spImg(p) : p[4] ? '<img src="img/' + p[4] + '.jpg" alt="' + p[1] + '" loading="lazy">' : (p[2] === "glass" ? '<img src="img/cat-glass.jpg" alt="' + p[1] + '" loading="lazy">' : '<svg class="ico" viewBox="0 0 24 24" fill="#C8102E22" stroke="#C8102E" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="' + ICO[p[2]] + '"/></svg>'); }
+    $("#hcat").innerHTML = '<button type="button" class="on" data-c="">الكل</button>' + Object.keys(C).map(function (k) { return '<button type="button" data-c="' + k + '">' + C[k] + '</button>'; }).join("");
+    var regs = [], facs = []; IT.forEach(function (p) { if (regs.indexOf(p[8]) < 0) regs.push(p[8]); if (facs.indexOf(p[3]) < 0) facs.push(p[3]); });
+    $("#hreg").innerHTML = MIGREG.opts("");
+    $("#hfac").innerHTML += facs.map(function (r) { return "<option>" + r + "</option>"; }).join("");
+    function list() { var q = $("#hq").value.trim().toLowerCase(), r = $("#hreg").value, f = $("#hfac").value, v = $("#hver").checked; return IT.filter(function (p) { return (!hs.cat || p[2] === hs.cat) && (!r || (MIGREG.of(p[8]) || (sp(p) ? "" : MIGREG.seller(p[3]))) === r) && (!f || p[3] === f) && (!v || p[7]) && (!q || (p[1] + " " + p[3] + " " + C[p[2]] + MIGHAY(p[1] + " | " + p[3] + " | " + C[p[2]])).toLowerCase().indexOf(q) > -1); }); }
+    function draw() {
+      var l = list(); $("#hcount").textContent = l.length;
+      var parts = []; if (hs.cat) parts.push(C[hs.cat]); if ($("#hreg").value) parts.push(MIGREG.name($("#hreg").value)); if ($("#hfac").value) parts.push($("#hfac").value); if ($("#hq").value.trim()) parts.push('"' + $("#hq").value.trim().replace(/[<>&"]/g, "") + '"');
+      $("#hsum").textContent = (parts.length ? parts.join(" · ") : "كل المنتجات اللي ليها صور") + " — " + l.length + " منتج";
+      $("#prow").innerHTML = l.length ? l.map(function (p, i) { return '<article class="prod2" style="animation:cin2 .45s ease ' + Math.min(i, 8) * 50 + 'ms both"><a class="im" href="' + (p[5] == null ? fhref(p) : "/market/#results") + '"' + pa(p) + '>' + th(p) + '<span class="chip chip-gold">' + C[p[2]] + '</span></a><div class="b"><h3>' + p[1] + '</h3><a class="fac2" href="' + (p[5] == null ? fhref(p) : FQ(p[3])) + '">🏭 ' + p[3] + (p[7] ? ' ✓' : '') + '</a><span class="rg">' + (p[8] ? '📍 ' + p[8] + ' · ' : '') + (p[5] == null ? "السعر عند الطلب" : '<b class="num">' + fmt.format(p[5]) + '</b> ج.م / ' + p[6]) + '</span><a class="btn btn-sm btn-green" href="' + (p[5] == null ? fhref(p) : "/market/#results") + '"' + pa(p) + '>' + (p[5] == null ? (known(p) ? "عرض المصنع" : "عرض المنتج") : "طلب عرض سعر") + '</a></div></article>'; }).join("") : '<div class="pempty">لا توجد منتجات بهذه الفلاتر. جرّب قطاعاً أو محافظة أخرى.</div>';
+      $("#prow").scrollLeft = 0;
+    }
+    $("#hcat").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; hs.cat = b.dataset.c; $$("#hcat button").forEach(function (x) { x.classList.toggle("on", x === b); }); draw(); });
+    $("#hq").addEventListener("input", draw); ["#hreg", "#hfac", "#hver"].forEach(function (id) { $(id).addEventListener("change", draw); });
+    $("#hclear").onclick = function () { hs.cat = ""; $("#hq").value = ""; $("#hreg").value = ""; $("#hfac").value = ""; $("#hver").checked = false; $$("#hcat button").forEach(function (x, i) { x.classList.toggle("on", !i); }); draw(); };
+    var FPX = IT.filter(function (p) { return p[4]; }).slice(0, 40);
+    var fpx = FPX.map(function (p) { return '<div class="fp"><a class="im" href="' + phref(p) + '"' + (p[10] != null ? '' : ' data-openp="' + p[0] + '"') + ' aria-label="' + p[1] + '">' + (sp(p) ? spImg(p) : '<img src="img/' + p[4] + '.jpg" alt="" loading="lazy">') + '<span class="pr num">' + (p[5] == null ? "السعر عند الطلب" : p[5].toLocaleString("en-US") + ' ج.م') + '</span></a><div class="tx"><a class="n" href="' + phref(p) + '"' + (p[10] != null ? '' : ' data-openp="' + p[0] + '"') + '>' + p[1] + '</a><a class="f" href="' + fhref(p) + '">🏭 ' + p[3] + '</a></div></div>'; }).join("");
+    $("#fpx").innerHTML = fpx + fpx; if (!FPX.length) { var fsec = document.querySelector(".fpx"); if (fsec) fsec.hidden = true; }
+    /* retail offers from stores in Egypt's governorates only; sample deals only from sellers listed in the Egyptian factories directory */
+    var OFU = (window.MIGOFFERS || []).filter(function (o) { return !o.region_codes || !o.region_codes.length || o.region_codes.some(function (c) { return inEG(c); }); });
+    var FACN = {}; (window.MIGFAC || []).forEach(function (f) { if (inEG(f.region_code)) FACN[f.name_ar] = 1; });
+    var DLU = (window.MIGDEALS || []).filter(function (d) { return FACN[d.seller]; });
+    if (OFU.some(function (o) { return o.price_egp != null; })) {
+      function egMade(o) { return o.made_in_egypt === true || o.egypt_made === true; } function pEgp(o, k) { return o[k + "_egp"] != null ? o[k + "_egp"] : null; }
+      var OFS = OFU.filter(function (o) { return pEgp(o, "price") != null; }).sort(function (a, b) { return egMade(b) - egMade(a) || (b.discount_pct || 0) - (a.discount_pct || 0); }).slice(0, 24);
+      $("#dlx").innerHTML = OFS.map(function (o) { return '<a class="dl" href="offer.html#' + o.id + '">' + (o.discount_pct ? '<span class="off">خصم ' + o.discount_pct + '%</span>' : '') + '<span class="im" style="background:#fff">' + (o.img ? '<img src="' + o.img + '" alt="" loading="lazy" style="object-fit:contain">' : '') + '</span><span class="tx"><b class="n">' + o.product_ar + (o.size_unit ? ' – ' + o.size_unit : '') + '</b><span class="pr"><b class="num">' + pEgp(o, "price") + ' ج.م</b>' + (pEgp(o, "old_price") ? '<s class="num">' + pEgp(o, "old_price") + '</s>' : '') + '</span><span class="sl">🏪 ' + o.store_ar + ' · 📍 ' + (o.branch_example ? o.branch_example.split(" - ").pop() : "جميع الفروع") + '</span></span></a>'; }).join("");
+      $("#dlxN").onclick = function () { $("#dlx").scrollBy({ left: -360 * (document.documentElement.dir === "ltr" ? -1 : 1) }); }; $("#dlxP").onclick = function () { $("#dlx").scrollBy({ left: 360 * (document.documentElement.dir === "ltr" ? -1 : 1) }); };
+      $("#dlxT").parentNode.innerHTML = "📅 محدّثة " + (OFS[0].source_checked || "");
+      setInterval(function () { var r = $("#dlx"); if (!r || r.matches(":hover")) return; if (Math.abs(r.scrollLeft) >= r.scrollWidth - r.clientWidth - 4) r.scrollTo({ left: 0 }); else r.scrollBy({ left: -180 * (document.documentElement.dir === "ltr" ? -1 : 1) }); }, 3500);
+    } else if (DLU.length) {
+      var ICON = { food: "🍞", build: "🧱", plastic: "🧪", elec: "🔌", glass: "🪟", metal: "⚙️", petro: "🛢️", med: "💊", furn: "🪑" };
+      $("#dlx").innerHTML = DLU.map(function (d) { var off = Math.round((1 - d.price / d.old) * 100); return '<a class="dl" href="/market/#deals" data-openp="' + d.id + '"><span class="off">خصم ' + off + '%</span><span class="im">' + (d.img ? '<img src="img/' + d.img + '.jpg" alt="" loading="lazy">' : (ICON[d.cat] || "📦")) + '</span><span class="tx"><b class="n">' + d.name + '</b><span class="pr"><b class="num">' + d.price.toLocaleString("en-US") + ' ج.م</b><s class="num">' + d.old.toLocaleString("en-US") + '</s></span><span class="sl">🏭 ' + d.seller + '</span></span></a>'; }).join("");
+      $("#dlxN").onclick = function () { $("#dlx").scrollBy({ left: -360 * (document.documentElement.dir === "ltr" ? -1 : 1) }); }; $("#dlxP").onclick = function () { $("#dlx").scrollBy({ left: 360 * (document.documentElement.dir === "ltr" ? -1 : 1) }); };
+      (function tick() { var n = new Date(), e = new Date(n); e.setHours(24, 0, 0, 0); var ms = e - n, h = Math.floor(ms / 36e5), m = Math.floor(ms % 36e5 / 6e4), sc = Math.floor(ms % 6e4 / 1e3); $("#dlxT").textContent = String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(sc).padStart(2, "0"); setTimeout(tick, 1000); })();
+      var dlxA = setInterval(function () { var r = $("#dlx"); if (!r || r.matches(":hover")) return; if (Math.abs(r.scrollLeft) >= r.scrollWidth - r.clientWidth - 4) r.scrollTo({ left: 0 }); else r.scrollBy({ left: -180 * (document.documentElement.dir === "ltr" ? -1 : 1) }); }, 3500);
+    } else { var dsec = document.querySelector(".dlx"); if (dsec) dsec.hidden = true; }
+    function toMarket() { var q = $("#hq").value.trim() || $("#hfac").value; try { if (q) sessionStorage.setItem("mig-q", q); } catch (x) {} MIGREG.set($("#hreg").value); location.href = "/market/#" + (hs.cat ? "cat-" + hs.cat : $("#hreg").value ? "reg-" + $("#hreg").value : "results"); }
+    $("#pfilter").addEventListener("submit", function (e) { e.preventDefault(); toMarket(); });
+    $("#goMarket").addEventListener("click", function (e) { if (hs.cat || $("#hq").value.trim() || $("#hfac").value) { e.preventDefault(); toMarket(); } });
+    draw();
+  })();
+  $("#prN").onclick = function () { $("#prow").scrollBy({ left: -468 * (document.documentElement.dir === "ltr" ? -1 : 1), behavior: "smooth" }); }; $("#prP").onclick = function () { $("#prow").scrollBy({ left: 468 * (document.documentElement.dir === "ltr" ? -1 : 1), behavior: "smooth" }); };
+
+  /* Egypt projects section */
+  (function () {
+    if (!window.MIG) return;
+    if (!MIG.LEADS.length) { var lb = document.querySelector('#pjTabs [data-k="l"]'); if (lb) lb.parentNode.removeChild(lb); }
+    function sb(s) { var x = ""; for (var i = 0; i < 7; i++) x += '<i class="' + (i < s ? "on" : i === s ? "now" : "") + '"></i>'; return '<span class="sbar2">' + x + '</span>'; }
+    function draw(k) {
+      var box = $("#pjBox");
+      if (k === "p") box.innerHTML = !MIG.PROJECTS.length ? '<div class="panel" style="text-align:center;color:var(--muted)">تُعرض المشاريع هنا فور نشرها من مصادرها الرسمية. <a href="projects.html">صفحة المشاريع ←</a></div>' : '<div class="pjg">' + MIG.PROJECTS.slice().sort(function (a, b) { return b[6] - a[6]; }).slice(0, 6).map(function (p, i) { return '<a class="pjc" style="animation-delay:' + i * 60 + 'ms" href="project.html#' + p[0] + '"><div class="t"' + (p[16] ? ' style="background-image:linear-gradient(180deg,rgba(0,40,20,.35),rgba(0,40,20,.88)),url(' + p[16] + ');background-size:cover;background-position:center"' : '') + '><span class="chip chip-gold" style="align-self:flex-start">' + p[4] + ' · ' + MIG.STAGES[p[5]] + '</span><b>' + p[1] + '</b><small style="opacity:.85">📍 ' + p[3] + '</small></div><div class="b"><b style="color:var(--gold-deep);font-size:1.1rem">' + MIG.money(p[6]) + '</b>' + sb(p[5]) + (p[15] ? '<span>📰 له مصدر منشور</span>' : '') + '</div></a>'; }).join("") + '</div>';
+      else if (k === "l") box.innerHTML = MIG.LEADS.slice().sort(function (a, b) { return a[8] - b[8]; }).slice(0, 5).map(function (l, i) { var p = MIG.proj(l[3]); return '<a class="ld" style="animation-delay:' + i * 60 + 'ms" href="leads.html"><span class="av">' + (l[1] === "contractor" ? "🏗️" : "📐") + '</span><span style="min-width:0"><b>' + l[4] + ' — ' + l[5] + ' ' + l[6] + '</b><br><small class="muted">' + l[2] + ' · ' + (p ? p[1] : "") + ' · 📍 ' + l[7] + '</small></span><span class="chip ' + (l[8] <= 5 ? "chip-red" : "chip-amber") + '">يُغلق بعد ' + l[8] + ' يوم</span></a>'; }).join("") + '<a class="btn btn-gold" href="leads.html">كل طلبات المواد ←</a>';
+      else box.innerHTML = '<div class="nwl">' + MIG.NEWS.map(function (n, i) { return '<a style="animation-delay:' + i * 50 + 'ms" href="project.html#' + n[1] + '"><small class="muted">📅 ' + MIG.dAr(n[0]) + '</small><b>' + n[2] + '</b></a>'; }).join("") + '</div>';
+    }
+    $("#pjTabs").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; $$("#pjTabs button").forEach(function (x) { x.classList.toggle("on", x === b); }); draw(b.dataset.k); });
+    draw("p");
+    if (window.plansHTML && $("#homePlans")) $("#homePlans").innerHTML = plansHTML(false);
+  })();
+
+
+})();
+</script>

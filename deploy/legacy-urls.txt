@@ -1,0 +1,56 @@
+# Legacy URLs of the old madeinegyptgate.com that search engines and visitors know (the live sitemap of 2026-11-18,
+# plus WordPress-era paths). deploy/smoke-test.sh checks every one of them on each deploy (SEO-SPEC A7):
+#   - a URL in the build's redirect map (/_seo/redirects.json) must answer ONE 301 to the map's target, which answers 200;
+#   - a hash-shim page (company.html, city.html … — /_seo/hash/<name>.json exists) must answer 200 + noindex;
+#   - anything else fails: a live URL the new site does not handle.
+# One path per line (no host). Lines starting with "#" are comments.
+/market.html
+/factory.html
+/opportunity.html
+/factories.html
+/cities.html
+/media-center.html
+/contact.html
+/track.html
+/intl.html
+/about.html
+/useful-links.html
+/projects.html
+/project.html
+/leads.html
+/contractor-leads.html
+/consultant-leads.html
+/lead.html
+/project-news.html
+/register.html
+/export-market.html
+/winners.html
+/agencies.html
+/contractors.html
+/entity.html
+/bourse.html
+/deal.html
+/region.html
+/radar.html
+/map.html
+/offers.html
+/offer.html
+/news.html
+/videos.html
+/events.html
+/event.html
+/legal.html
+/tenders.html
+/rfqs.html
+/company.html
+/suppliers.html
+/outlets.html
+/article.html
+/city.html
+/winner.html
+# WordPress era
+/manufacturers
+/manufacturers/
+/home.html
+/home
+/index.html

@@ -1,0 +1,403 @@
+{
+ "_what": "What this proposal was built on — read-only Anam calls on 2026-11-19 ≈ 13:05–13:12 UTC (anam_persona_get ×3, anam_tool_list, anam_tool_get ×8). Nothing was written to Anam.",
+ "personas": {
+  "bassem": {
+   "id": "19ef9078-5252-42a4-bbdf-9a3c4a38a4be",
+   "name": "باسم · Bassem — مستشار الأعمال (Made in Egypt Gate)",
+   "updatedAt": "2026-11-18T23:43:28.505Z",
+   "voiceDetectionOptions": {
+    "sttProvider": "anam",
+    "endOfSpeechSensitivity": 0.45,
+    "speechEnhancementLevel": 1,
+    "silenceBeforeSkipTurnSeconds": 45,
+    "silenceBeforeSessionEndSeconds": 300
+   },
+   "llmId": "661ce597-279d-46a3-bfd9-19d2d8bac757",
+   "languageCode": "ar",
+   "maxSessionLengthSeconds": null,
+   "toolIds": [
+    {
+     "id": "069b8454-72b5-422d-9c30-06a815cee87f",
+     "name": "janna_submit_form"
+    },
+    {
+     "id": "0773f450-f996-4729-9309-af54b753a049",
+     "name": "janna_search"
+    },
+    {
+     "id": "1aef2a57-a4bd-4663-abd1-46190a995204",
+     "name": "bassem_intel"
+    },
+    {
+     "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
+     "name": "janna_lookup"
+    },
+    {
+     "id": "325b182c-e5e0-42d0-a130-658919faf12f",
+     "name": "bassem_notify_member"
+    },
+    {
+     "id": "373e9ae3-e1aa-4b51-8ad2-5dd291292319",
+     "name": "janna_fill_rfq"
+    },
+    {
+     "id": "3f43d0f1-a685-4311-927b-34fa1a4adc9e",
+     "name": "janna_follow"
+    },
+    {
+     "id": "3fd11ab3-b7cc-4229-b32a-8c17e55d3bed",
+     "name": "bassem_start_deal"
+    },
+    {
+     "id": "6b87a213-3e8f-4fde-b215-18e362916642",
+     "name": "janna_navigate"
+    },
+    {
+     "id": "6dd62e5e-f958-470a-ab48-7cd680876295",
+     "name": "bassem_open_guide"
+    },
+    {
+     "id": "9286b2c5-b52c-44d1-8572-4fd4b9d47b1a",
+     "name": "bassem_draft_email"
+    },
+    {
+     "id": "96ea605d-1689-4cdd-a730-4666d6b68243",
+     "name": "bassem_set_work_time"
+    },
+    {
+     "id": "99561b78-ad09-44b5-93b8-bdacde4d7192",
+     "name": "bassem_open_opportunity"
+    },
+    {
+     "id": "99653b29-5aa7-48b3-8628-31ba0849c945",
+     "name": "janna_fill_contact"
+    },
+    {
+     "id": "a00e4d99-df41-4a43-8c66-39bdfa3d2495",
+     "name": "bassem_send_email"
+    },
+    {
+     "id": "f2b6a430-6f86-4ecf-9ca0-de110723cab5",
+     "name": "bassem_update_deal"
+    }
+   ]
+  },
+  "janna_ar": {
+   "id": "5f06d835-22cc-4460-b412-84cefa9e565b",
+   "name": "جنة · Janna — Made in Egypt Gate",
+   "updatedAt": "2026-11-18T23:42:15.502Z",
+   "voiceDetectionOptions": {
+    "sttProvider": "anam",
+    "endOfSpeechSensitivity": 0.45,
+    "speechEnhancementLevel": 1,
+    "silenceBeforeSkipTurnSeconds": 30,
+    "silenceBeforeSessionEndSeconds": 180
+   },
+   "llmId": "661ce597-279d-46a3-bfd9-19d2d8bac757",
+   "languageCode": "ar",
+   "maxSessionLengthSeconds": null,
+   "toolIds": [
+    {
+     "id": "069b8454-72b5-422d-9c30-06a815cee87f",
+     "name": "janna_submit_form"
+    },
+    {
+     "id": "0773f450-f996-4729-9309-af54b753a049",
+     "name": "janna_search"
+    },
+    {
+     "id": "0deba27b-7c97-4882-b971-743e64dd5403",
+     "name": "janna_schedule_meeting"
+    },
+    {
+     "id": "1aef2a57-a4bd-4663-abd1-46190a995204",
+     "name": "bassem_intel"
+    },
+    {
+     "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
+     "name": "janna_lookup"
+    },
+    {
+     "id": "373e9ae3-e1aa-4b51-8ad2-5dd291292319",
+     "name": "janna_fill_rfq"
+    },
+    {
+     "id": "3f43d0f1-a685-4311-927b-34fa1a4adc9e",
+     "name": "janna_follow"
+    },
+    {
+     "id": "6b87a213-3e8f-4fde-b215-18e362916642",
+     "name": "janna_navigate"
+    },
+    {
+     "id": "839572c0-effa-4008-8b05-2b3830d60abf",
+     "name": "janna_start_meeting"
+    },
+    {
+     "id": "99653b29-5aa7-48b3-8628-31ba0849c945",
+     "name": "janna_fill_contact"
+    },
+    {
+     "id": "a5eaf125-f62f-425c-ad8e-c12da6fd0a8a",
+     "name": "janna_track"
+    },
+    {
+     "id": "e436c233-7437-40ce-918f-c06c4135f548",
+     "name": "janna_fill_registration"
+    }
+   ]
+  },
+  "janna_en": {
+   "id": "e5101653-65b4-44a6-85e5-ec2e78f82685",
+   "name": "Janna (English) — Made in Egypt Gate",
+   "updatedAt": "2026-11-18T23:44:15.892Z",
+   "voiceDetectionOptions": {
+    "endOfSpeechSensitivity": 0.45,
+    "speechEnhancementLevel": 1,
+    "silenceBeforeSkipTurnSeconds": 30,
+    "silenceBeforeSessionEndSeconds": 180
+   },
+   "llmId": "661ce597-279d-46a3-bfd9-19d2d8bac757",
+   "languageCode": "en",
+   "maxSessionLengthSeconds": null,
+   "toolIds": [
+    {
+     "id": "069b8454-72b5-422d-9c30-06a815cee87f",
+     "name": "janna_submit_form"
+    },
+    {
+     "id": "0773f450-f996-4729-9309-af54b753a049",
+     "name": "janna_search"
+    },
+    {
+     "id": "0deba27b-7c97-4882-b971-743e64dd5403",
+     "name": "janna_schedule_meeting"
+    },
+    {
+     "id": "1aef2a57-a4bd-4663-abd1-46190a995204",
+     "name": "bassem_intel"
+    },
+    {
+     "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
+     "name": "janna_lookup"
+    },
+    {
+     "id": "373e9ae3-e1aa-4b51-8ad2-5dd291292319",
+     "name": "janna_fill_rfq"
+    },
+    {
+     "id": "3f43d0f1-a685-4311-927b-34fa1a4adc9e",
+     "name": "janna_follow"
+    },
+    {
+     "id": "6b87a213-3e8f-4fde-b215-18e362916642",
+     "name": "janna_navigate"
+    },
+    {
+     "id": "839572c0-effa-4008-8b05-2b3830d60abf",
+     "name": "janna_start_meeting"
+    },
+    {
+     "id": "99653b29-5aa7-48b3-8628-31ba0849c945",
+     "name": "janna_fill_contact"
+    },
+    {
+     "id": "a5eaf125-f62f-425c-ad8e-c12da6fd0a8a",
+     "name": "janna_track"
+    },
+    {
+     "id": "e436c233-7437-40ce-918f-c06c4135f548",
+     "name": "janna_fill_registration"
+    }
+   ]
+  }
+ },
+ "tools": [
+  {
+   "id": "069b8454-72b5-422d-9c30-06a815cee87f",
+   "name": "janna_submit_form",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T20:03:57.560Z",
+   "usageCount": 3
+  },
+  {
+   "id": "0773f450-f996-4729-9309-af54b753a049",
+   "name": "janna_search",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T20:03:56.197Z",
+   "usageCount": 3
+  },
+  {
+   "id": "0deba27b-7c97-4882-b971-743e64dd5403",
+   "name": "janna_schedule_meeting",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T21:40:55.112Z",
+   "usageCount": 2
+  },
+  {
+   "id": "1aef2a57-a4bd-4663-abd1-46190a995204",
+   "name": "bassem_intel",
+   "type": "SERVER_WEBHOOK",
+   "updatedAt": "2026-11-18T22:58:36.526Z",
+   "usageCount": 3
+  },
+  {
+   "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
+   "name": "janna_lookup",
+   "type": "SERVER_WEBHOOK",
+   "updatedAt": "2026-11-18T09:51:13.805Z",
+   "usageCount": 3
+  },
+  {
+   "id": "325b182c-e5e0-42d0-a130-658919faf12f",
+   "name": "bassem_notify_member",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T22:23:46.891Z",
+   "usageCount": 1
+  },
+  {
+   "id": "373e9ae3-e1aa-4b51-8ad2-5dd291292319",
+   "name": "janna_fill_rfq",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T20:03:56.543Z",
+   "usageCount": 3
+  },
+  {
+   "id": "3f43d0f1-a685-4311-927b-34fa1a4adc9e",
+   "name": "janna_follow",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-18T02:14:57.780Z",
+   "usageCount": 3
+  },
+  {
+   "id": "3fd11ab3-b7cc-4229-b32a-8c17e55d3bed",
+   "name": "bassem_start_deal",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T22:23:45.099Z",
+   "usageCount": 1
+  },
+  {
+   "id": "6b87a213-3e8f-4fde-b215-18e362916642",
+   "name": "janna_navigate",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T20:03:55.827Z",
+   "usageCount": 3
+  },
+  {
+   "id": "6dd62e5e-f958-470a-ab48-7cd680876295",
+   "name": "bassem_open_guide",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T22:23:46.547Z",
+   "usageCount": 1
+  },
+  {
+   "id": "839572c0-effa-4008-8b05-2b3830d60abf",
+   "name": "janna_start_meeting",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T21:40:54.755Z",
+   "usageCount": 2
+  },
+  {
+   "id": "9286b2c5-b52c-44d1-8572-4fd4b9d47b1a",
+   "name": "bassem_draft_email",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T22:23:45.432Z",
+   "usageCount": 1
+  },
+  {
+   "id": "96ea605d-1689-4cdd-a730-4666d6b68243",
+   "name": "bassem_set_work_time",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T22:39:34.768Z",
+   "usageCount": 1
+  },
+  {
+   "id": "99561b78-ad09-44b5-93b8-bdacde4d7192",
+   "name": "bassem_open_opportunity",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T22:23:44.763Z",
+   "usageCount": 1
+  },
+  {
+   "id": "99653b29-5aa7-48b3-8628-31ba0849c945",
+   "name": "janna_fill_contact",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T20:03:56.911Z",
+   "usageCount": 3
+  },
+  {
+   "id": "a00e4d99-df41-4a43-8c66-39bdfa3d2495",
+   "name": "bassem_send_email",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T22:23:45.882Z",
+   "usageCount": 1
+  },
+  {
+   "id": "a5eaf125-f62f-425c-ad8e-c12da6fd0a8a",
+   "name": "janna_track",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-18T02:14:57.478Z",
+   "usageCount": 2
+  },
+  {
+   "id": "e436c233-7437-40ce-918f-c06c4135f548",
+   "name": "janna_fill_registration",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T20:03:57.250Z",
+   "usageCount": 2
+  },
+  {
+   "id": "f2b6a430-6f86-4ecf-9ca0-de110723cab5",
+   "name": "bassem_update_deal",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T22:23:46.199Z",
+   "usageCount": 1
+  },
+  {
+   "id": "0a849d52-f3b6-43d4-a2be-64155d2f4c24",
+   "name": "janna_book_meeting",
+   "type": "CLIENT",
+   "updatedAt": "2026-11-17T21:16:55.845Z",
+   "usageCount": 0
+  },
+  {
+   "id": "7904b2f4-cfc1-4f08-814f-0a0d14ac6643",
+   "name": "pause_conversation",
+   "type": "SYSTEM",
+   "updatedAt": null,
+   "usageCount": 0
+  },
+  {
+   "id": "4d05849d-329f-4cd3-996f-f2a28d8135f0",
+   "name": "end_call",
+   "type": "SYSTEM",
+   "updatedAt": null,
+   "usageCount": 0
+  },
+  {
+   "id": "25bef1be-0aac-4b74-85d5-b4435c2f146d",
+   "name": "change_language",
+   "type": "SYSTEM",
+   "updatedAt": null,
+   "usageCount": 0
+  },
+  {
+   "id": "69a89bda-9e11-443f-84c0-1cbea75e4fcb",
+   "name": "skip_turn",
+   "type": "SYSTEM",
+   "updatedAt": null,
+   "usageCount": 0
+  }
+ ],
+ "proposed_names_absent_today": [
+  "bassem_open_item",
+  "bassem_recall",
+  "bassem_save_profile",
+  "bassem_screen",
+  "bassem_tasks",
+  "bassem_web_search",
+  "janna_tasks",
+  "knowledge_lookup",
+  "platform_item"
+ ]
+}

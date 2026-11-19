@@ -1,0 +1,2033 @@
+/* «جنة لايف» — live video Janna (Anam real-time avatar) with her own "screen".
+   The visitor opens a full-screen black stage: on the right Janna talks live (voice + real lip movement + emotions, Egyptian
+   Arabic / English), on the left her "screen" shows the platform in a same-origin iframe that she drives with client tools:
+   janna_navigate / janna_search / janna_fill_rfq / janna_fill_contact / janna_fill_registration / janna_submit_form /
+   janna_book_meeting, plus the meeting tools (optional Turnstile: window.MEETINGS_TURNSTILE_SITEKEY):
+   - janna_start_meeting {name, email, phone?, company?, activity?, markets?, language?, recording_consent} → MEETING MODE in the
+     same overlay: «اجتماع تعريفي مع جنة» header, recording badge + elapsed timer (sessions are capped at 10 min on the current
+     plan: gentle warning at 8:00), agenda checklist ticked from tool calls / what is said (or by hand), POST /api/meetings/start,
+     and on session end POST /api/meetings/{id}/finish → the visitor gets the recording + summary by email (Worker meetings.js).
+     Scheduled meetings: the consent shown is the one the Worker answers on /join (an unticked box withdraws it); closing
+     before a session started promises nothing (no /finish).
+   - janna_schedule_meeting {name, email, phone?, company?, date, time, topic?, language?} (Egypt time) → POST /api/meetings and a
+     confirmation card (.ics «أضف للتقويم», WhatsApp share); offline: prefilled WhatsApp / e-mail to the platform team.
+   Personas: JANNA_LIVE.open() → Janna (AR/EN by MIGLANG); JANNA_LIVE.open({persona:"bassem"}) → «باسم · مستشار أعمالك»
+   (members' business advisor; tools janna_navigate + janna_search). meeting.html calls JANNA_LIVE.open({meeting:{id,…}}).
+   The live session survives navigation because only the iframe changes. Forms are filled for the visitor but only sent
+   after they confirm (the persona calls janna_submit_form). Never touches card fields or file uploads.
+   Persona + tools live in Anam Lab (persona ids below); the site's origin must be in each persona's Allowed Domains.
+   All UI text is bilingual in code: T(ar, en). Works without the API (static preview): everything stays local.
+   Phase A (action layer, same API as the buttons — data/mig-forms.js / data/mig-api.js):
+   - janna_submit_form clicks the form's own submit button; the screen's MIGINQ fires "mig:inquiry" and ONLY a server answer with a
+     ref is announced as sent ("✅ اتبعت برقم …", with the true number of factories it was routed to); otherwise the real error.
+   - janna_fill_rfq on a factory / company page addresses the RFQ to that factory (sessionStorage "mig-rfq-to").
+   - janna_follow {kind?, id?, label?} (defaults to what is on the screen: window.MIG_CTX) → MIGAPI.follow · janna_track {ref, last4}.
+   - Bassem's tools (BACKLOG item 11) drive advisor.html through its own controls (#advQ, [data-how], [data-start], [data-open],
+     #advPlan, #advStg, [data-dtab], #mTo #mSub #mBody #mLang #mSend): bassem_open_opportunity, bassem_start_deal,
+     bassem_draft_email, bassem_send_email (only after the member said yes), bassem_update_deal, bassem_open_guide; plus
+     bassem_notify_member → MIGAPI.notify (POST /api/advisor/notify) and bassem_set_work_time → MIGAPI.prefs (POST /api/me/prefs).
+     When neither Bassem's screen nor advisor.html is open, the page navigates to advisor.html#bcmd=<json> and runs it there.
+   - every tool call is also shown on the holographic workspace: MIGHOLO.act(tool, args, {who}).
+   - JANNA_LIVE.open({intent:"meeting"}) opens Janna with the meeting card (JANNA_LIVE.intents = ["meeting"]).
+   - No human step: nothing says "the team will contact you"; failures are stated as they are, with a Janna meeting as the fallback.
+   Live calls without a third-party mark in the video (worker/src/janna-session.js): «ابدأ الكلام» asks the Worker for a short-lived Anam
+   session token (POST /api/janna/session {agent, lang}; for Bassem with the member's own sign-in) and runs the call with the pinned Anam
+   JS SDK (exact file + SRI) in this same call layout: our own AI label on the video from the first second («جنة · مساعِدة بالذكاء
+   الاصطناعي» / "Janna · AI assistant", «باسم · مستشار بالذكاء الاصطناعي» / "Bassem · AI advisor"), microphone mute, a text box, end,
+   the captions strip (data/captions.js) and the 10-minute limit the Worker sends (warning 2 minutes before). The SDK's events are
+   re-dispatched on the call element as the widget's own DOM events (anam-agent:tool-call-started / session-started / session-ended /
+   message-received), so every tool goes through the same run() and holo.js / captions.js see exactly what they see with the widget.
+   No key on the Worker (503), no API (static preview), an Anam / network failure or an SDK file that cannot load → today's widget
+   (agent-widget, SRI). A rate limit, the daily cap, a blocked network or a refused Bassem sign-in is said as it is (never the widget). */
+(function () {
+  var inScreen = false; try { inScreen = window.top !== window && window.parent.__jannaLive === 1; } catch (e) {}
+  if (inScreen) {
+    /* inside Janna's screen: the local Janna engine must not start (janna-live.js loads before janna.js) and page widgets are hidden */
+    window.__janna = 1; window.JANNA_EMBED = 1;
+    var s0 = document.createElement("style");
+    s0.textContent = "[class^='jn-'],[class*=' jn-'],[class^='bs-'],[class*=' bs-'],.jnl-btn,.sanad-btn,.sanad-tip,#sdBox,.wa-float,.planpv{display:none!important}";
+    (document.head || document.documentElement).appendChild(s0);
+    return;
+  }
+  if (window.__jannaLive) return; window.__jannaLive = 1;
+  var EN = window.MIGLANG === "en";
+  /* personas: the Arabic Janna listens in Egyptian Arabic (accurate STT), the English one serves ?lang=en pages; Bassem (Arabic) advises members */
+  var AGENTS = { janna: EN ? "e5101653-65b4-44a6-85e5-ec2e78f82685" : "5f06d835-22cc-4460-b412-84cefa9e565b", bassem: "19ef9078-5252-42a4-bbdf-9a3c4a38a4be" };
+  /* the Anam widget: an exact, immutable file (not the package-root redirect) with Subresource Integrity — the page holds the platform
+     session (localStorage "mig-tok"), so a changed third-party file must never run (security review L4) */
+  var WIDGET = "https://unpkg.com/@anam-ai/agent-widget@0.8.0/dist/index.umd.js", WIDGET_SRI = "sha384-4Z4FU2wuqWvykHhn4qPvZSyoJJRV7yuRD7/PSD4DhSJvg0Z+vg8W/PH2s+rO9Yo8";
+  /* the Anam JS SDK (window.anam) for calls without the widget: the same rule — an exact file with SRI, from jsDelivr and, if that cannot
+     be reached, the same bytes from unpkg. 4.29.1 (on npm since 2026-10-19); the call below keeps one "session started" per call itself */
+  var SDK_V = "4.29.1", SDK_SRI = "sha384-S+prKbl1DuQHFJl/uMWM/WVzZuZuToG2n+SqaNi51unIiPRH746eVdsfYGdAyYPf";
+  var SDK_URLS = ["https://cdn.jsdelivr.net/npm/@anam-ai/js-sdk@" + SDK_V + "/dist/umd/anam.js", "https://unpkg.com/@anam-ai/js-sdk@" + SDK_V + "/dist/umd/anam.js"];
+  var SESS_API = String(window.MIG_API_BASE || "/api").replace(/\/+$/, "") + "/janna/session";
+  /* sessionStorage: the Worker said "not configured" (no key / no endpoint) → this tab opens the widget directly for 30 minutes */
+  var MODE_KEY = "mig-jnl-mode";
+  var API = String(window.MEETINGS_API || "/api/meetings").replace(/\/+$/, "");
+  var WA_TEAM = "201279188996", TEAM_MAIL = "info@madeinegyptgate.com", SITE = "https://madeinegyptgate.com/";
+  /* optional Cloudflare Turnstile site key (only when the Worker has TURNSTILE_SECRET): window.MEETINGS_TURNSTILE_SITEKEY */
+  var TS_KEY = String(window.MEETINGS_TURNSTILE_SITEKEY || "");
+  var CAP_MIN = 120, WARN_SEC = 118 * 60; /* owner 2026-11-18: Anam Growth plan — no plan cap; the Worker allows 2 h per call (max_session_sec) */
+  var T = function (ar, en) { return EN ? en : ar; };
+  var GOV = { CAI: "القاهرة", GIZ: "الجيزة", ALX: "الإسكندرية", QLB: "القليوبية", SHR: "الشرقية", DKH: "الدقهلية", GHR: "الغربية", MNF: "المنوفية", BHR: "البحيرة", KFS: "كفر الشيخ", DMT: "دمياط", PTS: "بورسعيد", ISM: "الإسماعيلية", SUZ: "السويس", NSN: "شمال سيناء", JSN: "جنوب سيناء", FYM: "الفيوم", BNS: "بني سويف", MNY: "المنيا", AST: "أسيوط", SHG: "سوهاج", QNA: "قنا", LXR: "الأقصر", ASN: "أسوان", BBA: "البحر الأحمر", WAD: "الوادي الجديد", MTR: "مطروح" };
+  var PAGES = { home: 1, factories: 1, market: 1, offers: 1, tenders: 1, rfqs: 1, projects: 1, suppliers: 1, region: 1, cities: 1, map: 1, news: 1, events: 1, winners: 1, "export-market": 1, intl: 1, about: 1, contact: 1, register: 1, legal: 1, radar: 1 };
+  var SEARCH = { factories: ["#q", "#c"], market: ["#sq", null], tenders: ["#olQ", null], rfqs: ["#olQ", null], suppliers: ["#sq", "#se"], offers: ["#oq", "#ocity"], projects: ["#q", "#r"] };
+  var NAMES = { home: ["الرئيسية", "Home"], factories: ["دليل المصانع", "Factory directory"], market: ["السوق", "Marketplace"], offers: ["العروض", "Offers"], tenders: ["المناقصات", "Tenders"], rfqs: ["طلبات الأسعار", "RFQs"], projects: ["المشاريع", "Projects"], suppliers: ["الموردين", "Suppliers"], region: ["المحافظات", "Governorates"], cities: ["المدن الصناعية", "Industrial cities"], map: ["الخريطة", "Map"], news: ["الأخبار", "News"], events: ["المعارض", "Exhibitions"], winners: ["الترسيات", "Contract awards"], "export-market": ["أسواق التصدير", "Export markets"], intl: ["المنصات الدولية", "International"], about: ["عن المنصة", "About"], contact: ["تواصل معنا", "Contact"], register: ["التسجيل", "Registration"], legal: ["المركز القانوني", "Legal"], radar: ["رادار الفرص", "Radar"] };
+  var AGENDA = [["intro", "التعارف ونشاطك", "Introductions & your business"], ["platform", "المنصة والجهة المشغّلة", "The platform & its operator"], ["tour", "جولة على الشاشة", "Screen tour"], ["plan", "الباقة المناسبة ومستشارك باسم", "The right plan & your advisor Bassem"], ["questions", "أسئلتك", "Your questions"], ["register", "التسجيل", "Registration"]];
+  /* clean URLs (deploy build): site.py pages live at /<key>/ under <base href="/"> and tell their key in window.MIGPAGE; "x.html" there
+     only answers with a 301 to the SEO landing page (/factories/, /tenders/ … without the app or Janna), so the screen goes straight to
+     the app pages. window.MIGPATHS {app, static} (if the build provides it) wins over this copy of seo/config.json. */
+  var CLEAN = !!document.querySelector('base[href="/"]') || (!/\.html?$/i.test(location.pathname) && location.pathname !== "/") || /(^|\/)janna\.html$/i.test(location.pathname);
+  var APPP = { factories: "/factories/search/", tenders: "/tenders/search/", rfqs: "/rfq/search/", winners: "/awards/search/", news: "/news/search/", events: "/events/calendar/", projects: "/projects/search/", offers: "/offers/search/", cities: "/industrial-zones/explore/", region: "/governorates/explore/" };
+  var STP = { home: "/", rfqs: "/rfq/", winners: "/awards/", cities: "/industrial-zones/", region: "/governorates/", "export-market": "/export/", factory: "/factories/" };
+  var SHIM = { company: 1, article: 1, event: 1, offer: 1, city: 1, project: 1, winner: 1, entity: 1, lead: 1, opportunity: 1, "export-market": 1 };
+  function url(u) {
+    u = String(u == null ? "" : u); if (!CLEAN) return u;
+    var m = /^([\w-]+)\.html(\?[^#]*)?(#.*)?$/.exec(u); if (!m) return u;
+    var k = m[1], q = m[2] || "", h = m[3] || "", P = window.MIGPATHS || {};
+    if (k === "home" || k === "index") return "/" + q + h;
+    var ap = (P.app || APPP)[k]; if (ap) return ap + q + h;
+    if (SHIM[k] && h) return u; /* company.html#N … → the build's hash shim opens the record's clean URL */
+    return ((P["static"] || STP)[k] || "/" + k + "/") + q + h;
+  }
+  /* the page key of a window (site.py: window.MIGPAGE); the file name only on an old flat build */
+  function pageKey(w) { var k = ""; try { w = w || window; k = String(w.MIGPAGE || ""); if (!k) k = (w.location.pathname.replace(/\/+$/, "").split("/").pop() || "home.html").replace(/\.html?$/, ""); } catch (e) {} return !k || k === "index" ? "home" : k; }
+
+  /* the live call screen (owner: «شاشة الفيديو الحي أكبر»): a BIG video (~75vh on desktop, with a full-screen button; nearly the whole
+     phone screen) framed by the office backdrop (img/office-backdrop.jpg); her "screen" with the platform sits beside it (wide screens)
+     or under it (phones / 4:3), never shrinking the video. The captions get their own strip under the video (data/captions.js moves
+     its box into .jnl-cap), so they never cover the widget's controls at the bottom of the video. */
+  var css = ''
+    + '.jnl-btn{position:fixed;z-index:64;right:14px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:8px;padding:9px 14px 9px 10px;border-radius:999px;border:1px solid rgba(120,220,255,.55);background:#04121a;color:#dff7ff;font:800 .86rem Cairo,Tajawal,Tahoma,sans-serif;cursor:pointer;box-shadow:0 0 22px -6px rgba(90,210,255,.9),0 10px 24px -12px rgba(0,0,0,.6)}'
+    + '.jnl-btn i{width:9px;height:9px;border-radius:50%;background:#ff3b5c;box-shadow:0 0 0 0 rgba(255,59,92,.6);animation:jnlRec 1.6s ease infinite}'
+    + '@keyframes jnlRec{0%{box-shadow:0 0 0 0 rgba(255,59,92,.6)}70%{box-shadow:0 0 0 8px rgba(255,59,92,0)}100%{box-shadow:0 0 0 0 rgba(255,59,92,0)}}'
+    /* members' tools (dashboard, requests monitor, advisor, meeting — data/janna.js sets html.jn-quiet): the pill sits at the bottom corner
+       next to Janna's collapsed headshot, on the side away from the page's navigation (left in Arabic, right in English) */
+    + 'html.jn-quiet .jnl-btn{top:auto;transform:none;bottom:calc(env(safe-area-inset-bottom,0px) + 86px);right:14px;left:auto;width:64px;height:30px;padding:0;justify-content:center;gap:5px;font-size:0;line-height:1}html.jn-quiet.jn-qrtl .jnl-btn{right:auto;left:14px}'
+    + 'html.jn-quiet .jnl-btn::after{content:"LIVE";font:800 .72rem/1 Cairo,Tajawal,Tahoma,sans-serif;letter-spacing:.04em}'
+    /* the stage: office backdrop + a soft vignette; video column (me) on the right, meeting panel (mt) + screen (scr) on the left */
+    + '.jnl{position:fixed;inset:0;z-index:2147483000;box-sizing:border-box;background:#05090c url(img/office-backdrop.jpg) 50% 40%/cover no-repeat;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr);grid-template-areas:"mt me" "scr me";column-gap:16px;padding:14px;font-family:Cairo,Tajawal,Tahoma,sans-serif;color:#dff7ff;overflow:hidden;'
+    + '--jnl-vh:min(75vh,calc(100vh - 150px));--jnl-w:min(calc(var(--jnl-vh) * 1.5),calc(100vw - 440px))}'
+    + '.jnl::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 70% at 72% 46%,rgba(5,9,12,.08),rgba(5,9,12,.62) 78%),linear-gradient(180deg,rgba(5,9,12,.25),rgba(5,9,12,.55))}'
+    + '.jnl>*{position:relative}.jnl[hidden]{display:none}'
+    + '.jnl-scr{grid-area:scr;display:flex;flex-direction:column;min-width:0;min-height:0;border-radius:18px;overflow:hidden;border:1px solid rgba(120,220,255,.35);box-shadow:0 0 50px -12px rgba(90,210,255,.55),0 30px 60px -30px rgba(0,0,0,.8);background:#fff}'
+    + '.jnl-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#04121a;border-bottom:1px solid rgba(120,220,255,.25);font-size:.84rem}'
+    + '.jnl-bar b{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.jnl-bar button,.jnl-hd button{border:1px solid rgba(120,220,255,.45);background:rgba(4,18,26,.55);color:#bff3ff;border-radius:9px;padding:4px 10px;font:inherit;font-weight:800;cursor:pointer;white-space:nowrap}'
+    + '.jnl-bar .x,.jnl-hd .x{border-color:#c8102e;background:#c8102e;color:#fff}.jnl-bar .tv,.jnl-hd .sw{display:none}'
+    + '.jnl-scr iframe{flex:1;width:100%;min-height:0;border:0;background:#fff}'
+    + '.jnl-me{grid-area:me;width:var(--jnl-w);min-height:0;display:flex;flex-direction:column;align-items:stretch;justify-content:center;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}'
+    + '.jnl-hd{display:flex;align-items:center;gap:10px;margin:0 0 8px;min-width:0}.jnl-hd .who{flex:1;min-width:0;display:flex;align-items:center;gap:9px}'
+    + '.jnl-hd .who img{width:38px;height:38px;border-radius:50%;object-fit:cover;object-position:50% 18%;border:2px solid #e9c46a;flex:none}'
+    + '.jnl-hd h3{margin:0;font-size:1.02rem;line-height:1.35;color:#fff;text-shadow:0 0 10px rgba(90,210,255,.7),0 1px 2px rgba(0,0,0,.8);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.jnl-hd p{margin:0;font-size:.76rem;color:#e9c46a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(0,0,0,.8)}'
+    + '.jnl-hd .acts{display:flex;gap:6px;flex:none}.jnl-hd .who .nm{min-width:0;overflow:hidden}'
+    + '.jnl-mem{margin:-4px 0 8px;font-size:.76rem;line-height:1.5;color:#bff3ff;text-shadow:0 1px 2px rgba(0,0,0,.8)}.jnl.fs .jnl-mem{display:none}'
+    /* review 2026-11-19 #17 / #18: the memory notice never takes a second line on phones, and on shorter screens it takes the tip's place */
+    + '@media (max-width:820px){.jnl-mem{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}@media (max-height:840px){.jnl-mem~.jnl-tip{display:none}}'
+    + '.jnl-me .v{position:relative;width:100%;flex:none;border-radius:18px;overflow:hidden;background:#000;box-shadow:0 0 0 1px rgba(233,196,106,.38),0 28px 70px -22px rgba(0,0,0,.85),0 0 70px -16px rgba(90,210,255,.5)}'
+    + '.jnl-me anam-agent{display:block;width:100%;--anam-sheet-height:var(--jnl-vh)}'
+    /* the call through the SDK (no widget): the stream fills the stage height (object-fit: cover crops the sides of the 3:2 stream on a
+       phone in portrait, as SHADOW_CSS does for the widget); before / after the call the persona waits in the office (real photo cutout) */
+    + '.jnl-sdk{position:relative;width:100%;height:var(--jnl-vh);min-height:240px;overflow:hidden;background:#05090c url(img/office-backdrop.jpg) 50% 40%/cover no-repeat;color:#fff;font-family:Cairo,Tajawal,Tahoma,sans-serif}'
+    + '.jnl-sdk::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(5,9,12,.28),rgba(5,9,12,0) 28%,rgba(5,9,12,0) 62%,rgba(5,9,12,.72))}'
+    + '.jnl-sdk video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 30%;background:#000;opacity:0;transition:opacity .45s;z-index:1}.jnl-sdk.on video{opacity:1}'
+    + '.jnl-sdk .jv-pst{position:absolute;left:50%;bottom:0;transform:translateX(-50%);height:92%;width:auto;max-width:none;pointer-events:none;filter:drop-shadow(0 22px 36px rgba(0,0,0,.55));transition:opacity .45s}'
+    + '.jnl-sdk[data-p="bassem"] .jv-pst{height:auto;width:calc(var(--jnl-vh) * .66);bottom:auto;top:7%}.jnl-sdk.on .jv-pst{opacity:0}'
+    + '.jnl-sdk .jv-ai{position:absolute;z-index:3;top:12px;right:12px;display:inline-flex;align-items:center;gap:7px;max-width:calc(100% - 24px);padding:4px 12px 5px;border-radius:999px;background:rgba(4,18,26,.8);border:1px solid rgba(233,196,106,.65);font-weight:800;font-size:.8rem;line-height:1.5;color:#fff;pointer-events:none;box-shadow:0 6px 18px -8px rgba(0,0,0,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '.jnl-sdk .jv-ai i{flex:none;width:8px;height:8px;border-radius:50%;background:#e9c46a;box-shadow:0 0 8px rgba(233,196,106,.9)}.jnl-sdk.on .jv-ai i{background:#2fd0a0;box-shadow:0 0 8px rgba(47,208,160,.9)}'
+    + '.jnl-sdk .jv-st{position:absolute;z-index:3;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:min(88%,460px);padding:9px 16px;border-radius:14px;background:rgba(4,18,26,.86);border:1px solid rgba(120,220,255,.45);font-weight:700;font-size:.9rem;line-height:1.7;text-align:center}.jnl-sdk .jv-st:empty{display:none}'
+    + '.jnl-sdk .jv-st.wait::before{content:"";display:inline-block;width:12px;height:12px;margin-inline-end:8px;vertical-align:-1px;border-radius:50%;border:2px solid rgba(191,243,255,.35);border-top-color:#bff3ff;animation:jnlSpin .9s linear infinite}@keyframes jnlSpin{to{transform:rotate(360deg)}}'
+    + '.jnl-sdk .jv-acts{position:absolute;z-index:3;left:0;right:0;bottom:max(18px,4%);display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:0 12px}.jnl-sdk .jv-acts[hidden],.jnl-sdk .jv-ctl[hidden]{display:none}'
+    + '.jnl-sdk .jv-go{display:inline-flex;align-items:center;gap:9px;border:0;border-radius:999px;padding:12px 22px;background:#0b5d47;color:#fff;font:inherit;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 0 0 3px rgba(233,196,106,.55),0 16px 30px -12px rgba(0,0,0,.8)}.jnl-sdk .jv-go:hover{background:#0d6e54}'
+    + '.jnl-sdk .jv-go i{width:10px;height:10px;border-radius:50%;background:#ff3b5c;animation:jnlRec 1.6s ease infinite}.jnl-sdk .jv-go2{border:1px solid rgba(255,255,255,.55);border-radius:999px;padding:10px 16px;background:rgba(4,18,26,.7);color:#fff;font:inherit;font-weight:700;font-size:.86rem;cursor:pointer}'
+    + '.jnl-sdk .jv-ctl{position:absolute;z-index:3;left:0;right:0;bottom:0;display:flex;align-items:center;gap:8px;padding:10px 12px 12px}'
+    + '.jnl-sdk .jv-ctl button{flex:none;min-width:44px;height:44px;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:rgba(4,18,26,.78);color:#fff;font:inherit;font-weight:800;font-size:.9rem;cursor:pointer;padding:0 12px}'
+    + '.jnl-sdk .jv-ctl .jv-mic[aria-pressed="true"]{background:#8E0B20;border-color:#ff9aa9}.jnl-sdk .jv-ctl .jv-end{background:#c8102e;border-color:#c8102e}.jnl-sdk .jv-ctl button:disabled{opacity:.5;cursor:default}'
+    + '.jnl-sdk .jv-ctl form{flex:1;min-width:0;display:flex;gap:6px;margin:0}.jnl-sdk .jv-ctl input{flex:1;min-width:0;height:44px;box-sizing:border-box;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:rgba(4,18,26,.78);color:#fff;font:inherit;font-size:.9rem;padding:0 16px}'
+    + '.jnl-sdk .jv-ctl input::placeholder{color:rgba(223,247,255,.7)}.jnl-sdk[dir="rtl"] .jv-snd{transform:scaleX(-1)}.jnl-sdk button:focus-visible,.jnl-sdk input:focus-visible{outline:3px solid #e9c46a;outline-offset:2px}'
+    /* «وضع الدوشة» (noise guard, owner 2026-11-19): a small chip pinned just above the call's control bar (nzPlace). It lives on <body>, above
+       the hologram layer (holo.js .mgh, z-index 2147483500 — on short phones its panels run down to the controls by design), so ✋ is never
+       hidden; it steps aside while the platform's sign-in dialog is open (html.mig-modal). ✋ «استنى» lights up while the persona talks */
+    + '.jnl-nzf{position:fixed;z-index:2147483550;display:flex;justify-content:center;pointer-events:none;box-sizing:border-box;font-family:Cairo,Tajawal,Tahoma,sans-serif}.jnl-nzf[hidden],html.mig-modal .jnl-nzf{display:none!important}'
+    + '.jnl-nzf .jv-nz{pointer-events:auto;width:max-content;max-width:100%;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 8px;padding:7px 10px;border-radius:16px;background:rgba(4,18,26,.94);border:1px solid rgba(233,196,106,.65);color:#fff;font-weight:700;font-size:.8rem;line-height:1.55;text-align:center;box-shadow:0 12px 28px -14px rgba(0,0,0,.85)}'
+    + '.jnl-nzf .jv-nz span{flex:1 1 220px;min-width:0}.jnl-nzf button{flex:none;height:40px;border-radius:999px;border:1px solid rgba(255,255,255,.5);background:rgba(4,18,26,.75);color:#fff;font:inherit;font-weight:800;font-size:.84rem;padding:0 14px;cursor:pointer}'
+    + '.jnl-nzf .nz-hand,.jnl-nzf .nz-on{background:#0b5d47;border-color:#e9c46a}.jnl-nzf .jv-nz.hd .nz-hand{box-shadow:0 0 0 3px rgba(233,196,106,.6)}.jnl-nzf .nz-x{width:40px;padding:0}.jnl-nzf button:focus-visible{outline:3px solid #e9c46a;outline-offset:2px}'
+    /* the platform's sign-in box (data/mig-api.js) must show above the call when Bassem's call asks for a sign-in */
+    + 'html.jnl-on .mig-dlg{z-index:2147483300}'
+    + '.jnl-cap{min-height:54px;margin-top:10px;display:flex;align-items:flex-start;justify-content:center;gap:8px}'
+    + '.jnl .jnl-cap .mig-cc{position:relative;left:auto;right:auto;bottom:auto;top:auto;transform:none;max-width:100%;flex:0 1 auto;z-index:auto}.jnl .jnl-cap .mig-ccbtn{position:static;flex:none;align-self:center}'
+    + '.jnl-tip{margin-top:4px;font-size:.8rem;line-height:1.8;color:#cfe6ee;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.85)}'
+    + '.jnl-toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:4;background:rgba(4,18,26,.92);color:#dff7ff;border:1px solid rgba(120,220,255,.45);border-radius:12px;padding:7px 14px;font-size:.84rem;font-weight:700;pointer-events:none;opacity:0;transition:opacity .3s;max-width:90%;text-align:center}.jnl-toast.on{opacity:1}'
+    /* full screen: the video alone (the whole page goes full screen, so the captions and the hologram stay visible) */
+    + '.jnl.fs{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"me";justify-items:center;--jnl-vh:calc(100vh - 140px);--jnl-w:min(calc(var(--jnl-vh) * 1.5),calc(100vw - 28px))}'
+    + '.jnl.fs .jnl-scr,.jnl.fs .jnl-mt,.jnl.fs .jnl-tip{display:none!important}'
+    /* meeting mode */
+    + '.jnl.mtg .jnl-tip{display:none}'
+    + '.jnl-mt{grid-area:mt;margin:0 0 12px;border:1px solid rgba(120,220,255,.35);border-radius:14px;background:rgba(4,18,26,.9);padding:10px 12px;display:flex;flex-direction:column;gap:7px;font-size:.84rem;line-height:1.6}'
+    + '.jnl-mt[hidden]{display:none}.jnl-mt .jm-who,.jnl-mt .jm-cap,.jnl-mt .jm-st{display:block}.jnl-mt bdi{display:inline}.jnl-card .jc-when,.jnl-card .jc-sm{display:block}'
+    + '.jnl-mt .jm-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.jnl-mt .jm-h b{flex:1 1 auto;font-size:.95rem;color:#fff}'
+    + '.jnl-mt .jm-rec{display:inline-flex;align-items:center;gap:6px;background:rgba(255,59,92,.14);color:#ff9aa9;border:1px solid rgba(255,59,92,.5);border-radius:99px;padding:1px 10px;font-weight:800;font-size:.76rem}'
+    + '.jnl-mt .jm-rec i{width:8px;height:8px;border-radius:50%;background:#ff3b5c;animation:jnlRec 1.6s ease infinite}'
+    + '.jnl-mt .jm-rec.off{background:rgba(255,255,255,.08);color:#b9c7cc;border-color:rgba(255,255,255,.25)}.jnl-mt .jm-rec.off i{background:#8a9aa0;animation:none}'
+    + '.jnl-mt .jm-tm{font:800 .9rem/1 ui-monospace,Menlo,Consolas,monospace;color:#bff3ff;direction:ltr;unicode-bidi:isolate}'
+    + '.jnl-mt .jm-warn{background:#e9c46a;color:#1a1204;border-radius:99px;padding:1px 10px;font-weight:800;font-size:.76rem}.jnl-mt .jm-warn[hidden]{display:none}'
+    + '.jnl-mt .jm-who{color:#9fc9d6;font-size:.8rem;overflow-wrap:anywhere}.jnl-mt .jm-who bdi{color:#dff7ff;font-weight:700}'
+    + '.jnl-mt .jm-cap{color:#7fa6b3;font-size:.74rem}'
+    + '.jnl-mt ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 10px}'
+    + '.jnl-mt li label{display:flex;gap:7px;align-items:flex-start;cursor:pointer;color:#cfe9f1}.jnl-mt li input{accent-color:#2fd0a0;margin-top:4px;flex:none}.jnl-mt li.done label{color:#7fe3c0;text-decoration:line-through;text-decoration-color:rgba(127,227,192,.5)}'
+    + '.jnl-mt .jm-st{color:#e9c46a;font-weight:700;font-size:.8rem}.jnl-mt .jm-st:empty{display:none}.jnl-mt .jm-st.ok{color:#7fe3c0}'
+    /* confirmation card (scheduled meeting) on Janna\'s screen */
+    + '.jnl-card{position:absolute;inset:auto 16px 16px 16px;margin:auto;max-width:460px;z-index:3;background:#fff;color:#1d2a30;border-radius:16px;box-shadow:0 24px 60px -20px rgba(0,0,0,.55),0 0 0 1px rgba(4,18,26,.08);padding:16px 18px;display:flex;flex-direction:column;gap:8px;font-size:.9rem;line-height:1.7}'
+    + '.jnl-card h4{margin:0;font-size:1.05rem;color:#0b5d47;padding-inline-end:28px}.jnl-card h4.jc-er{color:#8E0B20}.jnl-card .jc-when{font-weight:800;color:#04121a}.jnl-card .jc-sm{color:#5b6b72;font-size:.82rem}'
+    + '.jnl-card .jc-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}.jnl-card .jc-acts a{display:inline-flex;align-items:center;gap:5px;text-decoration:none;border-radius:10px;padding:6px 12px;font-weight:800;font-size:.84rem;border:1px solid #cfdde2;color:#04121a;background:#f4f8f9}.jnl-card .jc-acts a.jc-p{background:#0b5d47;border-color:#0b5d47;color:#fff}.jnl-card .jc-acts a.jc-wa{background:#1f9e55;border-color:#1f9e55;color:#fff}'
+    + '.jnl-card .jc-cx{position:absolute;top:8px;inset-inline-end:8px;width:28px;height:28px;border-radius:50%;border:0;background:#eef3f5;cursor:pointer;font-size:.9rem;color:#04121a}'
+    + '.jnl-note{position:fixed;z-index:2147483001;left:50%;bottom:22px;transform:translateX(-50%);max-width:min(92vw,520px);background:#04121a;color:#dff7ff;border:1px solid rgba(120,220,255,.5);border-radius:14px;padding:10px 16px;font:700 .88rem/1.7 Cairo,Tajawal,Tahoma,sans-serif;box-shadow:0 18px 40px -16px rgba(0,0,0,.6);text-align:center}'
+    + '@media (max-height:760px){.jnl-tip{display:none}}'
+    /* stacked (phones, tablets in portrait, 4:3 screens): the video first, as large as the screen allows; the screen under it (scroll, or
+       the «الشاشة» button); the call bar's «الفيديو» button scrolls back up */
+    + '@media (max-width:820px),(max-aspect-ratio:3/2){.jnl{display:block;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:10px;--jnl-vh:min(75vh,calc(100vh - 150px));--jnl-w:min(calc(100vw - 20px),calc(var(--jnl-vh) * 1.5))}'
+    + '.jnl-me{margin:0 auto;overflow:visible;justify-content:flex-start;min-height:calc(100vh - 20px)}.jnl-hd .sw,.jnl-bar .tv{display:inline-block}'
+    + '.jnl-scr{height:calc(100vh - 20px);margin-top:12px}.jnl-mt{margin:12px 0 0}.jnl-mt ul{grid-template-columns:1fr 1fr}'
+    + '.jnl-toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);bottom:auto}.jnl.fs{overflow:hidden}.jnl.fs .jnl-me{min-height:0}'
+    + '.jnl-hd .sw.new{animation:jnlPing 1.2s ease 3}@keyframes jnlPing{50%{box-shadow:0 0 0 6px rgba(120,220,255,.35)}}}'
+    + '@media (max-width:820px){.jnl{--jnl-vh:calc(100vh - 150px);--jnl-w:calc(100vw - 20px)}.jnl.fs{--jnl-vh:calc(100vh - 120px);--jnl-w:calc(100vw - 20px)}.jnl-tip{display:none}.jnl-hd p,.jnl-hd .role,.jnl-hd .lb{display:none}.jnl-hd h3{font-size:.95rem}.jnl-hd .acts button{min-width:38px;padding:5px 9px}'
+    + '.jnl .jnl-cap .mig-cc{font-size:.9rem;line-height:1.6;padding:6px 12px 7px}'
+    + '.jnl-bar{font-size:.78rem;padding:7px 9px}.jnl-bar .go{display:none}.jnl-btn{top:auto;transform:none;bottom:calc(env(safe-area-inset-bottom,0px) + 150px);right:auto;left:10px;padding:7px 11px 7px 9px;font-size:.78rem}html.jn-quiet .jnl-btn{bottom:calc(env(safe-area-inset-bottom,0px) + 86px);right:14px;left:auto;padding:0;font-size:0}html.jn-quiet.jn-qrtl .jnl-btn{right:auto;left:14px}'
+    + '.jnl-mt{padding:8px 10px;gap:5px;font-size:.78rem}.jnl-mt .jm-cap{display:none}.jnl-mt ul{display:flex;flex-wrap:wrap;gap:4px}.jnl-mt li label{border:1px solid rgba(120,220,255,.25);border-radius:99px;padding:0 8px 0 6px;font-size:.74rem}.jnl-mt li input{margin-top:3px}.jnl-card{inset:auto 10px 10px 10px;padding:12px 14px;font-size:.84rem}}'
+    + '@supports (height:100svh){@media (max-width:820px){.jnl{--jnl-vh:calc(100svh - 150px)}.jnl.fs{--jnl-vh:calc(100svh - 120px)}.jnl-me{min-height:calc(100svh - 20px)}.jnl-scr{height:calc(100svh - 20px)}}}'
+    + '@media (prefers-reduced-motion:reduce){.jnl-hd .sw.new,.jnl-sdk .jv-go i,.jnl-sdk .jv-st.wait::before{animation:none}.jnl-sdk video,.jnl-sdk .jv-pst{transition:none}}';
+  /* inside the widget's (open) shadow root: the video region takes the stage height, so on a phone in portrait the 3:2 stream fills the
+     screen (object-fit: cover crops the sides) — without access to it the widget keeps its own 3:2 frame */
+  var SHADOW_CSS = ".anam-video-region{aspect-ratio:auto!important;height:var(--jnl-vh,auto)!important;max-height:none!important}.anam-sheet{border-radius:18px!important}";
+  var st = document.createElement("style"); st.textContent = css; document.head.appendChild(st);
+
+  var btn = document.createElement("button"); btn.type = "button"; btn.className = "jnl-btn"; btn.setAttribute("translate", "no");
+  btn.innerHTML = "<i></i>" + T("جنة لايف · كلّميها فيديو", "Janna LIVE · video chat"); btn.title = T("جنة لايف · كلّميها فيديو", "Janna LIVE · video chat"); btn.setAttribute("aria-label", btn.title); document.body.appendChild(btn);
+
+  var ov = null, frame = null, title = null, toast = null, pending = null, tt = 0, persona = "janna", SID = "", sessT0 = 0, MT = null, NUDGE = "";
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function say(msg) { if (!toast) return; toast.textContent = msg; toast.classList.add("on"); clearTimeout(tt); tt = setTimeout(function () { toast.classList.remove("on"); }, 2600); }
+  /* the site's language is shared through localStorage "mig-lang" (data/i18n.js); ?lang=en is only added when that is not available
+     (on the clean-URL build ?lang=en answers with a 301 that can drop the page into its SEO twin) */
+  function lsLang() { try { return localStorage.getItem("mig-lang") || ""; } catch (e) { return ""; } }
+  function withLang(u) { if (!EN || /[?&]lang=en\b/.test(u) || (CLEAN && lsLang() === "en")) return u; return u.replace(/^([^#]*)/, function (p) { return p + (p.indexOf("?") > -1 ? "&" : "?") + "lang=en"; }); }
+  function who(ar, en) { return persona === "bassem" ? T(ar[1], en[1]) : T(ar[0], en[0]); }
+  function build() {
+    var B = persona === "bassem", name = who(["جنة", "باسم"], ["Janna", "Bassem"]), D2 = EN ? "ltr" : "rtl", SDKM = liveMode() === "sdk";
+    ov = document.createElement("div"); ov.className = "jnl"; ov.setAttribute("translate", "no"); ov.dir = "ltr"; ov.setAttribute("data-persona", persona); ov.setAttribute("data-mode", SDKM ? "sdk" : "widget");
+    ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", who(["مكالمة فيديو مع جنة", "مكالمة فيديو مع باسم"], ["Video call with Janna", "Video call with Bassem"]));
+    ov.innerHTML = '<aside class="jnl-me">'
+      + '<div class="jnl-hd" dir="' + D2 + '"><div class="who"><div class="nm"><h3>' + esc(name) + '<span class="role"> · ' + who(["مساعدتك الذكية", "مستشار أعمالك"], ["your smart assistant", "your business advisor"]) + '</span></h3><p>' + who(["بتتكلم مصري وإنجليزي", "مستشارك الشخصي للفرص والصفقات طول السنة"], ["Speaks Egyptian Arabic & English", "Your personal advisor for opportunities & deals, all year"]) + '</p></div></div>'
+      + '<div class="acts"><button type="button" class="sw" title="' + esc(who(["شاشة جنة", "شاشة باسم"], ["Janna's screen", "Bassem's screen"])) + '" aria-label="' + esc(who(["شاشة جنة", "شاشة باسم"], ["Janna's screen", "Bassem's screen"])) + '">🖥️<span class="lb"> ' + T("الشاشة", "Screen") + '</span></button><button type="button" class="fsb" aria-pressed="false" title="' + esc(T("ملء الشاشة", "Full screen")) + '" aria-label="' + esc(T("ملء الشاشة", "Full screen")) + '">⛶<span class="lb"> ' + T("ملء الشاشة", "Full screen") + '</span></button><button type="button" class="x">✕ ' + T("إنهاء", "End") + '</button></div></div>'
+      /* owner 2026-11-18 23:50: Bassem's memory stays (no «امسح ذاكرتي»); the member is told it plainly */
+      + (B && SDKM ? '<p class="jnl-mem" dir="' + D2 + '" title="' + esc(T("باسم فاكر شغلكم سوا علشان يكمّل معاك يوم بعد يوم", "Bassem remembers your work together, so he carries on with you day after day")) + '">🧠 ' + T("باسم فاكر شغلكم سوا علشان يكمّل معاك يوم بعد يوم", "Bassem remembers your work together") + '</p>' : "")
+      /* 0009: Janna remembers her visitors too (no delete wording anywhere: the memory is permanent — owner 2026-11-18) */
+      + (!B && SDKM ? '<p class="jnl-mem" dir="' + D2 + '" title="' + esc(T("جنة فاكرة كلامكم علشان تكمّل معاك", "Janna remembers your conversations so she can carry on with you")) + '">🧠 ' + T("جنة فاكرة كلامكم علشان تكمّل معاك", "Janna remembers your conversations") + '</p>' : "")
+      + '<div class="v">' + (SDKM ? sdkHtml(name) : widgetHtml(name)) + '</div>'
+      + '<div class="jnl-cap" dir="' + D2 + '"></div>'
+      + '<div class="jnl-tip" dir="' + D2 + '">' + (B ? T("قوله مثلاً: «افتحلي المناقصات الجديدة» · «دوّرلي على طلبات أسعار للبلاستيك» · «وريني المشاريع في الخليج»", "Try: “open the new tenders” · “find RFQs for plastics” · “show me projects in the Gulf”") : T("قولها مثلاً: «وديني المناقصات» · «دوّري لي على مصانع بلاستيك في الشرقية» · «عايز أبعت طلب عرض سعر» · «سجّليلي مصنعي» · «عايز اجتماع تعريفي»", "Try: “take me to tenders” · “find plastic factories in Sharqia” · “I want to send a quote request” · “register my factory” · “I'd like an intro meeting”")) + '</div></aside>'
+      + '<div class="jnl-mt" hidden dir="' + D2 + '"></div>'
+      + '<section class="jnl-scr"><div class="jnl-bar" dir="' + D2 + '"><b>🖥️ ' + who(["شاشة جنة", "شاشة باسم"], ["Janna's screen", "Bassem's screen"]) + ' — <span class="jnl-t"></span></b><button type="button" class="tv">🎥 ' + T("الفيديو", "Video") + '</button><button type="button" class="go">' + T("افتح الصفحة دي", "Open this page") + '</button><button type="button" class="x">✕ ' + T("إنهاء", "End") + '</button></div><iframe title="' + (B ? "Bassem" : "Janna") + ' screen"></iframe><div class="jnl-toast" role="status" aria-live="polite"></div></section>';
+    document.body.appendChild(ov);
+    frame = ov.querySelector("iframe"); title = ov.querySelector(".jnl-t"); toast = ov.querySelector(".jnl-toast");
+    frame.addEventListener("load", onLoad);
+    [].forEach.call(ov.querySelectorAll(".x"), function (x) { x.onclick = close; });
+    var uT = 0, lastTop = 0, mark = function () { uT = Date.now(); };
+    ["touchstart", "touchmove", "wheel", "pointerdown", "keydown"].forEach(function (n) { ov.addEventListener(n, mark, { passive: true }); });
+    ov.addEventListener("scroll", function () { if (Date.now() - uT < 1500) { lastTop = ov.scrollTop; return; } if (Math.abs(ov.scrollTop - lastTop) > 2) ov.scrollTop = lastTop; }, { passive: true });
+    ov.querySelector(".go").onclick = function () { var u = ""; try { u = frame.contentWindow.location.href; } catch (e) {} close(); if (u) location.href = u; };
+    ov.querySelector(".fsb").onclick = function () { fullscreen(!ov.classList.contains("fs")); };
+    ov.querySelector(".sw").onclick = function () { this.classList.remove("new"); var s2 = ov.querySelector(".jnl-scr"); if (s2) try { s2.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) { s2.scrollIntoView(); } };
+    ov.querySelector(".tv").onclick = function () { try { ov.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { ov.scrollTop = 0; } };
+    /* the persona's round headshot beside the name (the same face as the live video: data/janna-real.js / bassem-real.js) */
+    var hs = B ? ((window.BASSEM_REAL && BASSEM_REAL.headshot) || "img/bassem.jpg") : ((window.JANNA_REAL && JANNA_REAL.headshot) || "img/janna.jpg");
+    var im = new Image(); im.onload = function () { var h = ov && ov.querySelector(".jnl-hd .who"); if (h && !h.querySelector("img")) { var c = im.cloneNode(); c.alt = ""; h.insertBefore(c, h.firstChild); } }; im.src = hs;
+    if (SDKM) mountSdk(); else mountWidget();
+  }
+  /* ---------- the holographic screens (data/holo.js) — owner 2026-11-18 «مش بيفتح ليه سكرينات» ----------
+     1) the call starts → the laptop opens and its screens show the member's REAL facts (Bassem) or the platform's sections (Janna)
+     2) when he/she TALKS about a section (tenders, RFQs, projects, export markets…) that page opens on the shared screen with its
+        hologram — once per section per call, one every 9 s at most, never right after a real tool call (the engine's own tools win) */
+  var HT = { sec: {}, t: 0, tool: 0, buf: {}, t0: 0 };
+  var HTOP = [
+    ["tenders", /مناقص|\btenders?\b/i],
+    ["rfqs", /طلبات?\s+(ال)?(عروض|تسعير|أسعار|اسعار)|عروض\s+(ال)?(أسعار|اسعار)|\bRFQs?\b/i],
+    ["projects", /مشاريع|مشروعات|\bprojects\b/i],
+    ["export-market", /تصدير|أسواق|اسواق|\bexport/i],
+    ["winners", /ترسي|\bawards?\b|\bwinners\b/i],
+    ["factories", /مصانع|\bfactories\b/i],
+    ["suppliers", /موردين|\bsuppliers\b/i],
+    ["market", /منتجات|\bproducts\b/i],
+    ["radar", /فرص(?!ة سعيدة)|\bopportunit/i],
+    ["register", /باقات|الباقة|التسجيل|\bplans\b|\bregist/i, "janna"]
+  ];
+  var MKN2 = { local: ["مصر", "Egypt"], gulf: ["الخليج", "the Gulf"], arab: ["الدول العربية", "Arab markets"], africa: ["أفريقيا", "Africa"], asia: ["آسيا", "Asia"], europe: ["أوروبا", "Europe"] };
+  function holoOn() { return !!(window.MIGHOLO && MIGHOLO.act); }
+  function holoTool(n, a) { if (!n || !/^(bassem|janna)_/.test(n) || !holoOn()) return; try { MIGHOLO.act(n, a || {}, { who: /^bassem_/.test(n) ? "bassem" : persona }); } catch (e) {} }
+  function fmtDay(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "")); if (!m) return ""; try { return new Intl.DateTimeFormat(EN ? "en-GB" : "ar-EG-u-ca-gregory-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(new Date(+m[1], +m[2] - 1, +m[3])); } catch (e) { return m[0]; } }
+  function holoWelcome() {
+    HT = { sec: {}, t: 0, tool: 0, buf: {}, t0: Date.now() };
+    if (!holoOn() || !MIGHOLO.show) return;
+    var B = persona === "bassem", i = null, items = [], steps, L = function (p) { try { return withLang(url(p)); } catch (e) { return p; } };
+    try { i = B && window.BASSEM && BASSEM.info ? BASSEM.info() : null; } catch (e) {}
+    if (B && i && i.eligible) {
+      if (i.company || i.name) items.push({ title: String(i.company || i.name), sub: T("ملف شركتك على المنصة", "Your company file on the platform"), href: L("dashboard.html") });
+      if (i.planName) items.push({ title: T("باقة ", "") + i.planName + (EN ? " plan" : ""), sub: i.end ? T("باسم مستشارك لحد ", "Bassem is your advisor until ") + fmtDay(i.end) : "", href: L("dashboard.html") });
+      var mk = (i.markets || []).map(function (m) { return MKN2[m] ? MKN2[m][EN ? 1 : 0] : ""; }).filter(Boolean);
+      if (mk.length) items.push({ title: T("أسواق باقتك", "Your plan's markets"), sub: mk.join(T("، ", ", ")) });
+      items.push({ title: T("المناقصات وطلبات الأسعار والمشاريع", "Tenders, RFQs and projects"), sub: T("الجديد كل يوم من المصادر الرسمية", "New every day from official sources"), href: L("tenders.html") });
+      steps = [T("فتحت ملف شركتك", "Opened your company file"), T("بجهّز الجديد في نطاق باقتك", "Preparing what is new in your plan's markets")];
+    } else {
+      items = [{ title: T("دليل المصانع والشركات المصرية", "Egyptian factory & company directory"), sub: T("دوّر بالمنتج أو النشاط أو المحافظة", "Search by product, activity or governorate"), href: L("factories.html") },
+        { title: T("المناقصات وطلبات عروض الأسعار", "Tenders and requests for quotation"), sub: T("من مصر والخليج وأفريقيا", "From Egypt, the Gulf and Africa"), href: L("tenders.html") },
+        { title: T("التسجيل والباقات", "Registration and plans"), sub: T("سجّل مصنعك وابدأ تبيع", "Register your factory and start selling"), href: L("register.html") }];
+      steps = [T("فتحت شاشة المنصة", "Opened the platform screen"), T("قولّي بتدوّر على إيه وأنا أفتحهولك", "Tell me what you need and I'll open it")];
+    }
+    try { MIGHOLO.show({ who: B ? "bassem" : "janna", kind: "welcome", title: B ? T("باسم فتحلك مكتبك", "Bassem opened your desk") : T("جنة فتحتلك المنصة", "Janna opened the platform for you"), steps: steps, items: items, done: true }); } catch (e) {}
+  }
+  function holoTopic(text) {
+    if (!holoOn() || !frame || !text) return;
+    var now = Date.now(); if (now - HT.t < 9000 || now - HT.tool < 25000 || now - HT.t0 < 1500) return;
+    var best = null, bi = 1e9;
+    for (var i = 0; i < HTOP.length; i++) { var h = HTOP[i]; if (HT.sec[h[0]] || (h[2] && h[2] !== persona)) continue; var m = h[1].exec(text); if (m && m.index < bi) { bi = m.index; best = h[0]; } }
+    if (!best) return;
+    HT.sec[best] = 1; HT.t = now;
+    run("janna_navigate", { page: best }, { topic: 1 }); /* he only TALKS about it: the screen changes, the «الشاشة» button pings — the call never scrolls away from him (review 2026-11-19 #16) */
+  }
+  /* the call's DOM events → its handlers: the widget's own events, or the same events re-dispatched by the SDK call (sdkFire) */
+  function wire(el) {
+    el.addEventListener("anam-agent:tool-call-started", function (e) { var d = e.detail || {}; HT.tool = Date.now(); cmpGive(d.toolName); if (d.toolType && d.toolType !== "client") { holoTool(d.toolName, d.arguments || {}); return; } run(d.toolName, d.arguments || {}); });
+    el.addEventListener("anam-agent:session-started", function (e) { SID = String((e.detail && e.detail.sessionId) || ""); sessT0 = Date.now(); onSession(); holoWelcome(); if (NUDGE) nudge(NUDGE, 0); });
+    el.addEventListener("anam-agent:session-ended", function (e) { onSessionEnd(e.detail || {}); });
+    el.addEventListener("anam-agent:message-received", function (e) { onMessage(e.detail || {}); });
+    el.addEventListener("anam-agent:error", function (e) { var m = (e.detail && e.detail.message) || ""; say(/origin/i.test(m) ? T("الفيديو المباشر بيشتغل على موقع المنصة الرسمي", "Live video works on the official site") : T("حصلت مشكلة في الاتصال، جرّب تاني", "Connection problem, please try again")); });
+  }
+  function widgetHtml(name) { return '<anam-agent agent-id="' + AGENTS[persona] + '" layout="inline" ui-text-input="true" ui-mute-button="true" call-to-action="' + esc(T("ابدأ الكلام مع ", "Start talking to ") + name) + '" agent-name="' + esc(name) + '"></anam-agent>'; }
+  function mountWidget() {
+    var ag = ov && ov.querySelector("anam-agent"); if (!ag) return;
+    wire(ag);
+    if (!document.querySelector('script[data-anam]')) { var sc = document.createElement("script"); sc.src = WIDGET; sc.integrity = WIDGET_SRI; sc.crossOrigin = "anonymous"; sc.referrerPolicy = "no-referrer"; sc.async = true; sc.setAttribute("data-anam", "1"); sc.onerror = function () { sc.remove(); say(T("الفيديو المباشر مش متاح دلوقتي — جرّب تاني بعد شوية.", "Live video is not available right now — please try again later.")); }; document.head.appendChild(sc); }
+    shadowCss(ag, 0);
+  }
+
+  /* ---------- the live call through the Anam JS SDK (no widget, no third-party mark in the video) ---------- */
+  var LV = null, LVN = 0, VIDN = 0, sdkP = null, sdkBad = 0;
+  /* "sdk" unless the Worker already said in this tab that it cannot mint tokens (MODE_KEY); window.JANNA_LIVE_MODE = "widget" | "sdk" wins */
+  function liveMode() {
+    var f = String(window.JANNA_LIVE_MODE || "");
+    if (f === "widget" || f === "sdk") return f;
+    try { var m = JSON.parse(sessionStorage.getItem(MODE_KEY) || "null"); if (m && m.m === "widget" && +m.until > Date.now()) return "widget"; } catch (e) {}
+    return "sdk";
+  }
+  function rememberWidget() { try { sessionStorage.setItem(MODE_KEY, JSON.stringify({ m: "widget", until: Date.now() + 30 * 60000 })); } catch (e) {} }
+  function sdkBox() { return ov ? ov.querySelector(".jnl-sdk") : null; }
+  function sdkName() { return who(["جنة", "باسم"], ["Janna", "Bassem"]); }
+  function sdkHtml(name) {
+    var B = persona === "bassem", R = B ? window.BASSEM_REAL : window.JANNA_REAL, D2 = EN ? "ltr" : "rtl";
+    /* the same real photo as the docked figure (data/janna-real.js / bassem-real.js): a cut-out, so the office stays behind her / him */
+    var body = (R && R.body) || (B ? "img/bassem/body.webp" : "img/janna/body.webp"), wh = B ? ' width="623" height="1619"' : ' width="1243" height="1128"';
+    var ai = who(["جنة · مساعِدة بالذكاء الاصطناعي", "باسم · مستشار بالذكاء الاصطناعي"], ["Janna · AI assistant", "Bassem · AI advisor"]);
+    var mic = T("اكتم الميكروفون", "Mute microphone"), ph = T("اكتب رسالتك…", "Type a message…"), snd = T("ابعت", "Send"), end = T("إنهاء المكالمة", "End call");
+    return '<div class="jnl-sdk" data-p="' + (B ? "bassem" : "janna") + '" data-state="idle" dir="' + D2 + '" role="group" aria-label="' + esc(ai) + '">'
+      + '<img class="jv-pst" src="' + esc(body) + '"' + wh + ' alt="' + esc(name) + '" decoding="async">'
+      + '<video id="jnlVid' + (++VIDN) + '" autoplay playsinline aria-label="' + esc(who(["فيديو جنة المباشر", "فيديو باسم المباشر"], ["Janna's live video", "Bassem's live video"])) + '"></video>'
+      + '<div class="jv-ai" translate="no"><i aria-hidden="true"></i><span>' + esc(ai) + '</span></div>'
+      + '<div class="jv-st" role="status" aria-live="polite"></div>'
+      + '<div class="jv-acts"><button type="button" class="jv-go"><i aria-hidden="true"></i><span>' + esc(T("ابدأ الكلام مع ", "Start talking to ") + name) + '</span></button>'
+      + '<button type="button" class="jv-go2" hidden>⌨️ ' + esc(T("كمّل كتابة من غير ميكروفون", "Continue by typing (no microphone)")) + '</button></div>'
+      + '<div class="jv-ctl" hidden><button type="button" class="jv-mic" aria-pressed="false" title="' + esc(mic) + '" aria-label="' + esc(mic) + '">🎙️</button>'
+      + '<form novalidate><input type="text" maxlength="500" autocomplete="off" enterkeyhint="send" placeholder="' + esc(ph) + '" aria-label="' + esc(ph) + '"><button type="submit" class="jv-snd" title="' + esc(snd) + '" aria-label="' + esc(snd) + '">➤</button></form>'
+      + '<button type="button" class="jv-end" title="' + esc(end) + '" aria-label="' + esc(end) + '">✕</button></div></div>';
+  }
+  function mountSdk() {
+    var bx = sdkBox(); if (!bx) return;
+    wire(bx);
+    bx.querySelector(".jv-go").onclick = function () { var f = bx.__go; bx.__go = null; if (f) f(); else sdkStart(false); };
+    bx.querySelector(".jv-go2").onclick = function () { bx.__go = null; sdkStart(true); };
+    bx.querySelector(".jv-end").onclick = function () { sdkStop("user"); };
+    bx.querySelector(".jv-mic").onclick = sdkMute;
+    var f = bx.querySelector(".jv-ctl form"), inp = f.querySelector("input");
+    f.onsubmit = function (e) { if (e && e.preventDefault) e.preventDefault(); var v = inp.value.trim(); if (!v) return; if (sdkSay(v)) inp.value = ""; else say(T("ثانية واحدة — المكالمة لسه بتتوصل", "One moment — the call is still connecting")); };
+    var v = bx.querySelector("video");
+    v.addEventListener("playing", function () { if (LV && !LV.closed && LV.client) { LV.playing = true; bx.classList.add("on"); } });
+    sdkUi("idle");
+    loadSdk().then(null, function () {}); /* warm the cache while the visitor looks at the call screen; nothing is started */
+  }
+  /* the call's own states: idle (photo + «ابدأ»), connecting, live, ended / error (photo, the reason, «ابدأ» again when it can help) */
+  function sdkUi(state, msg, opt) {
+    var bx = sdkBox(); if (!bx) return; opt = opt || {};
+    bx.setAttribute("data-state", state); if (state !== "live" && state !== "connecting") { bx.classList.remove("on"); micDrop(); } /* the call is over: our microphone is released */
+    var st = bx.querySelector(".jv-st"); st.textContent = msg || ""; st.classList.toggle("wait", state === "connecting");
+    var a0 = bx.querySelector(".jv-acts"), go = bx.querySelector(".jv-go span");
+    a0.hidden = state === "connecting" || state === "live" || !!opt.noRetry;
+    go.textContent = opt.go || (state === "idle" ? T("ابدأ الكلام مع ", "Start talking to ") + sdkName() : T("ابدأ مكالمة جديدة", "Start a new call"));
+    bx.__go = opt.act || null;
+    bx.querySelector(".jv-go2").hidden = !opt.typing;
+    bx.querySelector(".jv-ctl").hidden = state !== "live";
+    updCtl();
+  }
+  function updCtl() {
+    var bx = sdkBox(), me = LV; if (!bx) return;
+    var mic = bx.querySelector(".jv-mic"), inp = bx.querySelector(".jv-ctl input"), snd = bx.querySelector(".jv-snd"), ok = !!(me && me.ready && !me.closed), txt = ok && !!me.dc, mu = !!(me && me.muted);
+    var ml = mu ? T("شغّل الميكروفون", "Unmute microphone") : T("اكتم الميكروفون", "Mute microphone");
+    mic.hidden = !!(me && me.textOnly); mic.disabled = !ok || !!(me && me.micDenied); mic.textContent = mu ? "🔇" : "🎙️"; mic.title = ml; mic.setAttribute("aria-label", ml); mic.setAttribute("aria-pressed", mu ? "true" : "false");
+    inp.disabled = !txt; snd.disabled = !txt;
+    var ph = me && me.micDenied && !me.textOnly ? T("الميكروفون مقفول — اكتب رسالتك هنا…", "Microphone blocked — type your message here…") : T("اكتب رسالتك…", "Type a message…");
+    if (inp.placeholder !== ph) { inp.placeholder = ph; inp.setAttribute("aria-label", ph); }
+    nzChip();
+  }
+  /* the pinned SDK, loaded once (SRI; jsDelivr, then the same bytes from unpkg); when neither loads, this page does not try again for
+     10 minutes (the next «ابدأ» goes straight to the widget instead of waiting for the CDNs again) */
+  function loadSdk() {
+    if (window.anam && typeof window.anam.createClient === "function") return Promise.resolve(window.anam);
+    if (sdkP) return sdkP;
+    if (sdkBad && Date.now() - sdkBad < 600000) return Promise.reject({ code: "sdk_load" });
+    sdkP = new Promise(function (res, rej) {
+      var i = 0;
+      (function next() {
+        if (i >= SDK_URLS.length) { sdkP = null; sdkBad = Date.now(); rej({ code: "sdk_load" }); return; }
+        var sc = document.createElement("script"), done = false, tm = 0;
+        var fail = function () { if (done) return; done = true; clearTimeout(tm); sc.onload = sc.onerror = null; if (sc.parentNode) sc.parentNode.removeChild(sc); next(); };
+        sc.src = SDK_URLS[i++]; sc.integrity = SDK_SRI; sc.crossOrigin = "anonymous"; sc.referrerPolicy = "no-referrer"; sc.async = true; sc.setAttribute("data-anam-sdk", SDK_V);
+        sc.onload = function () { if (done) return; if (window.anam && typeof window.anam.createClient === "function") { done = true; clearTimeout(tm); res(window.anam); } else fail(); };
+        sc.onerror = fail; tm = setTimeout(fail, 15000);
+        document.head.appendChild(sc);
+      })();
+    });
+    return sdkP;
+  }
+  /* POST /api/janna/session → {sessionToken, max_session_sec}; anything that is not the Worker's JSON (static preview) = "unavailable" */
+  function sessToken(agent, auth, extra) {
+    return new Promise(function (res, rej) {
+      if (!window.fetch) { rej({ code: "unavailable" }); return; }
+      var fin = false, h = { "Content-Type": "application/json", Accept: "application/json" }; if (auth) h.Authorization = "Bearer " + auth;
+      var tm = setTimeout(function () { if (!fin) { fin = true; rej({ code: "timeout" }); } }, 15000);
+      fetch(SESS_API, { method: "POST", headers: h, body: JSON.stringify(sessBody(agent, extra)), credentials: "same-origin", cache: "no-store" }).then(function (r) {
+        if ((r.headers.get("content-type") || "").toLowerCase().indexOf("json") < 0) throw { code: "unavailable", status: r.status };
+        return r.json().then(function (j) {
+          if (!r.ok || !j || typeof j.sessionToken !== "string" || !j.sessionToken) throw { code: String((j && (j.code || j.error)) || "http_" + r.status), status: r.status, retry_after: j && j.retry_after };
+          return j;
+        });
+      }).then(function (j) { if (fin) return; fin = true; clearTimeout(tm); res(j); }, function (e) { if (fin) return; fin = true; clearTimeout(tm); rej(e && e.code ? e : { code: "network" }); });
+    });
+  }
+  /* Bassem: the Worker checks the member's plan with the member's own sign-in — the platform session ("mig-tok"), else Bassem's advisor
+     token from an activation link (advisor.html: sessionStorage "mig-adv-token"); a refusal of the first is tried once with the other */
+  function bassemAuth() {
+    var out = [], t = "", c = null;
+    try { t = localStorage.getItem("mig-tok") || ""; } catch (e) {}
+    if (t) out.push(t);
+    try { c = JSON.parse(sessionStorage.getItem("mig-adv-token") || "null"); } catch (e) {}
+    if (c && c.t && out.indexOf(String(c.t)) < 0) out.push(String(c.t));
+    return out;
+  }
+  /* Janna's memory of her visitors (worker/src/visitor.js, migration 0009 — owner 2026-11-18: «ذاكرة باسم وجنة مهمين جداً»): a RANDOM
+     first-party visitor id, created at the first live call with Janna and kept in localStorage "mig-vid" (32 hex characters). It goes
+     with Janna's session request (her short visitor block, «أهلاً بيك تاني») and with her call memory (data/bassem-memory.js, POST
+     /api/janna/memory) — only to the platform's own Worker. No storage → an id for this page only. Signed in (the platform session
+     "mig-tok"), Janna's request also carries the sign-in so the Worker links the visitor id to the member account. */
+  var VID = "", VID_M = "mig-vid-m";
+  function newVid() { var v = ""; try { var rb = new Uint8Array(16); (window.crypto || window.msCrypto).getRandomValues(rb); for (var i = 0; i < rb.length; i++) v += ("0" + rb[i].toString(16)).slice(-2); } catch (e) { v = ""; } return v; }
+  function signedTok() { var t = ""; try { t = localStorage.getItem("mig-tok") || ""; } catch (e) {} return /^v2\./.test(t) ? t : ""; }
+  /* review 2026-11-19 #7 (a shared computer): an id a signed-in call used belongs to that member (the Worker links it to his account), so
+     after sign-out — no "mig-tok" any more — or when the Worker says so (rotate_visitor / 409 visitor_linked), this browser starts a NEW
+     random id: the next person never reads the member's Janna memory or adds to it. "mig-vid-m" = this id was used signed in. */
+  function rotateVisitor() { var v = newVid(); VID = v; try { if (v) localStorage.setItem("mig-vid", v); else localStorage.removeItem("mig-vid"); localStorage.removeItem(VID_M); } catch (e) {} return v; }
+  function visitorId() {
+    var m = ""; try { m = localStorage.getItem(VID_M) || ""; } catch (e) {}
+    if (m && !signedTok()) return rotateVisitor(); /* signed out since this id was used signed in */
+    if (/^[0-9a-f]{32}$/.test(VID)) return VID;
+    var v = ""; try { v = localStorage.getItem("mig-vid") || ""; } catch (e) {}
+    if (!/^[0-9a-f]{32}$/.test(v)) {
+      v = newVid();
+      if (v) { try { localStorage.setItem("mig-vid", v); } catch (e) {} }
+    }
+    VID = v; return v;
+  }
+  try { window.addEventListener("storage", function (e) { if (e && e.key === "mig-tok" && !/^v2\./.test(String(e.newValue || ""))) { var m = ""; try { m = localStorage.getItem(VID_M) || ""; } catch (x) {} if (m) rotateVisitor(); } }); } catch (e) {} /* signed out in another tab */
+  function sessBody(agent, extra) { var b = { agent: agent, lang: EN ? "en" : "ar" }; if (agent === "janna") { var vi = visitorId(); if (vi) b.visitor_id = vi; } if (extra) for (var k in extra) if (extra.hasOwnProperty(k) && !b.hasOwnProperty(k)) b[k] = extra[k]; return b; }
+  function mint(agent, extra) {
+    if (agent !== "bassem") {
+      var jt = signedTok(); /* Janna never needs it: a refused / old sign-in is ignored by the Worker */
+      return sessToken(agent, jt, extra).then(function (j) {
+        if (j && j.rotate_visitor) rotateVisitor(); /* this id is another member's (or the signed-out member's): this call gets a new one */
+        if (jt) { try { localStorage.setItem(VID_M, "1"); } catch (e) {} } /* this call writes signed in: its id becomes the member's */
+        return j;
+      });
+    }
+    var c = bassemAuth(), i = 0;
+    var next = function (prev) {
+      if (i >= c.length) return Promise.reject(prev || { code: "login_required", status: 401 });
+      return sessToken(agent, c[i++], extra).then(null, function (e) { if (e && /^(login_required|full_login_required|plan)$/.test(e.code) && i < c.length) return next(e); throw e; });
+    };
+    return next(null);
+  }
+  function sdkStart(textOnly) {
+    if (!sdkBox() || (LV && !LV.closed)) return;
+    var me = { gen: ++LVN, st: "connecting", client: null, sid: "", ready: false, dc: false, playing: false, closed: false, stopped: false, stopReason: "", textOnly: !!textOnly, muted: false, micDenied: false, seen: {}, msgN: 0, max: CAP_MIN * 60, timers: [], connT: 0, own: {},
+      chain: { n: 0, log: [], userEnded: false, t0: Date.now() } };
+    LV = me; sdkUi("connecting", T("بنوصّلك ب" + sdkName() + "…", "Connecting you to " + sdkName() + "…")); if (persona === "bassem") loadTools();
+    nzPrep(me); /* noise guard: the audio meter + our own microphone request start inside this tap, while the token is minted */
+    var p = persona;
+    loadSdk().then(function (A) {
+      if (LV !== me) return;
+      mint(p).then(function (j) {
+        if (LV !== me || me.stopped) return;
+        me.max = maxOf(j);
+        sdkRun(me, A, j.sessionToken);
+      }, function (e) { if (LV === me) sdkRefused(me, e || {}); });
+    }, function () { if (LV === me) { LV = null; toWidget(true); } });
+  }
+  function sdkRun(me, A, token) {
+    var bx = sdkBox(), vid = bx && bx.querySelector("video"), E = A.AnamEvent || {}, c = null;
+    if (!vid) return;
+    /* the token starts ONE session (maxSessions 1 on the Worker): no SDK retries with it; the visitor's «جرّب تاني» gets a new token */
+    var opts = { metrics: { disableClientMetrics: true }, api: { retry: { maxAttempts: 1 } } };
+    if (me.textOnly) opts.disableInputAudio = true;
+    try { c = A.createClient(token, opts); } catch (e) { sdkFail(me, "start"); return; }
+    me.client = c;
+    var mlc = { client: c, persona: persona }; window.MIG_LIVE_CLIENT = mlc; try { window.dispatchEvent(new CustomEvent("mig:live-client", { detail: mlc })); } catch (e) {} /* contract: data/bassem-memory.js, data/bassem-live-tools.js … attach here */
+    if (persona === "bassem") liveTools(c); /* Bassem's tools answer with what the shared screen shows (data/bassem-live-tools.js); never in Janna's calls */
+    var on = function (k, fn) { if (E[k]) c.addListener(E[k], function (a, b) { if (LV !== me || me.closed) return; try { fn(a, b); } catch (x) {} }); };
+    contWire(me, on);
+    me.nz = me.nz || nzNew(); nzWire(me, on); /* «وضع الدوشة»: after contWire, so a continued part's cut greeting is already marked */
+    on("MIC_PERMISSION_PENDING", function () { if (!me.ready && !me.cont) sdkUi("connecting", T("اسمح للمتصفح يستخدم الميكروفون علشان تتكلم مع ", "Allow the microphone so you can talk to ") + sdkName()); });
+    /* the SDK keeps the call without a microphone: the text box still works */
+    on("MIC_PERMISSION_DENIED", function () { me.micDenied = true; updCtl(); say(T("الميكروفون مقفول للموقع ده — تقدر تكتب في الخانة تحت، أو تسمح بالميكروفون من إعدادات المتصفح.", "The microphone is blocked for this site — you can type in the box below, or allow the microphone in your browser settings.")); });
+    on("SESSION_READY", function (sid) {
+      if (me.ready) return; /* once per call, even if the engine repeats it after a reconnect */
+      clearTimeout(me.connT); me.ready = true; me.st = "live"; me.sid = String(sid || ""); me.t0 = Date.now(); sdkUi("live"); sdkTimers(me);
+      if (me.cont) contReady(me); else sdkFire("session-started", { sessionId: me.sid });
+    });
+    on("DATA_CHANNEL_OPEN", function () { me.dc = true; updCtl(); if (NUDGE && me.ready) nudge(NUDGE, 0); });
+    on("VIDEO_PLAY_STARTED", function () { me.playing = true; var b = sdkBox(); if (b) b.classList.add("on"); });
+    on("VIDEO_STREAM_STARTED", function () { setTimeout(function () { sdkPlay(me); }, 0); });
+    /* complete messages, as the widget reports them (captions.js, the meeting agenda) */
+    on("MESSAGE_HISTORY_UPDATED", function (msgs) {
+      msgs = msgs || [];
+      for (var i = me.msgN; i < msgs.length; i++) { var m = msgs[i] || {}; if (contSkip(me, m)) continue; contLog(me, m); sdkFire("message-received", { role: m.role === "persona" ? "agent" : "user", content: String(m.content || "") }); }
+      me.msgN = msgs.length;
+    });
+    /* what he/she is saying right now: the screens follow the words (holoTopic) */
+    on("MESSAGE_STREAM_EVENT_RECEIVED", function (ev) { ev = ev || {}; if (ev.role !== "persona" || (me.skip && me.skip[String(ev.id || "")])) return; var k = String(ev.id || "m"); HT.buf[k] = (HT.buf[k] || "") + String(ev.content || ""); holoTopic(HT.buf[k]); if (window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.follow) { try { MIG_LIVE_TOOLS.follow(HT.buf[k], k); } catch (x) {} } });
+    on("TOOL_CALL_STARTED", function (d) { d = d || {}; sdkTool(me, d.toolName, d.toolType, d.arguments, d.toolCallId); });
+    on("CLIENT_TOOL_EVENT_RECEIVED", function (d) { d = d || {}; sdkTool(me, d.eventName, "client", d.eventData, ""); }); /* older engines */
+    /* the outcome of a tool call (server webhook bassem_intel included): data/bassem-intel-view.js shows exactly what Bassem got */
+    on("TOOL_CALL_COMPLETED", function (d) { d = d || {}; sdkFire("tool-call-completed", { toolName: String(d.toolName || ""), toolType: String(d.toolType || ""), toolSubtype: String(d.toolSubtype || ""), toolCallId: String(d.toolCallId || ""), result: d.result, executionTime: d.executionTime }); });
+    on("TOOL_CALL_FAILED", function (d) { d = d || {}; sdkFire("tool-call-failed", { toolName: String(d.toolName || ""), toolType: String(d.toolType || ""), toolCallId: String(d.toolCallId || ""), errorMessage: String(d.errorMessage || "") }); });
+    /* bassem_save_profile (CLIENT tool, awaitResult): the handler's answer goes back to Bassem as the tool result, so he says «اتسجّل»
+       only when the platform saved it; the DOM path (run → bassemTool) leaves this tool to the handler (me.own) */
+    if (persona === "bassem" && c.registerToolCallHandler) {
+      try { c.registerToolCallHandler("bassem_save_profile", { onStart: function (pl) { return LV !== me || me.closed ? T("ماتسجّلش: المكالمة اتقفلت.", "Not saved: the call was closed.") : profileTool(pl && pl.arguments); } }); me.own.bassem_save_profile = 1; } catch (e) {}
+      /* janna_follow (critic D): the follow's real outcome goes back to Bassem (his own copy of the tool with awaitResult — the shared tool
+         stays fire-and-forget for Janna), so he never promises alerts for a follow that was refused; run() leaves the call to this handler */
+      try { c.registerToolCallHandler("janna_follow", { onStart: function (pl) { var x = pl && pl.arguments; if (typeof x === "string") { try { x = JSON.parse(x); } catch (e) { x = {}; } } return LV !== me || me.closed ? T("مااتحفظتش: المكالمة اتقفلت.", "Not saved: the call was closed.") : followTool(x || {}); } }); me.own.janna_follow = 1; } catch (e) {}
+    }
+    on("CONNECTION_CLOSED", function (code, details) { sdkClosed(me, String(code || ""), String(details || "")); });
+    /* our own microphone (echo cancellation, noise suppression, voice isolation where offered) goes with the stream: the session starts
+       once the browser answered (MIC_WAIT at most), else — or when ours failed — the SDK captures the microphone itself, as before */
+    micFor(me).then(function (ms) {
+      if (LV !== me || me.stopped || me.closed) { micStop(ms); return; } /* ✕ while the browser was asking */
+      me.micUsed = ms ? "own" : "sdk";
+      /* no session after 45 s (the widget's own start-up limit): stop and say so */
+      me.connT = setTimeout(function () { if (LV !== me || me.ready || me.closed) return; me.stopped = true; try { c.stopStreaming(); } catch (x) {} if (!me.closed) sdkFail(me, "start"); }, 45000);
+      var pr; try { pr = ms ? c.streamToVideoElement(vid.id, ms) : c.streamToVideoElement(vid.id); } catch (e) { pr = Promise.reject(e); }
+      Promise.resolve(pr).then(function () { if (LV !== me || me.stopped) { try { c.stopStreaming(); } catch (x) {} } }, function () {
+        try { c.stopStreaming(); } catch (x) {}
+        if (LV === me && !me.closed) { if (me.stopped) { me.closed = true; sdkUi("idle"); } else sdkFail(me, me.micDenied ? "mic" : "start"); }
+      });
+    });
+  }
+  /* ---------- Bassem's screen tools (data/bassem-live-tools.js): loaded lazily when his call opens, with THIS file's ?v= (the build can set
+     window.MIGVER_LT = "?v=<hash of bassem-live-tools.js>" to bust it on its own). A client created before the file arrived waits in
+     window.__migLTQ and is attached on load (its handlers only have to exist before the first tool call). ---------- */
+  var LT = (function () { var s = document.querySelector('script[src*="data/janna-live.js"]'), src = s ? s.src : "", m = /[?&]v=([\w.-]+)/.exec(src); return { base: src ? src.replace(/data\/janna-live\.js.*$/, "") : "", v: m ? m[1] : "" }; })(), ltOn = false;
+  function loadTools() {
+    if (window.MIG_LIVE_TOOLS || ltOn) return; ltOn = true;
+    var sc = document.createElement("script"); sc.src = LT.base + "data/bassem-live-tools.js" + (window.MIGVER_LT || (LT.v ? "?v=" + LT.v : "")); sc.charset = "utf-8"; sc.async = true;
+    sc.onerror = function () { ltOn = false; if (sc.parentNode) sc.parentNode.removeChild(sc); };
+    document.head.appendChild(sc);
+  }
+  function liveTools(c) {
+    var h = { persona: persona, frame: function () { return frame; }, go: go, say: say, run: run, ov: function () { return ov; }, link: function (u) { return withLang(url(u)); } };
+    if (window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.attach) { try { MIG_LIVE_TOOLS.attach(c, h); } catch (e) {} } else { loadTools(); (window.__migLTQ = window.__migLTQ || []).push([c, h]); }
+  }
+
+  /* ---------- no time wall (owner 2026-11-18: «مينفعش باسم يبقى محدد بوقت … ده مستشار، المفروض يبقى معايا لغاية لما أخلص») ----------
+     Anam ends each session at its max_session_sec (the Worker's value), so one call is a CHAIN of sessions on the same <video>:
+     · max−60 s: the next token is minted in the background (the same POST /api/janna/session; the conversation so far reaches the next
+       session ONLY through addContext() — never in the token request, review 2026-11-18 #15); a transient refusal is asked once more at
+       max−20 s; if there is still no token the member is told how long is left and the call stops at max_session_sec (review #4, #14);
+     · from max−20 s the next session starts in the first pause (nobody speaking for 1.2 s: the persona's text stream, its voice level, the
+       visitor's speech events, and no tool still reading the screen), at max−5 s in any case, or at once when the engine ends the session for
+       its length (CONNECTION_CLOSED near the cap or "max duration");
+     · the old session's microphone is muted, the new one streams to the SAME video element (its first frame replaces the old picture), then
+       the old one is stopped; a 1–2 s «باسم معاك…» shimmer instead of the end screen; the shared screen, the hologram and the captions stay
+       as they are (no session-ended / session-started — a "session-continued" event instead);
+     · a saved persona cannot skip its greeting per session (Anam: skipGreeting is persona config; a token for a saved persona takes only
+       personaId), so the new part's greeting is cut at its first words (interruptPersona, the video muted until then, kept out of the
+       captions / the log / the screens) and the conversation so far + the screen reach its LLM with addContext() (used on the next turn);
+     · at most CHAIN_HOURS hours in all (window.JANNA_LIVE_CHAIN_HOURS, default 4) and CHAIN_MAX continuations (window.JANNA_LIVE_CHAIN_MAX,
+       default 24); never after the visitor's ✕, closing or leaving; Bassem only (window.JANNA_LIVE_CHAIN_ALL = 1: Janna too, never during a
+       meeting). The last part keeps today's 2-minute warning.
+     A refused token (rate limit, daily cap …) ends the call as today, with the reason said; a new part that fails to start hands the call
+     back to the part that is still running (review #14). */
+  var CHAIN_MAX = (function () { var n = parseInt(window.JANNA_LIVE_CHAIN_MAX, 10); return n >= 0 && n <= 96 ? n : 24; })();
+  var CHAIN_HOURS = (function () { var h = parseFloat(window.JANNA_LIVE_CHAIN_HOURS); return h > 0 && h <= 12 ? h : 4; })();
+  /* the Worker's session length; Anam's own platform limit for one session is 2 hours (a bigger plan sends a bigger max_session_sec) */
+  function maxOf(j) { return Math.max(60, Math.min(7200, +(j && j.max_session_sec) || CAP_MIN * 60)); }
+  function chainOk(me) { var c = me && me.chain; return !!c && !c.userEnded && c.n < CHAIN_MAX && Date.now() - c.t0 < CHAIN_HOURS * 3600000 && (persona === "bassem" || !!window.JANNA_LIVE_CHAIN_ALL) && !(MT && !MT.done); }
+  function contTimers(me, ms) {
+    me.timers.push(setTimeout(function () { if (LV === me && !me.closed) contPrep(me); }, Math.max(1000, ms - 60000)));
+    me.timers.push(setTimeout(function () { if (LV === me && !me.closed) contWatch(me); }, Math.max(2000, ms - 20000)));
+    me.timers.push(setTimeout(function () { if (LV === me && !me.closed) contGo(me, "time"); }, Math.max(3000, ms - 5000)));
+    /* review #4: no next part by max_session_sec (refused / failed token) → the call stops here, as without a chain; a token still on its
+       way gets 8 s more (the engine's own cut then continues the call) */
+    var stopAt = function (late) {
+      if (LV !== me || me.closed || me.swapped) return;
+      if (!late && me.next && me.next.st === "minting" && chainOk(me)) { me.timers.push(setTimeout(function () { stopAt(true); }, 8000)); return; }
+      sdkStop("max");
+    };
+    me.timers.push(setTimeout(function () { stopAt(false); }, ms));
+  }
+  /* how long is left in this part, said when no continuation could be prepared (built from max_session_sec, review #4 / #9) */
+  function contLeftMsg(me) {
+    var left = Math.max(5, Math.round(((me.t0 || Date.now()) + me.max * 1000 - Date.now()) / 1000)), mins = Math.round(me.max / 60);
+    var ar = left >= 90 ? Math.round(left / 60) + " دقايق" : left + " ثانية", en = left >= 90 ? Math.round(left / 60) + " minutes" : left + " seconds";
+    return T("⏳ المكالمة هتقف بعد حوالي " + ar + " (حد الجلسة " + mins + " دقيقة) — مقدرتش أجهّز التكملة", "⏳ The call will stop in about " + en + " (the session limit is " + mins + " minutes) — the continuation could not be prepared");
+  }
+  /* a refusal that will not change in a few seconds (no second try) */
+  function contFinal(e) { return /^(rate_limited|daily_cap|plan|login_required|full_login_required|unauthorized|forbidden)$/.test(String((e && e.code) || "")); }
+  /* the whole call's conversation (every part), for the next part's context */
+  function contLog(me, m) { var c = me.chain; if (!c) return; var t = String(m.content || "").replace(/\[[a-z_ -]{2,24}\]/gi, "").replace(/\s+/g, " ").trim(); if (!t) return; c.log.push({ role: m.role === "persona" ? "persona" : "user", text: t.slice(0, 1200) }); if (c.log.length > 60) c.log.splice(0, c.log.length - 60); }
+  function resumeOf(me) {
+    var L = (me.chain && me.chain.log) || [], out = [], n = 0;
+    for (var i = L.length - 1; i >= 0 && out.length < 16; i--) { var t = L[i].text.slice(0, 700); if (n + t.length > 3500) break; n += t.length; out.unshift({ role: L[i].role, text: t }); }
+    return out;
+  }
+  function resumeText(me) {
+    var r = resumeOf(me), nm = sdkName(), scr = "";
+    try { scr = window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.screenText ? MIG_LIVE_TOOLS.screenText() : ""; } catch (e) {}
+    var s = "[CONTINUATION of the same live call — part " + (me.chain.n + 1) + "] The video connection was renewed automatically (one session has a fixed maximum length). The member is still with you and did not hang up. Do NOT greet again, do not introduce yourself, do not mention any reconnection or time limit: continue exactly where the conversation stopped and answer the member's next words in context.";
+    if (scr) s += "\nOn the shared screen now: " + scr;
+    if (r.length) s += "\nThe conversation so far (oldest first):\n" + r.map(function (m) { return (m.role === "user" ? "Member: " : nm + ": ") + m.text; }).join("\n");
+    return s.slice(0, 6000);
+  }
+  /* max−60 s: the next token, in the background */
+  function contPrep(me, retry) {
+    if (!chainOk(me) || me.stopped) return;
+    if (me.next) { if (!retry || me.next.st !== "failed" || me.next.retried || contFinal(me.next.err)) return; } /* one more try at max−20 s */
+    var nx = me.next = { st: "minting", token: "", max: 0, err: null, want: "", retried: !!retry }, p = persona;
+    mint(p)
+      .then(function (j) { nx.st = "ready"; nx.token = j.sessionToken; nx.max = maxOf(j); if (nx.want && LV === me) contGo(me, nx.want); },
+        function (e) {
+          nx.st = "failed"; nx.err = e || {};
+          if (nx.want && contGo(me, nx.want)) return;
+          if (LV === me && !me.closed && !me.warnedEnd && (nx.retried || nx.want || contFinal(nx.err))) { me.warnedEnd = true; say(contLeftMsg(me)); }
+        });
+  }
+  /* is anybody speaking, or is a tool still reading the screen? (never switch mid-sentence) */
+  function contQuiet(me) {
+    var t = Date.now(), s = me.spk || {};
+    if (s.user || t - (s.userT || 0) < 1200 || s.on || t < (s.until || 0)) return false;
+    if (me.lvl) { var v = -1; try { v = me.lvl(); } catch (e) { me.lvl = null; } if (v > 0.015) s.loudT = t; if (v >= 0 && t - (s.loudT || 0) < 1200) return false; }
+    try { if (window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.busy && MIG_LIVE_TOOLS.busy()) return false; } catch (e) {}
+    return true;
+  }
+  function contWatch(me) {
+    if (me.watchT || !chainOk(me)) return; contPrep(me, true); contMeter(me);
+    me.watchT = setInterval(function () { if (LV !== me || me.closed || me.swapped) { clearInterval(me.watchT); return; } if (contQuiet(me)) contGo(me, "pause"); }, 250);
+    me.timers.push(me.watchT);
+  }
+  /* the persona's voice level (Web Audio on the video's own stream, not connected to the speakers); -1 = not measurable */
+  function contMeter(me) {
+    if (me.lvl !== undefined) return; me.lvl = null;
+    if (me.nzLvl) { me.lvl = me.nzLvl; return; } /* the noise guard's meter on this part's voice (one analyser, its context made inside the «ابدأ» tap) */
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext, bx = sdkBox(), v = bx && bx.querySelector("video"), st = v && v.srcObject;
+      if (!AC || !st || !st.getAudioTracks || !st.getAudioTracks().length) return;
+      var ac = me.ac = new AC(); if (ac.state !== "running" && ac.resume) ac.resume().then(null, function () {});
+      var an = ac.createAnalyser(); an.fftSize = 512; ac.createMediaStreamSource(st).connect(an);
+      var buf = new Uint8Array(an.fftSize);
+      me.lvl = function () { if (ac.state !== "running") return -1; an.getByteTimeDomainData(buf); var q = 0; for (var i = 0; i < buf.length; i++) { var x = (buf[i] - 128) / 128; q += x * x; } return Math.sqrt(q / buf.length); };
+    } catch (e) { me.lvl = null; }
+  }
+  /* this part's speaking state + the continued part's own steps (registered before sdkRun's other listeners) */
+  function contWire(me, on) {
+    var s = me.spk = { on: false, until: 0, user: false, userT: 0, loudT: 0, id: "", t0: 0, n: 0 };
+    on("MESSAGE_STREAM_EVENT_RECEIVED", function (ev) {
+      ev = ev || {}; if (ev.role !== "persona") return;
+      var id = String(ev.id || "");
+      if (me.cont && contGreet(me, id, ev)) return;
+      if (id !== s.id) { s.id = id; s.t0 = Date.now(); s.n = 0; }
+      s.n += String(ev.content || "").length; s.on = !ev.endOfSpeech && !ev.interrupted;
+      s.until = ev.interrupted ? Date.now() + 400 : Math.max(s.until, s.t0 + s.n * 75 + 700); /* the voice lags the text: ~75 ms a character */
+    });
+    on("USER_SPEECH_STARTED", function () { s.user = true; s.userT = Date.now(); if (me.cont) me.cont.userSpoke = true; }); /* contGreet tells the greeting from an answer to these words */
+    on("USER_SPEECH_ENDED", function () { s.user = false; s.userT = Date.now(); });
+    on("DATA_CHANNEL_OPEN", function () { if (me.cont) setTimeout(function () { contCtx(me); }, 0); });
+    on("VIDEO_PLAY_STARTED", function () { if (me.cont) contPlaying(me); });
+  }
+  /* now: the next part (why: "pause" | "time" | "cut") */
+  function contGo(me, why) {
+    if (me.swapped || LV !== me || !chainOk(me) || me.stopped || (me.closed && why !== "cut")) return false; /* ✕ / max stop / ended: no next part */
+    var nx = me.next;
+    if (!nx) { contPrep(me); nx = me.next; if (!nx) return false; }
+    if (nx.st === "failed") { if (why !== "cut") { contUi(false); return false; } contFail(me, nx.err); return true; } /* the engine ends it, then the reason is said */
+    if (why !== "pause" || nx.st === "ready") contUi(true);
+    if (nx.st !== "ready") { if (!nx.want || why === "cut") nx.want = why; return true; }
+    me.swapped = true; clearInterval(me.watchT);
+    var bx = sdkBox(), v = bx && bx.querySelector("video");
+    try { if (me.client && !me.closed) me.client.muteInputAudio(); } catch (e) {}
+    if (v) v.muted = true; /* until the new part's greeting is cut */
+    me.chain.n++;
+    var me2 = { gen: ++LVN, st: "connecting", client: null, sid: "", ready: false, dc: false, playing: false, closed: false, stopped: false, stopReason: "", textOnly: me.textOnly, muted: me.muted, micDenied: me.micDenied, seen: {}, msgN: 0, max: nx.max || me.max, timers: [], connT: 0, own: {},
+      chain: me.chain, cont: { prev: me, why: why, t: Date.now(), greet: "", src: v ? v.srcObject : null } };
+    LV = me2;
+    loadSdk().then(function (A) { if (LV === me2 && !me2.stopped) sdkRun(me2, A, nx.token); }, function () { if (LV === me2) contFail(me2, { code: "sdk_load" }); });
+    return true;
+  }
+  /* the engine ended this part: its length → the next part at once, no end screen (an inactivity / end_call end is a real end) */
+  function contCut(me, code, details) {
+    if (!me.ready || me.stopReason || me.swapped || !chainOk(me)) return false;
+    var el = (Date.now() - (me.t0 || Date.now())) / 1000, d = String(details || "");
+    if (/inactiv|silence|USER_REQUESTED|end_call|api_requested/i.test(d) || /MICROPHONE/.test(code)) return false;
+    if (!(/max|duration|length|limit/i.test(d) || el >= me.max - 45)) return false;
+    me.closed = true; me.st = "ended"; sdkClear(me); me.client = null; /* the video keeps its last picture under the shimmer */
+    if (contGo(me, "cut")) return true;
+    me.closed = false; return false;
+  }
+  /* the continued part is ready: the old one goes when the new picture plays (at the latest 5 s later) */
+  function contReady(me) {
+    var g = me.cont;
+    sdkFire("session-continued", { sessionId: me.sid, part: me.chain.n + 1, previous: g.prev ? g.prev.sid : "" });
+    if (me.muted) { try { me.client.muteInputAudio(); } catch (e) {} }
+    setTimeout(function () { contCtx(me); }, 0);
+    setTimeout(function () { if (g.greet !== "cut") g.greet = "done"; contUnmute(me); }, 7000);
+    g.retT = setTimeout(function () { contPlaying(me); }, 5000);
+  }
+  function contCtx(me) {
+    var g = me.cont; if (!g || g.ctx || !me.ready || !me.dc || !me.client || LV !== me) return;
+    g.ctx = true; try { me.client.addContext(resumeText(me)); } catch (e) { g.ctx = false; }
+  }
+  /* the new part's greeting: cut at its first words, kept out of the captions, the log and the screens */
+  function contGreet(me, id, ev) {
+    var g = me.cont, sp = me.spk || {};
+    if (g.greet === "cut" || g.greet === "done") {
+      if (id && id === g.greetId && ev) { if (ev.interrupted || ev.endOfSpeech) g.cutOk = true; else g.lastChunk = Date.now(); } /* is the cut greeting still talking? */
+      return !!(me.skip && me.skip[id]);
+    }
+    /* the member spoke first: speech that starts > 1 s after his words ended is the answer to them (heard); earlier, it is the greeting */
+    if (Date.now() - g.t > 20000 || (g.userSpoke && !sp.user && sp.userT && Date.now() - sp.userT > 1000)) { g.greet = "done"; contUnmute(me); return false; }
+    g.greet = "cut"; me.skip = me.skip || {}; me.skip[id] = 1; g.greetId = id;
+    try { me.client.interruptPersona(); } catch (e) {}
+    /* unmuted only once the greeting stopped: still streaming 900 ms later → interrupted once more, unmuted after at most 2.5 s */
+    setTimeout(function () {
+      if (!g.cutOk && g.lastChunk && Date.now() - g.lastChunk < 600) { try { if (me.client) me.client.interruptPersona(); } catch (e) {} setTimeout(function () { g.greet = "done"; contUnmute(me); }, 1600); return; }
+      g.greet = "done"; contUnmute(me);
+    }, 900);
+    return true;
+  }
+  /* MESSAGE_HISTORY: the first persona message of a continued part is its cut greeting (by id, else by position) */
+  function contSkip(me, m) {
+    var g = me.cont;
+    if (!g || !g.greetId || g.histSkipped || !m || m.role !== "persona") return !!(me.skip && m && me.skip[String(m.id || "")]);
+    g.histSkipped = true; return true;
+  }
+  function contUnmute(me) { var bx = sdkBox(), v = bx && bx.querySelector("video"); if (v && LV === me) v.muted = false; }
+  function contPlaying(me) {
+    var g = me.cont; if (!g || g.playing) return; g.playing = true; clearTimeout(g.retT);
+    if (g.prev) contRetire(g.prev);
+    setTimeout(function () { if (LV === me) contUi(false); }, 350);
+  }
+  /* an old part, stopped quietly (its CONNECTION_CLOSED is ignored: it is not LV any more) */
+  function contRetire(o) {
+    if (!o || o.retired) return; o.retired = true; o.swapped = true;
+    sdkClear(o); clearInterval(o.watchT); try { if (o.ac) o.ac.close(); } catch (e) {} o.ac = null;
+    var c = o.client; o.closed = true; o.st = "ended"; o.client = null;
+    if (c) { try { var p = c.stopStreaming(); if (p && p.then) p.then(null, function () {}); } catch (e) {} }
+  }
+  function contEnd(me) {
+    if (!me) return; clearInterval(me.watchT); try { if (me.ac) me.ac.close(); } catch (e) {} me.ac = null;
+    if (me.cont && me.cont.prev) contRetire(me.cont.prev);
+    var bx = sdkBox(), v = bx && bx.querySelector("video"); if (v) v.muted = false;
+  }
+  /* the engine already ended this part and the next one is still on its way: the visitor's ✕ ends the call now (review #5) */
+  function contAbort(me, reason) {
+    me.stopped = true; if (!me.stopReason) me.stopReason = reason; me.swapped = true; /* the token that arrives later starts nothing */
+    contUi(false); contEnd(me);
+    var bx = sdkBox(), v = bx && bx.querySelector("video"); if (bx) bx.classList.remove("on"); try { if (v) v.srcObject = null; } catch (x) {}
+    sdkFire("session-ended", { sessionId: me.sid, reason: "user_ended_during_continuation" });
+    sdkUi("ended", T("المكالمة انتهت.", "The call has ended."));
+  }
+  /* review #14: the new part failed before it was ready while the previous part still runs → back to the previous part, which keeps the
+     call until its own end (its stop timer); no error screen in the middle of the call */
+  function contBack(me2) {
+    var g = me2 && me2.cont, o = g && g.prev;
+    if (!o || o.closed || o.retired || o.stopped || LV !== me2 || me2.ready) return false;
+    var c2 = me2.client; me2.closed = true; me2.st = "error"; sdkClear(me2); me2.client = null; me2.cont = null;
+    if (c2) { try { var p = c2.stopStreaming(); if (p && p.then) p.then(null, function () {}); } catch (x) {} }
+    LV = o; o.swapped = false; if (o.chain) o.chain.n = Math.max(0, o.chain.n - 1); o.next = { st: "failed", err: { code: "start" }, retried: true, want: "" };
+    var bx = sdkBox(), v = bx && bx.querySelector("video");
+    try { if (v && g.src && v.srcObject !== g.src) { v.srcObject = g.src; var pp = v.play(); if (pp && pp.then) pp.then(null, function () {}); } } catch (x) {}
+    if (v) v.muted = false; if (bx) bx.classList.add("on");
+    try { if (o.client && !o.muted && !(o.nz && o.nz.gate)) o.client.unmuteInputAudio(); } catch (x) {} /* noisy-room mode: the gate reopens it when she is quiet */
+    contUi(false);
+    if (!o.warnedEnd) { o.warnedEnd = true; say(contLeftMsg(o)); }
+    return true;
+  }
+  /* the next part could not start: the call ends as today, with the reason */
+  function contFail(me, e) {
+    if (contBack(me)) return;
+    var c = String((e && e.code) || ""), why = c === "rate_limited" ? T("اتفتحت مكالمات كتير من نفس الشبكة الساعة دي", "too many calls from this network this hour") : c === "daily_cap" ? T("مكالمات الفيديو خلصت لليوم", "today's live calls are used up") : /^(plan|login_required|full_login_required)$/.test(c) ? T("الدخول أو الباقة محتاجين تأكيد", "your sign-in or plan needs confirming") : T("الاتصال ماكملش", "the connection did not go through");
+    if (me.chain) me.chain.userEnded = true;
+    contEnd(me);
+    var c2 = me.client; me.closed = true; me.st = "ended"; sdkClear(me); me.client = null;
+    if (c2) { try { var p = c2.stopStreaming(); if (p && p.then) p.then(null, function () {}); } catch (x) {} }
+    var bx = sdkBox(), v = bx && bx.querySelector("video"); if (bx) bx.classList.remove("on"); try { if (v) v.srcObject = null; } catch (x) {}
+    contUi(false);
+    sdkFire("session-ended", { sessionId: me.sid, reason: "continuation_failed:" + c });
+    sdkUi("ended", T("المكالمة وصلت لحد الجلسة ومقدرتش أكمّلها تلقائياً (" + why + "). تقدر تبدأ مكالمة جديدة.", "The call reached the session limit and could not continue automatically (" + why + "). You can start a new call."));
+  }
+  /* «باسم معاك…»: a subtle shimmer over the video while the next part connects (12 s at most) */
+  var contCss = 0;
+  function contUi(on) {
+    var bx = sdkBox(); if (!bx) return;
+    var el = bx.querySelector(".jv-cont");
+    if (!on) { if (el) { el.classList.remove("on"); clearTimeout(el.__t); } return; }
+    if (!contCss) {
+      contCss = 1; var st = document.createElement("style");
+      st.textContent = '.jnl-sdk .jv-cont{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0;transition:opacity .35s ease;display:flex;align-items:flex-end;justify-content:center;padding-bottom:86px;background:linear-gradient(100deg,rgba(5,9,12,0) 30%,rgba(120,220,255,.18) 50%,rgba(5,9,12,0) 70%) 0 0/250% 100% no-repeat;animation:jvShim 1.6s linear infinite}'
+        + '.jnl-sdk .jv-cont.on{opacity:1}.jnl-sdk .jv-cont span{padding:6px 16px;border-radius:999px;background:rgba(4,18,26,.8);border:1px solid rgba(233,196,106,.6);color:#fff;font-weight:800;font-size:.92rem;box-shadow:0 0 22px -6px rgba(90,210,255,.85)}'
+        + '@keyframes jvShim{0%{background-position:120% 0}100%{background-position:-120% 0}}@media (prefers-reduced-motion:reduce){.jnl-sdk .jv-cont{animation:none}}';
+      document.head.appendChild(st);
+    }
+    if (!el) { el = document.createElement("div"); el.className = "jv-cont"; el.setAttribute("role", "status"); el.innerHTML = "<span></span>"; bx.appendChild(el); }
+    el.querySelector("span").textContent = who(["جنة معاك…", "باسم معاك…"], ["Janna is with you…", "Bassem is with you…"]);
+    el.classList.add("on"); clearTimeout(el.__t); el.__t = setTimeout(function () { el.classList.remove("on"); }, 12000);
+  }
+  /* autoplay with sound needs the visitor's tap on some browsers: then one more tap plays the video */
+  function sdkPlay(me) {
+    var bx = sdkBox(), v = bx && bx.querySelector("video"); if (!v || !v.paused || LV !== me || me.closed) return;
+    var p; try { p = v.play(); } catch (e) { p = null; }
+    if (p && p.then) p.then(null, function () {
+      if (LV !== me || me.closed) return;
+      var st = bx.querySelector(".jv-st"); st.classList.remove("wait"); st.textContent = T("اضغط على الفيديو علشان تسمع ", "Tap the video to hear ") + sdkName();
+      bx.addEventListener("click", function once() { bx.removeEventListener("click", once); st.textContent = ""; try { var q = v.play(); if (q && q.then) q.then(null, function () {}); } catch (e) {} });
+    });
+  }
+  function sdkFire(name, detail) {
+    var el = sdkBox(); if (!el) return;
+    var ev = null;
+    try { ev = new CustomEvent("anam-agent:" + name, { detail: detail, bubbles: true, composed: true }); } catch (e) { try { ev = document.createEvent("CustomEvent"); ev.initCustomEvent("anam-agent:" + name, true, false, detail); } catch (x) { ev = null; } }
+    if (ev) el.dispatchEvent(ev);
+  }
+  /* one tool call = one action, even when the engine reports it on both channels (dedicated event + legacy client event) */
+  function sdkTool(me, name, type, args, id) {
+    if (!name) return;
+    args = args && typeof args === "object" ? args : {};
+    var k = "", now = Date.now(); try { k = String(name) + "|" + JSON.stringify(args); } catch (e) { k = String(name); }
+    if ((id && me.seen["#" + id]) || (me.seen[k] && now - me.seen[k] < 1500)) return;
+    if (id) me.seen["#" + id] = now; me.seen[k] = now;
+    sdkFire("tool-call-started", { toolName: String(name), toolType: type == null ? "" : String(type), toolCallId: id || "", arguments: args });
+  }
+  function sdkTimers(me) {
+    var ms = me.max * 1000;
+    if (chainOk(me)) { contTimers(me, ms); return; }
+    if (me.max > 180) me.timers.push(setTimeout(function () { if (LV === me && !me.closed && !(MT && !MT.done)) say(T("⏳ باقي دقيقتين على نهاية المكالمة", "⏳ 2 minutes left in this call")); }, ms - 120000));
+    me.timers.push(setTimeout(function () { if (LV === me && !me.closed) sdkStop("max"); }, ms));
+  }
+  function sdkClear(me) { clearTimeout(me.connT); for (var i = 0; i < me.timers.length; i++) clearTimeout(me.timers[i]); me.timers = []; nzEnd(me); }
+  function sdkStop(reason) {
+    var me = LV; if (!me) return;
+    if (me.closed) { if (me.chain && reason !== "max") { me.chain.userEnded = true; if (me.next && !me.swapped && me.next.want === "cut" && me.next.st === "minting") contAbort(me, reason); } return; } /* review #5: ✕ while the next part is on its way after the engine's cut */
+    me.stopped = true; if (!me.stopReason) me.stopReason = reason;
+    if (me.chain && reason !== "max") me.chain.userEnded = true; /* never auto-continue after the visitor ended the call */
+    if (me.cont && me.cont.prev) contRetire(me.cont.prev);
+    var c = me.client;
+    if (c) { try { var p = c.stopStreaming(); if (p && p.then) p.then(null, function () {}); } catch (e) {} }
+    /* the SDK reports CONNECTION_CLOSED itself; a client that has not connected yet does not, so the call is closed here */
+    if (!me.closed && (c || reason !== "close")) sdkClosed(me, "CONNECTION_CLOSED_CODE_NORMAL", "");
+  }
+  function sdkClosed(me, code, details) {
+    if (me.closed) return;
+    if (contCut(me, code, details)) return;
+    me.closed = true; me.st = "ended"; sdkClear(me); me.client = null;
+    var bx = sdkBox(), v = bx && bx.querySelector("video"); if (bx) bx.classList.remove("on"); try { if (v) v.srcObject = null; } catch (e) {}
+    if (!me.ready) { if (me.stopReason) sdkUi("idle"); else sdkFail(me, me.micDenied || /MICROPHONE/.test(code) ? "mic" : "start"); return; }
+    sdkFire("session-ended", { sessionId: me.sid, reason: details || code });
+    var mins = me.chain && me.chain.n ? Math.round((Date.now() - me.chain.t0) / 60000) : Math.round(me.max / 60), maxed = me.stopReason === "max" || /max(imum)?.?(duration|length)/i.test(details); contUi(false); contEnd(me);
+    sdkUi("ended", maxed ? T("خلصت مدة المكالمة (" + mins + " دقايق). تقدر تبدأ مكالمة جديدة.", "The call reached its " + mins + "-minute limit. You can start a new call.")
+      : me.stopReason || /NORMAL|SERVER_CLOSED/.test(code) || !code ? T("المكالمة انتهت.", "The call has ended.") : T("الاتصال اتقطع — تقدر تبدأ مكالمة جديدة.", "The connection dropped — you can start a new call."));
+  }
+  function sdkFail(me, why) {
+    if (contBack(me)) return; /* a new part that did not start: the running one keeps the call (review #14) */
+    me.closed = true; me.st = "error"; sdkClear(me); me.client = null; contUi(false); contEnd(me);
+    if (why === "mic") { sdkUi("error", T("الميكروفون مقفول للموقع ده. اسمح بيه من إعدادات المتصفح وجرّب تاني، أو كمّل كتابة.", "The microphone is blocked for this site. Allow it in your browser settings and try again, or continue by typing."), { go: T("جرّب تاني", "Try again"), typing: true }); return; }
+    sdkUi("error", T("الاتصال ماكملش — جرّب تاني.", "The call could not connect — please try again."), { go: T("جرّب تاني", "Try again") });
+  }
+  /* the Worker's answer when it gives no token */
+  function sdkRefused(me, e) {
+    var c = String(e.code || ""), s = +e.status || 0;
+    /* this site cannot mint tokens (no key on the Worker, no endpoint): the widget, and this tab keeps it for a while */
+    if (c === "unavailable" || c === "anam_not_configured" || c === "store_off" || s === 404) { rememberWidget(); LV = null; toWidget(true); return; }
+    me.closed = true; me.st = "error";
+    if (c === "rate_limited") { var mn = Math.max(1, Math.ceil((+e.retry_after || 3600) / 60)); sdkUi("error", T("اتفتحت مكالمات فيديو كتير من نفس الشبكة الساعة دي — جرّب تاني بعد " + mn + " دقيقة.", "Too many video calls from this network this hour — please try again in " + mn + " min."), { go: T("جرّب تاني", "Try again") }); return; }
+    if (c === "daily_cap") { sdkUi("error", T("مكالمات الفيديو المباشرة خلصت لليوم — جرّب تاني بكرة.", "Today's live video calls are used up — please try again tomorrow."), { noRetry: true }); return; }
+    if (c === "blocked") { sdkUi("error", T("مكالمات الفيديو المباشرة مش متاحة من الشبكة دي.", "Live video calls are not available from this network."), { noRetry: true }); return; }
+    if (c === "plan") { sdkUi("error", T("مكالمة باسم بالفيديو لأعضاء باقة الشريك الأساسي والشريك الاستراتيجي.", "Video calls with Bassem are for Core Partner and Strategic Partner members."), { noRetry: true }); return; }
+    if (c === "login_required" || c === "full_login_required") {
+      var A = window.MIGAPI, why = c === "full_login_required" ? T("إنت داخل برابط من الإيميل، وده للرد على الطلبات بس — سجّل دخولك بكود الإيميل علشان تكلّم باسم فيديو.", "You came in through an e-mail link, which only allows answering requests — sign in with your e-mail code to video-call Bassem.") : T("سجّل دخولك بكود يوصلك على بريد شركتك علشان تكلّم باسم فيديو.", "Sign in with a code sent to your company e-mail to video-call Bassem.");
+      if (!A || typeof A.login !== "function") { sdkUi("error", why, { noRetry: true }); return; }
+      sdkUi("error", why, { go: T("سجّل الدخول", "Sign in"), act: function () { A.login({ why: why }).then(function () { if (sdkBox()) sdkStart(false); }, function () {}); } });
+      return;
+    }
+    /* Anam, the network or the Worker did not answer: today's widget for this call */
+    LV = null; toWidget(true);
+  }
+  /* the Worker or the SDK cannot run this call: today's widget in the same place (its own «ابدأ الكلام» button) */
+  function toWidget(fromStart) {
+    var v = ov && ov.querySelector(".jnl-me .v"); if (!v || v.querySelector("anam-agent")) return;
+    var nm = sdkName();
+    micDrop(); /* the widget captures its own microphone */
+    v.innerHTML = widgetHtml(nm); ov.setAttribute("data-mode", "widget");
+    mountWidget();
+    if (fromStart) say(T("اضغط «ابدأ الكلام مع " + nm + "» علشان نبدأ", "Press “Start talking to " + nm + "” to begin"));
+  }
+  /* a message typed in the call (the text box, or the welcome card's «اجتماع» request): only once the session can take it */
+  function sdkSay(text) {
+    var me = LV, t = String(text == null ? "" : text).trim().slice(0, 500);
+    if (!t || !me || !me.client || !me.ready || !me.dc || me.closed) return false;
+    try { me.client.sendUserMessage(t); } catch (e) { return false; }
+    NZ.typed.push({ t: Date.now(), x: nzNorm(t) }); if (NZ.typed.length > 6) NZ.typed.shift(); /* a typed turn is never a noise interruption */
+    sdkFire("message-sent", { content: t }); return true;
+  }
+  function sdkMute() {
+    var me = LV; if (!me || !me.client || me.closed || me.textOnly) return;
+    if (me.nz && me.nz.gate) me.muted = !me.muted; /* noisy-room mode holds the microphone while the persona talks: the button keeps the visitor's own choice, applied when it reopens */
+    else { try { var s = me.muted ? me.client.unmuteInputAudio() : me.client.muteInputAudio(); me.muted = s && typeof s.isMuted === "boolean" ? s.isMuted : !me.muted; } catch (e) { return; } }
+    sdkFire(me.muted ? "mic-muted" : "mic-unmuted", {}); updCtl();
+  }
+  /* ---------- «وضع الدوشة» — the noise guard (owner 2026-11-19: «أهم حاجة في جنة وباسم إنهم عادي لو بيتكلموا مع الشخص وحواليه دوشة أو
+     أصوات تانية يتفاعلوا معاه ويركزوا مع صوته هو»). Anam's server VAD stops the persona whenever it hears "speech" (there is no barge-in
+     setting), so noise around the visitor cut Janna / Bassem mid-sentence. SDK calls only (the widget fallback is a black box):
+     1) our own microphone: getUserMedia {echoCancellation, noiseSuppression, autoGainControl, channelCount 1} + voiceIsolation when the
+        browser lists it (getSupportedConstraints), asked inside the «ابدأ» tap while the token is minted, handed to the stream as a CLONE
+        per part (the SDK stops the tracks it gets when a part ends; the chain's next part gets a new clone of the same capture). Refused,
+        missing or unanswered for MIC_WAIT → the SDK's own capture exactly as before (its MIC_PERMISSION_* events → the existing UI).
+        Released when the call is over (sdkUi), when the widget takes over and on close();
+     2) false interruptions: the persona was speaking (her text still streaming, her voice on the meter, or her message reported
+        interrupted), USER_SPEECH_STARTED fired, and the user turn after it was empty, noise-like or ≤ 2 short words (never «استنى» / "stop"
+        / her name / a question / a number / text the visitor typed). One → an offer chip (tap = noisy-room mode now); two within 90 s →
+        noisy-room mode by itself;
+     3) noisy-room mode (half-duplex): while the persona speaks the microphone is muted (muteInputAudio; the visitor's own mute stays his),
+        it reopens ~250 ms after her voice stops (the meter; else her text timing). The chip says «🔇 المكان فيه دوشة — هكمّل كلامي، ولو عايز
+        تقاطعني دوس ✋ استنى» with ✋ (interruptPersona + the microphone at once) and «↩︎ الوضع العادي». A persona_config data message
+        lowers endOfSpeechSensitivity to NZ_EOS[1] and puts NZ_EOS[0] back on the way out (0.45 = the Lab value of all three personas,
+        2026-11-19). Kept for the tab (sessionStorage "mig-jnl-noise"): the next call starts in it.
+     The meter is a Web Audio analyser on the persona's own stream (AUDIO_STREAM_STARTED), never connected to the speakers, its context made
+     inside the «ابدأ» tap; window.JANNA_LIVE_NOISE_METER = 0 turns it off (text timing only), = 1 turns it on for iOS / iPadOS too (off there
+     by default: Web Audio on a remote WebRTC stream has not been tried on a real iPhone); window.JANNA_LIVE_MIC_WAIT (ms, 1000–60000,
+     default 15000) bounds the wait for the browser's answer; JANNA_LIVE_EOS_NORMAL / _NOISY override NZ_EOS. JANNA_LIVE.noise() / .noise(true|false). */
+  var NZ_KEY = "mig-jnl-noise", MIC_WAIT = (function () { var n = parseInt(window.JANNA_LIVE_MIC_WAIT, 10); return n >= 1000 && n <= 60000 ? n : 15000; })(), NZ_TH = 0.012, NZ_EOS = [nzNum(window.JANNA_LIVE_EOS_NORMAL, 0.45), nzNum(window.JANNA_LIVE_EOS_NOISY, 0.35)];
+  var NZ = { on: false, why: "", fis: [], offerUntil: 0, ac: null, mic: null, typed: [], last: null, el: null };
+  try { NZ.on = sessionStorage.getItem(NZ_KEY) === "1"; } catch (e) {}
+  var NZ_STOP = /(^| )(استني|استنا|لحظه|ثانيه|ثواني|ثوان|كفايه|خلاص|وقف|وقفي|اسكت|اسكتي|بس بس|جنه|باسم|stop|wait|hold on|hang on|one sec|janna|bassem)( |$)/;
+  var NZ_FILL = /^(ا+ه*|ه+|ا?م+|ه+م+|ها+|اها|اوه|يا|و|uh+|um+|hm+|mm+|ah+|oh+|eh+|er+m?|huh|ha+)$/;
+  function nzNum(v, d) { v = parseFloat(v); return v >= 0 && v <= 1 ? v : d; }
+  function nzNew() { return { gate: false, gateT: 0, eos: null, loudT: 0, meterOk: false, lvl: null, src: null, pid: "", pon: false, pt0: 0, pn: 0, plast: 0, puntil: 0, pintT: 0, cutId: "", handT: 0, cand: null, usedPid: "", seenU: {}, hn: 0, userOn: false }; }
+  function nzMicOk(me) { return !!me && !me.textOnly && !me.micDenied; }
+  function nzEvt(kind, d) { try { window.dispatchEvent(new CustomEvent("mig:noise", { detail: { kind: kind, on: NZ.on, why: (d && d.why) || "", count: NZ.fis.length } })); } catch (e) {} }
+  function nzNorm(s) { return String(s || "").replace(/\[[a-z_ -]{2,24}\]/gi, " ").replace(/[\u064B-\u065F\u0670\u0640]/g, "").replace(/[أإآٱ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").toLowerCase().replace(/[^\u0621-\u064A\u0660-\u0669a-z0-9]+/g, " ").replace(/\s+/g, " ").trim(); }
+  /* the user turn that followed an interruption: "empty" | "noise" | "short" = false; "" = meant */
+  function nzJudge(raw) {
+    var r = String(raw || ""), t = nzNorm(r), w;
+    if (!t) return "empty";
+    if (/[?\u061F]/.test(r) || /[0-9\u0660-\u0669]/.test(t) || NZ_STOP.test(t)) return "";
+    w = t.split(" ");
+    if (w.every(function (x) { return NZ_FILL.test(x); })) return "noise";
+    return w.length <= 2 && w.every(function (x) { return x.length <= 4; }) ? "short" : "";
+  }
+  function nzTyped(text) {
+    var x = nzNorm(text), now = Date.now(); if (!x) return false;
+    for (var i = 0; i < NZ.typed.length; i++) { var e = NZ.typed[i]; if (e.x && now - e.t < 30000 && (x === e.x || x.indexOf(e.x) > -1 || e.x.indexOf(x) > -1)) return true; }
+    return false;
+  }
+  /* --- our own microphone --- */
+  function micLive(s) { try { var t = s && s.getAudioTracks ? s.getAudioTracks() : []; return !!(t.length && t[0].readyState !== "ended"); } catch (e) { return false; } }
+  function micStop(s) { try { if (s && s.getTracks) s.getTracks().forEach(function (t) { try { t.stop(); } catch (x) {} }); } catch (e) {} }
+  function micDrop() { var s = NZ.mic; NZ.mic = null; micStop(s); }
+  function micGet(me) {
+    var md = navigator.mediaDevices, c = { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 }, p, shown = false, tm;
+    if (!md || !md.getUserMedia || !window.Promise) return null;
+    if (micLive(NZ.mic)) return Promise.resolve(NZ.mic);
+    try { var sc = md.getSupportedConstraints ? md.getSupportedConstraints() : null; if (sc && sc.voiceIsolation) c.voiceIsolation = true; } catch (e) {}
+    try { p = md.getUserMedia({ audio: c }); } catch (e) { return null; }
+    /* not answered within 350 ms and not granted before = the browser is asking: the same words as the SDK's own MIC_PERMISSION_PENDING */
+    var granted = false; try { navigator.permissions.query({ name: "microphone" }).then(function (r) { granted = !!r && r.state === "granted"; }, function () {}); } catch (e) {}
+    tm = setTimeout(function () { if (!granted && LV === me && !me.ready && !me.closed && !me.micUsed) { shown = true; sdkUi("connecting", T("اسمح للمتصفح يستخدم الميكروفون علشان تتكلم مع ", "Allow the microphone so you can talk to ") + sdkName()); } }, 350);
+    var back = function () { clearTimeout(tm); if (shown && LV === me && !me.ready && !me.closed && !me.micUsed) sdkUi("connecting", T("بنوصّلك ب" + sdkName() + "…", "Connecting you to " + sdkName() + "…")); };
+    return Promise.resolve(p).then(function (s) {
+      back();
+      if (!micLive(s) || LV !== me || me.closed || me.stopped || me.micUsed) { micStop(s); return null; } /* the call ended, or the SDK already took the microphone */
+      micDrop(); NZ.mic = s; return s;
+    }, function (e) { back(); me.micErr = String((e && e.name) || "error"); return null; });
+  }
+  /* the stream for this part: a clone of our capture, or null (= the SDK captures the microphone itself) */
+  function micFor(me) {
+    var clone = function (s) { if (!micLive(s)) return null; try { return s.clone(); } catch (e) { NZ.mic = null; return s; } };
+    if (me.textOnly) return Promise.resolve(null);
+    if (me.cont) return Promise.resolve(clone(NZ.mic));
+    if (!me.micP) return Promise.resolve(null);
+    return new Promise(function (res) {
+      var done = false, fin = function (s) { if (done) return; done = true; clearTimeout(tm); res(clone(s)); };
+      var tm = setTimeout(function () { fin(null); }, MIC_WAIT); /* not answered: the SDK asks itself (its request joins the same browser prompt) */
+      me.micP.then(fin, function () { fin(null); });
+    });
+  }
+  /* --- the persona's voice level (Web Audio analyser on her stream; -1 = not measurable) --- */
+  function nzAc() {
+    var f = String(window.JANNA_LIVE_NOISE_METER), ios = /iPad|iPhone|iPod/.test(navigator.userAgent || "") || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (f === "0" || (ios && f !== "1")) return null; /* iOS / iPadOS: not tried on real devices yet — text timing there unless the page opts in */
+    var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    try { if (!NZ.ac || NZ.ac.state === "closed") NZ.ac = new AC(); if (NZ.ac.state === "suspended" && NZ.ac.resume) { var r = NZ.ac.resume(); if (r && r.then) r.then(null, function () {}); } } catch (e) { NZ.ac = null; }
+    return NZ.ac;
+  }
+  function nzMeter(me, st) {
+    var z = me.nz, ac = NZ.ac;
+    if (!z || z.src || !ac || ac.state === "closed" || !st || !st.getAudioTracks || !st.getAudioTracks().length) return;
+    try {
+      var src = ac.createMediaStreamSource(st), an = ac.createAnalyser(), buf; an.fftSize = 512; src.connect(an); buf = new Uint8Array(an.fftSize);
+      z.src = src; z.lvl = me.nzLvl = function () { if (ac.state !== "running") return -1; an.getByteTimeDomainData(buf); var q = 0; for (var i = 0; i < buf.length; i++) { var x = (buf[i] - 128) / 128; q += x * x; } return Math.sqrt(q / buf.length); };
+    } catch (e) { z.src = null; z.lvl = null; }
+  }
+  function nzPrep(me) { me.nz = nzNew(); NZ.offerUntil = 0; if (me.textOnly) return; nzAc(); me.micP = micGet(me); } /* a new call: no offer left from the last one */
+  function nzEnd(me) {
+    var z = me && me.nz; if (!z) return;
+    if (z.cand) { clearTimeout(z.cand.tm); z.cand.done = true; }
+    try { if (z.src) z.src.disconnect(); } catch (e) {}
+    z.src = null; z.lvl = null; me.nzLvl = null;
+  }
+  /* --- per part: listeners (registered after contWire) + an 80 ms tick --- */
+  function nzWire(me, on) {
+    on("MESSAGE_STREAM_EVENT_RECEIVED", function (ev) { nzStream(me, ev || {}); });
+    on("MESSAGE_HISTORY_UPDATED", function (msgs) { nzHist(me, msgs || []); });
+    on("USER_SPEECH_STARTED", function () { nzUserOn(me); });
+    on("USER_SPEECH_ENDED", function () { nzUserOff(me); });
+    on("AUDIO_STREAM_STARTED", function (st) { nzMeter(me, st); });
+    on("VIDEO_STREAM_STARTED", function (st) { setTimeout(function () { var bx = sdkBox(), v = bx && bx.querySelector("video"); if (LV === me) nzMeter(me, st && st.getAudioTracks ? st : v && v.srcObject); }, 400); }); /* her voice inside the video stream */
+    on("DATA_CHANNEL_OPEN", function () { setTimeout(function () { if (NZ.on && LV === me) nzEos(me); }, 0); }); /* after sdkRun's own handler set me.dc */
+    on("PERSONA_CONFIG_UPDATE_APPLIED", function () { me.nz.eosOk = Date.now(); });
+    on("SERVER_WARNING", function (m) { me.nz.warn = String(m || "").slice(0, 200); });
+    me.timers.push(setInterval(function () { nzTick(me); }, 80));
+  }
+  function nzStream(me, ev) {
+    var z = me.nz, now = Date.now(), id = String(ev.id || "");
+    if (ev.role === "persona") {
+      if ((me.skip && me.skip[id]) || (id && id === z.cutId)) return; /* a continued part's cut greeting; the message ✋ cut */
+      if (id !== z.pid) { z.pid = id; z.pt0 = now; z.pn = 0; }
+      z.pn += String(ev.content || "").length; z.plast = now; z.pon = !ev.endOfSpeech && !ev.interrupted;
+      if (ev.interrupted) { z.pintT = now; z.puntil = now + 300; if (z.cand && !z.cand.done && (!z.cand.pid || z.cand.pid === id)) z.cand.int = true; }
+      else z.puntil = Math.max(z.puntil, z.pt0 + z.pn * 75 + 700); /* her voice lags the text: ~75 ms a character (as contWire) */
+      nzTick(me);
+    } else if (ev.role === "user" && ev.endOfSpeech !== false) nzUser(me, String(ev.content || ""), id);
+  }
+  function nzHist(me, msgs) {
+    var z = me.nz, c = z.cand, i;
+    for (i = Math.max(0, msgs.length - 4); i < msgs.length; i++) { var m = msgs[i] || {}; if (c && !c.done && m.role === "persona" && m.interrupted && (!c.pid || String(m.id || "") === c.pid)) c.int = true; }
+    for (i = z.hn; i < msgs.length; i++) { var u = msgs[i] || {}; if (u.role === "user") nzUser(me, String(u.content || ""), String(u.id || "")); }
+    z.hn = msgs.length;
+  }
+  function nzUserOn(me) {
+    var z = me.nz, now = Date.now(); z.userOn = true;
+    if (NZ.on || !nzMicOk(me) || !me.ready || (me.cont && me.cont.greet !== "done") || (z.cand && !z.cand.done) || !z.pid || z.pid === z.usedPid) return; /* one interruption = one check, once per persona message */
+    var strong = z.pon || (z.meterOk && now - z.loudT < 220) || (z.pintT > 0 && now - z.pintT < 1500);
+    var weak = !z.meterOk && now < z.puntil - 300; /* no meter: her estimated voice was still playing (needs her «interrupted») */
+    if (!strong && !weak) return;
+    z.usedPid = z.pid;
+    var c = z.cand = { at: now, pid: z.pid, strong: strong, int: false, done: false, text: null, tm: 0 };
+    c.tm = setTimeout(function () { nzDecide(me, c); }, 8000);
+  }
+  function nzUserOff(me) {
+    var z = me.nz, c = z.cand; z.userOn = false;
+    if (c && !c.done && c.text == null) { clearTimeout(c.tm); c.tm = setTimeout(function () { nzDecide(me, c); }, 3500); } /* no transcript by then = nothing was said */
+  }
+  function nzUser(me, text, id) {
+    var z = me.nz, c = z.cand;
+    if (id) { if (z.seenU[id]) return; z.seenU[id] = 1; }
+    if (!c || c.done || c.text != null) return;
+    if (nzTyped(text)) { c.done = true; clearTimeout(c.tm); return; } /* what the visitor typed: meant, never noise */
+    c.text = text; clearTimeout(c.tm); c.tm = setTimeout(function () { nzDecide(me, c); }, 250); /* her «interrupted» may come with the same history update */
+  }
+  function nzDecide(me, c) {
+    var z = me.nz; if (c.done) return;
+    if (c.text == null && z.userOn && Date.now() - c.at < 30000) { c.tm = setTimeout(function () { nzDecide(me, c); }, 1000); return; } /* still talking */
+    c.done = true;
+    if (LV !== me || me.closed || NZ.on || !(c.strong || c.int)) return;
+    var v = c.text == null ? "empty" : nzJudge(c.text);
+    if (v) nzFalse(me, v, c.text || "");
+  }
+  function nzFalse(me, why, text) {
+    var now = Date.now();
+    NZ.fis = NZ.fis.filter(function (t) { return now - t < 90000; }); NZ.fis.push(now);
+    NZ.last = { why: why, text: String(text || "").slice(0, 80), at: now };
+    nzEvt("false-interruption", { why: why });
+    if (NZ.fis.length >= 2) { nzSet(true, "auto"); return; }
+    NZ.offerUntil = now + 20000; nzChip(); setTimeout(nzChip, 20100);
+  }
+  /* the half-duplex gate: shut while she speaks, open ~250 ms after her voice stops */
+  function nzTick(me) {
+    var z = me.nz; if (!z || LV !== me || me.closed || me.swapped || !me.ready) return;
+    var now = Date.now(), lv = -1; nzPlace();
+    if (z.lvl) { try { lv = z.lvl(); } catch (e) { z.lvl = null; } }
+    if (lv > NZ_TH) { z.loudT = now; z.meterOk = true; }
+    if (z.pon && now - z.plast > 5000 && (z.meterOk ? now - z.loudT > 1000 : now > z.puntil)) z.pon = false; /* her end-of-speech never came */
+    /* speaking: her text still coming; her voice on the meter; or (her voice not heard on the meter yet) her text timing — never the ✋-cut
+       tail, never a continued part's cut greeting (no heard message yet: z.pid stays empty) */
+    var heard = z.meterOk && z.loudT >= z.pt0, fresh = now - z.handT > 1200;
+    var spk = z.pon || (!!z.pid && fresh && (z.meterOk && now - z.loudT < 120 || !heard && now < z.puntil));
+    if (!NZ.on || !nzMicOk(me)) { if (z.gate) nzGate(me, false); return; }
+    if (spk) { nzGate(me, true); return; }
+    if (!z.gate) return;
+    if (heard ? now - z.loudT >= 250 && (now >= z.puntil - 1200 || now - z.loudT >= 800) : now >= z.puntil + 250) nzGate(me, false);
+    else if (now - z.gateT > 60000) nzGate(me, false);
+  }
+  function nzGate(me, shut) {
+    var z = me.nz; if (!z || !!z.gate === !!shut) return;
+    z.gate = !!shut; z.gateT = Date.now();
+    if (me.client && !me.closed && !me.swapped && !me.muted && nzMicOk(me)) { try { if (shut) me.client.muteInputAudio(); else me.client.unmuteInputAudio(); } catch (e) {} }
+    nzChip();
+  }
+  /* endOfSpeechSensitivity: NZ_EOS[1] in noisy-room mode, NZ_EOS[0] back on the way out (never sent in a part that never changed it) */
+  function nzEos(me) {
+    var z = me.nz, want = NZ_EOS[NZ.on ? 1 : 0];
+    if (!z || z.eos === want || (!NZ.on && z.eos === null) || !me.client || !me.dc || me.closed || me.swapped || !nzMicOk(me)) return;
+    try { me.client.sendDataMessage(JSON.stringify({ message_type: "persona_config", data: { voiceDetectionOptions: { endOfSpeechSensitivity: want } } })); z.eos = want; } catch (e) {}
+  }
+  function nzSet(on, why) {
+    on = !!on; if (NZ.on === on) { nzChip(); return; }
+    NZ.on = on; NZ.why = String(why || ""); NZ.fis = []; NZ.offerUntil = 0;
+    try { if (on) sessionStorage.setItem(NZ_KEY, "1"); else sessionStorage.removeItem(NZ_KEY); } catch (e) {}
+    var me = LV;
+    if (me && me.nz && !me.closed) { nzEos(me); if (on) nzTick(me); else nzGate(me, false); }
+    nzChip(); nzEvt(on ? "on" : "off", { why: why });
+  }
+  /* ✋ «استنى»: the visitor wants to talk now — the persona stops and the microphone opens at once */
+  function nzHand() {
+    var me = LV, z = me && me.nz; if (!z || !me.client || me.closed || !me.ready) return;
+    nzAc(); /* a tap: the meter's context can start now (iOS) */
+    z.handT = Date.now(); if (z.pid) z.cutId = z.pid; z.pon = false; z.puntil = 0;
+    try { me.client.interruptPersona(); } catch (e) {}
+    z.gate = false; z.gateT = z.handT;
+    /* review 2026-11-19 #14: ✋ opens only the noise gate — a microphone the visitor muted himself stays muted (his own 🎤 opens it) */
+    if (!me.muted) { if (nzMicOk(me)) { try { me.client.unmuteInputAudio(); } catch (e) {} } }
+    else sayAny(T("🎤 المايك مقفول من عندك — دوس زرار المايك علشان تتكلم.", "🎤 Your microphone is muted — tap the mic button to talk."));
+    updCtl(); nzEvt("hand", {});
+  }
+  function nzChip() {
+    var bx = sdkBox(), me = LV, z = me && me.nz, el = NZ.el, c, live = !!(bx && ov && !ov.hidden && z && me.ready && !me.closed && nzMicOk(me));
+    var m = !live ? "" : NZ.on ? "on" : Date.now() < NZ.offerUntil ? "offer" : "";
+    if (!m) { if (el) el.hidden = true; return; }
+    if (!el) { el = NZ.el = document.createElement("div"); el.className = "jnl-nzf"; el.setAttribute("translate", "no"); el.innerHTML = '<div class="jv-nz" role="status" aria-live="polite"></div>'; document.body.appendChild(el); if (!NZ.rz) { NZ.rz = 1; window.addEventListener("resize", nzPlace); } }
+    if (!ov.__nz) { ov.__nz = 1; ov.addEventListener("scroll", nzPlace, { passive: true }); } /* phones: the call column scrolls */
+    c = el.firstChild; el.dir = EN ? "ltr" : "rtl";
+    if (c.getAttribute("data-m") !== m) {
+      c.setAttribute("data-m", m);
+      c.innerHTML = m === "on"
+        ? '<span>' + esc(T("🔇 المكان فيه دوشة — هكمّل كلامي، ولو عايز تقاطعني دوس ✋ استنى", "🔇 It's noisy where you are — I'll keep talking. To interrupt me, tap ✋ Wait")) + '</span><button type="button" class="nz-hand">' + esc(T("✋ استنى", "✋ Wait")) + '</button><button type="button" class="nz-off">' + esc(T("↩︎ الوضع العادي", "↩︎ Normal mode")) + '</button>'
+        : '<span>' + esc(T("🔇 شكل المكان عندك فيه دوشة — تحب أكمّل كلامي من غير ما الدوشة تقطعني؟", "🔇 It sounds noisy where you are — shall I keep talking without the noise cutting me off?")) + '</span><button type="button" class="nz-on">' + esc(T("🔇 أيوه، وضع الدوشة", "🔇 Yes, noisy-room mode")) + '</button><button type="button" class="nz-x" title="' + esc(T("لأ، شكراً", "No, thanks")) + '" aria-label="' + esc(T("لأ، شكراً", "No, thanks")) + '">✕</button>';
+      var b1 = c.querySelector(".nz-hand"), b2 = c.querySelector(".nz-off"), b3 = c.querySelector(".nz-on"), b4 = c.querySelector(".nz-x");
+      if (b1) b1.onclick = nzHand;
+      if (b2) b2.onclick = function () { nzAc(); nzSet(false, "visitor"); };
+      if (b3) b3.onclick = function () { nzAc(); nzSet(true, "visitor"); };
+      if (b4) b4.onclick = function () { NZ.offerUntil = 0; nzChip(); };
+    }
+    el.hidden = false; c.classList.toggle("hd", m === "on" && !!z.gate); nzPlace();
+  }
+  /* the chip's place: centred over the video, its bottom 6 px above the control bar (followed on every tick, scroll and resize) */
+  function nzPlace() {
+    var el = NZ.el, bx = sdkBox(); if (!el || el.hidden) return;
+    var ctl = bx && bx.querySelector(".jv-ctl"), r = bx ? bx.getBoundingClientRect() : null, cr = ctl && !ctl.hidden ? ctl.getBoundingClientRect() : null, vh = window.innerHeight || document.documentElement.clientHeight;
+    if (!r || !r.width || !cr || !cr.height) { el.style.visibility = "hidden"; return; }
+    el.style.visibility = ""; el.style.left = Math.round(r.left + 10) + "px"; el.style.width = Math.max(0, Math.round(r.width - 20)) + "px"; el.style.bottom = Math.round(vh - cr.top + 6) + "px";
+  }
+  /* the stage height inside the widget (see SHADOW_CSS); retried until the widget has rendered its shadow root */
+  function shadowCss(ag, n) {
+    var sr = null; try { sr = ag.shadowRoot; } catch (e) {}
+    if (sr && sr.querySelector(".anam-sheet, .anam-widget")) { if (!sr.querySelector("style[data-jnl]")) { var s2 = document.createElement("style"); s2.setAttribute("data-jnl", "1"); s2.textContent = SHADOW_CSS; sr.appendChild(s2); } return; }
+    if (n < 60 && ov && ov.contains(ag)) setTimeout(function () { shadowCss(ag, n + 1); }, 250);
+  }
+  /* «اجتماع» from Janna's welcome card: once the session is on, the visitor's request is typed into the call for them (the same as
+     typing it in the widget's own text box), so Janna starts the introductory meeting at once; nothing is sent if that box is missing */
+  function nudge(text, n) {
+    /* the SDK call: sent as the visitor's own message once the session can take it */
+    if (sdkBox()) { if (sdkSay(text)) NUDGE = ""; else if (n < 24 && ov) setTimeout(function () { if (NUDGE) nudge(text, n + 1); }, 500); return; }
+    var ag = ov && ov.querySelector("anam-agent"), sr = null; try { sr = ag && ag.shadowRoot; } catch (e) {}
+    var inp = sr && sr.querySelector("input.anam-ctl-input");
+    if (!inp || inp.disabled) { if (n < 24 && ov) setTimeout(function () { nudge(text, n + 1); }, 500); return; }
+    NUDGE = "";
+    try {
+      inp.value = text; inp.dispatchEvent(new Event("input", { bubbles: true, composed: true }));
+      setTimeout(function () { var b = sr.querySelector(".anam-ctl-send"); if (b && !b.disabled) b.click(); else inp.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, composed: true })); }, 120);
+    } catch (e) {}
+  }
+  /* full screen = the video alone; the whole page goes full screen (not only the overlay) so the captions and the hologram stay visible */
+  function fullscreen(on) {
+    if (!ov) return; ov.classList.toggle("fs", !!on);
+    var b = ov.querySelector(".fsb"), bl = on ? T("تصغير", "Exit full screen") : T("ملء الشاشة", "Full screen"); if (b) { b.setAttribute("aria-pressed", on ? "true" : "false"); b.title = bl; b.setAttribute("aria-label", bl); b.innerHTML = (on ? "🗗" : "⛶") + '<span class="lb"> ' + esc(bl) + "</span>"; }
+    var de = document.documentElement, fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    try {
+      if (on && !fsEl) { var rq = de.requestFullscreen || de.webkitRequestFullscreen; if (rq) { var pr = rq.call(de); if (pr && pr.catch) pr.catch(function () {}); } }
+      else if (!on && fsEl) { var ex = document.exitFullscreen || document.webkitExitFullscreen; if (ex) { var p2 = ex.call(document); if (p2 && p2.catch) p2.catch(function () {}); } }
+    } catch (e) {}
+    if (on) try { ov.scrollTop = 0; } catch (e) {}
+  }
+  ["fullscreenchange", "webkitfullscreenchange"].forEach(function (n) { document.addEventListener(n, function () { if (ov && ov.classList.contains("fs") && !(document.fullscreenElement || document.webkitFullscreenElement)) fullscreen(false); }); });
+  document.addEventListener("keydown", function (e) { if (ov && !ov.hidden && (e.key === "Escape" || e.key === "Esc") && ov.classList.contains("fs") && !(document.fullscreenElement || document.webkitFullscreenElement)) fullscreen(false); });
+  /* open() · open({persona:"bassem"|"janna"}) · open({intent:"meeting"}) · open({meeting:{id, kind:"scheduled", name, consent}, screen:"home.html"}) */
+  function open(o) {
+    o = o && typeof o === "object" && !o.target && !o.type ? o : {};
+    var p = o.persona === "bassem" ? "bassem" : "janna";
+    if (o.meeting || o.intent === "meeting") p = "janna";
+    if (ov && persona !== p) close();
+    persona = p;
+    if (p === "bassem") loadTools();
+    if (!ov) build();
+    /* Bassem SHOWS what he finds and saves: data/bassem-intel-view.js (intel results on the hologram + the screen, bassem_save_profile) */
+    if (p === "bassem" && !window.BASSEM_VIEW && !document.querySelector("script[data-bassem-view]")) { var bv = document.createElement("script"), me0 = document.querySelector('script[src*="data/janna-live.js"]'); bv.src = (me0 ? me0.src.replace(/data\/janna-live\.js.*$/, "") : CLEAN ? "/" : "") + "data/bassem-intel-view.js" + (window.MIGVER_BV || (me0 && /[?&]v=([\w.-]+)/.exec(me0.src) ? "?v=" + /[?&]v=([\w.-]+)/.exec(me0.src)[1] : "")); /* same ?v= as janna-live.js (consolidation) */ bv.async = true; bv.setAttribute("data-bassem-view", "1"); document.head.appendChild(bv); }
+    if (!window.BASSEM_MEMORY && !document.querySelector("script[data-bmm]")) { /* 0009: Janna's calls are remembered too (visitor id) */ var bmS = document.createElement("script"), bmJ = document.querySelector('script[src*="data/janna-live.js"]'), bmU = bmJ ? bmJ.src : "", bmV = /[?&]v=([\w.-]+)/.exec(bmU); bmS.src = (bmU ? bmU.replace(/data\/janna-live\.js.*$/, "") : "") + "data/bassem-memory.js" + (window.MIGVER_BM || (bmV ? "?v=" + bmV[1] : "")); bmS.async = true; bmS.charset = "utf-8"; bmS.setAttribute("data-bmm", "1"); document.head.appendChild(bmS); } /* Bassem's memory + web results, Janna's visitor memory: data/bassem-memory.js */
+    ov.hidden = false; document.documentElement.style.overflow = "hidden"; document.documentElement.classList.add("jnl-on");
+    if (!frame.getAttribute("src")) frame.src = o.screen ? withLang(url(o.screen)) : here();
+    try { if (window.JANNA && JANNA.stop) JANNA.stop(); if (window.BASSEM && BASSEM.stop) BASSEM.stop(); if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
+    if (o.meeting && o.meeting.id && (!MT || MT.id !== o.meeting.id)) startMeeting({ kind: "scheduled", id: String(o.meeting.id), name: o.meeting.name || o.meeting.first_name || "", email: "", consent: !!o.meeting.consent });
+    else if (o.intent === "meeting" && !MT) {
+      /* the welcome card «اجتماع»: meeting mode at once (agenda, timer, recording only after consent); Janna collects the name, the
+         e-mail and the consent in the call and starts it with janna_start_meeting */
+      startMeeting({ kind: "instant", pre: true, name: "", email: "", consent: false });
+      NUDGE = T("عايز أبدأ اجتماع تعريفي معاكي دلوقتي", "I'd like to start an introductory meeting with you now");
+      if (sessT0) nudge(NUDGE, 0);
+    }
+  }
+  /* the page the screen starts on: the page the visitor is on (its clean URL), the home page from the meeting page */
+  function here() {
+    if (pageKey(window) === "meeting") return withLang(url("home.html"));
+    if (!CLEAN) { var f = location.pathname.split("/").pop() || "home.html"; return withLang(f.replace(/^index\.html$/, "home.html") + location.search.replace(/([?&])(lang|live)=[^&]*&?/g, "$1").replace(/[?&]$/, "") + cleanHash()); }
+    return withLang(location.pathname + location.search.replace(/([?&])(lang|live)=[^&]*&?/g, "$1").replace(/[?&]$/, "") + cleanHash());
+  }
+  function cleanHash() { return (location.hash || "").replace(/([#&])(live=1|bcmd=[^&]*|lt=[^&]*)(&|$)/g, function (m, a, b, c) { return c ? a : ""; }).replace(/^#$/, ""); }
+  function close() {
+    if (!ov) return;
+    var m = MT && !MT.done ? MT : null;
+    if (m) finishMeeting("closed");
+    if (ov.classList.contains("fs")) fullscreen(false);
+    /* the SDK call is ended explicitly (stops the session and its minutes); removing the widget's element ends the widget's session */
+    sdkStop("close"); LV = null;
+    micDrop(); NZ.offerUntil = 0; if (NZ.el && NZ.el.parentNode) NZ.el.parentNode.removeChild(NZ.el); NZ.el = null; try { if (NZ.ac) { var acp = NZ.ac.close(); if (acp && acp.then) acp.then(null, function () {}); } } catch (e) {} NZ.ac = null; /* noise guard: microphone + meter released */
+    /* the captions box goes back to the page first */
+    try { if (window.MIGCAPTIONS && MIGCAPTIONS.place) { ov.hidden = true; MIGCAPTIONS.place(); } } catch (e) {}
+    ov.remove(); ov = null; frame = null; SID = ""; sessT0 = 0; NUDGE = ""; document.documentElement.style.overflow = ""; document.documentElement.classList.remove("jnl-on");
+    if (m) { m.noteEl = note(m.msg); MT = null; }
+  }
+  function note(msg) {
+    if (!msg) return; var n = document.createElement("div"); n.className = "jnl-note"; n.dir = EN ? "ltr" : "rtl"; n.setAttribute("translate", "no"); n.setAttribute("role", "status"); n.textContent = msg;
+    document.body.appendChild(n); setTimeout(function () { n.remove(); }, 9000); return n;
+  }
+  btn.addEventListener("click", function () { open(); });
+  /* members' tools (dashboard, requests monitor, advisor, meeting): the pill goes next to the collapsed headshot, away from the page's
+     navigation — set here too, because data/janna.js does not run while Bassem serves a partner member */
+  (function () {
+    var k = pageKey(window); if (!{ dashboard: 1, inbox: 1, advisor: 1, meeting: 1, admin: 1 }[k]) return;
+    var de = document.documentElement, rtl = (de.getAttribute("dir") || (document.body && getComputedStyle(document.body).direction) || "rtl") !== "ltr";
+    de.classList.add("jn-quiet"); de.classList.toggle("jn-qrtl", rtl);
+  })();
+  (function () {
+    var want = /[?&#]live=1(?:[&#]|$)/.test(location.search + location.hash);
+    if (!want && !window.JANNA_LIVE_AUTO) return;
+    if (!want || pageKey(window) !== "advisor") { setTimeout(open, 300); return; }
+    /* Bassem's "I'm ready — let's talk on video" link: he opens once the platform confirms the member's plan (data/bassem.js decides) */
+    var tries = 0, done0 = false;
+    var go = function () {
+      if (done0) return; var B = window.BASSEM, i = B && B.info ? B.info() : null;
+      if (i && i.eligible && !i.expired) { done0 = true; try { history.replaceState(null, "", location.pathname + location.search + (location.hash || "").replace(/([#&])live=1(&|$)/, function (m, a, b) { return b ? a : ""; }).replace(/^#$/, "")); } catch (e) {} setTimeout(function () { open({ persona: "bassem" }); }, 300); return; }
+      if (i && i.pending && tries++ < 40) { setTimeout(go, 500); return; }
+    };
+    ["mig:me", "mig:login", "bassem:change"].forEach(function (n) { window.addEventListener(n, function () { setTimeout(go, 200); }); });
+    setTimeout(go, 600);
+  })();
+
+  /* ---------- tools ---------- */
+  function go(u, then) { pending = then || null; frame.src = withLang(url(u)); var sw = ov && ov.querySelector(".jnl-hd .sw"); if (sw && ov.scrollTop < 40) sw.classList.add("new"); }
+  function onLoad() {
+    cmpGive("");
+    var d; try { d = frame.contentDocument; title.textContent = d.title.split("|")[0].split("·")[0].trim(); } catch (e) { return; }
+    var p = pending; pending = null; if (p) setTimeout(function () { try { p(d, frame.contentWindow); } catch (e) { } }, 450);
+  }
+  function setVal(d, sel, v) {
+    var el = d.querySelector(sel); if (!el || v == null || v === "") return false;
+    if (el.tagName === "SELECT") {
+      var n = norm(v), opt = [].filter.call(el.options, function (o) { return o.value && (norm(o.textContent).indexOf(n) > -1 || n.indexOf(norm(o.textContent.split(" · ")[0])) > -1 || norm(o.value) === n); })[0];
+      if (!opt) return false; el.value = opt.value;
+    } else el.value = String(v);
+    ["input", "change", "keyup"].forEach(function (t) { el.dispatchEvent(new Event(t, { bubbles: true })); });
+    el.style.transition = "box-shadow .3s"; el.style.boxShadow = "0 0 0 3px rgba(90,210,255,.75)";
+    setTimeout(function () { el.style.boxShadow = ""; }, 4000);
+    return true;
+  }
+  function norm(s) { return String(s || "").replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/^ال/, "").replace(/\s+/g, " ").trim().toLowerCase(); }
+  function show(d, sel) { var el = d.querySelector(sel); inView(el, "start"); }
+  function inView(el, at) {
+    if (!el || !el.getBoundingClientRect) return; var w = el.ownerDocument && el.ownerDocument.defaultView; if (!w) return;
+    try { var r = el.getBoundingClientRect(), y = r.top + w.pageYOffset - (at === "center" ? (w.innerHeight - r.height) / 2 : 70); w.scrollTo({ top: Math.max(0, y), behavior: "smooth" }); } catch (e) {}
+  }
+  function govCode(g) { if (!g) return ""; if (GOV[String(g).toUpperCase()]) return String(g).toUpperCase(); var n = norm(g); for (var k in GOV) if (norm(GOV[k]) === n || norm(GOV[k]).indexOf(n) > -1) return k; return ""; }
+  function run(name, a, o) {
+    a = a && typeof a === "object" ? a : {};
+    /* every tool call is also shown on the holographic workspace (holo.js de-duplicates the same call reported twice) */
+    try { if (window.MIGHOLO && MIGHOLO.act) MIGHOLO.act(name, a, { who: /^bassem_/.test(name) ? "bassem" : persona }); } catch (e) {}
+    logAct(name, a);
+    if (!(o && o.topic) && window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.take && MIG_LIVE_TOOLS.take(name, a)) return; /* data/bassem-live-tools.js (a topic ping is not a tool call) */
+    if (name === "bassem_recall") return; /* answered by data/bassem-memory.js (client tool, awaitResult) — the screen stays where it is */
+    if (/^bassem_/.test(name)) { bassemTool(name, a); return; }
+    if (name === "janna_follow") { if (LV && !LV.closed && LV.own && LV.own.janna_follow) return; followTool(a); return; } /* Bassem's SDK call: its awaitResult handler (sdkRun) follows and answers */
+    if (name === "janna_track") { trackTool(a); return; }
+    if (!frame) return;
+    agendaFromTool(name, a);
+    if (name === "janna_start_meeting") { meetingTool(a); return; }
+    if (name === "janna_schedule_meeting") { scheduleTool(a); return; }
+    if (name === "janna_navigate") {
+      var p = PAGES[a.page] ? a.page : "home", h = "";
+      if (p === "region") h = govCode(a.governorate) ? "#" + govCode(a.governorate) : "";
+      if (p === "register" && a.plan) h = "#" + a.plan;
+      go(p + ".html" + h); say("➜ " + (NAMES[p] ? NAMES[p][EN ? 1 : 0] : p)); return;
+    }
+    if (name === "janna_search") {
+      var s = SEARCH[a.section] ? a.section : "factories", f = SEARCH[s];
+      go(s + ".html", function (d) {
+        setVal(d, f[0], a.query);
+        if (a.governorate && f[1]) setVal(d, f[1], GOV[govCode(a.governorate)] || a.governorate);
+        show(d, f[0]);
+      });
+      say("🔎 " + (a.query || "")); return;
+    }
+    if (name === "janna_fill_rfq") {
+      /* on a factory / company page the request is addressed to that factory by name (the form shows it and sends target_*) */
+      var fc = screenCtx();
+      if (fc && /^(factory|company)$/.test(fc.type) && fc.title) { try { sessionStorage.setItem("mig-rfq-to", JSON.stringify({ type: fc.type, id: String(fc.id), name: fc.title, url: fc.url || "" })); } catch (e) {} }
+      go("contact.html#rfq-form", function (d) {
+        setVal(d, "#r-p", a.product); setVal(d, "#r-q", a.quantity); setVal(d, "#r-c", a.city); setVal(d, "#r-x", a.details);
+        setVal(d, "#r-g", GOV[govCode(a.governorate)] || a.governorate); setVal(d, "#r-s", a.sector); if (a.market) setVal(d, "#r-m", a.market);
+        setVal(d, "#r-n", a.name); setVal(d, "#r-co", a.company); setVal(d, "#r-e", a.email); setVal(d, "#r-ph", a.phone); show(d, "#rfq-form");
+      });
+      say(T("📝 بملالك طلب عرض السعر…", "📝 Filling your quote request…")); return;
+    }
+    if (name === "janna_fill_contact") {
+      go("contact.html", function (d) { setVal(d, "#c-n", a.name); setVal(d, "#c-e", a.email); setVal(d, "#c-p", a.phone); setVal(d, "#c-s", a.subject); setVal(d, "#c-m", a.message); show(d, "#msgF"); });
+      say(T("✉️ بملالك رسالة التواصل…", "✉️ Filling the contact form…")); return;
+    }
+    if (name === "janna_book_meeting") {
+      /* no human reads a "meeting request" message: the meeting is booked directly (POST /api/meetings) when a day and time are given */
+      var pt = String(a.preferred_time || ""), dm = /(\d{4}-\d{2}-\d{2})/.exec(pt), tm = /(\d{1,2}:\d{2})/.exec(pt);
+      scheduleTool({ name: a.name, email: a.email, phone: a.phone, company: a.company, topic: a.topic, language: a.language, date: a.date || (dm ? dm[1] : ""), time: a.time || (tm ? tm[1] : "") });
+      return;
+    }
+    if (name === "janna_fill_registration") {
+      var plan = /^(profile|basic|premium|partner|strategic)$/.test(a.plan) ? a.plan : "basic";
+      var fill = function (d) {
+        setVal(d, "#r-name", a.company_name); setVal(d, "#r-mgr", a.manager); setVal(d, "#r-tel", a.phone);
+        setVal(d, "#r-emi", GOV[govCode(a.governorate)] || a.governorate); setVal(d, "#r-addr", a.address); setVal(d, "#r-act", a.activity);
+        setVal(d, "#r-mail", a.email); setVal(d, "#r-prod", a.products ? String(a.products).split(/[،,]\s*/).join("\n") : "");
+        setVal(d, "#o-name", a.owner_name); setVal(d, "#o-mob", a.owner_mobile); setVal(d, "#o-mail", a.owner_email);
+        setVal(d, "#r-gcc", a.gcc_countries);
+        show(d, "#form");
+      };
+      var cur = ""; try { cur = frame.contentWindow.location.hash; } catch (e) {}
+      if (pageKey(frame.contentWindow) === "register" && cur === "#" + plan) fill(frame.contentDocument); else go("register.html#" + plan, fill);
+      say(T("🏭 بسجّلك على الباقة… راجع البيانات", "🏭 Filling your registration… please review")); return;
+    }
+    if (name === "janna_submit_form") {
+      var d, w; try { d = frame.contentDocument; w = frame.contentWindow; } catch (e) { return; }
+      var SEL = { contact: "#msgF", rfq: "#rfq-form", factory_rfq: "#rfqForm", offer: "#offer", registration: "#regF" };
+      var fm = d.querySelector(SEL[a.form] || "#rfq-form") || d.querySelector("#rfq-form, #msgF, #rfqForm, form#offer");
+      if (!fm) { say(T("مفيش فورم مفتوح على الشاشة أبعته.", "There is no open form on the screen to send.")); return; }
+      /* registration: every step but the last only moves the wizard on; the last one sends the application (kind=signup) and is announced like any other request */
+      var last = fm.id === "regF" && !!d.querySelector('.stp.on[data-s="5"]');
+      if (fm.id === "regF" && !last) { var nx = d.querySelector("#next"); if (nx) nx.click(); say(T("➡️ الخطوة الجاية في التسجيل — راجع البيانات", "➡️ Next registration step — please review")); return; }
+      var done = false, to = 0;
+      var fin = function (msg, ok) { if (done) return; done = true; clearTimeout(to); try { w.removeEventListener("mig:inquiry", h); } catch (e) {} w.__migJannaSubmit = 0; say(msg); if (ok) { try { window.dispatchEvent(new CustomEvent("mig:agent-action", { detail: { tool: "janna_submit_form", ok: true } })); } catch (e) {} } };
+      var h = function (e) {
+        var x = (e && e.detail) || {};
+        if (x.ok && x.ref) fin("✅ " + T("اتبعت برقم ", "Sent — reference ") + x.ref + (x.routed ? T(" لـ" + x.routed + " مصنع مسجّل", " to " + x.routed + " registered factories") : (/^(rfq|basket)$/.test(x.kind) ? T(" — لسه مفيش مصنع مسجّل مطابق، والطلب مفتوح", " — no matching registered factory yet; the request stays open") : "")), true);
+        else fin("⚠️ " + (x.code === "offline" ? T("مااتبعتش: سيرفر المنصة مش متاح دلوقتي.", "Not sent: the platform's server is not reachable right now.") : T("مااتبعتش: ", "Not sent: ") + (x.error || x.code || "")), false);
+      };
+      w.addEventListener("mig:inquiry", h); w.__migJannaSubmit = 1;
+      say(T("⏳ ببعت الطلب… مستنية رد المنصة", "⏳ Sending… waiting for the platform's answer"));
+      var sb = last ? d.querySelector("#next") : fm.querySelector('[type="submit"]');
+      if (sb && sb.click) sb.click(); else if (fm.requestSubmit) fm.requestSubmit(); else fm.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+      /* a form that stopped on its own validation shows the reason; no answer at all is never reported as sent */
+      setTimeout(function () { if (done) return; var er = d.querySelector(".ferr:not([hidden]), #rfqErr:not([hidden]), #o-err, #dErr, #regF #err"); if (er && er.textContent.trim()) fin("✍️ " + er.textContent.trim(), false); }, 1200);
+      to = setTimeout(function () { fin(T("⚠️ لسه مفيش رد من المنصة — الطلب مااتأكدش.", "⚠️ No answer from the platform yet — the request is not confirmed."), false); }, 25000);
+      return;
+    }
+  }
+
+  /* ---------- action layer helpers ---------- */
+  function screenWin() { try { return frame ? frame.contentWindow : window; } catch (e) { return window; } }
+  function screenCtx() { try { return screenWin().MIG_CTX || null; } catch (e) { return null; } }
+  function sayAny(msg) { if (toast && ov && !ov.hidden) say(msg); else note(msg); }
+  function done(tool) { try { window.dispatchEvent(new CustomEvent("mig:agent-action", { detail: { tool: tool, ok: true } })); } catch (e) {} outcome(tool, "ok"); }
+  /* what came of a tool call (consolidation 2026-11-18, critic D): window "mig:tool-outcome" {tool, outcome: ok | refused | failed, text}.
+     data/bassem-memory.js keeps it on the call's tool record, so the memory never lists a refused follow or a deal that never opened as an
+     open next step. ok also comes from done(); refused = a check here or on the page said no (nothing was done); failed = the platform
+     did not do it (an error, offline) */
+  function outcome(tool, st, text) { if (!tool || !/^(ok|refused|failed)$/.test(String(st))) return; try { window.dispatchEvent(new CustomEvent("mig:tool-outcome", { detail: { tool: String(tool), outcome: String(st), text: String(text || "").slice(0, 200) } })); } catch (e) {} }
+  /* said to the member AND reported as that tool's outcome */
+  function refuse(tool, st, msg) { sayAny(msg); outcome(tool, st, msg); }
+  /* activity log of what Janna / Bassem did (this tab only; the server keeps the real records) */
+  function logAct(name, a) {
+    try { var L = JSON.parse(sessionStorage.getItem("mig-agent-log") || "[]"); L.unshift({ at: new Date().toISOString(), who: /^bassem_/.test(name) ? "bassem" : persona, tool: name, q: String(a.query || a.product || a.deal || a.topic || a.ref || "").slice(0, 80) }); sessionStorage.setItem("mig-agent-log", JSON.stringify(L.slice(0, 50))); } catch (e) {}
+  }
+  function errMsg(e) {
+    var A = window.MIGAPI;
+    if (e && e.code === "full_login_required") { try { if (A && A.login) setTimeout(function () { A.login({ why: T("سجّل دخولك بكود الإيميل علشان باسم يقدر يظبط ده.", "Sign in with your e-mail code so Bassem can set this.") }); }, 600); } catch (x) {} return T("إنت داخل برابط من الإيميل، وده للرد على الطلبات بس — سجّل دخولك بكود الإيميل الأول.", "You came in through an e-mail link, which only allows answering requests — please sign in with your e-mail code first."); }
+    if (e && e.code === "offline") return T("سيرفر المنصة مش متاح دلوقتي.", "The platform's server is not reachable right now."); if (A && A.ui) return A.ui.errText(e); if (e && (e.status === 401 || e.code === "auth")) return T("لازم تسجّل الدخول الأول.", "Please sign in first."); if (e && e.status === 403) return T("الخدمة دي مش متاحة لباقتك الحالية.", "This service is not available on your current plan."); return String((e && (e.error || e.code)) || ""); }
+  /* janna_follow → a Promise of the short result Bassem's awaitResult handler gives back (sdkRun); anywhere else it is only said.
+     A sector, a governorate, an entity or a search is followed by its words: {kind, label} needs no id (ref_id = the label — worker/src/me.js
+     keeps it, digest.js matches new platform items against it); with no kind and nothing specific on the screen, the label becomes a saved
+     search (kind "search"). owner's test 2026-11-18: «تابعلي حديد الصلب» (kind sector, no id) was refused and never saved (follows = 0).
+     A kind of its own (a sector while a tender page is on the screen) never borrows the screen's id. */
+  var FOLLOW_BY_LABEL = /^(sector|search|governorate|region|city|entity|agency)$/;
+  function followTool(a) {
+    a = a && typeof a === "object" ? a : {};
+    var w = screenWin(), c = screenCtx() || {}, A = w.MIGAPI || window.MIGAPI, tool = "janna_follow";
+    var lab = String(a.label || a.query || "").replace(/\s+/g, " ").trim().slice(0, 160), k0 = String(a.kind || "").trim().toLowerCase(), id0 = a.id != null ? String(a.id).trim() : "";
+    var no = function (st, msg) { refuse(tool, st, "⚠️ " + msg); return Promise.resolve(T("مااتحفظتش: ", "Not saved: ") + msg); };
+    /* what this page's follow means (MIG_CTX.follow: false = no alerts here; {kind, id, label} = e.g. a saved search on a company name) */
+    if (!k0 && c.follow && typeof c.follow === "object") c = { type: c.follow.kind, id: c.follow.id, title: c.follow.label || c.title, url: c.follow.url || c.url };
+    var onScr = c.follow !== false && !!c.type && c.id != null && c.id !== "", kind = k0, id = id0, url = String(a.url || ""), scrItem = false;
+    /* a follow by LABEL (a sector / saved search, no item on screen) is Bassem's (his members are signed in); on Janna's call it would open
+       a sign-in inside the shared screen, hidden on phones — her follows stay as live: the item on the screen, else she says why (review
+       2026-11-19 #3) */
+    var byLabel = persona === "bassem";
+    if (id) kind = k0 || String(c.type || "");
+    else if (k0) { if (onScr && k0 === String(c.type).toLowerCase()) { id = String(c.id); scrItem = true; } else if (byLabel && FOLLOW_BY_LABEL.test(k0) && lab) id = lab; }
+    else if (onScr) { kind = String(c.type); id = String(c.id); scrItem = true; }
+    else if (lab && byLabel) { kind = "search"; id = lab; }
+    if (!kind || !id) {
+      if (!byLabel) return no("refused", !k0 && c.follow === false ? T("الصفحة دي لسه مالهاش متابعة وتنبيهات على المنصة — تقدر تتابع قطاع أو جهة أو مناقصة معينة.", "This page has no follow alerts on the platform yet — you can follow a sector, an entity or a specific tender instead.") : T("مفيش حاجة محددة على الشاشة أتابعها — افتح صفحة المصنع أو المناقصة الأول.", "Nothing specific on the screen to follow — open the factory or tender page first."));
+      if (!k0 && c.follow === false) return no("refused", T("الصفحة دي لسه مالهاش متابعة وتنبيهات على المنصة — قولّي اسم القطاع أو الكلمة اللي نتابعها.", "This page has no follow alerts on the platform yet — tell me the sector or the words to follow."));
+      return no("refused", k0 && !FOLLOW_BY_LABEL.test(k0) ? T("محتاج صفحة الحاجة دي مفتوحة على الشاشة الأول، أو قولّي اسم القطاع أو الكلمة اللي نتابعها.", "I need that item's page open on the screen first, or tell me the sector or the words to follow.") : T("مفيش حاجة محددة أتابعها — قولّي اسم القطاع أو الكلمة اللي نتابعها، أو افتح صفحة المصنع أو المناقصة.", "Nothing specific to follow — tell me the sector or the words to follow, or open the factory or tender page."));
+    }
+    if (!A || !A.follow) return no("failed", T("خدمة المتابعة مش متاحة في الصفحة دي.", "Following is not available on this page."));
+    if (scrItem && !url) url = c.url || "";
+    var label = lab || (scrItem ? String(c.title || "") : ""), what = label || id;
+    var p = A.follow(kind, id, label, url).then(function () {
+      sayAny("★ " + (A.followSaved ? A.followSaved(kind) : T("اتحفظت في «متابعاتي».", "Saved to “My follows”."))); done(tool);
+      return T("اتحفظت في متابعاتي: " + what + ". التنبيه بيوصل لما يظهر جديد حقيقي على المنصة.", "Saved to My follows: " + what + ". The alert comes when something really new appears on the platform.");
+    }, function (e) {
+      if (e && e.code === "cancelled") { outcome(tool, "refused", "sign-in cancelled"); return T("مااتحفظتش: نافذة تسجيل الدخول اتقفلت من غير دخول.", "Not saved: the sign-in window was closed without signing in."); }
+      var m = errMsg(e); refuse(tool, "failed", "⚠️ " + T("مااتحفظتش: ", "Not saved: ") + m); return T("مااتحفظتش: ", "Not saved: ") + m;
+    });
+    /* the handler answers in time (the sign-in dialog may still be open): what is known now; the real outcome is reported when it comes */
+    return new Promise(function (res) { var t = setTimeout(function () { res(T("لسه مااتحفظتش: مستنيين العضو يسجّل دخوله بكود الإيميل علشان المتابعة تتحفظ في حسابه.", "Not saved yet: waiting for the member to sign in with his e-mail code so the follow is saved to his account.")); }, 9000); p.then(function (v) { clearTimeout(t); res(v); }); });
+  }
+  function trackTool(a) {
+    var ref = String(a.ref || "").trim().toUpperCase(), l4 = String(a.last4 || "").replace(/\D/g, "").slice(-4);
+    if (!ref) { sayAny(T("محتاجة رقم الطلب علشان أتتبعه.", "I need the request number to track it.")); return; }
+    if (!frame) { location.href = withLang(url("track.html#" + encodeURIComponent(ref))); return; }
+    go("track.html#" + encodeURIComponent(ref), function (d) { setVal(d, "#tn", ref); if (l4) setVal(d, "#tp", l4); var f = d.querySelector("#tf"); if (f && (l4 || (window.MIGAPI && MIGAPI.token()))) { var b = f.querySelector('[type="submit"]'); if (b) b.click(); } show(d, "#tf"); });
+    say("🔎 " + ref);
+  }
+
+  /* ---------- Bassem (members' deal advisor): drives advisor.html through its own controls ---------- */
+  function waitFor(d, sel, cb, n) { n = n || 0; var el = null; try { el = d.querySelector(sel); } catch (e) {} if (el) { cb(el); return; } if (n > 48) { cb(null); return; } setTimeout(function () { waitFor(d, sel, cb, n + 1); }, 250); }
+  function glow(el) { if (!el || !el.style) return; inView(el, "center"); el.style.transition = "box-shadow .3s"; el.style.boxShadow = "0 0 0 3px rgba(233,196,106,.95), 0 0 24px rgba(233,196,106,.6)"; setTimeout(function () { el.style.boxShadow = ""; }, 4500); }
+  function doing(msg) { sayAny("🧑‍💼 " + T("باسم بيعمل دلوقتي: ", "Bassem is now: ") + msg); }
+  function onAdvisor(name, a, fn) {
+    if (frame) { if (pageKey(frame.contentWindow) === "advisor") waitFor(frame.contentDocument, "#advQ", function () { fn(frame.contentDocument, frame.contentWindow); }); else go("advisor.html", function (d, w) { waitFor(d, "#advQ", function () { fn(d, w); }); }); return; }
+    if (pageKey(window) === "advisor") { waitFor(document, "#advQ", function () { fn(document, window); }); return; }
+    /* hand the command to advisor.html through this tab's own storage: the link carries only a one-time random key, so a link
+       written by someone else can never make Bassem act (security QA: «advisor.html#bcmd=<json>» ran tools with no confirmation) */
+    var n = ""; try { var rb = new Uint8Array(12); (window.crypto || window.msCrypto).getRandomValues(rb); for (var i = 0; i < rb.length; i++) n += ("0" + rb[i].toString(16)).slice(-2); } catch (e) { n = ""; }
+    if (!n || !BCMD_OK[name]) return;
+    try { sessionStorage.setItem("mig-bcmd", JSON.stringify({ n: n, t: name, a: a, at: Date.now() })); } catch (e) { return; }
+    location.href = withLang(url("advisor.html#bcmd=" + n));
+  }
+  /* the only Bassem tools that may be handed over to advisor.html (they drive its own controls; nothing here sends without the page) */
+  var BCMD_OK = { bassem_open_opportunity: 1, bassem_start_deal: 1, bassem_draft_email: 1, bassem_send_email: 1, bassem_update_deal: 1, bassem_open_guide: 1 };
+  function setIn(d, sel, v, ev) { var el = d.querySelector(sel); if (!el || v == null || v === "") return null; el.value = String(v); (ev || ["input", "change"]).forEach(function (t) { el.dispatchEvent(new Event(t, { bubbles: true })); }); glow(el); return el; }
+  function advSearch(d, q, cb) { var i = d.querySelector("#advQ"); if (i && q != null) { i.value = String(q); if (i.oninput) i.oninput(); else i.dispatchEvent(new Event("input", { bubbles: true })); glow(i); } setTimeout(function () { cb(d.querySelector(".opc")); }, 650); }
+  function dealText(d) { var dr = d.querySelector("#advDr"); if (!dr) return ""; var t = dr.textContent || ""; [].forEach.call(dr.querySelectorAll("input,textarea"), function (x) { t += " " + (x.value || ""); }); return t.toLowerCase(); }
+  /* the e-mail addresses written in the open deal (its text and its fields), lower case, each once */
+  function dealMails(d) {
+    var m = (d && d.querySelector ? dealText(d) : "").match(/[^\s@<>()"',;:«»\[\]]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}/g) || [], out = [];
+    for (var i = 0; i < m.length; i++) { var x = m[i].replace(/^[.]+|[.]+$/g, ""); if (out.indexOf(x) < 0) out.push(x); }
+    return out;
+  }
+  /* the deal room / advisor page the call works on: the screen's document, or this page when it is advisor.html itself */
+  function advDoc() { try { if (frame && frame.contentDocument) return frame.contentDocument; } catch (e) { return null; } return pageKey(window) === "advisor" ? document : null; }
+  /* is this address one of the open deal's own addresses? (the hologram shows a recipient only then — holo.js) */
+  function knownEmail(v) { var em = String(v || "").trim().toLowerCase(), d = advDoc(); return !!(em && d && EMRE.test(em) && dealMails(d).indexOf(em) > -1); }
+  /* the shared screen holds work that a navigation would lose: the deal room open, or a form field that differs from its page value
+     (a draft Bassem typed, the member's own typing); search boxes do not count */
+  function screenBusy() {
+    var d = null; try { d = frame && frame.contentDocument; } catch (e) { return false; }
+    if (!d || !d.querySelector) return false;
+    var dr = d.querySelector("#advDr"); if (dr && !dr.hidden) return true;
+    var f = d.querySelectorAll("input,textarea,select");
+    for (var i = 0; i < f.length; i++) {
+      var x = f[i], t = String(x.type || "").toLowerCase();
+      if (/^(hidden|submit|button|reset|search|image|file)$/.test(t) || x.id === "advQ" || (x.closest && x.closest("[role=search]"))) continue;
+      if (x.tagName === "SELECT") { for (var j = 0; j < x.options.length; j++) if (x.options[j].selected !== x.options[j].defaultSelected) return true; continue; }
+      if (t === "checkbox" || t === "radio") { if (x.checked !== x.defaultChecked) return true; continue; }
+      if (String(x.value || "") !== String(x.defaultValue || "")) return true;
+    }
+    return false;
+  }
+  /* open a deal: by id, by words of its title / buyer, the one already open, or the first in the pipeline */
+  function openDealIn(d, deal, cb) {
+    var dr = d.querySelector("#advDr"), b = null, q = String(deal || "").trim().toLowerCase();
+    if (q) { try { b = d.querySelector('[data-open="' + q.replace(/"/g, "") + '"]'); } catch (e) {} }
+    if (!b && q) { [].some.call(d.querySelectorAll(".dc"), function (c) { if ((c.textContent || "").toLowerCase().indexOf(q) > -1) { b = c.querySelector("[data-open]"); return true; } return false; }); }
+    if (!b && !q && dr && !dr.hidden) { cb(true); return; }
+    if (!b && !q) b = d.querySelector(".dc [data-open]") || d.querySelector("[data-open]");
+    if (!b) { cb(false); return; }
+    b.click(); waitFor(d, "#advDr .pn", function (el) { cb(!!el); });
+  }
+  function tab(d, t, sel, cb) { var b = d.querySelector('#advDr [data-dtab="' + t + '"]'); if (b && !b.classList.contains("on")) b.click(); waitFor(d, sel, cb); }
+  var EMRE = /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]{2,}$/;
+  /* POST to the platform API with the platform session (localStorage "mig-tok") — the same contract as data/mig-api.js, used only where
+     that shared client is not on the page: JSON or nothing (a static host answers HTML → {code:"offline"}), never a guessed success */
+  function post(path, body) {
+    return new Promise(function (res, rej) {
+      if (!window.fetch) { rej({ code: "offline" }); return; }
+      var tk = "", fin = false; try { tk = localStorage.getItem("mig-tok") || ""; } catch (e) {}
+      var h = { "Content-Type": "application/json", Accept: "application/json" }; if (tk) h.Authorization = "Bearer " + tk;
+      var tm = setTimeout(function () { if (!fin) { fin = true; rej({ code: "offline" }); } }, 15000);
+      fetch(String(window.MIG_API_BASE || "/api").replace(/\/+$/, "") + path, { method: "POST", headers: h, body: JSON.stringify(body || {}), credentials: "same-origin" }).then(function (r) {
+        if ((r.headers.get("content-type") || "").toLowerCase().indexOf("json") < 0) throw { code: "offline" };
+        return r.json().then(function (j) { if (!r.ok) throw { code: (j && j.code) || "http_" + r.status, error: (j && j.error) || "HTTP " + r.status, status: r.status }; return j; });
+      }).then(function (j) { if (fin) return; fin = true; clearTimeout(tm); res(j); }, function (e) { if (fin) return; fin = true; clearTimeout(tm); rej(e && e.code ? e : { code: "offline" }); });
+    });
+  }
+  /* bassem_save_profile → data/bassem-intel-view.js saveProfile() → a Promise of the short result Bassem is given (awaitResult):
+     «اتسجّل: …» only after the platform answered that it saved, else «ماتسجّلش: <why>» / «مش متأكد إنه اتسجّل …» */
+  function profileTool(a) {
+    if (typeof a === "string") { try { a = JSON.parse(a); } catch (e) { a = {}; } }
+    a = a && typeof a === "object" ? a : {};
+    var off = T("ماتسجّلش: حفظ بيانات المصنع مش متاح في الصفحة دي دلوقتي.", "Not saved: saving the factory profile is not available on this page right now.");
+    return new Promise(function (res0) {
+      /* critic D: the save's outcome («اتسجّل» = ok, «ماتسجّلش» = failed, «مش متأكد» = unknown) */
+      var n = 0, res = function (t) { t = String(t == null ? "" : t); outcome("bassem_save_profile", /^(اتسج|Saved|Already saved)/.test(t) ? "ok" : /^(ماتسج|Not saved)/.test(t) ? "failed" : "", t); res0(t); };
+      (function wait() {
+        var V = window.BASSEM_VIEW;
+        if (V && V.saveProfile) { var p = null; try { p = V.saveProfile(a); } catch (e) { p = null; } if (p && p.then) p.then(res, function () { res(off); }); else res(off); return; }
+        if (n++ < 12) { setTimeout(wait, 250); return; } /* the view script loads with the call: give it 3 s */
+        sayAny(T("حفظ بيانات المصنع مش متاح دلوقتي — ماتسجّلش حاجة.", "Saving your factory profile is not available right now — nothing was saved.")); res(off);
+      })();
+    });
+  }
+  /* ---------- the e-mail composer on the shared screen (owner 2026-11-18, 4th message #3: the e-mail opens ON SCREEN in front of him) ----------
+     For an e-mail with no deal behind it (an intro e-mail to buyers in China …): to / subject / body, left to right for a text that is not
+     Arabic, scrollable, editable («✏️ عدّل»), «📋 انسخ», «📤 ابعت», minimise / ✕. Nothing here is spoken or sent back to the call (the body
+     is never read aloud), and nothing goes out by itself: «ابعت» is the member's own click and opens HIS mail app with the draft (an
+     e-mail with no deal has no deal thread, so the deal room's sending from the platform does not apply; a deal's e-mail still goes
+     through the deal room). «إلى» is never filled with a guess: it stays empty until he types it — an address Bassem passed is only
+     offered as a one-tap suggestion (an address of the open deal itself is filled in, as in the deal room). */
+  var CMP = null;
+  var CMP_CSS = '.jnl-cmp{position:absolute;z-index:5;inset:52px 10px 10px 10px;display:flex;flex-direction:column;gap:6px;box-sizing:border-box;padding:10px 12px 12px;background:#fff;color:#14232a;border-radius:16px;overflow:auto;overscroll-behavior:contain;'
+    + 'box-shadow:0 24px 60px -20px rgba(0,0,0,.6),0 0 0 1px rgba(4,18,26,.1),0 0 0 3px rgba(233,196,106,.6);font:400 .9rem/1.6 Cairo,Tajawal,Tahoma,sans-serif}'
+    + '.jnl-cmp[hidden]{display:none}.jnl-cmp.fx{position:fixed;z-index:2147483003;inset:auto 12px 12px auto;width:min(560px,calc(100vw - 24px));max-height:calc(100vh - 24px)}'
+    + '.jnl-cmp .jc-hd{display:flex;align-items:center;gap:8px}.jnl-cmp .jc-hd b{flex:1;min-width:0;font-weight:800;color:#04121a}'
+    + '.jnl-cmp .jc-lg{font-style:normal;font-weight:800;font-size:.72rem;background:#04121a;color:#bff3ff;border-radius:999px;padding:1px 9px;direction:ltr}.jnl-cmp .jc-lg[hidden],.jnl-cmp .jc-why[hidden],.jnl-cmp .jc-sg[hidden]{display:none}'
+    + '.jnl-cmp .jc-hd button{flex:none;width:32px;height:32px;border-radius:50%;border:0;background:#eef3f5;color:#04121a;font:inherit;font-weight:800;cursor:pointer}'
+    + '.jnl-cmp .jc-nt{color:#5b6b72;font-size:.76rem;line-height:1.5}.jnl-cmp .jc-why{margin:0;padding:6px 10px;border-radius:10px;background:#fff8e6;color:#6b4e00;font-size:.8rem}'
+    + '.jnl-cmp label{display:flex;flex-direction:column;gap:2px;font-weight:700;font-size:.8rem;color:#33444b}.jnl-cmp .jc-bl{flex:1;min-height:0}'
+    + '.jnl-cmp input,.jnl-cmp textarea{font:inherit;font-size:.92rem;font-weight:400;color:#14232a;border:1px solid #cfdde3;border-radius:10px;padding:7px 10px;background:#fff;box-sizing:border-box;width:100%}'
+    + '.jnl-cmp textarea{flex:1;min-height:180px;resize:vertical;line-height:1.75;white-space:pre-wrap}.jnl-cmp [readonly]{background:#f6fafb}'
+    + '.jnl-cmp .jc-sg{font-size:.8rem;color:#0b5d47;display:flex;flex-wrap:wrap;align-items:center;gap:6px}.jnl-cmp .jc-sg bdi{direction:ltr;font-weight:700}'
+    + '.jnl-cmp .jc-st{min-height:1.2em;margin:0;font-size:.82rem;font-weight:700;color:#0b5d47}.jnl-cmp .jc-st.err{color:#B42318}.jnl-cmp .jc-st a{color:#0a3d8f;margin-inline-start:6px}'
+    + '.jnl-cmp .jc-acts{display:flex;flex-wrap:wrap;gap:8px}.jnl-cmp .jc-acts button,.jnl-cmp .jc-sg button{border-radius:999px;border:1px solid #cfdde3;background:#fff;color:#04121a;font:inherit;font-weight:800;padding:6px 14px;cursor:pointer}'
+    + '.jnl-cmp .jc-acts .jc-send{background:#0b6b35;border-color:#0b6b35;color:#fff}.jnl-cmp .jc-hi{box-shadow:0 0 0 3px rgba(233,196,106,.95),0 0 24px rgba(233,196,106,.6)}'
+    + '.jnl-cmp button:focus-visible,.jnl-cmp input:focus-visible,.jnl-cmp textarea:focus-visible{outline:3px solid #e9c46a;outline-offset:2px}'
+    + '.jnl-cmp.min{inset:52px auto auto 10px;width:auto;max-width:calc(100% - 20px);padding:4px 6px 4px 12px;overflow:hidden;cursor:pointer}.jnl-cmp.min>*:not(.jc-hd){display:none}.jnl-cmp.min .jc-x{display:none}'
+    + '@media (max-width:820px){.jnl-cmp{inset:48px 6px 6px 6px;padding:8px 10px}.jnl-cmp textarea{min-height:140px}}'
+    /* review 2026-11-19 #15 (phones / stacked): «رجوع لباسم» (data/bassem-live-tools.js, bottom 14px, ~48px tall) stays — the open draft
+       ends above it, so its «📤 ابعت» / «✏️ عدّل» are never under the button and both can be tapped */
+    + '@media (max-width:820px),(max-aspect-ratio:3/2){.jnl:not(.fs) .jnl-scr.blt-bk.jnl-cmp-on .jnl-cmp:not(.min):not(.fx){bottom:68px}}';
+  function cmpRtl(s) { return /[\u0600-\u06FF]/.test(String(s || "")); }
+  function cmpOn() { return !!(CMP && !CMP.el.hidden && document.body && document.body.contains(CMP.el)); }
+  /* a draft is waiting in the composer (open, folded or closed with ✕ — its text is kept until the next draft) */
+  function cmpDraft() { return !!(CMP && String(CMP.body.value || "").replace(/\s+/g, "")); }
+  /* the deal room is open on the shared screen (or on this page, advisor.html itself) */
+  function dealOnScreen() { var d = advDoc(), dr = null; try { dr = d && d.querySelector ? d.querySelector("#advDr") : null; } catch (e) { dr = null; } return !!(dr && !dr.hidden && dr.querySelector(".pn")); }
+  function cmpSay(msg, err, href) {
+    if (!CMP) return; var st = CMP.st; st.textContent = msg || ""; st.className = "jc-st" + (err ? " err" : "");
+    if (href) { var l = document.createElement("a"); l.href = href; l.textContent = T("لو ما اتفتحش: افتحه من هنا", "If it did not open: open it here"); st.appendChild(l); }
+  }
+  function cmpEdit(on) {
+    var C = CMP; if (!C) return; C.sub.readOnly = !on; C.body.readOnly = !on;
+    var b = C.el.querySelector(".jc-edit"); b.setAttribute("aria-pressed", on ? "true" : "false"); b.textContent = on ? "✔️ " + T("تمام", "Done") : "✏️ " + T("عدّل", "Edit");
+    if (on) { try { C.body.focus(); } catch (e) {} }
+  }
+  function cmpCopy() {
+    var C = CMP; if (!C) return;
+    var t = (C.sub.value ? C.sub.value + "\n\n" : "") + C.body.value;
+    var ok = function () { cmpSay(T("اتنسخ ✓ — الصقه في بريدك أو في أي مكان.", "Copied ✓ — paste it into your mail or anywhere."), false); };
+    var old = function () {
+      var ta = document.createElement("textarea"), r = false; ta.value = t; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.top = "0"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select(); try { r = document.execCommand("copy"); } catch (e) { r = false; } ta.parentNode.removeChild(ta);
+      if (r) ok(); else cmpSay(T("مقدرتش أنسخ — حدّد النص بإيدك وانسخه.", "Could not copy — select the text and copy it by hand."), true);
+    };
+    try { if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(t).then(ok, old); return; } } catch (e) {}
+    old();
+  }
+  /* «ابعت»: the member's own click — his mail app opens with the draft; nothing is sent from here */
+  function cmpSend() {
+    var C = CMP; if (!C) return;
+    var to = C.to.value.trim(), sub = C.sub.value.trim(), body = C.body.value;
+    if (!EMRE.test(to)) { cmpSay(T("اكتب بريد المستلم الأول (من إعلان الجهة أو موقعها الرسمي) — باسم مش بيخمّن عناوين.", "Write the recipient's e-mail first (from the buyer's notice or official site) — Bassem never guesses addresses."), true); try { C.to.focus(); } catch (e) {} return; }
+    if (!sub || !body.replace(/\s+/g, "")) { cmpSay(T("الموضوع ونص الرسالة مطلوبين.", "Subject and message are required."), true); return; }
+    var href = "mailto:" + encodeURIComponent(to).replace(/%40/g, "@") + "?subject=" + encodeURIComponent(sub) + "&body=" + encodeURIComponent(body);
+    C.href = href;
+    cmpSay(T("اتفتح الإيميل في برنامج البريد عندك — راجعه واضغط إرسال من هناك.", "The e-mail opened in your mail app — review it and press send there."), false, href);
+    try { if (!window.JANNA_LIVE_NO_MAILTO) { var x = document.createElement("a"); x.href = href; x.style.display = "none"; document.body.appendChild(x); x.click(); x.parentNode.removeChild(x); } } catch (e) {}
+  }
+  function cmpBox() {
+    var host = ov && ov.querySelector(".jnl-scr");
+    if (CMP && document.body.contains(CMP.el) && (!host || CMP.el.parentNode === host)) return CMP;
+    if (!document.getElementById("jnlCmpCss")) { var st = document.createElement("style"); st.id = "jnlCmpCss"; st.textContent = CMP_CSS; (document.head || document.documentElement).appendChild(st); }
+    var keep = CMP; if (keep && keep.el.parentNode) keep.el.parentNode.removeChild(keep.el);
+    var el = document.createElement("section"); el.className = "jnl-cmp" + (host ? "" : " fx"); el.setAttribute("role", "region"); el.setAttribute("translate", "no"); el.hidden = true;
+    el.innerHTML = '<div class="jc-hd"><b>✉️ ' + esc(T("مسودة إيميل", "E-mail draft")) + '</b><em class="jc-lg" hidden></em>'
+      + '<button type="button" class="jc-min" title="' + esc(T("صغّرها", "Minimise")) + '" aria-label="' + esc(T("صغّر المسودة", "Minimise the draft")) + '">–</button>'
+      + '<button type="button" class="jc-x" title="' + esc(T("اقفل", "Close")) + '" aria-label="' + esc(T("اقفل المسودة", "Close the draft")) + '">✕</button></div>'
+      + '<p class="jc-why" hidden></p>'
+      + '<span class="jc-nt">' + esc(T("مش هيتبعت غير لما تضغط «ابعت» بنفسك، وباسم مش بيقراه بصوت عالي.", "Nothing is sent until you press “Send” yourself, and Bassem does not read it aloud.")) + '</span>'
+      + '<label>' + esc(T("إلى", "To")) + '<input class="jc-to" type="email" dir="ltr" autocomplete="off" spellcheck="false" placeholder="' + esc(T("المستلم: هيتحدد لما نختار الجهة", "Recipient: set once we choose the buyer")) + '"></label>'
+      + '<div class="jc-sg" hidden></div>'
+      + '<label>' + esc(T("الموضوع", "Subject")) + '<input class="jc-sub" maxlength="250" readonly></label>'
+      + '<label class="jc-bl">' + esc(T("نص الرسالة", "Message")) + '<textarea class="jc-body" readonly></textarea></label>'
+      + '<p class="jc-st" role="status" aria-live="polite"></p>'
+      + '<div class="jc-acts"><button type="button" class="jc-send">📤 ' + esc(T("ابعت", "Send")) + '</button><button type="button" class="jc-copy">📋 ' + esc(T("انسخ", "Copy")) + '</button><button type="button" class="jc-edit" aria-pressed="false">✏️ ' + esc(T("عدّل", "Edit")) + '</button></div>';
+    (host || document.body).appendChild(el);
+    CMP = { el: el, to: el.querySelector(".jc-to"), sub: el.querySelector(".jc-sub"), body: el.querySelector(".jc-body"), st: el.querySelector(".jc-st"), href: "" };
+    /* open and not folded → the host screen says so (CSS above); every way it opens / folds / closes changes `hidden` or `class` */
+    var mark = function () { var on = !el.hidden && !el.classList.contains("min"); try { if (host) host.classList.toggle("jnl-cmp-on", on); } catch (e) {} };
+    try { if (window.MutationObserver) new MutationObserver(mark).observe(el, { attributes: true, attributeFilter: ["hidden", "class"] }); } catch (e) {}
+    mark();
+    if (keep) { CMP.to.value = keep.to.value; CMP.sub.value = keep.sub.value; CMP.body.value = keep.body.value; CMP.sub.dir = keep.sub.dir; CMP.body.dir = keep.body.dir; }
+    el.querySelector(".jc-x").onclick = function (e) { if (e && e.stopPropagation) e.stopPropagation(); el.hidden = true; };
+    el.querySelector(".jc-min").onclick = function (e) { if (e && e.stopPropagation) e.stopPropagation(); el.classList.toggle("min"); };
+    el.onclick = function (e) { if (el.classList.contains("min") && !(e && e.target && e.target.closest && e.target.closest(".jc-min"))) el.classList.remove("min"); };
+    el.querySelector(".jc-edit").onclick = function () { cmpEdit(CMP.body.readOnly); };
+    el.querySelector(".jc-copy").onclick = cmpCopy;
+    el.querySelector(".jc-send").onclick = cmpSend;
+    [CMP.sub, CMP.body].forEach(function (x) { x.addEventListener("input", function () { x.dir = cmpRtl(x.value) ? "rtl" : "ltr"; }); });
+    return CMP;
+  }
+  function cmpOpen(a, why) {
+    a = a || {};
+    var C = cmpBox(), el = C.el, sub = String(a.subject || ""), body = String(a.body || ""), em = String(a.to || "").trim().toLowerCase();
+    var lg = String(a.language || "").toLowerCase().slice(0, 2); if (!/^[a-z]{2}$/.test(lg)) lg = body || sub ? (cmpRtl(body || sub) ? "ar" : "") : "";
+    el.dir = EN ? "ltr" : "rtl"; el.setAttribute("aria-label", T("مسودة إيميل من باسم", "E-mail draft from Bassem"));
+    C.sub.value = sub; C.body.value = body; C.sub.dir = cmpRtl(sub) ? "rtl" : "ltr"; C.body.dir = cmpRtl(body) ? "rtl" : "ltr";
+    var b0 = el.querySelector(".jc-lg"); b0.textContent = lg ? lg.toUpperCase() : ""; b0.hidden = !lg;
+    var w0 = el.querySelector(".jc-why"); w0.textContent = why || ""; w0.hidden = !why;
+    /* «إلى»: an address of the open deal is used as in the deal room; any other address Bassem passed is only offered, never filled in */
+    var sg = el.querySelector(".jc-sg"); sg.innerHTML = ""; sg.hidden = true;
+    if (em && EMRE.test(em) && C.to.value.trim().toLowerCase() !== em) {
+      if (knownEmail(em)) C.to.value = em;
+      else {
+        sg.appendChild(document.createTextNode(T("باسم سمع العنوان ده:", "Bassem heard this address:") + " "));
+        var bd = document.createElement("bdi"); bd.textContent = em; sg.appendChild(bd);
+        var ub = document.createElement("button"); ub.type = "button"; ub.textContent = T("ده الصح — استخدمه", "That's right — use it"); ub.onclick = function () { C.to.value = em; sg.hidden = true; }; sg.appendChild(ub);
+        sg.hidden = false;
+      }
+    }
+    if (!C.to.value.trim()) C.to.title = C.to.placeholder;
+    cmpEdit(false); cmpSay("", false); C.href = ""; C.at = Date.now();
+    el.classList.remove("min"); el.hidden = false;
+    try { C.body.scrollTop = 0; el.scrollTop = 0; } catch (e) {}
+    /* phones: the screen sits under the video — the «الشاشة» button pings, as it does when the screen changes */
+    var sw = ov && ov.querySelector(".jnl-hd .sw"); if (sw) { sw.classList.remove("new"); void sw.offsetWidth; sw.classList.add("new"); }
+  }
+  /* the draft gives way when Bassem shows something else (a tool that drives the screen / shows results, or a new page on the screen):
+     it folds to its «✉️» chip and keeps everything the member typed; the next draft or send brings it back */
+  var CMP_GIVE = /^(janna_search|janna_navigate|janna_open|bassem_open_item|bassem_screen|bassem_open_opportunity|bassem_start_deal|bassem_open_guide|bassem_update_deal|bassem_web_search|bassem_intel)$/;
+  function cmpGive(tool) { if (!cmpOn() || CMP.el.classList.contains("min") || (tool ? !CMP_GIVE.test(String(tool)) : Date.now() - (CMP.at || 0) < 1500)) return; CMP.el.classList.add("min"); } /* a page load right after it opened does not fold it */
+  /* bassem_send_email for the composer's draft: never a send by itself — the member's own «ابعت» */
+  function cmpAsk() {
+    var C = cmpBox();
+    C.el.classList.remove("min"); C.el.hidden = false; C.at = Date.now();
+    var b = C.el.querySelector(".jc-send"); b.classList.add("jc-hi"); setTimeout(function () { b.classList.remove("jc-hi"); }, 4500);
+    var m = T("راجع الإيميل واضغط «ابعت» بنفسك — باسم مش بيبعت حاجة من غير ضغطتك.", "Review the e-mail and press “Send” yourself — Bassem never sends anything without your click.");
+    cmpSay(m, false); refuse("bassem_send_email", "refused", m);
+  }
+  function bassemTool(name, a) {
+    var A = window.MIGAPI;
+    /* the member's factory profile (POST /api/advisor/profile) — never routed to advisor.html. In the SDK call the registered handler
+       saves it and answers Bassem (sdkRun); the widget cannot answer a tool, so there it is saved without a result */
+    if (name === "bassem_save_profile") { if (LV && !LV.closed && LV.own && LV.own.bassem_save_profile) return; profileTool(a); return; }
+    if (name === "bassem_notify_member") {
+      var msg = String(a.message || "").trim(), chn = /^(whatsapp|email|both)$/.test(a.channel) ? a.channel : "both";
+      if (!msg) { refuse(name, "refused", T("قولّي الرسالة اللي عايزني أبعتهالك.", "Tell me the message you want me to send you.")); return; }
+      doing(T("ببعتلك الرسالة", "sending you the message"));
+      (A && A.notify ? A.notify(msg, chn) : post("/advisor/notify", { message: msg, channel: chn })).then(function (j) {
+        var s0 = (j && j.sent) || {}, via = (j && (j.via || {})) || {}, pend = (j && j.pending) || {};
+        /* outside WhatsApp's 24-hour window the server sends only a notice template (pending.whatsapp): the message itself follows when the member replies */
+        var waTpl = !!pend.whatsapp || s0.whatsapp === "template" || via.whatsapp === "template" || !!(j && j.whatsapp_via === "template");
+        var ch = [s0.email ? T("الإيميل", "e-mail") : "", s0.whatsapp && s0.whatsapp !== "template" ? T("الواتساب", "WhatsApp") : ""].filter(Boolean);
+        sayAny(ch.length ? "✅ " + T("اتبعتت على ", "Sent by ") + ch.join(T(" و", " and ")) + (waTpl ? T(" — وعلى الواتساب وصلك تنبيه، والرسالة نفسها هتوصلك هناك أول ما ترد على الواتساب", " — and a WhatsApp notice reached you; the message itself follows there as soon as you reply on WhatsApp") : "") : waTpl ? "✅ " + T("وصلك تنبيه على الواتساب، والرسالة نفسها هتوصلك هناك أول ما ترد عليه.", "A WhatsApp notice reached you; the message itself follows there as soon as you reply.") : "⚠️ " + T("الرسالة مااتبعتتش على أي قناة.", "The message was not sent on any channel."));
+        if (ch.length || waTpl) done(name); else outcome(name, "failed", "not sent on any channel");
+      }, function (e) { refuse(name, "failed", "⚠️ " + T("مااتبعتتش: ", "Not sent: ") + errMsg(e)); });
+      return;
+    }
+    if (name === "bassem_set_work_time") {
+      var pr = {}; ["morning_time", "session_time", "days", "call_today_at", "pause", "wa_optin", "email_digest"].forEach(function (k) { if (a[k] != null && a[k] !== "") pr[k] = a[k]; });
+      if (!pr.morning_time && a.time) pr.morning_time = a.time;
+      doing(T("بظبط ميعاد شغلنا", "setting our work time"));
+      if (!Object.keys(pr).length) { refuse(name, "refused", T("قولّي الميعاد اللي يناسبك (مثلاً 09:30).", "Tell me the time that suits you (e.g. 09:30).")); return; }
+      (A && A.prefs ? A.prefs(pr) : post("/me/prefs", pr)).then(function (j) { var q = (j && j.prefs) || pr; var said = [pr.morning_time && q.morning_time ? T("رسالة الصبح ", "morning message ") + q.morning_time : "", pr.session_time != null && q.session_time ? T("ميعاد شغلنا اليومي ", "our daily work time ") + q.session_time : "", q.call_today_at && pr.call_today_at ? T("لينك مكالمتنا النهارده هيوصلك الساعة ", "today's call link reaches you at ") + String(q.call_today_at).slice(-5) : "", pr.pause != null ? (q.pause ? T("الرسايل موقوفة", "messages paused") : T("الرسايل شغالة", "messages on")) : ""].filter(Boolean);
+        sayAny("✅ " + T("اتسجّل", "Saved") + (said.length ? ": " + said.join(" · ") : "")); done(name); },
+        function (e) { refuse(name, "failed", "⚠️ " + T("مااتسجّلش: ", "Not saved: ") + errMsg(e)); });
+      return;
+    }
+    /* an e-mail with NO deal behind it (no deal named, no deal room open on the screen) opens in the composer on the shared screen — never
+       in the first deal of his list, never «مالقيتش الصفقة» (owner 2026-11-18, 4th message #3); a send asked for that draft only points at
+       the composer's «ابعت»: the member sends it himself */
+    if (name === "bassem_draft_email" && !String(a.deal || "").trim() && !dealOnScreen()) { cmpOpen(a, ""); done(name); return; }
+    if (name === "bassem_send_email" && cmpDraft() && !String(a.deal || "").trim() && !dealOnScreen()) { cmpAsk(); return; }
+    if (!BCMD_OK[name]) return; /* a tool this file does not know (e.g. a new one whose file did not load) never opens a deal */
+    onAdvisor(name, a, function (d) {
+      if (name === "bassem_open_opportunity") {
+        doing(T("بدوّر على الفرصة", "looking for the opportunity"));
+        advSearch(d, [a.query, a.market, a.kind].filter(Boolean).join(" ") || a.query || "", function (card) {
+          if (!card && a.market) { advSearch(d, a.query || "", function (c2) { openCard(c2); }); return; } openCard(card);
+        });
+        function openCard(card) { if (!card) { refuse(name, "refused", T("مالقيتش فرصة مفتوحة بالوصف ده في نطاق باقتك.", "No open opportunity matches that within your plan's markets.")); return; } glow(card); var h = card.querySelector("[data-how]"); if (h) h.click(); sayAny("📂 " + ((card.querySelector("h3") || {}).textContent || "")); done(name); }
+        return;
+      }
+      if (name === "bassem_start_deal") {
+        doing(T("ببدأ الصفقة", "starting the deal"));
+        var go2 = function (card) {
+          if (!card) { refuse(name, "refused", T("مالقيتش الفرصة دي — قولّي اسمها أو الجهة.", "I couldn't find that opportunity — tell me its title or buyer.")); return; }
+          glow(card); var b = card.querySelector("[data-start]") || card.querySelector("[data-open]"); if (!b) { outcome(name, "failed", "no start button on the card"); return; } b.click();
+          waitFor(d, "#advPlan", function (f) {
+            if (!f) { refuse(name, "failed", T("الصفقة مااتفتحتش — جرّب تاني.", "The deal did not open — please try again.")); return; }
+            var ch = false; if (a.next_action) { setIn(d, "#advNA", a.next_action); ch = true; } if (a.due_date) { setIn(d, '#advPlan [name="due_date"]', a.due_date); ch = true; }
+            if (ch) { var sb = f.querySelector('[type="submit"]'); if (sb) sb.click(); }
+            done(name);
+          });
+        };
+        if (a.query) advSearch(d, a.query, go2); else go2(d.querySelector(".opc"));
+        return;
+      }
+      if (name === "bassem_open_guide") {
+        doing(T("بفتحلك دليل التعاقد", "opening the contracting guide"));
+        var dr = d.querySelector("#advDr");
+        if (dr && !dr.hidden && d.querySelector('#advDr [data-dtab="guide"]') && !a.topic) { tab(d, "guide", "#advDr .pn-b", function () { done(name); }); return; }
+        advSearch(d, a.topic || "", function (card) { var h = card && card.querySelector("[data-how]"); if (!h) { refuse(name, "refused", T("مالقيتش دليل للموضوع ده.", "No guide found for that topic.")); return; } glow(card); h.click(); done(name); });
+        return;
+      }
+      openDealIn(d, a.deal, function (ok) {
+        if (!ok) {
+          /* an e-mail for a deal that is not in his deals: the draft still opens on the screen (the composer) — it is never lost */
+          if (name === "bassem_draft_email") { cmpOpen(a, T("مالقيتش الصفقة دي في صفقاتك، فالمسودة هنا — تبعتها من بريدك، أو تبدأ الصفقة من الفرصة وتبعتها من المنصة.", "That deal is not in your deals, so the draft is here — send it from your mail app, or start the deal from the opportunity and send it from the platform.")); done(name); return; }
+          refuse(name, "refused", T("مالقيتش الصفقة دي في صفقاتك — ابدأها الأول من الفرصة.", "I couldn't find that deal — start it from the opportunity first.")); return;
+        }
+        if (name === "bassem_draft_email") {
+          doing(T("بكتبلك الإيميل", "drafting your e-mail"));
+          var known = dealMails(d);
+          tab(d, "mail", "#mTo", function (to) {
+            if (!to) return;
+            /* the deal room has an Arabic and an LTR (English) template: every language but Arabic (zh, fr, es …) takes the LTR one */
+            if (a.language && d.querySelector("#mLang")) setIn(d, "#mLang", /^ar/i.test(a.language) ? "ar" : "en", ["change"]);
+            setTimeout(function () {
+              var em = String(a.to || "").trim().toLowerCase();
+              /* Bassem never invents a recipient: only an address that already appears in this deal / opportunity is used (an exact
+                 match with one of its addresses — no guessing from the address's own shape) */
+              if (em) { if (EMRE.test(em) && (to.value.trim().toLowerCase() === em || known.indexOf(em) > -1)) setIn(d, "#mTo", em); else sayAny(T("باسم ما بيخمّنش عناوين بريد: البريد ده مش موجود في بيانات الفرصة، فسيبت خانة «إلى» زي ما هي.", "Bassem never guesses addresses: that e-mail is not in the opportunity's data, so “To” was left as it is.")); }
+              /* no real recipient yet: the draft says so instead of an address (owner test 2026-11-18: «sales@supplier-example.com») */
+              if (!to.value.trim()) { to.placeholder = T("المستلم: هيتحدد لما نختار الجهة", "Recipient: set once we choose the buyer"); to.title = to.placeholder; }
+              if (a.subject) setIn(d, "#mSub", a.subject); if (a.body) setIn(d, "#mBody", a.body);
+              /* a subject / body that is not Arabic (English, Chinese, French …) reads left to right */
+              [["#mSub", a.subject], ["#mBody", a.body]].forEach(function (x) { var el = x[1] && d.querySelector(x[0]); if (el) el.dir = /[\u0600-\u06FF]/.test(String(x[1])) ? "rtl" : "ltr"; });
+              glow(d.querySelector("#mBody")); done(name);
+            }, 300);
+          });
+          return;
+        }
+        if (name === "bassem_send_email") {
+          tab(d, "mail", "#mSend", function (b) {
+            var to = d.querySelector("#mTo");
+            if (!b || !to || !EMRE.test(to.value.trim())) { refuse(name, "refused", T("محتاج بريد المستلم الرسمي من الإعلان قبل ما أبعت.", "I need the recipient's official e-mail from the notice before sending.")); return; }
+            doing(T("ببعت الإيميل", "sending the e-mail")); glow(b); b.click();
+          });
+          return;
+        }
+        if (name === "bassem_update_deal") {
+          doing(T("بحدّث الصفقة", "updating the deal"));
+          tab(d, "over", "#advPlan", function () {
+            if (a.stage) { var sg = d.querySelector("#advStg"); if (sg && sg.value !== a.stage && [].some.call(sg.options, function (o) { return o.value === a.stage; })) setIn(d, "#advStg", a.stage, ["change"]); }
+            setTimeout(function () {
+              var f = d.querySelector("#advPlan"); if (!f) { done(name); return; }
+              var ch = false, due = a.due_date || a.reminder_date;
+              if (a.next_action) { setIn(d, "#advNA", a.next_action); ch = true; }
+              if (due) { setIn(d, '#advPlan [name="due_date"]', due); ch = true; }
+              if (a.note || (a.reminder_date && a.due_date)) { var nt = f.querySelector('[name="notes"]'); if (nt) { nt.value = (nt.value ? nt.value + "\n" : "") + new Date().toISOString().slice(0, 10) + ": " + (a.note || "") + (a.reminder_date && a.due_date ? " (" + T("تذكير", "reminder") + " " + a.reminder_date + ")" : ""); glow(nt); ch = true; } }
+              if (ch) { var sb = f.querySelector('[type="submit"]'); if (sb) sb.click(); }
+              done(name);
+            }, a.stage ? 700 : 50);
+          });
+          return;
+        }
+      });
+    });
+  }
+  /* a Bassem command handed over from another page of THIS tab: advisor.html#bcmd=<one-time key>. The command itself waits in this tab's
+     sessionStorage ("mig-bcmd", written by onAdvisor a moment ago); a key that does not match, an old entry (> 2 min), a tool outside
+     BCMD_OK or a command written into the link itself (old #bcmd=<json> links) is ignored. */
+  (function () {
+    var m = /[#&]bcmd=([^&]+)/.exec(location.hash || ""); if (!m || pageKey(window) !== "advisor") return;
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+    var c = null; try { c = JSON.parse(sessionStorage.getItem("mig-bcmd") || "null"); sessionStorage.removeItem("mig-bcmd"); } catch (e) {}
+    if (!c || !/^[a-f0-9]{24}$/.test(m[1]) || c.n !== m[1] || !(Date.now() - (+c.at || 0) < 120000) || !BCMD_OK[c.t]) return;
+    setTimeout(function () { run(c.t, c.a || {}); }, 900);
+  })();
+
+  /* ---------- meetings (Janna-hosted) ---------- */
+  function api(method, path, body, opts) {
+    var off = function () { var e = new Error("offline"); e.offline = true; throw e; };
+    return fetch(API + path, { method: method, headers: body ? { "Content-Type": "application/json" } : undefined, body: body ? JSON.stringify(body) : undefined, keepalive: !!(opts && opts.keepalive), credentials: "same-origin" }).then(function (r) {
+      /* the static preview has no API: anything that is not JSON from the Worker counts as offline */
+      if ((r.headers.get("content-type") || "").indexOf("application/json") < 0) off();
+      return r.json().then(function (j) { if (!r.ok) { var e = new Error((j && j.error) || "HTTP " + r.status); e.status = r.status; throw e; } return j; });
+    }, off);
+  }
+  /* Turnstile token for POST /api/meetings and /start ("" when not configured or unavailable: the Worker then decides) */
+  function human() {
+    if (!TS_KEY) return Promise.resolve("");
+    return new Promise(function (res) {
+      var box = null, fin = function (t) { if (fin.d) return; fin.d = 1; if (box) setTimeout(function () { box.remove(); }, 400); res(t || ""); };
+      setTimeout(fin, 20000);
+      var go = function () {
+        try {
+          box = document.createElement("div"); box.style.cssText = "position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:2147483002"; document.body.appendChild(box);
+          window.turnstile.render(box, { sitekey: TS_KEY, appearance: "interaction-only", language: EN ? "en" : "ar", callback: fin, "error-callback": function () { fin(""); }, "expired-callback": function () { fin(""); } });
+        } catch (e) { fin(""); }
+      };
+      if (window.turnstile) go();
+      else { var sc = document.createElement("script"); sc.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"; sc.async = true; sc.onload = go; sc.onerror = function () { fin(""); }; document.head.appendChild(sc); }
+    });
+  }
+  var validEmail = function (e) { return /^[^\s@<>()",;:]+@[^\s@<>()",;:]+\.[^\s@<>()",;:]{2,}$/.test(String(e || "")); };
+  var digits = function (s) { return String(s == null ? "" : s).replace(/[٠-٩]/g, function (c) { return String(c.charCodeAt(0) - 1632); }).replace(/[۰-۹]/g, function (c) { return String(c.charCodeAt(0) - 1776); }); };
+  var z2 = function (n) { return (n < 10 ? "0" : "") + n; };
+  /* Egypt time (Africa/Cairo, +02 / +03 in summer) */
+  function cParts(ms) { var p = {}; new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(new Date(ms)).forEach(function (x) { p[x.type] = x.value; }); return { y: +p.year, mo: +p.month, d: +p.day, h: +p.hour % 24, mi: +p.minute, s: +p.second }; }
+  function cOff(ms) { var p = cParts(ms); return Math.round((Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi, p.s) - Math.floor(ms / 1000) * 1000) / 60000); }
+  function cairoToUtc(date, time) {
+    var d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date || ""), t = /^(\d{2}):(\d{2})$/.exec(time || ""); if (!d || !t) return null;
+    var naive = Date.UTC(+d[1], +d[2] - 1, +d[3], +t[1], +t[2]), ms = naive - cOff(naive - 7200000) * 60000; ms = naive - cOff(ms) * 60000;
+    var p = cParts(ms); return p.y === +d[1] && p.mo === +d[2] && p.d === +d[3] && p.h === +t[1] && p.mi === +t[2] ? ms : null;
+  }
+  function isoCairo(ms) { var p = cParts(ms), o = cOff(ms), a = Math.abs(o); return p.y + "-" + z2(p.mo) + "-" + z2(p.d) + "T" + z2(p.h) + ":" + z2(p.mi) + ":00" + (o < 0 ? "-" : "+") + z2(Math.floor(a / 60)) + ":" + z2(a % 60); }
+  function stamp(ms) { var p = cParts(ms); return "" + p.y + z2(p.mo) + z2(p.d) + "T" + z2(p.h) + z2(p.mi) + "00"; }
+  function fmtCairo(ms) { try { return new Intl.DateTimeFormat(EN ? "en-GB" : "ar-EG-u-nu-latn", { timeZone: "Africa/Cairo", weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(ms)) + T(" (بتوقيت القاهرة)", " (Egypt time)"); } catch (e) { return isoCairo(ms); } }
+  function normDate(v) {
+    var s = digits(v).trim(), m;
+    if ((m = /^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/.exec(s))) return m[1] + "-" + z2(+m[2]) + "-" + z2(+m[3]);
+    if ((m = /^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/.exec(s))) return m[3] + "-" + z2(+m[2]) + "-" + z2(+m[1]);
+    return "";
+  }
+  function normTime(v) {
+    var s = digits(v).trim().toLowerCase(), m = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.|ص|م|صباحا|صباحاً|مساء|مساءً|بالليل|الضهر|العصر)?$/.exec(s); if (!m) return "";
+    var h = +m[1], mi = m[2] ? +m[2] : 0, ap = m[3] || "";
+    if (/^(pm|p\.m\.|م|مساء|مساءً|بالليل|العصر)$/.test(ap) && h < 12) h += 12;
+    if (/^(am|a\.m\.|ص|صباحا|صباحاً)$/.test(ap) && h === 12) h = 0;
+    if (ap === "الضهر" && h < 11) h += 12;
+    return h < 24 && mi < 60 ? z2(h) + ":" + z2(mi) : "";
+  }
+  function icsEsc(s) { return String(s == null ? "" : s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n"); }
+  function icsFor(ms, id) {
+    var mu = id ? SITE.replace(/\/$/, "") + (CLEAN ? "/meeting/#" : "/meeting.html#") + id : "", now = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    var sum = T("اجتماع تعريفي مع جنة — منصة صنع في مصر", "Introductory meeting with Janna — Made in Egypt Gate");
+    var desc = mu ? T("ادخل الاجتماع من هنا: ", "Join here: ") + mu : T("الموعد لسه مااتأكدش على المنصة.", "The time is not confirmed on the platform yet.");
+    return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Made in Egypt Gate//Janna meetings//AR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+      "BEGIN:VTIMEZONE", "TZID:Africa/Cairo", "BEGIN:STANDARD", "TZOFFSETFROM:+0300", "TZOFFSETTO:+0200", "TZNAME:EET", "DTSTART:20231026T235959", "RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1TH", "END:STANDARD",
+      "BEGIN:DAYLIGHT", "TZOFFSETFROM:+0200", "TZOFFSETTO:+0300", "TZNAME:EEST", "DTSTART:20230428T000000", "RRULE:FREQ=YEARLY;BYMONTH=4;BYDAY=-1FR", "END:DAYLIGHT", "END:VTIMEZONE",
+      "BEGIN:VEVENT", "UID:" + (id ? "meeting-" + id : "req-" + ms + "-" + Math.random().toString(36).slice(2, 8)) + "@madeinegyptgate.com", "DTSTAMP:" + now,
+      "DTSTART;TZID=Africa/Cairo:" + stamp(ms), "DTEND;TZID=Africa/Cairo:" + stamp(ms + 30 * 60000),
+      "SUMMARY:" + icsEsc(sum), "DESCRIPTION:" + icsEsc(desc), mu ? "URL:" + mu : "", mu ? "LOCATION:" + icsEsc(mu) : "", "ORGANIZER;CN=Janna:mailto:meetings@madeinegyptgate.com",
+      "BEGIN:VALARM", "ACTION:DISPLAY", "TRIGGER:-PT15M", "DESCRIPTION:" + icsEsc(sum), "END:VALARM", "END:VEVENT", "END:VCALENDAR"].filter(Boolean).join("\r\n") + "\r\n";
+  }
+  var icsHref = function (ms, id) { return "data:text/calendar;charset=utf-8," + encodeURIComponent(icsFor(ms, id)); };
+
+  /* meeting mode inside the overlay */
+  function panel() { return ov && ov.querySelector(".jnl-mt"); }
+  function startMeeting(o) {
+    if (!ov) return;
+    var prev = MT && MT.pre && !MT.done && o.kind === "instant" && !o.pre ? MT : null; /* the meeting card's meeting, now with the details */
+    if (MT && MT.timer) clearInterval(MT.timer);
+    MT = { kind: o.kind, pre: !!o.pre, id: o.id || "", name: String(o.name || "").slice(0, 80), email: String(o.email || "").trim().slice(0, 254), consent: !!o.consent, agenda: prev ? prev.agenda : {}, offline: false, done: false, t0: prev ? prev.t0 : Date.now(), warned: prev ? prev.warned : false, msg: "", user: prev ? prev.user : 0, startP: null, sess: !!SID || !!(prev && prev.sess) };
+    ov.classList.add("mtg");
+    var p = panel(); p.hidden = false;
+    p.innerHTML = '<div class="jm-h"><b>' + T("اجتماع تعريفي مع جنة", "Introductory meeting with Janna") + '</b><span class="jm-rec"><i></i><span></span></span><span class="jm-tm">00:00</span><span class="jm-warn" hidden>' + T("باقي دقيقتين", "2 minutes left") + '</span></div>'
+      + '<div class="jm-who"></div><div class="jm-cap">⏱️ ' + T("الجلسة مفتوحة لحد ما تخلص", "The session stays open until you finish") + '</div>'
+      + '<ul>' + AGENDA.map(function (a) { return '<li data-k="' + a[0] + '"><label><input type="checkbox" data-k="' + a[0] + '"> <span>' + T(a[1], a[2]) + '</span></label></li>'; }).join("") + '</ul><div class="jm-st" role="status" aria-live="polite"></div>';
+    p.querySelector("ul").addEventListener("change", function (e) { var k = e.target.getAttribute("data-k"); if (MT && k) { MT.agenda[k] = e.target.checked ? 1 : 0; e.target.closest("li").classList.toggle("done", e.target.checked); } });
+    renderWho(); renderRec();
+    [].forEach.call(p.querySelectorAll("li[data-k]"), function (li) { var k = li.getAttribute("data-k"); if (MT.agenda[k]) { li.classList.add("done"); li.querySelector("input").checked = true; } });
+    MT.timer = setInterval(tick, 1000); tick();
+    if (MT.pre) { status(sessT0 ? T("قول لجنة اسمك وبريدك، وهل توافق على تسجيل الاجتماع — وهي تبدأه.", "Tell Janna your name and e-mail, and whether you agree to the meeting being recorded — she starts it.") : T("اضغط «ابدأ الكلام مع جنة» — هتسألك عن اسمك وبريدك، وموافقتك على التسجيل، وتبدأ الاجتماع.", "Press “Start talking to Janna” — she asks for your name, your e-mail and your consent to recording, then starts the meeting.")); return; }
+    if (o.kind === "instant") {
+      if (o.activity || o.company) mark("intro");
+      if (!MT.consent) { status(T("الاجتماع ده مش بيتسجّل، لأن التسجيل محتاج موافقتك.", "This meeting is not recorded: recording needs your consent.")); return; }
+      if (!validEmail(MT.email)) { status(T("محتاجين بريدك الإلكتروني علشان نبعتلك التسجيل والملخص.", "We need your email to send you the recording and summary.")); return; }
+      var m = MT;
+      m.startP = human().then(function (tok) { return api("POST", "/start", { name: m.name, email: m.email, phone: o.phone || "", company: o.company || "", activity: o.activity || "", markets: o.markets || "", language: o.language || (EN ? "en" : "ar"), consent: true, session_id: SID || undefined, started_at: new Date(sessT0 || m.t0).toISOString(), turnstile_token: tok || undefined }); })
+        .then(function (j) { m.id = j.id; if (MT === m && !m.done) status(T("الاجتماع بيتسجّل، وهيوصلك التسجيل والملخص على ", "Recording; the recording and summary will be sent to ") + m.email, true); },
+          function (e) { if (e.offline) { m.offline = true; if (MT === m && !m.done) status(T("سيتم إرسال التسجيل بعد تفعيل السيرفر", "The recording will be sent once the server is activated")); } else if (MT === m && !m.done) status(T("تعذّر حفظ الاجتماع على السيرفر: ", "Could not save the meeting on the server: ") + e.message); });
+    } else status(sessT0 ? "" : T("اضغط «ابدأ الكلام مع جنة» علشان نبدأ الاجتماع", "Press “Start talking to Janna” to begin the meeting"));
+    if (o.kind === "scheduled" && SID) joinMeeting();
+  }
+  function renderWho() { var p = panel(); if (!p || !MT) return; p.querySelector(".jm-who").innerHTML = "👤 " + (MT.name ? "<bdi>" + esc(MT.name) + "</bdi>" : T("زائر", "Guest")) + (MT.email ? " · <bdi>" + esc(MT.email) + "</bdi>" : MT.kind === "scheduled" ? " · " + T("اجتماع محجوز", "booked meeting") : ""); }
+  function renderRec() {
+    var p = panel(); if (!p || !MT) return; var r = p.querySelector(".jm-rec"), live = MT.kind === "instant" || !!sessT0;
+    r.classList.toggle("off", !MT.consent || MT.done);
+    r.querySelector("span").textContent = MT.done ? T("انتهى الاجتماع", "Meeting ended") : MT.pre ? T("التسجيل بموافقتك بس", "Recorded only with your consent") : !MT.consent ? T("بدون تسجيل", "Not recorded") : live ? T("جاري التسجيل", "Recording") : T("التسجيل يبدأ مع الجلسة", "Recording starts with the session");
+  }
+  function status(msg, ok) { var p = panel(); if (!p) return; var s = p.querySelector(".jm-st"); s.textContent = msg || ""; s.classList.toggle("ok", !!ok); }
+  function tick() {
+    var p = panel(); if (!p || !MT) return;
+    var base = sessT0 || (MT.kind === "instant" && !MT.pre ? MT.t0 : 0), sec = base ? Math.max(0, Math.floor((Date.now() - base) / 1000)) : 0;
+    p.querySelector(".jm-tm").textContent = z2(Math.floor(sec / 60)) + ":" + z2(sec % 60);
+    if (sec >= WARN_SEC && !MT.warned && !MT.done) { MT.warned = true; p.querySelector(".jm-warn").hidden = false; say(T("⏳ باقي دقيقتين على نهاية الجلسة", "⏳ 2 minutes left in this session")); }
+  }
+  function mark(k) { if (!MT || MT.done || MT.agenda[k]) return; MT.agenda[k] = 1; var p = panel(), li = p && p.querySelector('li[data-k="' + k + '"]'); if (li) { li.classList.add("done"); li.querySelector("input").checked = true; } }
+  function agendaFromTool(name, a) {
+    if (!MT) return;
+    if (name === "janna_navigate") mark(a.page === "about" || a.page === "legal" ? "platform" : a.page === "register" ? "plan" : "tour");
+    else if (/^janna_(search|fill_rfq|fill_contact)$/.test(name)) mark("tour");
+    else if (name === "janna_fill_registration") { mark("plan"); mark("register"); }
+  }
+  function onMessage(d) {
+    if (d && (d.role === "agent" || d.role === "persona")) holoTopic(String(d.content || ""));
+    if (!MT || MT.done) return; var c = String(d.content || "");
+    if (d.role === "user") { MT.user++; if (c.length > 12) mark("intro"); if (/[?؟]/.test(c)) mark("questions"); return; }
+    if (/الجمعية المصرية للتنمية الصناعية|الجهة المشغ|بتديرها|تديرها|operated by|operator|EAFID/i.test(c)) mark("platform");
+    if (/باسم|Bassem|باقة|الباقة|الباقات|\bplans?\b/i.test(c)) mark("plan");
+  }
+  function joinMeeting() {
+    var m = MT; if (!m || m.kind !== "scheduled" || !m.id) return;
+    api("POST", "/" + m.id + "/join", { session_id: SID || undefined, consent: m.consent }).then(function (j) {
+      m.joined = true;
+      if (j && typeof j.consent === "boolean") { m.consent = j.consent; if (MT === m) renderRec(); } /* the server's answer is what will happen */
+      if (MT === m && !m.done) status(m.consent ? T("الاجتماع بيتسجّل، وهيوصلك التسجيل والملخص على بريدك المسجّل", "Recording; the recording and summary will be sent to your registered email") : T("الاجتماع مش بيتسجّل: هيوصلك ملخص مكتوب من بياناتك ومحاور الاجتماع على بريدك المسجّل", "Not recorded: a written summary of your details and the agenda will be sent to your registered email"), true);
+    }, function (e) {
+      if (e.offline) { m.offline = true; if (MT === m && !m.done) status(T("سيتم إرسال التسجيل بعد تفعيل السيرفر", "The recording will be sent once the server is activated")); }
+      else if (MT === m && !m.done) status(e.status === 409 && /early/.test(e.message) ? T("لسه بدري على الاجتماع، تقدر تدخل قبل الموعد بـ 15 دقيقة.", "It's too early: you can join from 15 minutes before the start.") : e.status === 410 ? T("وقت الاجتماع ده خلص.", "This meeting's time has passed.") : T("تعذّر تسجيل دخولك للاجتماع على السيرفر: ", "Could not register your joining on the server: ") + e.message);
+    });
+  }
+  function onSession() { if (!MT || MT.done) return; MT.sess = true; renderRec(); tick(); if (MT.pre) status(T("قول لجنة اسمك وبريدك، وهل توافق على تسجيل الاجتماع — وهي تبدأه.", "Tell Janna your name and e-mail, and whether you agree to the meeting being recorded — she starts it.")); if (MT.kind === "scheduled") { status(""); joinMeeting(); } }
+  function onSessionEnd() { if (MT && !MT.done) finishMeeting("ended"); sessT0 = 0; }
+  function finishMeeting(reason) {
+    var m = MT; if (!m || m.done) return; m.done = true; clearInterval(m.timer);
+    var agenda = AGENDA.map(function (a) { return a[0]; }).filter(function (k) { return m.agenda[k]; });
+    var body = { session_id: SID || undefined, ended_at: new Date().toISOString(), agenda_done: agenda };
+    var mail = m.email || T("بريدك المسجّل", "your registered email"), offMsg = T("سيتم إرسال التسجيل بعد تفعيل السيرفر", "The recording will be sent once the server is activated");
+    var ok = function () { return m.consent ? T("هيوصلك تسجيل الاجتماع وملخصه على ", "You'll receive the meeting recording and summary at ") + mail : T("هيوصلك ملخص الاجتماع على ", "You'll receive the meeting summary at ") + mail; };
+    var canSend = m.kind === "scheduled" || (m.consent && validEmail(m.email));
+    /* a booked meeting only counts once Janna's session started; otherwise nothing is recorded or sent — say so */
+    var notStarted = T("الاجتماع ما بدأش، فمفيش تسجيل ولا ملخص. تقدر تدخل تاني بنفس اللينك في ميعاد الاجتماع.", "The meeting didn't start, so there is no recording or summary. You can rejoin with the same link at the meeting time.");
+    var started = m.kind !== "scheduled" || m.sess;
+    var neutral = function (msg) { m.msg = msg; if (MT === m) status(msg); if (m.noteEl) m.noteEl.textContent = msg; };
+    if (m.pre && !m.sess && !sessT0) { m.msg = ""; renderRec(); return; }
+    m.msg = !canSend ? T("انتهى الاجتماع، شكراً على وقتك!", "The meeting has ended. Thank you for your time!") : !started ? notStarted : m.offline ? offMsg : ok();
+    renderRec(); status(m.msg, canSend && started && !m.offline);
+    if (!canSend || !started) return;
+    var send = function () {
+      if (!m.id) return;
+      if (reason === "unload" && navigator.sendBeacon) { try { navigator.sendBeacon(API + "/" + m.id + "/finish", JSON.stringify(body)); } catch (e) {} return; }
+      api("POST", "/" + m.id + "/finish", body, { keepalive: true }).then(function () { if (!m.offline) return; m.offline = false; m.msg = ok(); if (MT === m) status(m.msg, true); },
+        function (e) {
+          if (e.offline) { m.offline = true; neutral(offMsg); }
+          else if (e.status === 409 && /not live/.test(e.message)) neutral(notStarted); /* the server never saw the meeting start */
+          else neutral(T("تعذّر حفظ نهاية الاجتماع على السيرفر: ", "Could not save the end of the meeting on the server: ") + e.message);
+        });
+    };
+    if (m.startP) m.startP.then(send, send); else send();
+  }
+  window.addEventListener("pagehide", function () { if (MT && !MT.done) finishMeeting("unload"); });
+  /* leaving the page ends the SDK call at once (the widget's session ends with the page) */
+  window.addEventListener("pagehide", function () { if (LV && !LV.closed) sdkStop("unload"); });
+  function meetingTool(a) {
+    var consent = a.recording_consent === true || a.recording_consent === "true";
+    if (MT && !MT.done && !MT.pre) { if (a.name && !MT.name) MT.name = String(a.name).slice(0, 80); if (a.email && !MT.email && MT.kind === "instant") MT.email = String(a.email).trim(); renderWho(); if (a.activity) mark("intro"); return; }
+    startMeeting({ kind: "instant", name: a.name, email: a.email, phone: a.phone, company: a.company, activity: a.activity, markets: Array.isArray(a.markets) ? a.markets.join("، ") : a.markets, language: a.language, consent: consent });
+    say(T("🎥 بدأنا الاجتماع التعريفي", "🎥 Introductory meeting started"));
+  }
+
+  /* janna_schedule_meeting → POST /api/meetings + confirmation card on Janna's screen */
+  function scheduleTool(a) {
+    var date = normDate(a.date), time = normTime(a.time), ms = date && time ? cairoToUtc(date, time) : null;
+    var d = { name: String(a.name || "").slice(0, 80), email: String(a.email || "").trim(), phone: String(a.phone || ""), company: String(a.company || ""), topic: String(a.topic || ""), language: /^en/i.test(a.language || "") ? "en" : /^ar/i.test(a.language || "") ? "ar" : (EN ? "en" : "ar"), date: date, time: time };
+    if (ms == null) { card({ error: T("التاريخ أو الوقت مش واضح، جنة هتأكده معاك (مثلاً 2026-12-01 الساعة 14:00 بتوقيت القاهرة).", "The date or time is unclear; Janna will confirm it with you (e.g. 2026-12-01 at 14:00 Egypt time)."), d: d }); return; }
+    if (ms < Date.now() + 10 * 60000) { card({ error: T("الموعد لازم يكون بعد 10 دقايق على الأقل من دلوقتي.", "The meeting must be at least 10 minutes from now."), d: d, ms: ms }); return; }
+    d.starts_at = isoCairo(ms);
+    say(T("📅 بحجزلك الاجتماع…", "📅 Booking your meeting…"));
+    human().then(function (tok) { if (tok) d.turnstile_token = tok; return api("POST", "", d); }).then(function (j) { delete d.turnstile_token; card({ ok: true, id: j.id, url: j.url, ms: Date.parse(j.starts_at) || ms, d: d }); },
+      function (e) { delete d.turnstile_token; card({ offline: !!e.offline, error: e.offline ? "" : apiErr(e), ms: ms, d: d }); });
+  }
+  function apiErr(e) {
+    var m = String(e.message || "");
+    if (e.status === 429) return T("في طلبات حجز كتير للبريد ده النهارده — جرّب تاني بكرة، أو كلّم جنة لايف دلوقتي.", "Too many booking requests for this email today — try again tomorrow, or talk to Janna live now.");
+    if (/email/i.test(m)) return T("البريد الإلكتروني مش صحيح.", "The email address is not valid.");
+    if (/future|60 days|date/i.test(m)) return T("الموعد لازم يكون خلال الـ 60 يوم الجايين.", "The meeting must be within the next 60 days.");
+    if (/links/i.test(m)) return T("الاسم لازم يكون اسمك بس، من غير لينكات أو عناوين.", "The name must be just your name, without links or addresses.");
+    if (/name/i.test(m)) return T("محتاجين اسمك.", "We need your name.");
+    if (/verification/i.test(m)) return T("محتاجين نتأكد إنك مش برنامج آلي، جرّب تاني.", "We need to verify you're not a bot; please try again.");
+    return T("تعذّر الحجز دلوقتي: ", "Could not book right now: ") + m;
+  }
+  function card(o) {
+    var scr = ov && ov.querySelector(".jnl-scr"); if (!scr) return;
+    var old = scr.querySelector(".jnl-card"); if (old) old.remove();
+    var c = document.createElement("div"); c.className = "jnl-card"; c.dir = EN ? "ltr" : "rtl"; c.setAttribute("role", "dialog"); c.setAttribute("aria-label", T("حجز اجتماع", "Meeting booking"));
+    var d = o.d || {}, when = o.ms ? fmtCairo(o.ms) : (d.date || "") + " " + (d.time || ""), h = "";
+    var waTeam = "https://wa.me/" + WA_TEAM + "?text=" + encodeURIComponent(T("مرحباً، عايز أحجز اجتماع تعريفي أونلاين مع جنة (منصة صنع في مصر).", "Hello, I'd like to book an online introductory meeting with Janna (Made in Egypt Gate).") + "\n" + T("الاسم: ", "Name: ") + (d.name || "") + "\n" + T("البريد: ", "Email: ") + (d.email || "") + (d.phone ? "\n" + T("الموبايل: ", "Phone: ") + d.phone : "") + (d.company ? "\n" + T("الشركة: ", "Company: ") + d.company : "") + "\n" + T("الموعد المقترح: ", "Preferred time: ") + when + (d.topic ? "\n" + T("الموضوع: ", "Topic: ") + d.topic : ""));
+    var mailto = "mailto:" + TEAM_MAIL + "?subject=" + encodeURIComponent(T("طلب اجتماع تعريفي مع جنة", "Introductory meeting request with Janna")) + "&body=" + encodeURIComponent(decodeURIComponent(waTeam.split("?text=")[1]));
+    if (o.ok) {
+      var share = "https://wa.me/?text=" + encodeURIComponent(T("اجتماعي التعريفي مع جنة على منصة صنع في مصر: ", "My introductory meeting with Janna on Made in Egypt Gate: ") + when + "\n" + o.url);
+      h = '<h4>✅ ' + T("اتحجز اجتماعك مع جنة", "Your meeting with Janna is booked") + '</h4><div class="jc-when">' + esc(when) + '</div><div class="jc-sm">' + esc(T("هيوصلك إيميل فيه اللينك ودعوة التقويم", "You'll get an email with the link and a calendar invitation")) + (d.email ? ' — <bdi>' + esc(d.email) + '</bdi>' : "") + '</div>'
+        + '<div class="jc-acts"><a class="jc-p" download="meeting-with-janna.ics" href="' + esc(icsHref(o.ms, o.id)) + '">📅 ' + T("أضف للتقويم", "Add to calendar") + '</a><a class="jc-wa" target="_blank" rel="noopener" href="' + esc(share) + '">💬 ' + T("شارك على واتساب", "Share on WhatsApp") + '</a><a target="_blank" rel="noopener" href="' + esc(withLang(url("meeting.html#" + o.id))) + '">🔗 ' + T("صفحة الاجتماع", "Meeting page") + '</a></div>';
+    } else {
+      h = (o.offline ? '<h4>📅 ' + T("طلب اجتماع مع جنة", "Meeting request with Janna") + '</h4>' : '<h4 class="jc-er">⚠️ ' + T("لسه ما اتحجزش", "Not booked yet") + '</h4>')
+        + (o.error ? '<div>' + esc(o.error) + '</div>' : "") + (o.ms ? '<div class="jc-when">' + esc(when) + '</div>' : "")
+        + '<div class="jc-sm">' + (o.offline ? T("الحجز الأونلاين مش متاح دلوقتي (سيرفر المنصة مش متوصل)، فالاجتماع مااتحجزش. تقدر تكلّم جنة لايف دلوقتي، أو تحجز تاني بعد شوية.", "Online booking is not available right now (the platform's server is not connected), so the meeting was NOT booked. You can talk to Janna live now, or book again later.") : T("الاجتماع مااتحجزش. صحّح البيانات وجرّب تاني، أو كلّم جنة لايف دلوقتي.", "The meeting was not booked. Correct the details and try again, or talk to Janna live now.")) + '</div>';
+    }
+    c.innerHTML = '<button type="button" class="jc-cx" aria-label="' + T("إغلاق", "Close") + '">✕</button>' + h;
+    c.querySelector(".jc-cx").onclick = function () { c.remove(); };
+    scr.appendChild(c);
+  }
+  window.JANNA_LIVE = { intents: ["meeting"], bassem: bassemTool, open: open, close: close, run: run, finish: function () { finishMeeting("manual"); },
+    meeting: function () { return MT ? { id: MT.id, kind: MT.kind, name: MT.name, email: MT.email, consent: MT.consent, offline: MT.offline, done: MT.done, session_id: SID, agenda: AGENDA.map(function (a) { return a[0]; }).filter(function (k) { return MT.agenda[k]; }), msg: MT.msg } : null; },
+    persona: function () { return persona; }, cairo: { toUtc: cairoToUtc, fmt: fmtCairo, iso: isoCairo },
+    /* how the open call runs: "sdk" (our own call, no third-party mark) or "widget"; live() = the SDK call's state */
+    mode: function () { return ov ? (sdkBox() ? "sdk" : "widget") : liveMode(); },
+    live: function () { return LV ? { state: LV.st, session_id: LV.sid, ready: LV.ready, muted: LV.muted, text_only: LV.textOnly, max_session_sec: LV.max, part: LV.chain ? LV.chain.n + 1 : 1, chain_max: CHAIN_MAX } : null; } };
+  /* the open call's shared screen shows a same-site page (data/bassem-intel-view.js: the Information Center filtered like his search) */
+  /* it never replaces a screen that holds work (the deal room, an edited form: an unsent e-mail draft would be lost) unless the
+     member asked for it himself (o.force: the «افتحها على الشاشة» button) */
+  window.JANNA_LIVE.show = function (u, o) { u = String(u || ""); if (!frame || !ov || ov.hidden || !/^\/(?!\/)[^\s"'<>\\]*$/.test(u)) return false; if (!(o && o.force) && screenBusy()) return false; go(u); return true; };
+  window.JANNA_LIVE.screenBusy = screenBusy;
+  /* holo.js: a send asked for the composer's draft is no «sending» scene — the draft waits for the member's own «ابعت» (cmpAsk) */
+  window.JANNA_LIVE.draftWaiting = function (a) { a = a || {}; return cmpDraft() && !String(a.deal || "").trim() && !dealOnScreen(); };
+  window.JANNA_LIVE.knownEmail = knownEmail;
+  window.JANNA_LIVE.visitorId = visitorId; /* data/bassem-memory.js: Janna's call memory goes with this id */
+  window.JANNA_LIVE.rotateVisitor = rotateVisitor; /* data/bassem-memory.js: a 409 visitor_linked → a new id (review 2026-11-19 #7) */
+  /* «وضع الدوشة»: noise() = the guard's state; noise(true | false) switches noisy-room mode (kept for the tab) */
+  window.JANNA_LIVE.noise = function (on) {
+    if (on === true || on === false) nzSet(on, "api");
+    var z = LV && LV.nz;
+    return { on: NZ.on, why: NZ.why, false_interruptions: NZ.fis.length, last: NZ.last, offer: Date.now() < NZ.offerUntil, gate: !!(z && z.gate), eos: z ? z.eos : null, eos_applied: !!(z && z.eosOk), server_warning: (z && z.warn) || "", meter: !!(z && z.meterOk), mic: (LV && LV.micUsed) || "", mic_error: (LV && LV.micErr) || "" };
+  };
+})();

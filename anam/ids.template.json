@@ -1,0 +1,16 @@
+{
+ "_what": "Fill each value with the id anam_tool_create returned for that key (tool ids only — never put a secret here). Then: python3 -I _work/fill_ids.py",
+ "bassem_save_profile": null,
+ "platform_item": null,
+ "bassem_open_item": null,
+ "bassem_screen": null,
+ "janna_search@bassem": null,
+ "janna_navigate@bassem": null,
+ "janna_follow@bassem": null,
+ "janna_lookup@bassem": null,
+ "bassem_recall": null,
+ "bassem_web_search": null,
+ "bassem_tasks": null,
+ "janna_tasks": null,
+ "knowledge_lookup": null
+}
