@@ -307,8 +307,9 @@ export async function getSettings(env) {
   return { public: pub.settings, custom, groups: SETTING_GROUPS, v: pub.v };
 }
 /* reserved prefixes: never a "custom" setting (wa.* / respondio.* / anam.* / keys.* = «مفاتيح الخدمات», owner-only through /keys;
-   the key "features" and dev.* / cloudflare.* = «🛠️ المطوّر», owner-only through /dev — an admin must not pre-create them as custom rows) */
-const RESERVED = /^(pay|mail|overlay|persona|system|acc|wa|respondio|anam|keys|dev|cloudflare)\.|^features$/;
+   the key "features" and dev.* / cloudflare.* = «🛠️ المطوّر», owner-only through /dev; meetings.* = «📞 اجتماعات باسم» (the daily cap,
+   owner-only through /meetings/cap) — an admin must not pre-create them as custom rows) */
+const RESERVED = /^(pay|mail|overlay|persona|system|acc|wa|respondio|anam|keys|dev|cloudflare|meetings)\.|^features$/;
 /* the bank-transfer / InstaPay instructions tell customers where to send money (/pay/, every invoice e-mail, the public overlay): they are
    «entered by the owner» (ACC-CONTRACT §5) — pay.config, the permission of «بوابة الدفع» — never by settings.write alone (review F1) */
 export const PAYEE_KEYS = ["manual_pay_ar", "manual_pay_en"];

@@ -179,6 +179,8 @@ Permissions (strings used in code; `adm.can(p)`):
 | `reports.read` / `reports.export` | ✓ | ✓ | — | — |
 | `wa.read` · `bassem.read` | ✓ | ✓ | — | ✓ |
 | `import.run` | ✓ | — | — | — |
+| `meetings.bassem` («📞 اجتماعات باسم»: send Bassem to a Meet / Zoom / Teams call, list, cancel — never X-Platform-Key) | ✓ | ✓ | — | — |
+| `meetings.cap` (the daily cap of those invites) | ✓ | — | — | — |
 
 ### 0.6 Audit log (acc.js exports `audit(env, e)`; the router passes `adm.audit`)
 Every admin write (any non-GET under `/api/admin/cc/*`, the import, provider-driven activations, persona syncs, secret changes) inserts one
@@ -301,6 +303,7 @@ Toasts say only what the server confirmed (`{ok:true}` / an id), e.g. «تم ا�
 | التواصل · Communication | `messages` | الرسائل والطلبات | Messages & requests | `msgNew` | orders.read | `/api/admin/cc/orders*`, `/api/admin/cc/legacy/messages*` |
 | | ➕ `whatsapp` | الواتساب | WhatsApp | | wa.read | existing `GET /api/admin/wa`, `GET /api/wa/health` |
 | | ➕ `bassem` | باسم – المستشار | Bassem – advisor | | bassem.read | `GET /api/admin/cc/bassem` |
+| | ➕ `bassem-meetings` | 📞 اجتماعات باسم | 📞 Bassem's meetings | | meetings.bassem | `/api/admin/cc/meetings*` (worker/README.md «Bassem's meetings») |
 | SEO يدوي · SEO (manual) | `seo` | بيانات الصفحات | Page data | | seo | existing `/api/seo/pages`, `/api/seo/page` |
 | | `keywords` | تتبع الكلمات | Keyword tracking | | seo | existing `/api/seo/keywords` |
 | | `redirects` | تحويلات 301 | 301 redirects | | seo | existing `/api/seo/redirects` |

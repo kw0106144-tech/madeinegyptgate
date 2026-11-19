@@ -154,3 +154,11 @@ a.dv-tile b{display:block;font-size:15px}a.dv-tile .d{display:block;color:#47556
 .dv-f .sm3{margin-top:6px}
 .dv-f.lk .dv-sw[aria-checked=true]{background:#B7791F}   /* the owner's choice is on, but the feature waits for its key (locked) */
 .dv-warnl{margin:4px 0 10px;padding-inline-start:20px;line-height:1.9}   /* the switches an older build / version would stop applying (rollback dialog) */
+
+/* «📞 اجتماعات باسم» (data/acc.js SEC["bassem-meetings"]): the owner's steps, the notes under the form, the date / time shown only for
+   «في ميعاد محدد» (the live CSS gives every label display:block, which would beat the hidden attribute) */
+.bm-steps{margin:0 0 12px;padding-inline-start:20px;line-height:1.9}
+.bm-notes{margin:12px 0 0;padding-inline-start:18px;line-height:1.8}
+.bm-form label[hidden]{display:none}
+#mtw{margin:8px 0 0}
+.bm-cap input{width:110px;padding:7px 9px;border:1px solid #CBD5E1;border-radius:9px;font:inherit}
