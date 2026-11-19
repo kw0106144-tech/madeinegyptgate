@@ -241,7 +241,9 @@
     var mb = c.querySelector(".bv-more");
     if (mb) mb.onclick = function () {
       var JL = W.JANNA_LIVE, s = L.querySelector(".jnl-scr");
-      if (JL && JL.screenBusy && JL.screenBusy()) { try { W.open(o.more, "_blank", "noopener"); } catch (e) {} return; }
+      /* a new tab out of Bassem's call is his own (JANNA_LIVE.openTab: no Janna there, a bar back to the call — owner 2026-11-19); it
+         says itself when the browser blocked the tab */
+      if (JL && JL.screenBusy && JL.screenBusy()) { if (JL.openTab) JL.openTab(o.more); else { try { W.open(o.more, "_blank", "noopener"); } catch (e) {} } return; }
       if (JL && JL.show) JL.show(o.more, { force: true });
       if (s) try { s.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) { s.scrollIntoView(); }
     };

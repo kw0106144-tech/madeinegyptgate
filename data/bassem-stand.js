@@ -39,6 +39,20 @@
   var W = window, D = document, DE = D.documentElement;
   try { if (W.top !== W) return; } catch (e0) { return; }
   if (W.JANNA_EMBED || W.JANNA_KIOSK) return;
+  /* «باسم معاك»: a page that came out of his live call (data/janna-live.js, loaded before this file, sets window.MIG_WB; the same test
+     here) — the live Bassem is in the call's tab: no second, recorded Bassem standing, greeting or offering a call here; the bar
+     (data/bassem-tab.js) leads back to the call */
+  if ((function () {
+    var now = new Date().getTime(), t = 0, s = 0, m = null;
+    if (W.MIG_WB === true || W.MIG_WB === false) return W.MIG_WB;
+    try { m = /^mig-bassem-(\d{12,14})$/.exec(String(W.name || "")); } catch (e) {}
+    if (m) t = +m[1];
+    if (!t && /[?&]with=bassem(?:&|$)/.test(location.search)) t = now;
+    try { s = +W.sessionStorage.getItem("mig-wb") || 0; if (t > s) W.sessionStorage.setItem("mig-wb", String(t)); } catch (e) {}
+    if (!t) t = s;
+    W.MIG_WB = t > 0 && now - t < 144e5 && now - t > -6e4;
+    return W.MIG_WB;
+  })()) return;
   var PATH = location.pathname || "/";
   /* his page only: the advisor (window.MIGPAGE from site.py; the clean URL /advisor/, an /en/advisor/ twin, the old advisor.html) */
   var DASH = String(W.MIGPAGE || "") === "dashboard" || /^\/(en\/)?dashboard(\/|\/index\.html|\.html)?$/.test(PATH);

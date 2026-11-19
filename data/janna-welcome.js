@@ -51,6 +51,35 @@
   var W = window, D = document, DE = D.documentElement;
   try { if (W.top !== W) return; } catch (e0) { return; }
   if (W.JANNA_EMBED || W.JANNA_KIOSK) return;
+  /* «باسم معاك» (owner 2026-11-19 «لما بفتح المناقصة اللي باسم فاتحا بتفتح صفحة تانيه فيها جنة والمفروض ان باسم بس هو اللي بيكمل»): a
+     page that came out of Bassem's live call (data/janna-live.js openTab: window.name «mig-bassem-<ms>», ?with=bassem; sessionStorage
+     "mig-wb" for the tab's next pages, 4 h at most) is HIS — she does not stand, greet or invite there, the «اسأل جنة» pill and buttons
+     are hidden, and the bar back to the call comes (data/bassem-tab.js). The same test and the same hidden widgets as janna-live.js. */
+  var WB_CSS = "body [class^='jn-'],body [class*=' jn-'],body [class^='jw-'],body [class*=' jw-'],body .bs-fig,body .bs-mini,body .bs-bub,body .bs-wel,body .bst-st,body .bst-sb,body .bst-hint,body .jnl-btn,body .sanad,body .sanad-btn,body .sanad-tip,#seoAsk,body .ask-btn,body [data-ask]{display:none!important}"
+    + "@supports selector(:has(a)){body .ci:has([data-ask]){display:none!important}}";
+  function wbOn() {
+    var now = new Date().getTime(), t = 0, s = 0, m = null;
+    if (W.MIG_WB === true || W.MIG_WB === false) return W.MIG_WB;
+    try { m = /^mig-bassem-(\d{12,14})$/.exec(String(W.name || "")); } catch (e) {}
+    if (m) t = +m[1];
+    if (/[?&]with=bassem(?:&|$)/.test(location.search)) {
+      if (!t) t = now;
+      try { history.replaceState(history.state, "", location.pathname + location.search.replace(/([?&])with=bassem(&|$)/, function (x, a, b) { return b ? a : ""; }).replace(/[?&]$/, "") + location.hash); } catch (e) {}
+    }
+    try { s = +W.sessionStorage.getItem("mig-wb") || 0; if (t > s) W.sessionStorage.setItem("mig-wb", String(t)); } catch (e) {}
+    if (!t) t = s;
+    W.MIG_WB = t > 0 && now - t < 144e5 && now - t > -6e4;
+    return W.MIG_WB;
+  }
+  function wbStart() {
+    DE.classList.add("mig-wb");
+    if (!D.getElementById("mig-wb-css")) { var s = D.createElement("style"); s.id = "mig-wb-css"; s.textContent = WB_CSS; (D.head || DE).appendChild(s); }
+    if (W.MIG_WB_TAB || D.querySelector("script[data-wb]")) return;
+    var me = D.currentScript, v = me && me.src ? /[?&]v=([\w.-]+)/.exec(me.src) : null;
+    var sc = D.createElement("script"); sc.src = "/data/bassem-tab.js" + (W.MIGVER_WB || (v ? "?v=" + v[1] : "")); sc.async = true; sc.charset = "utf-8"; sc.setAttribute("data-wb", "1");
+    (D.head || DE).appendChild(sc);
+  }
+  if (wbOn()) { wbStart(); return; }
   var PATH = location.pathname || "/";
   /* members' tools and Janna's own pages stay quiet; /advisor/ is Bassem's (he stands there); deploy 2: the invoice payment page /pay/
      (no figure over the invoice and «ادفع الآن») and the Control Center /admin/ */
