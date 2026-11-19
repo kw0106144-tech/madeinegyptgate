@@ -48,7 +48,7 @@
       "overlaysWebView": true
     },
     "SystemBars": {
-      "insetsHandling": "css",
+      "insetsHandling": "disable",
       "style": "DARK"
     },
     "Keyboard": {

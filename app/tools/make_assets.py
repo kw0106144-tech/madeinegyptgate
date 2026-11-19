@@ -6,7 +6,9 @@
 
 Source: img/logo-site.png (the round «منصة صنع في مصر / Made in Egypt Gate» badge of the site header, 210 x 200 px).
 Brand colours: the site's header bar and footer red #8E0B20 (--green-deep in factory-profile.html), white ring.
-Every file below is written again on each run (same input = same bytes), so it is safe to re-run and commit the result:
+Every file below is written again on each run (same input = same bytes), so it is safe to re-run and commit the result. The
+feature graphic's text also depends on the font: the committed one used Cairo Bold (--font Cairo-Bold.ttf); without it DejaVu
+Sans Bold is used (the lines shrink to fit) and that one file comes out different:
 
   Android  app/android/app/src/main/res/mipmap-*/ic_launcher*.png      launcher icons (legacy, round, adaptive foreground)
            app/android/app/src/main/res/values/ic_launcher_background.xml   adaptive icon background colour
@@ -185,12 +187,17 @@ def store(badge, written, font_path):
     d.rectangle((0, 456, 1024, 462), fill=GOLD + (255,))
     fg.alpha_composite(ringed(badge, 330), (1024 - 330 - 64, 60))
     if font_path and features.check("raqm"):
-        big = ImageFont.truetype(font_path, 64, layout_engine=ImageFont.Layout.RAQM)
-        small = ImageFont.truetype(font_path, 40, layout_engine=ImageFont.Layout.RAQM)
-        d.text((600, 150), "منصة صنع في مصر", font=big, fill=WHITE + (255,), anchor="rm", direction="rtl", language="ar")
-        d.text((600, 250), "Made in Egypt Gate", font=small, fill=(0xF6, 0xE4, 0xE6, 255), anchor="rm")
-        d.text((600, 325), "madeinegyptgate.com", font=ImageFont.truetype(font_path, 30, layout_engine=ImageFont.Layout.RAQM),
-               fill=GOLD + (255,), anchor="rm")
+        def fit(text, size, **kw):
+            """the font at `size`, smaller only when the line would cross the 40 px left margin (wider fonts than Cairo)"""
+            while True:
+                f = ImageFont.truetype(font_path, size, layout_engine=ImageFont.Layout.RAQM)
+                if size <= 20 or d.textlength(text, font=f, **kw) <= 560:
+                    return f
+                size -= 2
+        d.text((600, 150), "منصة صنع في مصر", font=fit("منصة صنع في مصر", 64, direction="rtl", language="ar"), fill=WHITE + (255,),
+               anchor="rm", direction="rtl", language="ar")
+        d.text((600, 250), "Made in Egypt Gate", font=fit("Made in Egypt Gate", 40), fill=(0xF6, 0xE4, 0xE6, 255), anchor="rm")
+        d.text((600, 325), "madeinegyptgate.com", font=fit("madeinegyptgate.com", 30), fill=GOLD + (255,), anchor="rm")
     written.append(save(fg, os.path.join(g, "play-feature-graphic-1024x500.png"), rgb=True))
 
 

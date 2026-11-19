@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Offline checks of the app folder (no network, nothing is built): `cd app && npm run check`. CI runs it before every build.
-//  - capacitor.config.json: the live site, the two allowed hosts, the user agent marks, no errorPath (the native code owns it)
+//  - capacitor.config.json: the live site, the two allowed hosts, the user agent marks, no errorPath and no SystemBars inset
+//    handling (the native code owns both)
 //  - www/: index.html + offline.html exist, the offline page is self-contained (no other file of the app can be reached from it)
 //    and its inline scripts parse as ES5 (the site's rule for browser code) when acorn is installed (see app/README.md)
 //  - Android: permissions for the live calls, App Links filter, file chooser queries, strings in Arabic and English
@@ -30,6 +31,7 @@ need(!cfg.server?.errorPath, "no server.errorPath: MainActivity / MainViewContro
 need(cfg.android?.appendUserAgent === "MIGApp/1.0 (android)", "android.appendUserAgent must be MIGApp/1.0 (android)");
 need(cfg.ios?.appendUserAgent === "MIGApp/1.0 (ios)", "ios.appendUserAgent must be MIGApp/1.0 (ios)");
 need(cfg.plugins?.App?.disableBackButtonHandler === true, "plugins.App.disableBackButtonHandler must be true (MainActivity handles the back button)");
+need(cfg.plugins?.SystemBars?.insetsHandling === "disable", "plugins.SystemBars.insetsHandling must be \"disable\" (MainActivity keeps the WebView between the bars; Capacitor's handling would put most site pages under a white status bar strip)");
 
 // www
 for (const f of ["www/index.html", "www/offline.html"]) need(existsSync(join(APP, f)), f + " is missing");

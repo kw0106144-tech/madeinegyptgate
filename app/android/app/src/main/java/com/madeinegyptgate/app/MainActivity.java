@@ -3,11 +3,15 @@ package com.madeinegyptgate.app;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebHistoryItem;
 import android.webkit.WebView;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Logger;
 import java.io.ByteArrayOutputStream;
@@ -23,7 +27,8 @@ import org.json.JSONObject;
  * - App Links (https://madeinegyptgate.com/…, AndroidManifest.xml): the tapped page opens in the app, on a cold start and while
  *   the app runs (Capacitor itself would only report the URL to the page and stay on the home page);
  * - the offline page www/offline.html when the site cannot be reached (MigWebViewClient), with the page to retry;
- * - full-screen video and microphone / camera only for the platform's pages (MigChromeClient), files (MigDownloads).
+ * - full-screen video and microphone / camera only for the platform's pages (MigChromeClient), files (MigDownloads);
+ * - the WebView always between the status bar and the navigation bar, on the brand red (keepWebViewBetweenBars).
  */
 public class MainActivity extends BridgeActivity {
 
@@ -37,6 +42,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (bridge == null) return; // no usable WebView on this device: BridgeActivity shows its own screen
+        keepWebViewBetweenBars();
         WebView webView = bridge.getWebView();
         bridge.setWebViewClient(new MigWebViewClient(bridge, this::showOffline));
         chrome = new MigChromeClient(bridge);
@@ -70,6 +76,30 @@ public class MainActivity extends BridgeActivity {
             return;
         }
         bridge.getWebView().loadUrl(link);
+    }
+
+    /**
+     * The status bar and the navigation bar always show the window's brand red (styles.xml) behind their light icons
+     * (plugins.SystemBars.style DARK): the WebView is padded by the bars and the page gets no bar insets (env(safe-area-inset-*)
+     * is 0). Capacitor's own handling is off (plugins.SystemBars.insetsHandling "disable"): with Android System WebView 140+ it
+     * draws the WebView under the bars on every page with viewport-fit=cover, which most of the site's own pages have (the home
+     * page too), and the site paints that strip white (body::before, var(--surface)), so the white clock and battery icons would
+     * vanish on it. The padding is the one Capacitor uses on the other pages, keyboard included (adjustResize).
+     */
+    private void keepWebViewBetweenBars() {
+        View decor = getWindow().getDecorView();
+        final int bars = WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout();
+        ViewCompat.setOnApplyWindowInsetsListener(decor, (v, insets) -> {
+            Insets b = insets.getInsets(bars);
+            int bottom = b.bottom;
+            if (insets.isVisible(WindowInsetsCompat.Type.ime())) {
+                bottom = Math.max(bottom, insets.getInsets(WindowInsetsCompat.Type.ime()).bottom);
+            }
+            v.setPadding(b.left, b.top, b.right, bottom);
+            // zeroed, not consumed: a consumed inset stops the WebView's later safe-area updates (as in Capacitor's SystemBars)
+            return new WindowInsetsCompat.Builder(insets).setInsets(bars, Insets.NONE).build();
+        });
+        ViewCompat.requestApplyInsets(decor);
     }
 
     private static String siteLink(Intent intent) {
