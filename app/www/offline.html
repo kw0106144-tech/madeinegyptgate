@@ -64,7 +64,8 @@ p { margin: 0; line-height: 1.75; color: var(--muted); font-size: .95rem; }
     if (m) { var u = decodeURIComponent(m[1]); if (ok(u)) target = u; }
   } catch (e2) {}
   var st = document.getElementById("st"), btn = document.getElementById("retry");
-  function say(ar, en) { st.textContent = ar ? ar + " · " + en : ""; }
+  /* the English half in a Unicode isolate (FSI … PDI): in this RTL line its final full stop would otherwise jump to its start */
+  function say(ar, en) { st.textContent = ar ? ar + " · \u2068" + en + "\u2069" : ""; }
   function go() { try { location.replace(target); } catch (e) { location.href = target; } }
   /* the site answers = we are back online: a no-cors fetch of a tiny static file (an opaque answer is enough), else an image */
   function probe(done) {
