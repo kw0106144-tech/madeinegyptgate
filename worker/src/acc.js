@@ -6,7 +6,8 @@
      /api/team/*               → handleTeam       (§12 front desk + whoami, acc-team.js)
      /api/plans /api/settings /api/ev/pv → handlePublicCC
      /api/index.php*           → handleOldApi     (transparent proxy to the old PHP API; built, not routed in deploy 2)
-   /api/admin/cc/keys*: «مفاتيح الخدمات» (owner only, acc-keys.js) — respond.io token + channel, Anam key, the WhatsApp live switch.
+   /api/admin/cc/keys*: «مفاتيح الخدمات» (owner only, acc-keys.js) — respond.io token + channel, Anam key, the WhatsApp live switch;
+     POST /keys/websearch/connect = «🔗 وصّل البحث بباسم» (acc-wsconnect.js: creates / updates the Anam tool bassem_web_search, attaches it to Bassem).
    /api/admin/cc/dev/*: «🛠️ المطوّر» (owner only, dev.manage, acc-dev.js) — feature switches (flags.js), deploys + rollback, health, audit.
    ccBoot(env, CC) applies the plans matrix (≤ 1 D1 read per isolate per 60 s), the mail config and the service keys (service-keys.js);
    ccCron(env, nowMs, CC) runs the
@@ -25,6 +26,7 @@ import { handleOldApi, handleLegacyAuth, bridgeOrigin } from "./acc-legacy.js";
 import { handleMeCC } from "./acc-me.js";
 import { handleTeam } from "./acc-team.js";
 import * as KEYS from "./acc-keys.js";
+import { connectWebSearch } from "./acc-wsconnect.js"; // «🔗 وصّل البحث بباسم»: the Anam tool bassem_web_search + Bassem's persona, the secret never leaves the Worker
 import { eraseMemory } from "./acc-memory.js";          // 0009: the owner's audited legal memory erasure (PDPL 151/2020)
 import { listKnowledge, answerKnowledge } from "./knowledge.js"; // 0009: «بنك المعلومات» — «محتاجة إجابة» for the team
 import { loadServiceKeys } from "./service-keys.js";
@@ -183,6 +185,7 @@ const ROUTES = [
   R("GET", P("/keys"), "keys.manage", (q, e, c, a) => KEYS.getKeys(e, a)),
   R("POST", P("/keys/wa-test"), "keys.manage", (q, e, c, a) => KEYS.waTest(q, e, c, a)),
   R("POST", P("/keys/wa-live"), "keys.manage", (q, e, c, a) => KEYS.waLiveSwitch(q, e, c, a)),
+  R("POST", P("/keys/websearch/connect"), "keys.manage", (q, e, c, a) => connectWebSearch(q, e, c, a)),
   R("POST", P("/keys/:id/test"), "keys.manage", (q, e, c, a, u, m) => KEYS.testKey(q, e, c, a, m[1])),
   R("PUT", P("/keys/:id"), "keys.manage", (q, e, c, a, u, m) => KEYS.putKey(q, e, c, a, m[1])),
   R("DELETE", P("/keys/:id"), "keys.manage", (q, e, c, a, u, m) => KEYS.deleteKey(q, e, c, a, m[1])),

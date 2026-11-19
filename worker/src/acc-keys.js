@@ -19,6 +19,9 @@
                                           «اختبار» = ONE real search) · websearch.cap (setting 0–10000 calls per Cairo day, default 300, 0 = off)
                                           · bassem.tool_secret (secret, the X-MIG-Tool header value in the Anam tool; no test) — GET /keys
                                           returns them in `websearch`, the WhatsApp/Anam `slots` stay as they were
+     POST   /keys/websearch/connect       «🔗 وصّل البحث بباسم» (acc-wsconnect.js): creates / updates the Anam tool bassem_web_search with the
+                                          tool secret (generated + sealed when none exists) and attaches it to Bassem's persona — the secret
+                                          never leaves the Worker; GET /keys → websearch.connect = its state (connected, tool_id, secret_changed, last)
    «Cloudflare — لوحة المطوّر» (the developer panel «🛠️ المطوّر», acc-dev.js / cf-api.js): cloudflare.dev_token (secret; the Worker
                                           secret CF_DEV_TOKEN wins) — NO tail is kept or shown, only «متسجّل ✓»; its «اختبار» = read-only
                                           calls (token verify, the Pages project, the janna-lookup deployments) — GET /keys returns it in
@@ -36,6 +39,7 @@ import { SVC_SLOTS, loadServiceKeys, forgetServiceKeys, channelOk, respondioChan
 // ---- Bassem web search («بحث الإنترنت») ----
 import { WS_SLOTS, WS_PROVIDERS, WS_DEFAULT_CAP, WS_MAX_CAP, wsProviderOk, wsCapOk, webSearchConfig } from "./service-keys.js";
 import { testWebSearch, usedToday, WS_HEADER } from "./websearch.js";
+import { connectView } from "./acc-wsconnect.js"; // «🔗 وصّل البحث بباسم» (POST /keys/websearch/connect): its state for the panel, never a value
 // ---- «Cloudflare — لوحة المطوّر» (the developer panel's token) ----
 import { CF_SLOT, devToken, testToken as testCfToken, accountOf, PAGES_PROJECT, WORKERS } from "./cf-api.js";
 
@@ -172,7 +176,7 @@ async function wsView(env, store, sys) {
     provider: { ...setting("websearch.provider"), options: [...WS_PROVIDERS], env_value: wsProviderOk(env && env.WEBSEARCH_PROVIDER), effective: cfg.provider, source: cfg.provider_source },
     key: sec("websearch.key"), tool_secret: sec("bassem.tool_secret"),
     cap: { ...setting("websearch.cap"), env_value: envCap >= 0 ? String(envCap) : "", "default": WS_DEFAULT_CAP, max: WS_MAX_CAP, effective: cfg.cap, source: cfg.cap_source },
-    used_today: store ? await usedToday(env) : 0 };
+    used_today: store ? await usedToday(env) : 0, connect: await connectView(env, store) };
 }
 /* PUT / DELETE of the two web-search settings: provider (tavily|serper|brave) and the daily cap (0–10000, 0 = off); "" = back to the default */
 async function putWsSetting(env, adm, slot, raw) {

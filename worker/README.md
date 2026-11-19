@@ -20,7 +20,7 @@ owner's `mis-egypt` Worker in deploy 1. `test/integ-worker.test.mjs` fails if th
 | `TURNSTILE_SECRET` *(optional)* | Turnstile: once set, `/api/auth/request` and anonymous `/api/inquiries` REQUIRE a token (pages need `window.MIG_TURNSTILE_SITEKEY`) |
 | `BRAVE_SEARCH_KEY` *(optional)* or `GOOGLE_CSE_KEY` + `GOOGLE_CSE_CX` | web search for the admins' no-match candidate list (without a key: platform directory only; nothing is ever scraped) |
 | `JANNA_KEY` *(optional)* | header `X-Janna-Key` on `/api/janna/lookup` (and `/api/janna/item`) |
-| `TOOL_SECRET` *(for Bassem's web search)* | the `X-MIG-Tool` header value of the Anam tool `bassem_web_search` (`/api/advisor/web`); random, ≥ 16 characters (`openssl rand -hex 24`). The owner may save it in «مفاتيح الخدمات» → «سر أدوات باسم» instead (a Worker secret wins). Without it the endpoint is off (fail-closed) |
+| `TOOL_SECRET` *(for Bassem's web search)* | the `X-MIG-Tool` header value of the Anam tool `bassem_web_search` (`/api/advisor/web`); random, ≥ 16 characters (`openssl rand -hex 24`). The owner may save it in «مفاتيح الخدمات» → «سر أدوات باسم» instead (a Worker secret wins), or let «🔗 وصّل البحث بباسم» make one there (`POST /api/admin/cc/keys/websearch/connect`, below) — then nobody ever sees it. Without it the endpoint is off (fail-closed) |
 | `WEBSEARCH_KEY` *(optional)* | Bassem's web search provider key (Tavily / Serper / Brave) — or the panel slot «بحث الإنترنت — المفتاح» (a Worker secret wins). Optional vars: `WEBSEARCH_PROVIDER` (tavily \| serper \| brave), `WEBSEARCH_CAP` (calls per Cairo day, default 300, 0 = off) |
 
 **Vars** (in `wrangler.toml`): `SITE_URL="https://madeinegyptgate.com/"`, `MAIL_FROM="منصة صنع في مصر <noreply@madeinegyptgate.com>"` (the one
@@ -575,9 +575,11 @@ Owner only (`keys.manage` ∈ OWNER_ONLY: admin / editor / support / X-Platform-
 | POST | `/api/admin/cc/keys/:slot/test` | — | `{ok, status, detail, source, at}` (+ respond.io: `channel, channel_found, token_ok, wa_test_ok_at`) · 409 `not_set` / `unreadable` · 429 (10/hour) |
 | POST | `/api/admin/cc/keys/wa-test` | `{mode?: "text"\|"template"}` | `{ok, sent, to:"01062531295", mode, provider_id\|error, next, hint?}` · 409 `not_set` / `dry_run_env` / `token_test_required` · 429 (3/hour, 5/day) |
 | POST | `/api/admin/cc/keys/wa-live` | `{on, confirm_delivered}` | `{ok, switch, live, dry_run, dry_run_env, reason}` · 409 `not_set` / `token_test_required` / `test_message_required` / `delivery_confirmation_required` with `need` |
+| POST | `/api/admin/cc/keys/websearch/connect` | `{}` | «🔗 وصّل البحث بباسم» (`src/acc-wsconnect.js`): `{ok, tool_id, tool_name, persona_id, created, updated, unchanged, attached, already_attached, header_source: env\|panel\|generated, duplicates, websearch_ready, websearch_missing:[key\|provider\|cap], websearch_reason, feature_on, at}` — never the secret, the Anam key or Anam's error body · 409 `anam_key_missing` / `tool_secret_invalid` / `persona_changed` / `tool_changed` / `connect_busy` · 502 `anam_refused` (`anam_status`, `step`) / `anam_unreachable` / `persona_not_found` / `anam_shape` · 503 `config_secret_missing` · 429 (10/hour); every error has `msg_ar`, `msg_en` (+ `tool_id`, `tool_done` when the tool was written but not attached) |
 Slots: `respondio.token`, `anam.api_key` (cc_secrets, AES-GCM with `CONFIG_SECRET`, AAD per slot) and `respondio.channel` (a plain setting).
 Settings (cc_settings scope `system`, reserved prefixes — never a custom setting): `respondio.channel`, `wa.live` (default off), `wa.test_ok_at`,
-`wa.test_sent_at`, `wa.test_msg_id`, `wa.live_at`, `wa.live_by`, `keys.test.<slot>` (last test: at, ok, status, detail, source, by).
+`wa.test_sent_at`, `wa.test_msg_id`, `wa.live_at`, `wa.live_by`, `keys.test.<slot>` (last test: at, ok, status, detail, source, by), `websearch.connect`
+(the last connection: tool id, its `updatedAt`, fingerprints — never a value).
 Precedence: a Worker secret wins (`RESPONDIO_TOKEN`, `ANAM_API_KEY`), else the panel slot; the channel = the panel value, else
 `RESPONDIO_CHANNEL_ID`, else 580384. **Effective WhatsApp** (`whatsapp.js waLive`, also the Meta WA_TOKEN reminders in meetings.js):
 token AND `WA_DRY_RUN` not `"1"` (any value but `"0"`/empty is the kill switch) AND the switch on after a passed test — anything missing,
@@ -587,6 +589,19 @@ one test message to the platform's own number (public setting `whatsapp_number`)
 deleted token, or a changed channel, switches it off again. `loadServiceKeys(env)` (ccBoot, memo per `env.DB`, 60 s) feeds the sync
 `svc(env)` view; decrypted values never leave that memo. Every real send re-reads the switch from D1 (`waSwitchNow`) right before the
 provider call, so «إيقاف» stops all isolates at once. Audit: `keys.set`, `keys.delete`, `keys.test`, `wa.test`, `wa.live` — no values.
+**«🔗 وصّل البحث بباسم»** (owner request 2026-11-19: the tool secret never passes through a chat or a person). With the Anam key the Worker
+already uses (`ANAM_API_KEY`, else the slot `anam.api_key`): GET Bassem's persona `19ef9078-…` and `GET /v1/tools?search=bassem_web_search` first
+(nothing is written before both answer), then the effective tool secret (`TOOL_SECRET`, else the slot `bassem.tool_secret`; neither or unreadable →
+32 random bytes from `crypto.getRandomValues`, sealed into that slot WITHOUT a tail, audit `keys.set` `{generated:true}`), then `POST /v1/tools` with
+the body of `anam/tools.create.json` (copied as `WS_TOOL`; a test keeps them equal) and the header `X-MIG-Tool` = the secret, literally (never in
+`{{ }}`), or `PUT /v1/tools/{id}` with `expectedUpdatedAt` on an existing tool of that name, and last `PUT /v1/personas/{id}` `{toolIds: every id it
+has + the tool, expectedUpdatedAt}` only when the id is missing (409 → read again, once). Idempotent: a tool that is exactly what the button last
+wrote (same id + `updatedAt`, same body, same secret — an HMAC fingerprint keyed with `AUTH_SECRET`/`ADVISOR_SECRET` in the system setting
+`websearch.connect`) is not written again, so a second press makes no Anam write. One press at a time (`cc_locks`), 10 per hour per owner, audit
+`websearch.connect` written before the first Anam call and completed with the outcome (ids and statuses only). `GET /keys` → `websearch.connect:
+{connected, tool_id, at, by, secret_changed, anam_key, last:{at, ok, finished, code, step, anam_status}}` (no value, no fingerprint). The Anam key
+needs **Write on Tools and Personas** for this (a Restricted key with only session tokens + reads gets `anam_refused` 403 with `step` =
+`tool_create` / `persona_update` and words saying which permission is missing); API updates take effect at once (no Lab «Publish»).
 Slot `cloudflare.dev_token` («Cloudflare — لوحة المطوّر», the developer panel below): a secret slot WITHOUT a tail; `GET /keys` → `cloudflare:
 {token:{set, set_at, set_by, readable, env, env_name:"CF_DEV_TOKEN", effective, testable, last_test}, account_id, pages_project, workers,
 permissions_ar, permissions_en}`; its test = token verify + the Pages project + the janna-lookup deployments (GET only) → `checks:{token, pages, workers}`.
@@ -755,7 +770,7 @@ npx wrangler r2 bucket create madeinegyptgate-media
 npx wrangler r2 bucket lifecycle add madeinegyptgate-media meetings-35d meetings/ --expire-days 35
 # 3) secrets
 npx wrangler secret put MEETINGS_SECRET   # required: long random string (openssl rand -hex 32)
-npx wrangler secret put ANAM_API_KEY      # Anam Lab → API keys (Restricted: Sessions = Read is enough)
+npx wrangler secret put ANAM_API_KEY      # Anam Lab → API keys (Restricted: session tokens + Sessions/Personas Read for the calls; «🔗 وصّل البحث بباسم» also needs Write on Tools and Personas, the persona price sync Write on Personas)
 npx wrangler secret put RESEND_API_KEY    # or the SEND_EMAIL binding (then attachments are inlined as text)
 npx wrangler secret put WA_TOKEN          # optional: WhatsApp Cloud API token (+ var WA_PHONE_ID in wrangler.toml)
 npx wrangler secret put TURNSTILE_SECRET  # optional: Turnstile on booking/start (+ window.MEETINGS_TURNSTILE_SITEKEY on the site)

@@ -206,6 +206,16 @@
     use_payments: ["مفاتيح بوابة الدفع بتتحفظ من «بوابة الدفع».", "Payment-gateway keys are managed in «Payment gateway»."],
     unknown_slot: ["مفتاح غير معروف.", "Unknown key slot."],
     test_the_token: ["القناة بتتجرّب مع اختبار توكن respond.io.", "The channel is checked by the respond.io token test."],
+    anam_key_missing: ["مفيش مفتاح Anam على المنصة — ضيفه الأول في «مفتاح Anam».", "No Anam key on the platform — add it first in «Anam key»."],
+    anam_refused: ["Anam رفض الطلب.", "Anam refused the request."],
+    anam_unreachable: ["Anam مش بيرد دلوقتي — جرّب تاني بعد شوية.", "Anam did not answer — try again in a moment."],
+    persona_not_found: ["شخصية باسم مش موجودة في حساب Anam بتاع المفتاح ده.", "Bassem's persona is not in the Anam account of this key."],
+    persona_changed: ["شخصية باسم اتعدّلت في Anam في نفس اللحظة — دوس تاني.", "Bassem's persona changed in Anam at the same moment — press again."],
+    tool_changed: ["الأداة اتعدّلت في Anam في نفس اللحظة — دوس تاني.", "The tool changed in Anam at the same moment — press again."],
+    anam_shape: ["Anam ردّ بشكل مش متوقّع — ماتغيّرش حاجة؛ بلّغ المطوّر.", "Anam answered in an unexpected shape — nothing was changed; tell the developer."],
+    connect_busy: ["فيه توصيل تاني شغّال دلوقتي — استنى دقيقة ودوس تاني.", "Another connection is running — wait a minute and press again."],
+    tool_secret_invalid: ["«سر أدوات باسم» فيه حروف ماتنفعش في هيدر.", "«Bassem's tool secret» has characters a header cannot carry."],
+    secret_not_saved: ["السر الجديد ماتحفظش — ماتغيّرش حاجة في Anam؛ جرّب تاني.", "The new secret was not stored — nothing changed in Anam; try again."],
     data_file: null
   };
   function errText(e) {
@@ -2045,7 +2055,8 @@
      key (write-only: sealed with CONFIG_SECRET on the server, never shown again), one read-only test call per key, the payment slots
      read-only (managed in «بوابة الدفع»), and the switch «تشغيل إرسال واتساب الحقيقي» — OFF until the token test passed, ONE test
      message reached the platform's own number and the owner confirmed it. API: GET/PUT/DELETE /api/admin/cc/keys[/:slot],
-     POST /keys/:slot/test, POST /keys/wa-test {mode}, POST /keys/wa-live {on, confirm_delivered} (worker/src/acc-keys.js).
+     POST /keys/:slot/test, POST /keys/wa-test {mode}, POST /keys/wa-live {on, confirm_delivered} (worker/src/acc-keys.js),
+     POST /keys/websearch/connect «🔗 وصّل البحث بباسم» (worker/src/acc-wsconnect.js).
      ===================================================================================================================== */
   SEC.keys = function () {
     var c = CUR;
@@ -2146,8 +2157,45 @@
         + '<label style="display:block;margin:8px 0"><span style="display:block;font-weight:700;margin-bottom:4px">' + h(T("الحد اليومي لعمليات البحث (0 = البحث مقفول)", "Daily search cap (0 = search off)")) + '</span><input id="k_wscap" type="text" inputmode="numeric" dir="ltr" maxlength="5" value="' + h(cp.value || "") + '" placeholder="' + h(String(cp["default"] || 300)) + '" style="width:140px;padding:9px;border:1px solid #cfd8d3;border-radius:8px"></label>'
         + '<div class="acts2">' + btn("wscap", h(T("💾 حفظ الحد", "💾 Save the cap")), "r") + (cp.value ? btn("wscapdel", h(T("↺ الافتراضي", "↺ Default") + " (" + (cp["default"] || 300) + ")"), "l") : "") + "</div>"
         + '<p class="sm">' + h(T("استخدام النهارده: ", "Used today: ")) + "<b>" + h(String(w.used_today || 0)) + "</b> " + h(T("من ", "of ")) + "<b>" + h(String(cp.effective == null ? "" : cp.effective)) + "</b></p>" + msgH("websearch"))
-        + secretCard("websearch.key", w.key, noSec) + secretCard("bassem.tool_secret", w.tool_secret, noSec);
+        + secretCard("websearch.key", w.key, noSec) + secretCard("bassem.tool_secret", w.tool_secret, noSec, { extra: '<p class="mut sm">' + h(T("لو غيّرت السر ده أو مسحته، دوس «🔗 وصّل البحث بباسم» تاني علشان Anam ياخد الجديد.", "If you change or delete this secret, press «🔗 Connect web search to Bassem» again so Anam gets the new one.")) + "</p>" }) + connCard(w);
     };
+    /* «🔗 وصّل البحث بباسم» (POST /api/admin/cc/keys/websearch/connect, worker/src/acc-wsconnect.js): the server creates / updates the Anam
+       tool bassem_web_search with the tool secret (made and sealed there when none exists) and adds it to Bassem's tools — the secret never
+       reaches this page or anyone; GET /keys → websearch.connect = {connected, tool_id, at, by, secret_changed, anam_key, last} */
+    var WSMISS = { key: ["مفتاح البحث", "the search key"], provider: ["مزود الخدمة", "the provider"], cap: ["حد يومي أكبر من 0", "a daily cap above 0"] };
+    var connCard = function (w) {
+      var k = w && w.connect; if (!k) return "";
+      var noKey = k.anam_key === "none", last = k.last;
+      var st = k.connected ? '<div class="okc">' + h(T("✓ متوصّل: الأداة bassem_web_search على باسم في Anam", "✓ Connected: the tool bassem_web_search is on Bassem in Anam")) + (k.at ? ' <small dir="auto">(' + h(whoWhen(k.at, k.by)) + ")</small>" : "") + "</div>"
+        : '<div class="alert">' + h(k.tool_written ? T("الأداة bassem_web_search اتعملت في Anam بس لسه مش على باسم — صلّح السبب اللي تحت ودوس الزرار تاني.", "The tool bassem_web_search exists in Anam but is not on Bassem yet — fix the reason below and press the button again.")
+          : T("لسه مش متوصّل — باسم مش هيقدر يدوّر على الإنترنت في المكالمة لحد ما تدوس الزرار ده.", "Not connected yet — Bassem cannot search the web in a call until you press this button.")) + "</div>";
+      var changed = k.connected && k.secret_changed ? '<div class="alert">' + h(T("«سر أدوات باسم» اتغيّر بعد آخر توصيل — دوس «🔗 وصّل البحث بباسم» تاني علشان Anam ياخد الجديد.", "«Bassem's tool secret» changed after the last connection — press «🔗 Connect web search to Bassem» again so Anam gets the new one.")) + "</div>" : "";
+      var lastH = last && last.at && !last.ok ? '<p class="sm bad">' + h((last.finished ? T("آخر محاولة مانجحتش", "The last attempt failed") : T("آخر محاولة ماكملتش", "The last attempt did not finish")) + " — " + fd(last.at, true) + (last.code ? " (" + last.code + (last.anam_status ? " " + last.anam_status : "") + ")" : "")) + "</p>" : "";
+      return cardH(T("🔗 توصيل البحث بباسم (Anam)", "🔗 Connect web search to Bassem (Anam)"), st + changed
+        + '<p class="mut sm">' + h(T("الزرار ده بيعمل أداة البحث bassem_web_search في Anam (أو بيحدّثها لو موجودة) وبيضيفها لأدوات باسم من غير ما يشيل أي أداة تانية. سر الأداة بيتحط جوّاها من السيرفر على طول: محدش بيشوفه، ولا إنت، وماحدش يبعته لحد. ولو مفيش «سر أدوات باسم»، السيرفر بيعمل واحد عشوائي ويحفظه مشفّر. الضغط مرتين مابيغيّرش حاجة.", "This button creates the search tool bassem_web_search in Anam (or updates it if it exists) and adds it to Bassem's tools without removing any other tool. The server puts the tool secret into it directly: nobody sees it, not even you, and nobody sends it to anyone. If there is no «Bassem tool secret», the server makes a random one and stores it encrypted. Pressing twice changes nothing.")) + "</p>"
+        + '<div class="acts2">' + btn("wsconn", h(T("🔗 وصّل البحث بباسم", "🔗 Connect web search to Bassem")), "r", noKey ? " disabled" : "") + "</div>"
+        + (noKey ? '<small class="why-off">' + h(T("مقفول لحد ما تضيف «مفتاح Anam» فوق.", "Disabled until you add the «Anam key» above.")) + "</small>" : "")
+        + '<p class="mut sm">' + h(T("محتاج مفتاح Anam ليه صلاحية تعديل الأدوات والشخصيات (Write على Tools و Personas). لو صلاحيته أقل، الزرار هيقولك كده (403) وإزاي تصلّحها.", "Needs an Anam key allowed to change tools and personas (Write on Tools and Personas). If it has less, the button says so (403) and how to fix it.")) + "</p>"
+        + lastH + msgH("wsconnect"));
+    };
+    var connMsg = function (r) {
+      r = r || {};
+      var a = r.created ? T("✓ اتعملت الأداة bassem_web_search في Anam", "✓ The tool bassem_web_search was created in Anam") : r.updated ? T("✓ اتحدّثت الأداة bassem_web_search في Anam", "✓ The tool bassem_web_search was updated in Anam") : T("✓ الأداة bassem_web_search موجودة ومظبوطة — مفيش تغيير", "✓ The tool bassem_web_search is already set — no change");
+      a += r.already_attached ? T("، ومربوطة بباسم من قبل.", ", and it was already on Bassem.") : T("، واتربطت بباسم.", ", and it is now on Bassem.");
+      if (r.header_source === "generated") a += T(" اتعمل «سر أدوات باسم» جديد واتحفظ مشفّر — محدش هيشوفه.", " A new «Bassem tool secret» was made and stored encrypted — nobody will see it.");
+      if (r.websearch_ready) a += T(" البحث جاهز ✓", " Web search is ready ✓");
+      else if (r.websearch_missing && r.websearch_missing.length) a += T(" لسه ناقص: ", " Still missing: ") + r.websearch_missing.map(function (x) { return L2(WSMISS[x] || [x, x]); }).join(T("، ", ", ")) + ".";
+      if (r.feature_on === false) a += T(" بس «بحث باسم على الإنترنت» مقفول من «🛠️ المطوّر» ← «المزايا».", " But Bassem's web search is switched off in «🛠️ Developer» → «Features».");
+      if (r.duplicates) a += T(" تنبيه: فيه " + r.duplicates + " أداة تانية بنفس الاسم في Anam — امسحها من Anam Lab.", " Note: " + r.duplicates + " other tool(s) with the same name exist in Anam — delete them in Anam Lab.");
+      return a;
+    };
+    var connErr = function (e) {
+      var j = (e && e.j) || {};
+      if (!j.msg_ar) return errText(e);
+      return T(j.msg_ar, j.msg_en || j.msg_ar) + (j.tool_id ? T(" (الأداة نفسها بقت في Anam — اللي فاضل ربطها بباسم.)", " (The tool itself is in Anam already — only putting it on Bassem is left.)") : "");
+    };
+    /* the small support line: the code, Anam's status and the step only (the words above already say the rest, in the page's language) */
+    var connSmall = function (e) { var j = (e && e.j) || {}; return j.msg_ar ? { code: [e.code, j.anam_status, j.step].filter(function (x) { return !!x; }).join(" "), error: "" } : e; };
     var paint = function () {
       var j = c.st.j || {}, sl = j.slots || {}, noSec = j.config_secret === false;
       setCt((j.store === false ? '<div class="alert">' + h(L2(ERRS.store_off)) + "</div>" : "")
@@ -2213,6 +2261,12 @@
       if (!/^\d{1,5}$/.test(v) || +v > 10000) { toast(T("الحد اليومي رقم من 0 لـ 10000 (0 = البحث مقفول).", "The daily cap is a number from 0 to 10000 (0 = off)."), 1); return; }
       b.disabled = true;
       PUT("/admin/cc/keys/websearch.cap", { value: v }).then(function (r) { say("websearch", true, r && r.unchanged ? T("مفيش تغيير.", "No change.") : T("اتحفظ ✓", "Saved ✓")); reload(); }, function (e) { b.disabled = false; say("websearch", false, errText(e), e); paint(); });
+    };
+    c.on.wsconn = function (b) {
+      if (!sure(T("نوصّل البحث على الإنترنت بباسم في Anam؟ السيرفر هيعمل (أو يحدّث) الأداة bassem_web_search ويضيفها لأدوات باسم من غير ما يشيل أي أداة تانية.", "Connect web search to Bassem in Anam? The server creates (or updates) the tool bassem_web_search and adds it to Bassem's tools without removing any other tool."))) return;
+      b.disabled = true; b.textContent = T("جارٍ التوصيل…", "Connecting…");
+      POST("/admin/cc/keys/websearch/connect", {}, { timeout: 75000 }).then(function (r) { say("wsconnect", true, connMsg(r)); reload(); },
+        function (e) { say("wsconnect", false, connErr(e), connSmall(e)); reload(); });
     };
     c.on.wscapdel = function (b) { b.disabled = true; DEL("/admin/cc/keys/websearch.cap").then(function () { say("websearch", true, T("رجع للافتراضي ✓", "Back to the default ✓")); reload(); }, function (e) { b.disabled = false; say("websearch", false, errText(e), e); paint(); }); };
     c.on.cdel = function (b) { b.disabled = true; DEL("/admin/cc/keys/respondio.channel").then(function () { say("respondio.channel", true, T("رجعت للقيمة الافتراضية ✓", "Back to the default ✓")); reload(); }, function (e) { b.disabled = false; say("respondio.channel", false, errText(e), e); paint(); }); };
