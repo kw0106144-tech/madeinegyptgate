@@ -5682,7 +5682,10 @@ if(b)b.textContent="🔄 Try again";if(a){a.lang="ar";a.dir="rtl";a.textContent=
    - Pages (top-level navigations): the network first, always; only when the network fails, the offline page /offline/ (stored at
      install). HTML is never stored: every page a visitor sees is the live one.
    - This site's static files (/data/*.js|css|json with ?v=, the pictures under /img/ and /assets/, scripts, styles and fonts under
-     /assets/ and /fonts/): stale-while-revalidate (the stored copy at once, a fresh one fetched behind it) in two capped caches.
+     /assets/ and /fonts/): stale-while-revalidate (the stored copy at once, a fresh one fetched behind it) in two capped caches,
+     but only while the stored copy is fresh by its own headers (Date + max-age: /data/ one hour, as _headers says — data/janna.js
+     loads data files under ITS version, so one URL can change at a deploy; /img/ 30 days; /assets/ /fonts/ a year). An older copy
+     waits for the network and answers only when the network fails: a returning visitor never gets an earlier visit's data.
    - Never touched (the request goes to the network exactly as without this worker): other sites (Anam's SDK and its calls, analytics,
      Google Fonts), anything but GET, byte ranges and media (audio, video), frames (Janna's / Bassem's shared screen), the API and the
      private pages (NEVER), the Worker's live files and the old system's (NEVER_FILES), and every file a private page loads.
@@ -5739,6 +5742,11 @@ if(b)b.textContent="🔄 Try again";if(a){a.lang="ar";a.dir="rtl";a.textContent=
   function trim(c, max) {
     return c.keys().then(function (ks) { var out = [], i; for (i = 0; i < ks.length - max; i++) out.push(c["delete"](ks[i])); return Promise.all(out); });
   }
+  /* fresh by its own headers: the server's Date + Cache-Control max-age (no max-age or no Date: not fresh) */
+  function fresh(r) {
+    var m = /max-age=(\d+)/.exec(r.headers.get("Cache-Control") || ""), d = Date.parse(r.headers.get("Date") || "");
+    return !!m && !isNaN(d) && new Date().getTime() - d < +m[1] * 1000;
+  }
   function offline() {
     return caches.open(CORE).then(function (c) { return c.match(OFFLINE); }).then(function (r) { return r || Response.error(); }, function () { return Response.error(); });
   }
@@ -5753,7 +5761,11 @@ if(b)b.textContent="🔄 Try again";if(a){a.lang="ar";a.dir="rtl";a.textContent=
       if (!o.copy) return null;
       return caches.open(name).then(function (c) { return c.put(req, o.copy).then(function () { return trim(c, MAX[k]); }); });
     }).then(null, noop));
-    e.respondWith(hit.then(function (h) { return h || net.then(function (o) { return o.r; }); }));
+    /* a fresh stored copy at once; else the network, and the stale copy only when the network fails */
+    e.respondWith(hit.then(function (h) {
+      if (h && fresh(h)) return h;
+      return net.then(function (o) { return o.r; }, function (x) { if (h) return h; throw x; });
+    }));
   }
 
   self.addEventListener("fetch", function (e) {

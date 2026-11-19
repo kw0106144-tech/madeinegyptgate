@@ -876,8 +876,18 @@ def check_pwa(site, rep):
             miss = [x for x in want if x not in nf]
             if miss:
                 errs.append("sw.js would store files that must always come live (the Worker's overlay, the old system): " + ", ".join(miss))
-            if "/offline/" not in t:
+            # the precache list itself (a mention of /offline/ in a comment is not enough): /offline/ in it, every entry staged
+            # (one missing file and the worker never installs)
+            m = re.search(r"PRECACHE = (\[.*?\]);", t)
+            try:
+                pre = json.loads(m.group(1)) if m else []
+            except ValueError:
+                pre = []
+            if "/offline/" not in pre or 'OFFLINE = "/offline/"' not in t:
                 errs.append("sw.js does not precache the offline page /offline/")
+            miss = [u for u in pre if not (isinstance(u, str) and staged_page(u))]
+            if miss:
+                errs.append("sw.js precaches files this upload does not have (the worker would never install): " + ", ".join(map(str, miss)))
             stats["sw"] = "active"
     hb = headers_by_rule(site)
     if os.path.isfile(sw):
