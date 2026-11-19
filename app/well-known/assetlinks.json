@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.madeinegyptgate.app",
+      "sha256_cert_fingerprints": [
+        "REPLACE_WITH_APP_SIGNING_KEY_SHA256 (Play Console > the app > Test and release > App integrity > App signing > App signing key certificate > SHA-256, format AA:BB:...)",
+        "REPLACE_WITH_UPLOAD_KEY_SHA256_OR_DELETE_THIS_LINE (the upload key in GitHub secret ANDROID_KEYSTORE_BASE64: keytool -list -v -keystore upload.jks; only needed for APKs installed outside Google Play)"
+      ]
+    }
+  }
+]

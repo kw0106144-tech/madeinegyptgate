@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The site's colours (factory-profile.html :root): header bar / footer red, primary red, gold. -->
+<resources>
+    <color name="mig_red_deep">#8E0B20</color>
+    <color name="mig_red">#C8102E</color>
+    <color name="mig_gold">#C09300</color>
+    <color name="colorPrimary">#8E0B20</color>
+    <color name="colorPrimaryDark">#8E0B20</color>
+    <color name="colorAccent">#C8102E</color>
+</resources>

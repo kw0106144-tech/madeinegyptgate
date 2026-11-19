@@ -12,10 +12,14 @@ on:
       - "worker-intel/**"
       - "docs/**"
       - "**.md"
+      # the native apps (built by app-android / app-ios, never part of the site)
+      - "app/**"
       # the other pipelines' own files
       - ".github/workflows/deploy-worker.yml"
       - ".github/workflows/deploy-intel.yml"
       - ".github/workflows/d1-migrate.yml"
+      - ".github/workflows/app-android.yml"
+      - ".github/workflows/app-ios.yml"
       - "deploy/ci/ci-worker.sh"
       - "deploy/ci/ci-intel.sh"
       - "deploy/ci/ci-d1-migrate.sh"

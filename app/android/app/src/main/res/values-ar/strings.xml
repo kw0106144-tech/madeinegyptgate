@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- العربية: نصوص التطبيق الأصلية فقط (الموقع يترجم نفسه). الإنجليزية في values/strings.xml -->
+<resources>
+    <string name="app_name">صنع في مصر</string>
+    <string name="title_activity_main">صنع في مصر</string>
+    <string name="mig_exit_title">الخروج من التطبيق؟</string>
+    <string name="mig_exit_message">هل تريد مغادرة منصة صنع في مصر؟ يمكنك العودة في أي وقت.</string>
+    <string name="mig_exit_yes">خروج</string>
+    <string name="mig_exit_no">إلغاء</string>
+    <string name="mig_share_file">فتح الملف أو مشاركته</string>
+    <string name="mig_file_failed">تعذّر فتح هذا الملف في التطبيق.</string>
+</resources>

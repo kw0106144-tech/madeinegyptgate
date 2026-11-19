@@ -1,0 +1,6 @@
+/* ar: the home-screen name and the purpose texts iOS shows before it asks (app/tools/ios_project.py) */
+"CFBundleDisplayName" = "صنع في مصر";
+"NSMicrophoneUsageDescription" = "يُستخدم الميكروفون فقط عندما تبدأ مكالمة مباشرة مع جنة أو باسم، مساعدَي المنصة، ليسمعا صوتك.";
+"NSCameraUsageDescription" = "تُستخدم الكاميرا فقط عندما تختار تصوير صورة أو فيديو لرفعه (مستندات التسجيل، صور المنتجات) أو تشغيل الكاميرا في مكالمة مباشرة.";
+"NSPhotoLibraryUsageDescription" = "تُستخدم مكتبة الصور فقط عندما تختار صورة أو مستندًا لرفعه، مثل مستندات التسجيل أو صور المنتجات.";
+"NSPhotoLibraryAddUsageDescription" = "لحفظ صورة من المنصة في صورك عندما تختار ذلك.";

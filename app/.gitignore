@@ -1,0 +1,35 @@
+# The native app (app/README.md). Generated or secret files never go into the repository.
+node_modules/
+
+# Android build output and local state (android/.gitignore also lists Capacitor's generated copies)
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/build/
+android/local.properties
+android/.idea/
+android/.kotlin/
+
+# iOS build output and local state (ios/.gitignore also lists Capacitor's generated copies)
+ios/App/Pods/
+ios/App/build/
+ios/App/output/
+ios/DerivedData/
+ios/App/DerivedData/
+**/xcuserdata/
+ios/App/CapApp-SPM/.build/
+
+# app packages and signing material: keystores, provisioning, certificates stay in GitHub secrets
+*.apk
+*.aab
+*.ipa
+*.xcarchive/
+*.keystore
+*.jks
+*.p12
+*.p8
+*.mobileprovision
+*.cer
+*.certSigningRequest
+google-services.json
+GoogleService-Info.plist
