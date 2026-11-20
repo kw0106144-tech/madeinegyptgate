@@ -6,12 +6,16 @@ missing, so the result is the same every time.
     python3 app/tools/ios_project.py --check  # CI and `npm run check`: exit 1 when something is missing
 
 It keeps in place:
-  * App/Info.plist: microphone / camera / photo library purpose texts (English base; Arabic + English in InfoPlist.strings),
-    the languages ar + en, ITSAppUsesNonExemptEncryption = NO (only the HTTPS / WebRTC encryption that iOS itself provides);
+  * App/Info.plist: microphone / camera / photo library / speech recognition purpose texts (English base; Arabic + English in
+    InfoPlist.strings), the languages ar + en, ITSAppUsesNonExemptEncryption = NO (only the HTTPS / WebRTC encryption that iOS
+    itself provides);
   * App/en.lproj/InfoPlist.strings, App/ar.lproj/InfoPlist.strings: the home-screen name and the purpose texts per language;
   * App/App.entitlements: Associated Domains applinks:madeinegyptgate.com (Universal Links; the App ID needs the capability);
   * App.xcodeproj/project.pbxproj: MainViewController.swift in the build, the InfoPlist.strings variant group, knownRegions ar,
     CODE_SIGN_ENTITLEMENTS, MARKETING_VERSION 1.0.0.
+--check also verifies what the app's own Swift code must keep (MainViewController.swift: new windows as sheets, the back swipe,
+pull to refresh, dialogs, Quick Look, printing …; SWIFT_NEEDS) and that CapApp-SPM/Package.swift has no @capacitor/keyboard on
+iOS (capacitor.config.json ios.includePlugins leaves it out, so `npx cap sync ios` writes the package without it).
 """
 import hashlib
 import os
@@ -24,24 +28,43 @@ IOS = os.path.join(APP, "ios", "App")
 PLIST = os.path.join(IOS, "App", "Info.plist")
 PBX = os.path.join(IOS, "App.xcodeproj", "project.pbxproj")
 ENT = os.path.join(IOS, "App", "App.entitlements")
+SWIFT = os.path.join(IOS, "App", "MainViewController.swift")
+SPM = os.path.join(IOS, "CapApp-SPM", "Package.swift")
 
 PURPOSE = {
     "en": {
         "CFBundleDisplayName": "Made in Egypt Gate",
         "NSMicrophoneUsageDescription": "The microphone is used only when you start a live call with Janna or Bassem, the platform's assistants, so they can hear you.",
-        "NSCameraUsageDescription": "The camera is used only when you choose to take a photo or video to upload (registration documents, product photos) or turn on your camera in a live call.",
+        "NSCameraUsageDescription": "The camera is used only when you choose to take a photo to upload, such as registration documents or product photos.",
         "NSPhotoLibraryUsageDescription": "Your photo library is used only when you choose a photo or document to upload, such as registration documents or product photos.",
         "NSPhotoLibraryAddUsageDescription": "Lets you save an image from the platform to your photos when you choose to.",
+        "NSSpeechRecognitionUsageDescription": "Speech recognition turns what you say to Janna into text when you tap the microphone in her chat.",
     },
     "ar": {
         "CFBundleDisplayName": "صنع في مصر",
         "NSMicrophoneUsageDescription": "يُستخدم الميكروفون فقط عندما تبدأ مكالمة مباشرة مع جنة أو باسم، مساعدَي المنصة، ليسمعا صوتك.",
-        "NSCameraUsageDescription": "تُستخدم الكاميرا فقط عندما تختار تصوير صورة أو فيديو لرفعه (مستندات التسجيل، صور المنتجات) أو تشغيل الكاميرا في مكالمة مباشرة.",
+        "NSCameraUsageDescription": "تُستخدم الكاميرا فقط عندما تختار تصوير صورة لرفعها، مثل مستندات التسجيل أو صور المنتجات.",
         "NSPhotoLibraryUsageDescription": "تُستخدم مكتبة الصور فقط عندما تختار صورة أو مستندًا لرفعه، مثل مستندات التسجيل أو صور المنتجات.",
         "NSPhotoLibraryAddUsageDescription": "لحفظ صورة من المنصة في صورك عندما تختار ذلك.",
+        "NSSpeechRecognitionUsageDescription": "يُستخدم التعرّف على الكلام لتحويل ما تقوله لجنة إلى نص عندما تضغط على زر الميكروفون في محادثتها.",
     },
 }
 ASSOCIATED = ["applinks:madeinegyptgate.com"]
+# What MainViewController.swift must keep, so that the app behaves like the site in Safari (app/README.md "What the app does")
+SWIFT_NEEDS = [
+    ("createWebViewWith", "the site's new windows (target=_blank, window.open) as a sheet over the page, never Safari"),
+    ("webViewDidClose", "window.close() closes that sheet"),
+    ("allowsBackForwardNavigationGestures = true", "the back / forward swipe"),
+    ("refreshControl", "pull to refresh"),
+    ("runJavaScriptConfirmPanelWithMessage", "confirm() in the page's language, over the sheet on top"),
+    ("SFSafariViewController", "another site's page over a live call"),
+    ("callOpenJS", "the live-call check (JANNA_LIVE.isOpen) before a link leaves or replaces the call's page"),
+    ("QLPreviewController", "Quick Look for calendar files, PDFs, pictures"),
+    ("migPrint", "window.print() → the system print sheet"),
+    ("estimatedProgress", "the page-load bar"),
+    ("MIGPlace", "the page kept for the next start"),
+    ("safeAreaJS", "pages with viewport-fit=cover below the status bar once, not twice, on current WebKit"),
+]
 
 
 def uid(label):
@@ -74,6 +97,7 @@ def plist_changes(p):
         "NSCameraUsageDescription": PURPOSE["en"]["NSCameraUsageDescription"],
         "NSPhotoLibraryUsageDescription": PURPOSE["en"]["NSPhotoLibraryUsageDescription"],
         "NSPhotoLibraryAddUsageDescription": PURPOSE["en"]["NSPhotoLibraryAddUsageDescription"],
+        "NSSpeechRecognitionUsageDescription": PURPOSE["en"]["NSSpeechRecognitionUsageDescription"],
         "CFBundleLocalizations": ["ar", "en"],
         "ITSAppUsesNonExemptEncryption": False,
     }
@@ -178,8 +202,14 @@ def main():
         problems += ["Info.plist " + k for k in changes]
         problems += [os.path.relpath(p, APP) for p, body in files.items() if not os.path.exists(p) or open(p, encoding="utf-8").read() != body]
         problems += ["project.pbxproj: " + x for x in pbx_missing(pbx)]
-        if not os.path.exists(os.path.join(IOS, "App", "MainViewController.swift")):
+        if not os.path.exists(SWIFT):
             problems.append("ios/App/App/MainViewController.swift")
+        else:
+            swift = open(SWIFT, encoding="utf-8").read()
+            problems += ["MainViewController.swift: %s (%s)" % (k, why) for k, why in SWIFT_NEEDS if k not in swift]
+        if os.path.exists(SPM) and "CapacitorKeyboard" in open(SPM, encoding="utf-8").read():
+            problems.append("CapApp-SPM/Package.swift has @capacitor/keyboard: it hides Safari's form bar (previous / next / Done) on every"
+                            " field; capacitor.config.json ios.includePlugins must leave it out, then `npx cap sync ios`")
         if "MainViewController()" not in open(os.path.join(IOS, "App", "SceneDelegate.swift"), encoding="utf-8").read():
             problems.append("SceneDelegate.swift: rootViewController = MainViewController()")
         if problems:
