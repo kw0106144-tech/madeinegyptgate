@@ -39,6 +39,23 @@ export const waFeature = env => featureSync(env || {}, "whatsapp_send");
 export const waLive = env => waOn(env) && !waDryEnv(env) && waSwitch(env) && waFeature(env);
 /* why nothing would leave right now ("" = live) */
 export const waDryReason = env => (!waOn(env) ? "no_token" : waDryEnv(env) ? "env_dry_run" : !waSwitch(env) ? "switch_off" : !waFeature(env) ? "feature_off" : "");
+/* ONE member's WhatsApp as Bassem may speak of it when his call starts (janna-session.js bassemContext → bassem-context.js waLineAr; owner
+   2026-11-20: in a call Bassem promised a morning report «على الواتساب» while real sending was still off). The rules of the sends below
+   (waLive, sendToMember, bassemCron), read SYNC from the memos ccBoot loaded for this request (service keys ≤ 60 s, «🛠️ المطوّر» ≤ 30 s):
+   no D1 read, so the call does not start later.
+     "paused" his daily messages are paused (prefs pause: «إيقاف» on WhatsApp or the dashboard): bassemCron sends him no morning message and
+              no call link on any channel and sendToMember refuses WhatsApp, whatever the platform's switch says;
+     "off"    waLive false (no token, WA_DRY_RUN, the panel switch «تشغيل إرسال واتساب الحقيقي» off, «🛠️ المطوّر» whatsapp_send off): nothing leaves;
+     "member" live, but sendToMember refuses him (no WhatsApp opt-in, or no usable mobile number);
+     "live"   a WhatsApp message can reach him (a text inside the 24 h window, otherwise only an approved template — the tools say which).
+   The memo may be up to a minute old: a switch just turned ON still reads "off" (no promise before it is live); one just turned OFF may read
+   "live" for that minute, and that line lets Bassem say a WhatsApp arrived only when the tool's result says so (sendWA re-reads the switch). */
+export function waMemberState(env, m) {
+  const p = prefsOf(m || {});
+  if (p.pause) return "paused";
+  if (!waLive(env)) return "off";
+  return p.wa_optin && e164(m && m.phone) ? "live" : "member";
+}
 const channelId = env => respondioChannel(env || {});
 const maskPhone = p => { const d = String(p || "").replace(/\D/g, ""); return d.length > 4 ? "•••" + d.slice(-3) : "•••"; };
 export const e164 = phone => { const d = waNumber(phone); return d ? "+" + d : ""; };
@@ -259,7 +276,15 @@ async function nextDealStep(env, m) {
     return await env.DB.prepare("SELECT title, next_action, due_date FROM deals WHERE member_id = ? AND stage NOT IN ('won', 'lost') AND next_action != '' ORDER BY (due_date = '') ASC, due_date ASC, updated_at DESC LIMIT 1").bind(m.id).first();
   } catch (e) { return null; }
 }
-export async function morningEmail(env, m, n, step, day = cairoDay()) {
+/* the morning e-mail's «why you get this» line (owner 2026-11-20: no WhatsApp promise the platform cannot keep). It used to say «بتوصلك على
+   الإيميل لحد ما الواتساب يشتغل» every morning; now WhatsApp is named only to say plainly that it is not live, and when it IS live (this member
+   is not on it, or today's WhatsApp did not go out) the e-mail does not mention WhatsApp at all. Arabic / English like every mail() line */
+export const MORNING_WHY = Object.freeze({
+  off: "رسالة باسم اليومية لباقة الشريك. إرسال الواتساب من المنصة لسه مش شغّال، فرسايل باسم بتوصلك على الإيميل بس. توقفها من لوحة التحكم أو من الرابط ده. / Bassem's daily note for partner plans. WhatsApp sending from the platform is not live yet, so Bassem's messages reach you by e-mail only. Stop it from your dashboard or with the link below.",
+  live: "رسالة باسم اليومية لباقة الشريك. توقفها من لوحة التحكم أو من الرابط ده. / Bassem's daily note for partner plans. Stop it from your dashboard or with the link below.",
+});
+/* live: WhatsApp's state as the run decided it (bassemCron's waLive; a direct caller gets it from this request's memo) */
+export async function morningEmail(env, m, n, step, day = cairoDay(), live = waLive(env)) {
   const who = whoOf(m), S = site(env), W = k => `${S}advisor.html#when=${k}`;
   const cnt = n && n.count ? n.count : 0;
   const ar = `صباح الخير${who ? " يا " + who : ""} ☀️\nأنا باسم، مستشارك في منصة صنع في مصر. يا رب تكون بخير وصحتك تمام النهارده — طمّني عليك.\n\n` +
@@ -272,7 +297,7 @@ export async function morningEmail(env, m, n, step, day = cairoDay()) {
     `\n\nWhen shall we work together today? One click: now ${W("now")} · noon ${W("noon")} · evening ${W("evening")} · not today ${W("skip")}\nOpen Bassem: ${S}advisor.html`;
   return mail(env, { id: `bm-${m.id}-${day}`, to: m.email, lang: "ar", list: "bassem", fromName: "باسم — منصة صنع في مصر", replyTo: team(env) || undefined,
     subject: `صباح الخير${who ? " يا " + who : ""} ☀️ — باسم من منصة صنع في مصر / Good morning from Bassem`, ar, en,
-    why: "رسالة باسم اليومية لباقة الشريك — بتوصلك على الإيميل لحد ما الواتساب يشتغل. توقفها من لوحة التحكم أو من الرابط ده. / Bassem's daily note for partner plans, by e-mail until WhatsApp is live." });
+    why: live ? MORNING_WHY.live : MORNING_WHY.off });
 }
 export async function callEmail(env, m, link, day = cairoDay()) {
   const who = whoOf(m);
@@ -318,7 +343,7 @@ export async function bassemCron(env, nowMs = Date.now(), newCount) {
         }
         if (r.sent) out.morning++; // WhatsApp only
         else {
-          const e = viaMail ? await morningEmail(env, m, n, n && n.count ? null : await nextDealStep(env, m), day) : { sent: false, error: "no email" };
+          const e = viaMail ? await morningEmail(env, m, n, n && n.count ? null : await nextDealStep(env, m), day, live) : { sent: false, error: "no email" };
           if (e.sent) out.email_morning++;
           else if (!e.skipped) { out.failed++; if (TRANSIENT.test(r.error || "") || TRANSIENT.test(e.error || "")) await env.DB.prepare("UPDATE members SET morning_sent_day = '' WHERE id = ? AND morning_sent_day = ?").bind(m.id, day).run(); } // transient → retry next run
         }

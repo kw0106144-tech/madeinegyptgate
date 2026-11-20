@@ -65,7 +65,8 @@ Then: `cd /home/user/madeinegyptgate && node worker/build-index.js` (cleaned dat
   hour, closed for good after 20 wrong tries, and REDACTED (no quotes / replies / messages / chosen factory) — full details need
   the signed link `?t=` or the owner's session.
 - **Bassem by e-mail** until WhatsApp is live: the daily «صباح الخير» (real count of new items, `advisor.html#when=now|noon|evening|skip`
-  links + a link to Bassem) and «أنا جاهز… اضغط هنا ونتكلم فيديو» (`advisor.html?live=1#login=<code>&live=1`) — list `bassem`.
+  links + a link to Bassem) and «أنا جاهز… اضغط هنا ونتكلم فيديو» (`advisor.html?live=1#login=<code>&live=1`) — list `bassem`. The morning
+  e-mail's footer (`whatsapp.js MORNING_WHY`, 2026-11-20) says plainly that WhatsApp is not live while it is off, and names no WhatsApp once it is.
 - **Security (early review):** IPv6 rate limits per /64, Turnstile mandatory on sign-in when configured, a global hourly budget of
   code e-mails (`AUTH_CODES_PER_HOUR`, default 300), atomic code attempts, a signed-in sender speaks only for its own mailbox
   (another address = anonymous handling), factory reply addresses accept the factory's own mailbox only (when inbound e-mail is on).
@@ -323,7 +324,7 @@ answer 503 `profile_store_off` / `memory_off` and the call simply starts without
 | POST | `/api/janna/web`, `/api/janna/hunt` | Janna's web search and hunt, header `X-MIG-Tool: <JANNA_TOOL_SECRET>` |
 | GET / POST | `/api/janna/item` | one directory item in full + a spoken summary (`src/janna-item.js`, data `src/items.json` from `build-items.js`); POST not found = 200 `found:false` |
 | POST | `/api/janna/lookup` | now also `page`, `market` (tenders), each result with `id`, `open_url` and the amounts (`list_key` / `url` only on GET since 2026-11-20 — "Faster tool answers" below) |
-| POST | `/api/janna/session` | Bassem's ephemeral persona now carries «النهارده: <Cairo date>», the profile and the memory (each in data markers, ≤ 5,200 characters); `continue_call` (a chain part) = the call's last words from the memory + no second greeting |
+| POST | `/api/janna/session` | Bassem's ephemeral persona now carries «النهارده: <Cairo date>», the profile and the memory (each in data markers, ≤ 5,200 characters); `continue_call` (a chain part) = the call's last words from the memory + no second greeting; since 2026-11-20 the member block has ONE WhatsApp line (`bassem-context.js WA_LINE`: off / live / not on for him / his daily messages paused, from `whatsapp.js waMemberState` — the rules of the sends, read from the request's memo, no D1 read), so Bassem never promises a WhatsApp the platform cannot send |
 
 **Start of a live call (owner 2026-11-19 «باسم بياخد وقت»).** For a member Bassem greets by name, `POST /api/janna/session` starts the
 saved persona's read (`GET /v1/personas/{id}`) beside his D1 context instead of after it; the continuation + factory profile are read

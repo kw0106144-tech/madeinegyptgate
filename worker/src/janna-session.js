@@ -75,6 +75,7 @@ import { featureOn, offMessage } from "./flags.js"; // «🛠️ المطوّر�
 import { svc } from "./service-keys.js";            // the panel's Anam key as ccBoot already read it for this request (memo ≤ 60 s)
 import { appOf } from "./app-ua.js";                // the platform's own apps (MIGApp user agent): the store-rule switches below
 import { mediaTicket } from "./chat-ticket.js";      // 📎 the photo ticket of Janna's call (src/chat-media.js, switch chat_photos)
+import { waMemberState } from "./whatsapp.js";      // the member's WhatsApp for the block's WhatsApp line (sync: the memo ccBoot loaded, no extra read)
 
 export const ANAM_TOKEN_URL = "https://api.anam.ai/v1/auth/session-token";
 export const ANAM_PERSONA_URL = "https://api.anam.ai/v1/personas/"; // + a persona id from PERSONAS (read-only GET, Bassem's member context)
@@ -184,7 +185,8 @@ async function savedPersona(key, id) {
   } finally { clearTimeout(tm); }
 }
 /* ---------- what Bassem knows when a member's call starts (consolidation blocker A) ----------
-   block = the member block (bassem-context.js, from his D1 row) + «النهارده: <Cairo date>» + the continuation of THIS call (continue_call)
+   block = the member block (bassem-context.js, from his D1 row; since 2026-11-20 with ONE WhatsApp line: on or off for him, from the memo
+   ccBoot loaded, no read) + «النهارده: <Cairo date>» + the continuation of THIS call (continue_call)
    + his factory profile (profile.js memberProfile, PROFILE_BLOCK markers) + Bassem's memory of him (memory.js memoryContext, MEMORY_BLOCK
    markers), ≤ BLOCK_MAX characters in all; the memory gets what the rest leaves (≤ CONTEXT_MAX). Everything comes from the server's own
    tables for this member only, never from the page. A member with no name / known title still gets the context (anonymous: neutral first
@@ -206,8 +208,9 @@ export async function continuation(env, memberId, callId, nowMs = Date.now()) {
 }
 export async function bassemContext(env, m, lang, b, nowMs = Date.now()) {
   if (!m) return null;
-  /* the continuation and the factory profile are independent reads: one D1 round trip instead of two (owner 2026-11-19 «باسم بياخد وقت») */
-  const [cont, prof] = await Promise.all([continuation(env, m.id, b && b.continue_call, nowMs), memberProfile(env, m.id)]), o = { continued: !!cont };
+  /* the continuation and the factory profile are independent reads: one D1 round trip instead of two (owner 2026-11-19 «باسم بياخد وقت»);
+     wa = is WhatsApp really on for him (whatsapp.js waMemberState: the rules of the sends, from this request's memo — no D1 read) */
+  const [cont, prof] = await Promise.all([continuation(env, m.id, b && b.continue_call, nowMs), memberProfile(env, m.id)]), o = { continued: !!cont, wa: waMemberState(env, m) };
   const base = memberContext(m, lang, o) || memberContext(m, lang, { ...o, anonymous: true });
   if (!base) return null;
   const parts = [base.block, "- " + todayLineAr(nowMs) + " (بتوقيت القاهرة)."];
