@@ -1,4 +1,4 @@
--- 0011_web_leads.sql — «🌐 فرص من الإنترنت» / web leads (owner 2026-11-20: «دول لازم يبقوا آلات سحب داتا … يجيبوا من بره»).
+-- 0012_web_leads.sql — «🌐 فرص من الإنترنت» / web leads (owner 2026-11-20: «دول لازم يبقوا آلات سحب داتا … يجيبوا من بره»).
 -- The opportunities that Janna's and Bassem's web search / opportunity hunt RETURN from a provider (POST /api/janna/web|hunt,
 -- /api/advisor/web|hunt; src/web-leads.js recordLeads, after the answer, never on the caller's clock; a cached answer is not counted
 -- again) are kept for the data team: the cleaned link (its hash unique), title, site, a short snippet (e-mail addresses and phone
@@ -9,10 +9,10 @@
 -- decision) and turns a good lead into platform content only through the existing desk forms, with its source (POST
 -- /api/team/desk/content {lead_id}). NEVER public: no page, no overlay, no persona tool returns anything from this table; the hunt only
 -- reads the url hashes the team rejected (a «مش عن المنتج» rejection only for the same product: reason + product_key). Without this
--- table the code keeps nothing, the hunt and the search answer the same, the desk says «apply 0011», and the owner switch web_leads stays
+-- table the code keeps nothing, the hunt and the search answer the same, the desk says «apply 0012», and the owner switch web_leads stays
 -- locked.
 -- Purely additive and idempotent (CREATE … IF NOT EXISTS only): safe to re-run. Apply ONLY with the manual GitHub workflow, which backs up
--- first: Actions → d1-migrate → Run workflow: migration = 0011_web_leads.sql, confirm = migate-db.
+-- first: Actions → d1-migrate → Run workflow: migration = 0012_web_leads.sql, confirm = migate-db.
 CREATE TABLE IF NOT EXISTS web_leads (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   url_hash     TEXT NOT NULL UNIQUE,                    -- sha256("lead|v1|" + the canonical link), 32 hex (https, no www., no trailing slash, sorted query)

@@ -19,7 +19,7 @@
      janna_web_search          websearch.js      POST /api/janna/web → feature_off (200)
                                web-hunt.js       POST /api/janna/hunt → feature_off (200)
      web_leads                 web-leads.js      the web results Janna / Bassem find are kept for the data desk (off → nothing stored;
-                                                 locked until migration 0011)
+                                                 locked until migration 0012)
    The platform's own apps (user agent «MIGApp/<v> (ios|android)», app-ua.js; app parity plan 2026-11-20 — the defaults keep the apps
    exactly like the website, the texts of the OFF rows wait for the owner's approval: docs/app/OWNER-APPROVAL-AR.md):
      app_buy_ios / app_buy_android  payments.js + acc-me.js  POST /api/pay/checkout, POST /api/me/invoices from THAT app → 403 app_buy_off
@@ -126,7 +126,7 @@ export const FEATURES = Object.freeze([
     label_ar: "حفظ نتايج الإنترنت لمكتب البيانات", label_en: "Keep web results for the data desk",
     desc_ar: "الفرص اللي جنة وباسم بيلاقوها على الإنترنت (الرابط والعنوان والموقع ونبذة قصيرة، من غير تليفونات ولا إيميلات) بتتحفظ في «🌐 فرص من الإنترنت» على مكتب البيانات، علشان الفريق يراجعها ويحوّل الكويس منها لمحتوى على المنصة بمصدره. مابتظهرش للزوار. لو شروط مزود البحث بتاعك مابتسمحش بحفظ النتايج، اقفله: البحث نفسه بيفضل شغّال.",
     desc_en: "The opportunities Janna and Bassem find on the web (link, title, site and a short snippet, without phone numbers or e-mails) are kept in «🌐 Web leads» on the data desk, so the team reviews them and turns the good ones into platform content with their source. Never shown to visitors. If your search provider's terms do not allow keeping results, switch it off: the search itself keeps working.",
-    lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0011_web_leads.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0011_web_leads.sql is applied (GitHub → Actions → d1-migrate)",
+    lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0012_web_leads.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0012_web_leads.sql is applied (GitHub → Actions → d1-migrate)",
     enforced_by: ["web results are stored for the data desk (web-leads.js)", "GET|PUT /api/team/desk/leads"] },
   /* ---- the platform's own apps (app/: Android + iPhone, user agent «MIGApp/<v> (ios|android)», app-ua.js) and the store rules (app parity
      plan 2026-11-20). The defaults keep the apps EXACTLY like the website; the texts behind the rows that ship OFF wait for the owner's
@@ -308,7 +308,7 @@ export async function deleteStoreOn(env) {
   let ok = false; try { await db.prepare("SELECT 1 AS x FROM cc_delete_requests LIMIT 1").first(); ok = true; } catch (e) { ok = false; }
   DEL_MEMO.set(db, { ok, at: Date.now() }); return ok;
 }
-/* migration 0011 (web_leads, the data desk's «🌐 فرص من الإنترنت») applied? the same memo rule (web-leads.js reads it from here) */
+/* migration 0012 (web_leads, the data desk's «🌐 فرص من الإنترنت») applied? the same memo rule (web-leads.js reads it from here) */
 const LEADS_MEMO = new WeakMap(); // env.DB → {ok, at}
 export async function leadsStoreOn(env) {
   const db = dbOf(env); if (!db) return false;

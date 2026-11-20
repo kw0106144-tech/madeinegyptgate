@@ -1,4 +1,4 @@
-// node --test for «🌐 فرص من الإنترنت» on the data desk (src/web-leads.js, src/acc-team.js; migration 0011_web_leads.sql): the leads store
+// node --test for «🌐 فرص من الإنترنت» on the data desk (src/web-leads.js, src/acc-team.js; migration 0012_web_leads.sql): the leads store
 // (insert, repeat, type upgrade, fail-soft without the table, no phone / e-mail stored), GET /api/team/desk/leads (roles, filters, counts,
 // paging), PUT /api/team/desk/leads/:id (accept / reject / reopen, one cc_audit row in the same batch), POST /api/team/desk/content {lead_id}
 // (the lead linked, best effort). Everything through the real index.js. Run: cd worker && npm test
@@ -74,7 +74,7 @@ describe("web leads: the store", () => {
     assert.equal(await recordLeads(env, [row("tender", "https://a.example/1", "t")], { persona: "janna", via: "hunt" }), 0);
     assert.equal((await rejectedOf(env, [await leadHash("https://a.example/1")], "")).size, 0);
     const l = await listLeads(env, new URL(SITE + L));
-    assert.deepEqual([l.off, l.items.length, l.hint], [true, 0, "apply migrations/0011_web_leads.sql"]);
+    assert.deepEqual([l.off, l.items.length, l.hint], [true, 0, "apply migrations/0012_web_leads.sql"]);
     const env2 = env0();
     await env2.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES ('features', 'system', ?, ?)").bind(JSON.stringify({ v: 1, values: { web_leads: false } }), new Date().toISOString()).run();
     assert.equal(await recordLeads(env2, [row("tender", "https://a.example/1", "t")], { persona: "janna", via: "hunt" }), 0);
@@ -166,14 +166,14 @@ describe("web leads: the data desk API", () => {
 });
 
 describe("web leads: the migration and the schema", () => {
-  test("0011 only creates (IF NOT EXISTS), has no CHECK on type (review S14) and the same table as schema.sql; re-running it is harmless", () => {
-    const m = readFileSync(new URL("../migrations/0011_web_leads.sql", import.meta.url), "utf8"), schema = readFileSync(new URL("../schema.sql", import.meta.url), "utf8");
+  test("0012 only creates (IF NOT EXISTS), has no CHECK on type (review S14) and the same table as schema.sql; re-running it is harmless", () => {
+    const m = readFileSync(new URL("../migrations/0012_web_leads.sql", import.meta.url), "utf8"), schema = readFileSync(new URL("../schema.sql", import.meta.url), "utf8");
     const sql = m.split("\n").filter(l => !/^\s*--/.test(l)).join("\n");
     assert.ok(!/\b(DROP|DELETE|UPDATE|ALTER|REPLACE)\b/i.test(sql));
     assert.equal((sql.match(/CREATE (TABLE|INDEX) IF NOT EXISTS/g) || []).length, (sql.match(/CREATE /g) || []).length);
     assert.ok(!/type\s+TEXT[^\n]*CHECK/i.test(sql) && /status\s+TEXT[^\n]*CHECK/i.test(sql));
     assert.ok(schema.includes(sql.slice(sql.indexOf("CREATE TABLE IF NOT EXISTS web_leads")).trim()), "appended verbatim to schema.sql");
-    assert.match(m, /d1-migrate → Run workflow: migration = 0011_web_leads\.sql, confirm = migate-db/);
+    assert.match(m, /d1-migrate → Run workflow: migration = 0012_web_leads\.sql, confirm = migate-db/);
     const env = env0(); env.DB.db.exec(sql); env.DB.db.exec(sql);
     assert.deepEqual(Object.keys(TYPE_NAMES), ["tender", "rfq", "buyer", "buyer_list", "project", "news", "other"]);
   });

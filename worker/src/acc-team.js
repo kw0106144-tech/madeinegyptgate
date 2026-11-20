@@ -9,7 +9,7 @@
    GET  /api/team/desk/knowledge?status= → {items, total, counts}              0009 «بنك المعلومات» (default «محتاجة إجابة»)
    PUT  /api/team/desk/knowledge/:id {answer?, status?} → {ok, item}           the team's answer / approval (cc_audit row)
    GET  /api/team/desk/leads?status=&type=&market=&q=&sort=&page=&limit= → {items, total, page, limit, counts, by_type}
-                                                                               0011 «🌐 فرص من الإنترنت» (web-leads.js; default new; off without 0011)
+                                                                               0012 «🌐 فرص من الإنترنت» (web-leads.js; default new; off without 0012)
    PUT  /api/team/desk/leads/:id {status: accepted|rejected|new, reason?, note?, content_id?} → {ok, item}   one cc_audit row (503 leads_off)
    POST /api/team/desk/content {…, lead_id?}  a lead turned into content: the lead is linked (accepted + content_id, audited leads.convert),
                                               best effort — the answer says lead_linked: true | false
@@ -24,7 +24,7 @@ import { metaUpsert, metaOf } from "./acc-members.js";
 import { internalInquiry } from "./acc-orders.js";
 import { plansData } from "./acc-plans.js";
 import { listKnowledge, answerKnowledge } from "./knowledge.js"; // 0009: «بنك المعلومات» on the data desk
-import { listLeads, reviewLead, linkLead } from "./web-leads.js"; // 0011: «🌐 فرص من الإنترنت» on the data desk
+import { listLeads, reviewLead, linkLead } from "./web-leads.js"; // 0012: «🌐 فرص من الإنترنت» on the data desk
 
 const DESK_ROLES = new Set(["data", "admin", "owner"]);
 const COLL = { tenders: "tend", projects: "proj", rfqs: "rfq" };
@@ -189,7 +189,7 @@ export async function handleTeam(req, env, ctx, CC) {
     if (path === "/desk/mine") { if (M !== "GET") return ccErr(req, env, 405, "method", "method not allowed"); await limit(env, a, "mine"); return ccJson(req, env, await deskMine(env, url, a, CC)); }
     /* 0009 «بنك المعلومات»: the questions Janna / Bassem could not answer («محتاجة إجابة») — list, answer (one cc_audit row each) */
     if (path === "/desk/knowledge") { if (M !== "GET") return ccErr(req, env, 405, "method", "method not allowed"); await limit(env, a, "mine"); return ccJson(req, env, await listKnowledge(env, url)); }
-    /* 0011 «🌐 فرص من الإنترنت»: what Janna / Bassem found on the web — list, accept / reject (one cc_audit row each) */
+    /* 0012 «🌐 فرص من الإنترنت»: what Janna / Bassem found on the web — list, accept / reject (one cc_audit row each) */
     if (path === "/desk/leads") { if (M !== "GET") return ccErr(req, env, 405, "method", "method not allowed"); await limit(env, a, "leads"); return ccJson(req, env, await listLeads(env, url)); }
     const lm = /^\/desk\/leads\/(\d{1,12})$/.exec(path);
     if (lm) { if (M !== "PUT") return ccErr(req, env, 405, "method", "method not allowed"); await limit(env, a, "leads"); return ccJson(req, env, await reviewLead(env, a.actor, Number(lm[1]), await body(req, 8192), { ipHash: await ipHash(req, env), reqId: line(req.headers.get("cf-ray") || "", 40) })); }

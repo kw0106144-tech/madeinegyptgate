@@ -1,4 +1,4 @@
-/* «🌐 فرص من الإنترنت» — the web leads of the data desk (migration 0011_web_leads.sql, owner switch web_leads; spec 2026-11-20 §5 and its
+/* «🌐 فرص من الإنترنت» — the web leads of the data desk (migration 0012_web_leads.sql, owner switch web_leads; spec 2026-11-20 §5 and its
    review S5 / S8 / S14 / nits 4–5). What Janna's and Bassem's web search / opportunity hunt RETURN from a provider is kept here for the
    data team, so what they find makes the platform's data grow — reviewed by a person, turned into platform content only through the
    existing desk forms with its source. NEVER public: no page, no overlay, no persona tool returns anything from it.
@@ -88,7 +88,7 @@ function itemOf(r) {
     first_seen: r.first_seen, last_seen: r.last_seen, seen_count: r.seen_count, status: r.status, status_ar: sn[0], status_en: sn[1], reason: r.reason || "",
     reason_ar: rn ? rn[0] : "", reason_en: rn ? rn[1] : "", reviewed_by: r.reviewed_by, reviewed_at: r.reviewed_at, note: r.note, content_id: r.content_id };
 }
-const OFF = Object.freeze({ items: [], total: 0, page: 0, limit: 0, counts: { new: 0, accepted: 0, rejected: 0 }, by_type: {}, off: true, hint: "apply migrations/0011_web_leads.sql" });
+const OFF = Object.freeze({ items: [], total: 0, page: 0, limit: 0, counts: { new: 0, accepted: 0, rejected: 0 }, by_type: {}, off: true, hint: "apply migrations/0012_web_leads.sql" });
 /* GET /api/team/desk/leads?status=new|accepted|rejected|all&type=&market=&q=&sort=recent|seen&page=&limit≤100 */
 export async function listLeads(env, url) {
   if (!(await leadsOn(env))) return { ...OFF, counts: { ...OFF.counts } };
@@ -113,7 +113,7 @@ const ACTION = { accepted: "leads.accept", rejected: "leads.reject", new: "leads
 /* PUT /api/team/desk/leads/:id {status: accepted|rejected|new, reason?, note?, content_id?} → {ok, item}; the UPDATE and its cc_audit row in
    ONE batch (an audit that cannot be written = nothing changed); the audit never carries the snippet or the note's text */
 export async function reviewLead(env, actor, id, b, { ipHash = "", reqId = "" } = {}) {
-  if (!(await leadsOn(env))) fail(503, "leads_off", "مكان فرص الإنترنت محتاج تشغيل ملف قاعدة البيانات 0011_web_leads.sql / apply migrations/0011_web_leads.sql");
+  if (!(await leadsOn(env))) fail(503, "leads_off", "مكان فرص الإنترنت محتاج تشغيل ملف قاعدة البيانات 0012_web_leads.sql / apply migrations/0012_web_leads.sql");
   b = b && typeof b === "object" ? b : {};
   const status = String(b.status || "");
   if (!Object.prototype.hasOwnProperty.call(ACTION, status)) fail(400, "invalid_status", "الحالة لازم تكون مقبولة أو مرفوضة أو جديدة / status must be accepted, rejected or new", { errors: [{ field: "status", msg: "accepted | rejected | new" }] });

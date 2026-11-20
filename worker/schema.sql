@@ -1079,7 +1079,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS cc_delete_requests_visitor_open ON cc_delete_r
 -- 0011 — web leads «🌐 فرص من الإنترنت» (owner 2026-11-20: Janna and Bassem as data-pulling machines): the opportunities their web search /
 -- opportunity hunt returned, for the data desk to review (src/web-leads.js, never public, owner switch web_leads). Applied to the live
 -- database ONLY by the manual d1-migrate workflow:
---   Actions → d1-migrate → Run workflow: migration = 0011_web_leads.sql, confirm = migate-db
+--   Actions → d1-migrate → Run workflow: migration = 0012_web_leads.sql, confirm = migate-db
 CREATE TABLE IF NOT EXISTS web_leads (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
   url_hash     TEXT NOT NULL UNIQUE,                    -- sha256("lead|v1|" + the canonical link), 32 hex (https, no www., no trailing slash, sorted query)

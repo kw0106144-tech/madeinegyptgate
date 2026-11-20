@@ -273,11 +273,11 @@ describe("features: the registry, PUT, audit, the public JSON", () => {
     assert.equal(rowOf((await api(e5, "GET", D + "/features", { token: o5.token })).data, "janna_web_search").needs.code, "cap_janna_zero");
     const e4 = env0({ WEBSEARCH_KEY: TAVILY }), o4 = await owner(e4);
     assert.equal(rowOf((await api(e4, "GET", D + "/features", { token: o4.token })).data, "bassem_web_search").locked.code, "no_tool_secret");
-    // web_leads: on by default, effective while migration 0011 exists; locked without the table
+    // web_leads: on by default, effective while migration 0012 exists; locked without the table
     assert.deepEqual([rowOf((await api(e4, "GET", D + "/features", { token: o4.token })).data, "web_leads").effective, rowOf((await api(e4, "GET", D + "/features", { token: o4.token })).data, "web_leads").default], [true, true]);
     const e6 = env0(), o6 = await owner(e6); e6.DB.db.exec("DROP TABLE web_leads");
     const wl = rowOf((await api(e6, "GET", D + "/features", { token: o6.token })).data, "web_leads");
-    assert.deepEqual([wl.locked.code, wl.effective], ["migration_needed", false]); assert.ok(wl.locked.ar.includes("0011_web_leads.sql"));
+    assert.deepEqual([wl.locked.code, wl.effective], ["migration_needed", false]); assert.ok(wl.locked.ar.includes("0012_web_leads.sql"));
   });
   test("public GET /api/settings → features: client / both rows only, effective values, features_v; no server row, no lock or key state", async () => {
     const env = env0(), o = await owner(env);

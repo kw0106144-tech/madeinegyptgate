@@ -435,7 +435,7 @@ missing `X-MIG-Tool` (401) and a wrong method (405) keep their status.
   = 0. Counters in D1 `rl`: `wsday|<day>` (the cap, default 300), `wsmin|<minute>` (30), and for Janna also `wsday|janna|<day>` (her
   share, default 40 % = 120), `wsday|janna|h|<day>|<hour>` (max(6, share ÷ 8)) and `wsmin|janna|<minute>` (12) — all reserved in one round,
   over-reservations given back at once (and the counters that did count when another one failed: a D1 hiccup never eats the cap).
-- **Leads** (`web-leads.js`, table `web_leads`, migration `0011_web_leads.sql`; owner switch `web_leads`): after a FRESH provider answer
+- **Leads** (`web-leads.js`, table `web_leads`, migration `0012_web_leads.sql`; owner switch `web_leads`): after a FRESH provider answer
   (never a cached one, review S8) each tender / RFQ / buyer / buyer list / project (and a hunt's news) is upserted by its canonical link
   (`url_hash`): a known link gains a sighting at most once per clock hour, a better type, the other persona, and keeps its status. Without the
   table nothing is written and the answers do not change. Data desk: `GET /api/team/desk/leads`, `PUT /api/team/desk/leads/:id`

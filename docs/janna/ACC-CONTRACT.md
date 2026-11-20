@@ -2770,7 +2770,7 @@ Owner, verbatim: «عايزك تعمل داش بورد منفصله لتيم ا�
 - Unit tests for the role matrix: seo cannot reach /api/team/desk/*, /api/admin/cc/*; data cannot reach /api/seo/* writes, /api/admin/cc/* (except its own GET mine); both 401 when signed out.
 - Playwright tests for both pages, AR/EN, 1366x800 and 768x1024 (tablet at the desk) and 390x844, mocked API, zero console errors.
 
-### 12.5 «🌐 فرص من الإنترنت» — web leads on the data desk (2026-11-20, migration `0011_web_leads.sql`)
+### 12.5 «🌐 فرص من الإنترنت» — web leads on the data desk (2026-11-20, migration `0012_web_leads.sql`)
 What Janna's and Bassem's web search and opportunity hunt return from a provider (worker/README.md "Web search and the opportunity hunt")
 is kept in `web_leads` for the data team. NEVER public: no page, no overlay, no persona tool reads it. Roles data | admin | owner (as 12.3),
 300 reads + writes an hour; the owner switch `web_leads` (src/flags.js) stops the recording (the desk list stays readable).

@@ -39,7 +39,7 @@
    a minute for all and WS_PER_MIN_JANNA for Janna. Anam documents no session id on webhook calls, so no limit can be per session. A 1-hour
    cache by normalised query + options (per-isolate memory + KV SEO_KV "acc:ws:*", the Worker's own prefix), shared by both personas.
    No SSRF: the only URLs ever fetched are the three fixed provider endpoints above (redirect: manual). The data desk keeps the
-   opportunities found (web-leads.js, migration 0011, provider answers only — review S8). */
+   opportunities found (web-leads.js, migration 0012, provider answers only — review S8). */
 import { safeEq, sha256, cairoDay, addDays, site, iso, toolSoftError } from "./common.js";
 import { norm, forLLM, instructionLike, stripPII } from "./text.js";
 import { webSearchConfig } from "./service-keys.js";

@@ -14,9 +14,9 @@
                                                                                           → {ok, id, state:"published"|"draft"}
      GET  /api/team/desk/mine?kind=&page=&limit=                                          → {items, total, page, limit}
      GET  /api/team/desk/leads?status=new|accepted|rejected|all&type=&q=&page=&limit=     → {items, total, page, limit, counts, by_type}
-                                                                                            (off:true until migration 0011 is applied)
+                                                                                            (off:true until migration 0012 is applied)
      PUT  /api/team/desk/leads/:id {status: accepted|rejected|new, reason?}               → {ok, item} (one audit row; 503 leads_off)
-     «🌐 فرص من الإنترنت» (0011): what Janna's and Bassem's web searches found — reviewed here (✓ مقبولة / ✗ مرفوضة with a reason), an
+     «🌐 فرص من الإنترنت» (0012): what Janna's and Bassem's web searches found — reviewed here (✓ مقبولة / ✗ مرفوضة with a reason), an
      accepted tender / RFQ / project becomes platform content only through its form above, with {lead_id} (the lead is then linked).
    Governorates come from data/regions.js (window.MIGREG, the 27 codes), sectors from window.MIGSECTORS, plans from window.MIGPLAN. */
 (function () {
@@ -460,7 +460,7 @@
       + (lk ? '<p><a href="' + esc(lk) + '" target="_blank" rel="noopener">' + esc(T("افتحه على الموقع ↗", "Open it on the site ↗")) + "</a></p>" : "") + again + "</div>";
   }
 
-  /* ---------- «🌐 فرص من الإنترنت»: what the personas' web searches found (0011) ---------- */
+  /* ---------- «🌐 فرص من الإنترنت»: what the personas' web searches found (0012) ---------- */
   var LTYPE = { tender: ["مناقصة", "Tender"], rfq: ["طلب عرض سعر", "RFQ"], buyer: ["عميل محتمل", "Potential buyer"], buyer_list: ["قائمة عملاء محتملين", "List of potential buyers"], project: ["مشروع جديد", "New project"], news: ["خبر", "News"], other: ["تاني", "Other"] };
   var LTYPES = ["tender", "rfq", "buyer", "buyer_list", "project", "news"];
   var LSTAT = { "new": ["جديدة", "New"], accepted: ["مقبولة", "Accepted"], rejected: ["مرفوضة", "Rejected"], all: ["الكل", "All"] };
@@ -508,7 +508,7 @@
     var sv = app.querySelector('[data-seg="status"]'), tv = app.querySelector('[data-seg="type"]');
     if (j && j.off) {
       if (sv) sv.innerHTML = ""; if (tv) tv.innerHTML = "";
-      el.innerHTML = '<div class="tm-msg warn" role="status">' + esc(T("مكان «فرص من الإنترنت» لسه مش متفعّل على السيرفر: محتاج الإدارة تشغّل ملف قاعدة البيانات 0011_web_leads.sql (Actions ← d1-migrate). لحد كده جنة وباسم بيدوّروا عادي، بس اللي بيلاقوه مش بيتحفظ هنا.", "«Web leads» is not switched on on the server yet: the admins need to apply the database file 0011_web_leads.sql (Actions → d1-migrate). Until then Janna and Bassem search as usual, but what they find is not kept here.")) + "</div>";
+      el.innerHTML = '<div class="tm-msg warn" role="status">' + esc(T("مكان «فرص من الإنترنت» لسه مش متفعّل على السيرفر: محتاج الإدارة تشغّل ملف قاعدة البيانات 0012_web_leads.sql (Actions ← d1-migrate). لحد كده جنة وباسم بيدوّروا عادي، بس اللي بيلاقوه مش بيتحفظ هنا.", "«Web leads» is not switched on on the server yet: the admins need to apply the database file 0012_web_leads.sql (Actions → d1-migrate). Until then Janna and Bassem search as usual, but what they find is not kept here.")) + "</div>";
       return;
     }
     var c = (j && j.counts) || {}, all = (+c["new"] || 0) + (+c.accepted || 0) + (+c.rejected || 0), cs = { "new": c["new"], accepted: c.accepted, rejected: c.rejected, all: all };
@@ -562,7 +562,7 @@
       S.lbusy[id] = false; if (S.leads) paintLeads(S.leads);
       if (e.code === "offline") { S.off = true; paintBanner(); }
       var m = document.getElementById("tmLeadMsg-" + id);
-      if (m) m.innerHTML = '<div class="tm-msg bad" role="alert">' + esc(e.code === "bad_response" ? T("السيرفر مأكّدش التغيير، فمحصلش حاجة. جرّب تاني.", "The server did not confirm the change, so nothing happened. Try again.") : e.code === "leads_off" ? T("مكان «فرص من الإنترنت» لسه مش متفعّل على السيرفر (ملف 0011_web_leads.sql).", "«Web leads» is not switched on on the server yet (file 0011_web_leads.sql).") : errText(e)) + "</div>";
+      if (m) m.innerHTML = '<div class="tm-msg bad" role="alert">' + esc(e.code === "bad_response" ? T("السيرفر مأكّدش التغيير، فمحصلش حاجة. جرّب تاني.", "The server did not confirm the change, so nothing happened. Try again.") : e.code === "leads_off" ? T("مكان «فرص من الإنترنت» لسه مش متفعّل على السيرفر (ملف 0012_web_leads.sql).", "«Web leads» is not switched on on the server yet (file 0012_web_leads.sql).") : errText(e)) + "</div>";
     });
   }
   /* an accepted tender / RFQ / project → its desk form, filled with the title (and the link when it is an official portal) */
