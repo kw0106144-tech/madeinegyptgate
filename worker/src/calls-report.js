@@ -706,7 +706,7 @@ export async function callsReportPut(req, env, ctx, adm) {
   if (!["summary", "full", "off"].includes(tests)) fail(400, "invalid_tests", "summary أو full أو off", { field: "tests" });
   const empty = b.empty === undefined ? cur.empty : String(b.empty);
   if (!["send", "skip"].includes(empty)) fail(400, "invalid_empty", "send أو skip", { field: "empty" });
-  const keep = b.keep_days === undefined ? cur.keep_days : Number(b.keep_days);
+  const keep = b.keep_days == null ? cur.keep_days : Number(b.keep_days); // an emptied field (null) keeps the current value, never 0 = «keep forever»
   if (!keepOk(keep)) fail(400, "invalid_keep_days", "٠ (احتفظ) أو من ٣٠ لـ ٧٣٠ يوم / 0 (keep) or 30–730 days", { field: "keep_days" });
   const fullConfirmed = detail === "full" ? (cur.detail === "full" && cur.full_confirmed ? cur.full_confirmed : { at: t, by, text_v: 1 }) : null;
   const next = { v: 1, to, time, detail, tests, empty, keep_days: keep, by, at: t, ...(fullConfirmed ? { full_confirmed: fullConfirmed } : {}) };

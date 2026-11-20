@@ -508,7 +508,8 @@
       var load = function (msg) { X.GET(API.calls).then(function (j) { paint(j, msg); }, function (e) { if (X.alive(c)) body(c, X.errH(e)); }); };
       var bodyOf = function () {
         var list = String(val("to") || "").split(/[\s,;]+/).filter(function (x) { return x; });
-        return { to: list, time: val("time"), detail: val("detail"), tests: val("tests"), empty: val("empty"), keep_days: parseInt(val("keep_days"), 10), confirm_external: !!val("confirm_external"), confirm_full: !!val("confirm_full") };
+        /* the default recipient in use and the box left empty: the other settings are saved and the recipients stay as they are */
+        return { to: list.length || !(c.st.cr && c.st.cr.using_default) ? list : undefined, time: val("time"), detail: val("detail"), tests: val("tests"), empty: val("empty"), keep_days: parseInt(val("keep_days"), 10), confirm_external: !!val("confirm_external"), confirm_full: !!val("confirm_full") };
       };
       var dayOf = function () { var d = val("day"); c.st.crDay = d; return d; };
       c.on.retry = function () { load(); };

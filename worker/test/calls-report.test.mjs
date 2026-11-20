@@ -409,6 +409,12 @@ describe("calls report: the owner's API", () => {
     assert.deepEqual([s.to, s.detail, s.usingDefault], [["boss@madeinegyptgate.com"], "full", false]);
     r = await put({ use_default: true, detail: "masked" });
     assert.deepEqual([r.status, r.data.using_default, r.data.settings.detail], [200, true, "masked"]);
+    /* on the default recipient (the panel leaves `to` out while its box is empty): the other settings still save; an emptied keep-days
+       field (null) keeps its value instead of becoming 0 = «keep forever» */
+    r = await put({ time: "09:10", keep_days: 90 });
+    assert.deepEqual([r.status, r.data.using_default, r.data.settings.time, r.data.settings.keep_days], [200, true, "09:10", 90]);
+    r = await put({ keep_days: null, tests: "off" });
+    assert.deepEqual([r.status, r.data.using_default, r.data.settings.keep_days, r.data.settings.tests], [200, true, 90, "off"]);
   });
   test("«full» adds the members' clear e-mail and mobile — never anything from a transcript; «masked» (the default) shows a•••@domain", async () => {
     const env = env0();
