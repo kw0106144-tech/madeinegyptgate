@@ -16,6 +16,7 @@ import { putSecret } from "../src/crypto.js";
 import { ipHash, cairoDay } from "../src/common.js";
 import { issueSession } from "../src/auth.js";
 import { D1 } from "./helpers.mjs";
+import { resetMembers } from "../src/lookup-members.js";
 
 const SITE = "https://madeinegyptgate.com";
 const KEY = "anam-test-key-speed-0f3a"; // fake: never a real key
@@ -39,6 +40,7 @@ const req = (path, { method = "GET", body, headers = {} } = {}) => new Request(S
 
 describe("1 worker-tool-fast: Anam's webhooks and the health check skip ccBoot", () => {
   test("POST /api/janna/lookup, POST /api/janna/item, GET /api/janna/health: not one D1 statement (they read only the bundled data)", async () => {
+    resetMembers(); // this isolate's memo of the members' records (src/lookup-members.js) starts empty
     const env = { DB: new D1() }, seen = counted(env);
     const l = await worker.fetch(req("/api/janna/lookup", { method: "POST", body: { section: "tenders", query: "حديد" } }), env, {});
     assert.equal(l.status, 200); assert.ok((await l.json()).count > 0);
@@ -46,9 +48,14 @@ describe("1 worker-tool-fast: Anam's webhooks and the health check skip ccBoot",
     assert.equal((await i.json()).found, true);
     const h = await worker.fetch(req("/api/janna/health"), env, {});
     assert.equal((await h.json()).ok, true);
+    assert.deepEqual(seen, [], seen.join("\n"));
+    /* U16 (src/lookup-members.js): the directory / product / customers sections read the members' approved records — the two member
+       tables only, once per isolate per 10 minutes (never ccBoot's loaders); the next call reads nothing */
     const t = await worker.fetch(req("/api/janna/lookup/", { method: "POST", body: { section: "factories", query: "بلاستيك" } }), env, {});
     assert.equal(t.status, 200, "a trailing slash is the same route");
-    assert.deepEqual(seen, [], seen.join("\n"));
+    assert.equal(seen.length, 2, seen.join("\n")); assert.ok(seen.every(s => /FROM cc_member_products|FROM cc_company_requests/.test(s)), seen.join("\n"));
+    const t2 = await worker.fetch(req("/api/janna/lookup", { method: "POST", body: { section: "customers", query: "ورق، بلاستيك" } }), env, {});
+    assert.equal(t2.status, 200); assert.equal(seen.length, 2, "the memo answers for 10 minutes: " + seen.join("\n"));
   });
   test("every other route still boots the Control Center (plans matrix, mail config, service keys, feature switches)", async () => {
     const env = { DB: new D1() }, seen = counted(env);

@@ -78,6 +78,8 @@ const FILLER = new Set(FILLER_RAW.split(/\s+/).map(w => canon(norm(w))).filter(B
 const NOSEARCH = new Set([...GENERIC, ...FILLER]);
 /* worker/build-index.js: may a description word go into the index? (a generic word stays: phrases use it — «الغازات الصناعية») */
 export const indexable = k => !!k && k.length >= 2 && !STOP.has(k) && !FILLER.has(k);
+/* a stored form that says nothing about what is made or wanted (GENERIC + FILLER): src/lookup-customers.js leaves it out of a term */
+export const isGeneric = k => NOSEARCH.has(k);
 
 /* ---------------- synonym groups ----------------
    EQUIV: every term is the same thing (tier 1). A term ending in «?» has other meanings too: it is matched when the query says it, but a

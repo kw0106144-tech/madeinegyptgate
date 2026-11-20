@@ -3,6 +3,9 @@
    directory (factories & companies, products, tenders, RFQs, retail offers, industrial cities) and SAY the results.
    - POST /api/janna/lookup   body {section, query, governorate?, limit?, page?, market?}  → {count, page, pages, has_more, results[], text}
      (lean for the model: leanLookup below; a malformed request still answers 200 with a `text` the model can act on — never a bare 400)
+     sections (LOOKUP_SECTIONS): the directory, products, tenders, rfqs, offers, cities + customers (a seller's customer industries →
+     directory factories, src/lookup-customers.js), projects, events, news, awards; the members' approved products / companies come from D1
+     (src/lookup-members.js, ≤ 1 read per isolate per 10 minutes), tagged «عضو على المنصة»
    - GET  /api/janna/lookup?section=&query=&governorate=&page=               (the full shape, for testing / the website)
      each result also carries id (for /api/janna/item), open_url (the item's own page) and, for tenders, the amounts the data has
    - GET|POST /api/janna/item {section, id|ref|title}  → the full public record of ONE item + a spoken summary (src/janna-item.js)
@@ -10,10 +13,14 @@
    - POST /api/janna/timing   the live-call page's start timing beacon → 204 + one log line of numbers (src/live-timing.js)
    - POST /api/janna/media/look · /api/janna/media/ticket · /api/advisor/media/look  📎 a photo of Janna's / Bassem's chat, read once by
      Workers AI and never stored → the guarded text block the page gives the persona (src/chat-media.js, switch chat_photos)
-   The webhook routes, the health check and the timing beacon skip ccBoot (BARE below): they read only the bundled data or their own tables.
+   The webhook routes, the health check and the timing beacon skip ccBoot (BARE below): they read only the bundled data or their own tables
+   (the lookup: the two member tables, memoised for 10 minutes).
    Security: if the secret JANNA_KEY is set (wrangler secret put JANNA_KEY), requests must send header X-Janna-Key with it
    (the Anam tool sends it). No API keys are stored in the code. Data = worker/src/data.json (public directory only; no phones). */
 import DATA from "./data.json";
+import ITEMS from "./items.json"; // projects (j) and awards (a) for the lookup's sections of the same name (already bundled for janna-item.js)
+import { custTerms } from "./lookup-customers.js"; // section=customers: the seller's customer industries → the platform's activity labels
+import { memberData, MEMBER_TAG } from "./lookup-members.js"; // the members' approved products / companies, live from D1 (≤ 1 read / 10 min)
 import { handleAdvisor, handleEmail } from "./advisor.js"; // AI Deal Advisor: /api/advisor/* + inbound replies (see README)
 import { handleProfile } from "./profile.js"; // /api/advisor/profile — the member's factory profile Bassem records in the call (migration 0007)
 import { handleMeetings, meetingsCron } from "./meetings.js"; // Janna-hosted meetings: /api/meetings/* + cron (see README)
@@ -29,7 +36,7 @@ import { handleEv, handleUnsub } from "./ev.js";    // /api/ev, /api/unsub
 import { handleWA, bassemCron } from "./whatsapp.js"; // /api/wa/*        respond.io webhook + Bassem's daily WhatsApp
 import { handleJannaSession } from "./janna-session.js"; // /api/janna/session  live-call session tokens (JS SDK: no third-party mark)
 import { handleTiming } from "./live-timing.js";       // /api/janna/timing   the call page's start timing beacon (numbers only)
-import { handleItem, enrichResult } from "./janna-item.js"; // /api/janna/item  one item in full + the lookup results' ids / open_url / amounts
+import { handleItem, enrichResult, absUrl, eventStatus } from "./janna-item.js"; // /api/janna/item  one item in full + the lookup results' ids / open_url / amounts
 import { handleMemory, memoryCron, budgetEnv, TICK } from "./memory.js"; // /api/advisor/memory  Bassem's memory (searches, call turns, summaries, facts)
 // ---- 0009 memory upgrades: Janna's visitor memory, «بنك المعلومات», the daily memory update ----
 import { handleVisitorMemory } from "./visitor.js";   // /api/janna/memory[/tasks]  Janna's memory of her visitors
@@ -131,14 +138,15 @@ function dirIx() {
   return ixOf("f", () => {
     const F = DATA.f || [], FS = DATA.fs || [], FV = DATA.fv || [], FW = DATA.fw || 3, LC = new Map(), lab = [], loc = [], nm = [];
     const dec = s => { const o = []; for (let j = 0; j + FW <= s.length; j += FW) { const k = FV[parseInt(s.slice(j, j + FW), 36)]; if (k) o.push(k); } return o; };
+    /* a row's stored words: [description words, name + product words] (also read again for a member's edit of the row: memberIx) */
+    const words = i => { const f = F[i]; if (typeof f[6] !== "string" || !FV.length) return [[], formsOf(f[0] + " " + f[4])]; const bar = f[6].indexOf("|"); return [dec(f[6].slice(bar + 1)), dec(f[6].slice(0, bar))]; };
+    const labOf = L => { let ls = LC.get(L); if (!ls) { ls = new Set(formsOf(L)); LC.set(L, ls); } return ls; };
     const ix = buildIx(F.length, i => {
-      const f = F[i], L = (f[2] || "") + " " + (Number.isInteger(f[7]) && f[7] >= 0 ? FS[f[7]] || "" : "");
-      let ls = LC.get(L); if (!ls) { ls = new Set(formsOf(L)); LC.set(L, ls); } lab.push(ls); loc.push(norm(f[3])); nm.push(" " + norm(f[0]) + " ");
-      if (typeof f[6] !== "string" || !FV.length) return [[], formsOf(f[0] + " " + f[4])];
-      const bar = f[6].indexOf("|");
-      return [dec(f[6].slice(bar + 1)), dec(f[6].slice(0, bar))];
+      const f = F[i];
+      lab.push(labOf((f[2] || "") + " " + (Number.isInteger(f[7]) && f[7] >= 0 ? FS[f[7]] || "" : ""))); loc.push(norm(f[3])); nm.push(" " + norm(f[0]) + " ");
+      return words(i);
     }, [2, 3]);
-    return Object.assign(ix, { lab, loc, nm });
+    return Object.assign(ix, { lab, loc, nm, words, labOf });
   });
 }
 /* how many companies hold a stored form: tells an attached «و» from a word's own first letter (src/lookup-terms.js concepts) */
@@ -151,6 +159,67 @@ const productIx = () => ixOf("p", () => buildIx(DATA.p.length, i => { const p = 
 const rfqIx = () => ixOf("q", () => buildIx(DATA.q.length, i => { const q = DATA.q[i]; return [formsOf(q[2]), formsOf(q[3] + " " + q[4])]; }, [3, 2]));
 const offerIx = () => ixOf("o", () => buildIx(DATA.o.length, i => { const o = DATA.o[i]; return [formsOf(o[0]), formsOf(o[1] + " " + o[2]), formsOf(o[5])]; }, [3, 2, 1]));
 const cityIx = () => ixOf("z", () => buildIx(DATA.z.length, i => { const z = DATA.z[i]; return [formsOf(z[0] + " " + z[1]), formsOf(z[5]), formsOf(z[2] + " " + z[3] + " " + z[4])]; }, [3, 2, 1]));
+/* U15: the dated lists already bundled — events and news from data.json i (worker/build-index.js: [kind, id, date, sector, governorate, title,
+   page, deadline, market, entity / source, source url]), projects (items.json j) and contract awards (items.json a). A placeholder
+   governorate («غير محددة») is no word of a record. */
+const NO_GOV = "غير محددة", govOf = g => (g && g !== NO_GOV ? g : "");
+const kindIx = (key, kind, fields, W) => ixOf(key, () => { const I = DATA.i || [], rows = []; I.forEach((x, i) => { if (x && x[0] === kind) rows.push(i); }); return Object.assign(buildIx(rows.length, k => fields(I[rows[k]]), W), { rows }); });
+const eventIx = () => kindIx("e", "event", x => [formsOf(x[5]), formsOf(x[3]), formsOf(x[9] + " " + govOf(x[4]))], [3, 2, 1]);
+const newsIx = () => kindIx("n", "news", x => [formsOf(x[5]), formsOf(x[3]), formsOf(govOf(x[4])), formsOf(x[9])], [3, 2, 1, 0.5]);
+const projectIx = () => ixOf("j", () => { const J = ITEMS.j || []; return buildIx(J.length, i => { const p = J[i]; return [formsOf(p.name), formsOf(p.sector + " " + p.stage), formsOf([p.location, p.gov, p.owner, p.contractor, p.consultant].join(" ")), formsOf(p.news)]; }, [3, 2, 1, 1]); });
+const awardIx = () => ixOf("a", () => { const A = ITEMS.a || []; return buildIx(A.length, i => { const a = A[i]; return [formsOf(a.title), formsOf(a.winner + " " + a.entity), formsOf(a.gov + " " + a.city)]; }, [3, 1.5, 1]); });
+/* ---------- the members' own records (U16, src/lookup-members.js): live from D1, tagged «عضو على المنصة» ----------
+   A member's approved company (a new listing, or his approved edit of his own listing) and approved products are indexed beside the
+   bundled data, once per version of the D1 memo; the bundled row they replace (the same listing, or the same product once a deploy
+   bundled it) is left out, so a record never shows twice. */
+let REF_ROW = null; // the hash ref of «company.html#<ref>» → its data.json f row
+const refRow = ref => { if (!REF_ROW) { REF_ROW = new Map(); (DATA.f || []).forEach((f, i) => { const m = /#(.+)$/.exec(String(f[5] || "")); if (m && !REF_ROW.has(m[1])) REF_ROW.set(m[1], i); }); } return REF_ROW.get(ref); };
+let P_NORM = null, MIX = null;
+function memberIx(mem) {
+  if (!mem || !mem.v || (!mem.companies.length && !mem.products.length)) return null;
+  if (MIX && MIX.v === mem.v) return MIX;
+  const X = dirIx(), F = DATA.f, FS = DATA.fs || [], co = [], shadow = new Set(), nameOf = new Map();
+  for (const c of mem.companies) {
+    const bi = refRow(c.ref), b = bi != null ? F[bi] : null;
+    if (!b && c.kind !== "create") continue; // an approved edit of a listing this data does not hold (a later deploy brings it)
+    const name = c.name || (b ? b[0] : ""); if (!name) continue;
+    const where = c.location ? c.location + (c.gov && !c.location.includes(c.gov) ? "، " + c.gov : "") : b ? b[3] : c.gov;
+    const f = [name, c.type || (b ? b[1] : "") || "مصنع", c.activity || (b ? b[2] : ""), where || "", c.products.length ? c.products.join("، ") : b ? b[4] : "", "company.html#" + c.ref];
+    const bw = b ? X.words(bi) : [[], []];
+    co.push({ f, create: !b, w: [c.description ? formsOf(c.description) : bw[0], [...new Set([...formsOf(name + " " + f[4]), ...bw[1]])]],
+      lab: X.labOf(f[2] + " " + (b && Number.isInteger(b[7]) && b[7] >= 0 ? FS[b[7]] || "" : "")) });
+    if (bi != null) shadow.add(bi);
+    nameOf.set(c.ref, name);
+  }
+  const dir = Object.assign(buildIx(co.length, i => co[i].w, [2, 3]), { rows: co, shadow, lab: co.map(x => x.lab), loc: co.map(x => norm(x.f[3])), nm: co.map(x => " " + norm(x.f[0]) + " ") });
+  if (!P_NORM) P_NORM = (DATA.p || []).map(q => [norm(q[0]), norm(q[1])]);
+  const pr = [], pshadow = new Set();
+  for (const p of mem.products) {
+    const bi = p.ref ? refRow(p.ref) : undefined, maker = nameOf.get(p.ref) || (bi != null ? F[bi][0] : "");
+    pr.push({ p, maker, w: [formsOf(p.name + " " + p.name_en), formsOf(maker + " " + p.description)] });
+    const nn = norm(p.name), nmk = norm(maker), nd = norm(p.description);
+    P_NORM.forEach((q, j) => { if (q[0] === nn && ((nmk && q[1].includes(nmk)) || (nd && q[1] === nd))) pshadow.add(j); });
+  }
+  const prod = Object.assign(buildIx(pr.length, i => pr[i].w, [3, 1]), { rows: pr, shadow: pshadow });
+  return (MIX = { v: mem.v, dir, prod });
+}
+/* two matches side by side (rows of A, then rows of B): one ranking over the bundled rows and the members' rows */
+function catM(A, B, nc) {
+  if (!B || !B.n) return A;
+  const n = A.n + B.n, w = new Float32Array(nc * n), t = new Uint8Array(nc * n);
+  for (let c = 0; c < nc; c++) {
+    w.set(A.w.subarray(c * A.n, (c + 1) * A.n), c * n); w.set(B.w.subarray(c * B.n, (c + 1) * B.n), c * n + A.n);
+    t.set(A.t.subarray(c * A.n, (c + 1) * A.n), c * n); t.set(B.t.subarray(c * B.n, (c + 1) * B.n), c * n + A.n);
+  }
+  return { w, t, n };
+}
+/* the directory as one list: data.json f rows (0 … n-1), then the members' companies (n …) */
+function dirView(MX) {
+  const X = dirIx(), n = X.n, Y = MX && MX.dir.n ? MX.dir : null;
+  return { n, N: n + (Y ? Y.n : 0), member: i => i >= n, create: i => i >= n && Y.rows[i - n].create, hidden: i => !!(Y && i < n && Y.shadow.has(i)),
+    row: i => (i < n ? DATA.f[i] : Y.rows[i - n].f), lab: i => (i < n ? X.lab[i] : Y.lab[i - n]), loc: i => (i < n ? X.loc[i] : Y.loc[i - n]), nm: i => (i < n ? X.nm[i] : Y.nm[i - n]),
+    match: CC => catM(matchIx(X, CC), Y ? matchIx(Y, CC) : null, CC.length) };
+}
 /* the Latin words of an index that start with p (worker-intel's word-start terms: "galvaniz" → galvanized) */
 function prefixed(sorted, p) {
   let lo = 0, hi = sorted.length; while (lo < hi) { const mid = (lo + hi) >> 1; if (sorted[mid] < p) lo = mid + 1; else hi = mid; }
@@ -190,12 +259,16 @@ const CLASS = ["all", "partial", "related"];
              «تعبئة» does not; «مواسير بلاستيك»: a pipe maker stays, any plastics firm does not;
    related = the same with the same field's words (tier 2) — kept only when fewer than 3 results are all / partial, at most 20.
    A word no row holds at all is left out of that weighing (the text says no result holds every word), and a partial / related result
-   must hold one specific word (held by at most ~5 % of the list: SPECIFIC) — «الأعشاب الطبية» returns no tender that only says «الطبية».
+   must hold one specific word (held by at most ~5 % of the list: SPECIFIC; for a partial result in a list shorter than 60 rows — rfqs,
+   events, awards — by at most a fifth of it) — «الأعشاب الطبية» returns no tender that only says «الطبية».
    score = Σ IDF of the words held (the field it is in moves it ±25 %; a same-field word counts a fifth); the activity label adds 15 % of
    a word it holds (a tie-breaker, never a match by itself). */
 const RELATED_MAX = 20, SPECIFIC = 3; // ln(1 + 1 / 0.05): a word held by at most ~5 % of the rows
-function rankRows(C, M, rows, { lab = null, first = null } = {}) {
-  const { w, t, n } = M, nc = C.length;
+/* adj(i) moves a row's score (tenders: −3 for an undated legacy row with no entity and no governorate — U10) */
+function rankRows(C, M, rows, { lab = null, first = null, adj = null } = {}) {
+  /* SP: a short list (rfqs 5, events 18, awards 20) has no word held by ≤ 5 % of it — there a word of the query itself held by at most a
+     fifth of the list is specific enough for a partial result (a same-field-only result keeps SPECIFIC: none in a short list) */
+  const { w, t, n } = M, nc = C.length, SP = n >= 60 ? SPECIFIC : Math.log(1 + n / (1 + Math.ceil(n / 5)));
   const df = C.map(() => 0), idf = C.map((_, c) => { let d1 = 0, d = 0; for (let i = 0; i < n; i++) { const x = t[c * n + i]; if (x === 1) d1++; if (x) d++; } df[c] = d; return Math.log(1 + n / (1 + (d1 || d))); });
   const parts = []; C.forEach((c, j) => { (parts[c.part] = parts[c.part] || []).push(j); });
   const PI = parts.filter(Boolean).map(P => { const Q = P.filter(c => df[c] > 0); return { P, Q, mass: Q.reduce((s, c) => s + idf[c], 0), rare: Q.length ? Q.reduce((b, c) => (idf[c] > idf[b] ? c : b), Q[0]) : -1 }; }).filter(x => x.Q.length);
@@ -205,7 +278,7 @@ function rankRows(C, M, rows, { lab = null, first = null } = {}) {
     let cls = 3;
     for (const { P, Q, mass, rare } of PI) {
       let m1 = 0, m1s = 0, ms = 0, sp1 = false, sp = false;
-      for (const c of Q) { const x = t[c * n + i]; if (x === 1) { m1++; m1s += idf[c]; if (idf[c] >= SPECIFIC) sp1 = true; } if (x) { ms += idf[c]; if (idf[c] >= SPECIFIC) sp = true; } }
+      for (const c of Q) { const x = t[c * n + i]; if (x === 1) { m1++; m1s += idf[c]; if (idf[c] >= SP) sp1 = true; } if (x) { ms += idf[c]; if (idf[c] >= SPECIFIC) sp = true; } }
       const k = m1 === P.length ? 0 : sp1 && (m1s >= mass / 2 || t[rare * n + i] === 1) ? 1 : sp && (ms >= mass / 2 || t[rare * n + i]) ? 2 : 3;
       if (k < cls) cls = k;
     }
@@ -216,6 +289,7 @@ function rankRows(C, M, rows, { lab = null, first = null } = {}) {
       if (t[x] === 1) { score += idf[c] * (0.5 + w[x] / 6); m1.push(c); } else { score += idf[c] * 0.2; m2.push(c); }
       if (lab && lab1[c].some(k => lab(i).has(k))) score += 0.15 * idf[c];
     }
+    if (adj) score += adj(i);
     out.push({ i, cls, score, matched: cls === 2 ? m1.concat(m2) : m1, f: first ? first(i) : 0 });
   }
   const strong = out.filter(r => r.cls < 2).length;
@@ -231,34 +305,67 @@ function tag(P, C, r, obj) {
   return obj;
 }
 const isOpen = st => st === "سارية" || st === "تنتهي قريباً";
+/* U10: a legacy row of the old site's tender list — no deadline («غير محدد الموعد»), the placeholder entity «جهة حكومية» and no governorate
+   (375 of the 436 Egyptian tenders): it ranks 3 below an equal match, and the text calls it «قديمة من غير ميعاد» */
+const legacyTender = t => !String(t[7] || "").trim() && t[4] === "جهة حكومية" && !govOf(t[5]);
+/* the lookup's sections (the route's whitelist; an unknown one is searched as factories, as before) + the names a model may send */
+export const LOOKUP_SECTIONS = ["factories", "suppliers", "products", "market", "tenders", "rfqs", "offers", "cities", "customers", "projects", "events", "news", "awards"];
+const SECTION_ALIAS = { buyers: "customers", customer: "customers", clients: "customers", project: "projects", event: "events", exhibitions: "events", exhibition: "events", award: "awards", winners: "awards", article: "news" };
+export const lookupSection = s => { const k = String(s == null ? "" : s).trim().toLowerCase(); return LOOKUP_SECTIONS.includes(k) ? k : SECTION_ALIAS[k] || "factories"; };
+/* the words that only name the section itself («معارض» in the events list, «مشروعات» in the projects list …): left out of the query; a query
+   of those words only lists the section (events: the next ones first, news: the newest first) */
+const SECTION_WORDS = Object.fromEntries(Object.entries({
+  events: "معرض معارض المعرض المعارض معرضين فعاليه فعاليات مؤتمر مؤتمرات ملتقي ملتقى اكسبو expo exhibition exhibitions fair fairs event events show shows trade امتي امتى ميعاد موعد مواعيد",
+  news: "خبر اخبار الاخبار جديد جديده اخر آخر النهارده النهارده امبارح دلوقتي الاسبوع news latest today yesterday",
+  projects: "مشروع مشروعات مشاريع المشروعات المشاريع project projects",
+  awards: "ترسيه ترسيات الترسيه الترسيات عقد عقود فاز فازت كسب كسبت award awards awarded contract contracts winner winners won",
+}).map(([k, v]) => [k, new Set(v.split(" ").map(w => lkCanon(norm(w))))]));
+const dropSectionWords = (section, q) => { const S = SECTION_WORDS[section]; if (!S) return q; return q.split(" ").filter(w => w && !S.has(lkCanon(w)) && !(/^[وبلف]/.test(w) && w.length > 3 && S.has(lkCanon(w.slice(1))))).join(" "); };
+const dayOf = d => (/^\d{4}-\d{2}-\d{2}/.test(String(d || "")) ? String(d).slice(0, 10) : "");
+const dayNum = d => (d ? Date.parse(d + "T12:00:00Z") / 86400000 : 0);
 /* page: 1-based (10 results at most per page); market (tenders only): local (default — the Egyptian list, as before) | gulf | africa |
-   asia | europe | intl (all four) | all (Egyptian + international) */
-function search(section, query, governorate, limit, page, market) {
-  const P = parse(query, governorate), { gov, place } = P;
-  const L = Math.min(Math.max(+limit || 6, 1), 10), res = [], M = marketOf(market), mk = M.mk || "local";
+   asia | europe | intl (all four) | all (Egyptian + international). opts.members = the D1 memo of src/lookup-members.js (the route reads it
+   for the directory, product and customers sections; without it only the bundled data is searched); opts.nowMs = the clock (tests). */
+function search(section, query, governorate, limit, page, market, { members = null, nowMs = Date.now() } = {}) {
   /* the paging / open-one hint only for a caller that pages or picks markets (Bassem's new definition); Janna's tool has neither */
   const paged = (page != null && page !== "") || (market != null && market !== "");
+  const MX = memberIx(members);
+  if (section === "customers") return customers(query, governorate, paged, MX);
+  const P = parse(query, governorate), { gov, place } = P;
+  const L = Math.min(Math.max(+limit || 6, 1), 10), res = [], M = marketOf(market), mk = M.mk || "local";
   if (section === "tenders" && M.bad) return { section, query, governorate: gov || null, place: place || null, market: null, market_unknown: M.bad, markets: MARKETS, widened_to: null, count: 0, page: 1, pages: 1, per_page: L, has_more: false, results: [],
     text: `السوق «${M.bad}» مش من أسواق بحث المناقصات على المنصة، فمادورتش. الأسواق المتاحة: local (مصر)، gulf (الخليج)، africa (أفريقيا)، asia (آسيا)، europe (أوروبا)، intl (كل الدولية)، all (مصر والدولية). دوّر تاني بواحد منهم، ومتقولش نتايج من سوق تاني على إنها من السوق ده.` };
-  const Q = lkConcepts(P.q, dirVocab), C = Q.concepts, CC = C.map(compile);
+  const Q = lkConcepts(dropSectionWords(section, P.q), dirVocab), C = Q.concepts, CC = C.map(compile);
   const all = (n, ok) => { const o = []; for (let i = 0; i < n; i++) if (ok(i)) o.push({ i, cls: 0, score: 0, matched: [] }); return o; };
   const ranked = (ix, ok, opt) => (C.length ? rankRows(C, matchIx(ix, CC), Array.from({ length: ix.n }, (_, i) => i).filter(ok), opt) : all(ix.n, ok));
+  /* with no word, the rows in `first` order (events: the next first; news: the newest first) */
+  const byFirst = (list, first) => (C.length || !first ? list : list.map(r => ({ ...r, f: first(r.i) })).sort((a, b) => b.f - a.f || a.i - b.i));
   const company = f => ({ name: f[0], type: f[1], activity: f[2], location: f[3], products: f[4], url: SITE + f[5] });
+  const memberTag = (V, i, o) => (V.member(i) ? Object.assign(o, { member: true, tag: MEMBER_TAG }, V.create(i) ? { create: true } : {}) : o);
   let widened = null;
   if (section === "factories" || section === "suppliers" || section === "products" || section === "market") {
-    const X = dirIx(), F = DATA.f, prod = section === "products" || section === "market";
+    const V = dirView(MX), prod = section === "products" || section === "market";
+    const rankedV = (ok, opt) => { const rows = []; for (let i = 0; i < V.N; i++) if (!V.hidden(i) && ok(i)) rows.push(i); return C.length ? rankRows(C, V.match(CC), rows, opt) : rows.map(i => ({ i, cls: 0, score: 0, matched: [] })); };
     /* a company asked for by its name («الشركة المتحدة المصرية», «شركة العبوات والمستلزمات»: their generic words decide no match):
-       a record whose name holds the query's own words, in order, leads its class (review 2026-11-20) */
-    const nq = " " + P.q.split(" ").filter(w => w && !STOP.has(w)).join(" ") + " ", byName = nq.trim().indexOf(" ") > 0 ? i => (X.nm[i].includes(nq) ? 1 : 0) : null;
-    if (prod) for (const r of ranked(productIx(), () => true)) if (C.length) { const p = DATA.p[r.i]; res.push([r, tag(P, C, r, { product: p[0], maker: p[1], category: p[2], url: SITE + "market.html" })]); }
-    const dir = ranked(X, i => locOk(X.loc[i], gov, place), { lab: i => X.lab[i], first: byName });
-    for (const r of prod ? dir.filter(r => r.cls < 2) : dir) { if (prod && !C.length) break; const f = F[r.i]; res.push([r, tag(P, C, r, prod ? { name: f[0], activity: f[2], location: f[3], products: f[4], url: SITE + f[5] } : company(f))]); }
+       a record whose name holds the query's own words, in order, leads its class (review 2026-11-20); then a member's own record */
+    const nq = " " + P.q.split(" ").filter(w => w && !STOP.has(w)).join(" ") + " ", named = nq.trim().indexOf(" ") > 0 ? i => (V.nm(i).includes(nq) ? 1 : 0) : () => 0;
+    const first = i => named(i) * 2 + (V.member(i) ? 1 : 0);
+    if (prod && C.length) {
+      const PX = productIx(), Y = MX && MX.prod.n ? MX.prod : null, n = PX.n, rows = [];
+      for (let i = 0; i < n + (Y ? Y.n : 0); i++) if (!(Y && i < n && Y.shadow.has(i))) rows.push(i);
+      for (const r of rankRows(C, catM(matchIx(PX, CC), Y ? matchIx(Y, CC) : null, CC.length), rows, { first: i => (i >= n ? 1 : 0) })) {
+        if (r.i < n) { const p = DATA.p[r.i]; res.push([r, tag(P, C, r, { product: p[0], maker: p[1], category: p[2], url: SITE + "market.html" })]); }
+        else { const y = Y.rows[r.i - n]; res.push([r, tag(P, C, r, { product: y.p.name, maker: y.maker ? "من إنتاج " + y.maker : "", category: y.p.category, url: SITE + "market.html", open_url: SITE + "market.html", member: true, tag: MEMBER_TAG })]); }
+      }
+    }
+    const dir = rankedV(i => locOk(V.loc(i), gov, place), { lab: V.lab, first });
+    for (const r of prod ? dir.filter(r => r.cls < 2) : dir) { if (prod && !C.length) break; const f = V.row(r.i); res.push([r, memberTag(V, r.i, tag(P, C, r, prod ? { name: f[0], activity: f[2], location: f[3], products: f[4], url: SITE + f[5] } : company(f)))]); }
     /* a specific industrial city with few hits (all words or part of them: a same-field result does not count — review 2026-11-20,
        «أكياس بلاستيك … العاشر من رمضان»: 3 same-field results there kept the bag makers of الشرقية out): widen to its governorate and say so */
     const strong = () => res.filter(r => r[0].cls < 2).length;
     if (!prod && place && strong() < 3 && CITY_GOV[place]) {
       const g = norm(CITY_GOV[place]), seen = new Set(res.map(r => r[0].i));
-      for (const r of ranked(X, i => X.loc[i].includes(g) && !seen.has(i), { lab: i => X.lab[i], first: byName })) res.push([r, tag(P, C, r, company(F[r.i]))]);
+      for (const r of rankedV(i => V.loc(i).includes(g) && !seen.has(i), { lab: V.lab, first })) res.push([r, memberTag(V, r.i, tag(P, C, r, company(V.row(r.i))))]);
       widened = CITY_GOV[place];
       if (strong() >= 3) for (let k = res.length - 1; k >= 0; k--) if (res[k][0].cls === 2) res.splice(k, 1); // same field only when few (rankRows)
       res.sort((a, b) => a[0].cls - b[0].cls); // the city's results first inside each class (the sort is stable)
@@ -266,11 +373,11 @@ function search(section, query, governorate, limit, page, market) {
     if (prod) res.sort((a, b) => a[0].cls - b[0].cls); // products first inside each class (the sort is stable)
   } else if (section === "tenders") {
     if (mk !== "local" && !gov) { const I = DATA.i || [];
-      for (const r of ranked(intlIx(), i => I[i][0] === "tender" && I[i][8] !== "local" && (mk === "all" || mk === "intl" || I[i][8] === mk), { first: i => (isOpen(tenderStatus(I[i][7])) ? 1 : 0) })) {
-        const x = I[r.i], st = tenderStatus(x[7]); res.push([r, tag(P, C, r, { ref: x[1], type: "مناقصة دولية", status: st, title: x[5], entity: x[9] || "", governorate: x[4] || "", activity: x[3], deadline: x[7] || "", market: x[8], url: SITE + x[6] })]); } }
+      for (const r of ranked(intlIx(), i => I[i][0] === "tender" && I[i][8] !== "local" && (mk === "all" || mk === "intl" || I[i][8] === mk), { first: i => (isOpen(tenderStatus(I[i][7], nowMs)) ? 1 : 0) })) {
+        const x = I[r.i], st = tenderStatus(x[7], nowMs); res.push([r, tag(P, C, r, { ref: x[1], type: "مناقصة دولية", status: st, title: x[5], entity: x[9] || "", governorate: x[4] || "", activity: x[3], deadline: x[7] || "", market: x[8], url: SITE + x[6] })]); } }
     if (mk === "local" || mk === "all") { const T = DATA.t, G = norm(gov);
-      for (const r of ranked(tenderIx(), i => !gov || norm(T[i][5]).includes(G), { first: i => (isOpen(tenderStatus(T[i][7])) ? 1 : 0) })) {
-        const t = T[r.i], st = tenderStatus(t[7]); res.push([r, tag(P, C, r, { ref: t[0], type: t[1], status: st, title: t[3], entity: t[4], governorate: t[5] || "غير محددة", activity: t[6], deadline: t[7] || "", url: SITE + "tenders/search/#" + encodeURIComponent(t[0]) })]); } }
+      for (const r of ranked(tenderIx(), i => !gov || norm(T[i][5]).includes(G), { first: i => (isOpen(tenderStatus(T[i][7], nowMs)) ? 1 : 0), adj: i => (legacyTender(T[i]) ? -3 : 0) })) {
+        const t = T[r.i], st = tenderStatus(t[7], nowMs); res.push([r, tag(P, C, r, { ref: t[0], type: t[1], status: st, title: t[3], entity: t[4], governorate: t[5] || "غير محددة", activity: t[6], deadline: t[7] || "", url: SITE + "tenders/search/#" + encodeURIComponent(t[0]), ...(legacyTender(t) ? { legacy: true } : {}) })]); } }
     if (mk === "all") res.sort((a, b) => a[0].cls - b[0].cls || b[0].f - a[0].f || b[0].score - a[0].score); // Egyptian + international in one order
   } else if (section === "rfqs") {
     for (const r of ranked(rfqIx(), () => true)) { const q = DATA.q[r.i]; res.push([r, tag(P, C, r, { ref: q[0], date: q[1], title: q[2], details: q[3], quantity: q[4], url: SITE + "rfq/search/#" + encodeURIComponent(q[0]) })]); }
@@ -279,39 +386,163 @@ function search(section, query, governorate, limit, page, market) {
   } else if (section === "cities") {
     const G = norm(gov);
     for (const r of ranked(cityIx(), i => !gov || norm(DATA.z[i][3]).includes(G))) { const z = DATA.z[r.i]; res.push([r, tag(P, C, r, { name: z[0], name_en: z[1], type: z[2], governorate: z[3], city: z[4], sectors: z[5], url: SITE + z[6] })]); }
+  } else if (section === "events" || section === "news") {
+    /* U15: events = the next ones first (then the past ones, newest first); news = the newest first — inside each class of match */
+    const ev = section === "events", X = ev ? eventIx() : newsIx(), I = DATA.i || [], G = norm(gov), today = cairoDay(nowMs);
+    const first = k => { const d = dayOf(I[X.rows[k]][2]); return !d ? 0 : ev && eventStatus(d, today) !== "انتهى" ? 2e6 - dayNum(d) : dayNum(d); }; // running / next first
+    for (const r of byFirst(ranked(X, k => !gov || norm(govOf(I[X.rows[k]][4])).includes(G), { first }), first)) {
+      const x = I[X.rows[r.i]], d = dayOf(x[2]);
+      res.push([r, tag(P, C, r, ev ? { title: x[5], date: d, status: eventStatus(d, today), activity: x[3] || "", governorate: govOf(x[4]) || undefined, host: x[9] || undefined, id: x[1], open_url: absUrl(x[6]), documents_url: x[10] || undefined }
+        : { title: x[5], date: d, category: x[3] || "", governorate: govOf(x[4]) || undefined, source: x[9] || "", id: x[1], open_url: absUrl(x[6]), documents_url: x[10] || undefined })]);
+    }
+  } else if (section === "projects") {
+    const J = ITEMS.j || [], G = norm(gov);
+    for (const r of ranked(projectIx(), i => !gov || norm(J[i].gov + " " + J[i].location).includes(G))) { const p = J[r.i];
+      res.push([r, tag(P, C, r, { title: p.name, governorate: p.gov || undefined, location: p.location || undefined, activity: p.sector || undefined, stage: p.stage || undefined, owner: p.owner || undefined,
+        contractor: p.contractor || undefined, value_egp_million: p.value_mn_egp ?? undefined, id: p.id, open_url: absUrl(p.path) })]); }
+  } else if (section === "awards") {
+    const A = ITEMS.a || [], G = norm(gov);
+    for (const r of byFirst(ranked(awardIx(), i => !gov || norm(A[i].gov + " " + A[i].city).includes(G)), i => dayNum(dayOf(A[i].date)))) { const a = A[r.i];
+      res.push([r, tag(P, C, r, { title: a.title, winner: a.winner || undefined, entity: a.entity || undefined, governorate: a.gov || undefined, date: a.date || undefined, id: a.id, open_url: absUrl(a.path) })]); }
   }
   const nAll = C.length ? res.filter(r => r[0].cls === 0).length : res.length, nRel = res.filter(r => r[0].cls === 2).length;
   const amb = C.length === 1 && C[0].amb ? { word: sayWord(P, C[0]), note: C[0].amb.note } : null;
   const pages = Math.max(1, Math.ceil(res.length / L)), pg = Math.min(Math.max(Math.floor(+page || 1), 1), 1000), from = (pg - 1) * L;
-  const top = res.slice(from, from + L).map(r => enrichResult(section, r[1])), more = Math.max(0, res.length - from - top.length);
+  const top = res.slice(from, from + L).map(r => { const o = enrichResult(section, r[1]); if (o.create) { delete o.id; delete o.create; } return o; }), more = Math.max(0, res.length - from - top.length);
   /* the words as the query's list items: «مواسير حديد» أو «بلاستيك» (review 2026-11-20: «مواسير أو حديد أو بلاستيك» read as if every
      word were an alternative) */
   const items = []; C.forEach(c => (items[c.part] = items[c.part] || []).push(sayWord(P, c)));
-  const st = { words: items.filter(Boolean).map(x => x.join(" ")).join("» أو «"), all: nAll, rel: nRel, amb, n: C.length };
+  const st = { words: items.filter(Boolean).map(x => x.join(" ")).join("» أو «"), all: nAll, rel: nRel, amb, n: C.length,
+    ...(section === "tenders" ? { open: res.filter(r => isOpen(r[1].status)).length, q: String(query || "").trim().slice(0, 80) } : {}) };
   return { section, query, governorate: gov || null, place: place || null, market: section === "tenders" ? mk : undefined, widened_to: widened, count: res.length, count_all: nAll, partial: res.length > nAll,
     ...(amb ? { ambiguous: { word: amb.word, meanings: amb.note } } : {}), page: pg, pages, per_page: L, has_more: more > 0, results: top,
     text: (widened ? "نتائج قليلة داخل " + place + " نفسها، فتمت إضافة نتائج من محافظة " + widened + ". " : "") + (pg > pages && res.length ? `دي كانت كل النتائج (${res.length}) في ${pages === 1 ? "صفحة واحدة" : pages + " صفحات"}؛ مفيش صفحة ${pg}.` : summary(section, res.length, top.slice(0, 6), gov || place, paged, query, st)) + (more && paged ? ` وفيه كمان ${more} نتيجة: اطلب page=${pg + 1}، أو هات تفاصيل نتيجة بالـ id بتاعها من platform_item.` : "") };
+}
+
+/* ---------- section=customers (U2, src/lookup-customers.js) ----------
+   query = the industries the SELLER serves, in his own words; one term per item of his list (، , ؛ ; / or a standalone و / أو / and / or).
+   Each term → the platform's activity labels (CUST_MAP); a term no label knows → the companies that write all its words (name, products,
+   description). Counted: directory rows of type «مصنع» in the place (a city counts as its governorate: customers are a market); traders
+   («شركة ومورد», «شركة») are said apart and never counted. groups = [{industry, terms, factories, others, top: 2 factories}], results =
+   at most 6 factories (the groups' first ones), count = distinct factories. The text says data only: directory factories in the industries
+   he named, NOT purchase requests, their contacts are not published; no plan promise (the plan facts are the prompts'). */
+const CUST_SEP = "qqsepqq", CUST_TERMS = 8, CUST_TOP = 2, CUST_RESULTS = 6;
+const isFactoryRow = f => String((f && f[1]) || "").trim() === "مصنع";
+const factoriesN = n => (n === 1 ? "مصنع واحد" : n === 2 ? "مصنعين" : n + (n <= 10 ? " مصانع" : " مصنع"));
+const tradersN = n => (n === 1 ? "شركة تجارية واحدة أو مورد" : n === 2 ? "شركتين تجاريتين أو موردين" : n + (n <= 10 ? " شركات تجارية وموردين" : " شركة تجارية وموردين"));
+function customers(query, governorate, m, MX) {
+  const raw = String(query || "").slice(0, 200).replace(/[,،؛;|/]+|\s[-–—]\s/g, " " + CUST_SEP + " ").replace(/(^|\s)(?:و|او|أو|and|or|&)(?=\s|$)/giu, "$1" + CUST_SEP + " ");
+  const P = parse(raw, governorate);
+  let gov = P.gov, place = P.place, widened = null;
+  if (place && CITY_GOV[place]) { widened = place; gov = CITY_GOV[place]; place = ""; } // the city's own governorate (review: never «محافظة القاهرة (اللي فيها العاشر من رمضان)»)
+  const V = dirView(MX), sayW = s => String(s).split(" ").map(w => P.said.get(w) || w).join(" ");
+  const inPlace = i => !V.hidden(i) && locOk(V.loc(i), gov, place);
+  const G = new Map(), unknown = [];
+  for (const t of P.q.split(CUST_SEP).map(s => s.trim()).filter(Boolean).flatMap(ch => custTerms(ch.split(" "))).slice(0, CUST_TERMS)) {
+    const said = sayW(t.words.join(" "));
+    if (t.labels.length) { for (const l of t.labels) { if (!G.has(l)) G.set(l, { industry: l, terms: [], label: l }); const g = G.get(l); if (!g.terms.includes(said)) g.terms.push(said); } continue; }
+    if (!t.unknown.length) continue;
+    /* review: a kind of customer the directory does not list (hospitals, restaurants, shops: lookup-customers.js CUST_PLACE) is no industry,
+       and is not searched as words either: the companies that write «مستشفيات» are the ones that supply them, the seller's competitors */
+    const Cq = lkConcepts(t.unknown.join(" "), dirVocab).concepts, CCq = Cq.map(compile), sayQ = Cq.length ? Cq.map(c => sayWord(P, c)).join(" ") : said; // «درافيل», not «ودرافيل»
+    if (t.place) { if (!unknown.includes(sayQ)) unknown.push(sayQ); continue; }
+    /* no label: the companies that write every word of the term (whole words, src/lookup-terms.js) — anywhere first: none → no such industry */
+    const hits = Cq.length ? rankRows(Cq, V.match(CCq), Array.from({ length: V.N }, (_, i) => i).filter(i => !V.hidden(i))).filter(r => r.cls === 0).map(r => r.i) : [];
+    if (!hits.length) { if (!unknown.includes(sayQ)) unknown.push(sayQ); continue; }
+    const k = "d:" + sayQ; if (!G.has(k)) G.set(k, { industry: sayQ, terms: [sayQ], desc: true, rows: hits.filter(inPlace) });
+  }
+  const groups = [], counted = new Set(), traders = new Set();
+  for (const g of G.values()) {
+    const rows = g.desc ? g.rows : []; if (!g.desc) for (let i = 0; i < V.N; i++) if (V.row(i)[2] === g.label && inPlace(i)) rows.push(i);
+    const fac = rows.filter(i => isFactoryRow(V.row(i))), oth = rows.length - fac.length;
+    /* the first factories: those that write one of the seller's own words for this industry (members first among equals), then data order */
+    const Cg = lkConcepts(g.terms.join("، "), dirVocab).concepts, CCg = Cg.map(compile);
+    const lead = Cg.length && fac.length ? rankRows(Cg, V.match(CCg), fac, { first: i => (V.member(i) ? 1 : 0) }).filter(r => r.cls < 2).map(r => r.i) : [];
+    const order = [...new Set([...lead, ...fac.filter(i => V.member(i)), ...fac])];
+    fac.forEach(i => counted.add(i)); rows.forEach(i => { if (!isFactoryRow(V.row(i))) traders.add(i); });
+    groups.push({ industry: g.industry, terms: g.terms, ...(g.desc ? { by_words: true } : {}), factories: fac.length, others: oth, order });
+  }
+  groups.sort((a, b) => b.factories - a.factories);
+  const card = i => { const f = V.row(i), o = enrichResult("factories", { name: f[0], type: f[1], activity: f[2], location: f[3], url: SITE + f[5] }); if (V.member(i)) Object.assign(o, { member: true, tag: MEMBER_TAG }); if (V.create(i)) delete o.id; return o; };
+  const results = [], shown = new Set();
+  for (let k = 0; k < CUST_TOP && results.length < CUST_RESULTS; k++) for (const g of groups) { const i = g.order[k]; if (i == null || shown.has(i) || results.length >= CUST_RESULTS) continue; shown.add(i); results.push(Object.assign(card(i), { industry: g.industry })); }
+  const out = groups.map(g => ({ industry: g.industry, terms: g.terms, ...(g.by_words ? { by_words: true } : {}), factories: g.factories, others: g.others,
+    top: g.order.slice(0, CUST_TOP).map(i => { const c = card(i); return { name: c.name, place: c.location || "", ...(c.id ? { id: c.id } : {}), open_url: c.open_url || c.url, ...(c.member ? { member: true } : {}) }; }) }));
+  const where = gov || place, W = where ? (widened ? "محافظة " + where + " (اللي فيها " + widened + ")" : where) : "كل المحافظات";
+  const noIndustry = unknown.length ? ` مالقيتش صناعة اسمها ${unknown.map(u => "«" + u + "»").join(" ولا ")} في دليل المنصة.` : "";
+  let text;
+  if (!out.length) text = (noIndustry.trim() || "مفيش صناعات واضحة في الطلب.") + (m ? " اسأل العميل بيبيع لأنهي صناعات بالظبط (زي ورق، أسمنت، أغذية، بلاستيك) ودوّر تاني بأسمائها." : " اسألي العميل بيبيع لأنهي صناعات بالظبط (زي ورق، أسمنت، أغذية، بلاستيك) ودوّري تاني بأسمائها.");
+  else {
+    const line = g => (g.by_words ? "مصانع بتكتب «" + g.industry + "» في نشاطها أو منتجاتها" : g.industry) + ": " + (g.factories ? factoriesN(g.factories) + (g.top.length ? " (منهم " + g.top.map(t => t.name).join(" و") + ")" : "") : "مفيش مصانع في الدليل هنا");
+    /* review (the Al-Atlal call again): a group found by its words alone holds the companies that MAKE or SELL that thing — the seller's
+       own product («سلندرات ودرافيل») gives his competitors; the persona asks before it says these numbers */
+    const byW = out.filter(g => g.by_words && g.factories), caution = !byW.length ? "" : ` تنبيه: ${byW.map(g => "«" + g.industry + "»").join(" و")} مش ${byW.length > 1 ? "أسماء صناعات" : "اسم صناعة"} في الدليل، فدول مصانع بتكتب الكلمة دي في نشاطها أو منتجاتها، يعني غالباً بتصنّعها أو بتورّدها: لو دي منتجات العميل نفسه يبقوا منافسين مش عملاء، ف${m ? "اسأله الأول بيبيعها لأنهي صناعات قبل ما تقول" : "اسأليه الأول بيبيعها لأنهي صناعات قبل ما تقولي"} الأرقام دي.`;
+    text = `دي مصانع في دليل المنصة في الصناعات اللي حضرتك قلت إنك بتخدمها في ${W} — مش طلبات شراء، وبيانات تواصلهم مش منشورة: ${out.map(line).join("؛ ")}.`
+      + (counted.size ? ` المجموع ${factoriesN(counted.size)}.` : "")
+      + (traders.size ? ` وكمان ${tradersN(traders.size)} في نفس الصناعات، مش محسوبين ضمن المصانع.` : "") + noIndustry + caution
+      + (m ? " قولها كده بالظبط: أرقام مصانع من دليل المنصة في الصناعات دي، مش عملاء أكيدين ولا طلبات شراء؛ ماتوعدش بالتواصل معاهم، وماتضيفش أسماء أو أرقام أو بيانات تواصل."
+        : " قوليها كده بالظبط: أرقام مصانع من دليل المنصة في الصناعات دي، مش عملاء أكيدين ولا طلبات شراء؛ ماتوعديش بالتواصل معاهم، وماتضيفيش أسماء أو أرقام أو بيانات تواصل.");
+  }
+  return { section: "customers", query, governorate: gov || null, place: place || null, widened_to: widened ? gov : null, ...(widened ? { city: widened } : {}), count: counted.size, count_all: counted.size, partial: false,
+    others: traders.size, groups: out, ...(unknown.length ? { unknown } : {}), page: 1, pages: 1, per_page: CUST_RESULTS, has_more: false, results, text };
 }
 /* a query with letters and not one Arabic letter (acier, Stahl, сталь, 钢铁 — or English the EN map does not know): the platform's data is
    Arabic + English, so a 0-result answer must not read as «none exist» — the model translates the word and searches again (any-language
    plan 2026-11-20). Arabic queries keep today's text byte for byte. */
 const ARABIC_LETTER = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 export const foreignQuery = q => /\p{L}/u.test(String(q || "")) && !ARABIC_LETTER.test(String(q || ""));
+/* the lists of the new sections are named for what they are (not «دليل المنصة», the directory) */
+const LIST_NAME = { news: "أخبار المنصة", events: "أجندة معارض المنصة", projects: "مشروعات المنصة", awards: "ترسيات المنصة" };
+/* a tender's status as it is said (U10): every result says it; an undated legacy row is «قديمة من غير ميعاد» */
+function statusSaid(r) {
+  if (isOpen(r.status)) return r.status + (r.deadline ? "، آخر موعد " + r.deadline : "");
+  if (r.status === "منتهية") return "منتهية" + (r.deadline ? "، آخر موعد كان " + r.deadline : "");
+  return r.legacy ? "قديمة من غير ميعاد" : "من غير ميعاد معلن";
+}
+/* one result as one line of the text */
+function itemLine(section, r, has) {
+  const h = has(r), hp = h ? " (" + h.slice(2) + ")" : "";
+  if (section === "tenders") return `${r.title}${r.entity && !r.legacy ? " — " + r.entity : ""} — ${statusSaid(r)}${hp}`;
+  if (section === "events") return `${r.title} — ${r.date || "من غير تاريخ"}${r.status ? " (" + r.status + ")" : ""}${r.governorate ? "، " + r.governorate : ""}${hp}`;
+  if (section === "news") return `${r.title} — ${r.source || "من غير مصدر"}${r.date ? "، " + r.date : ""}${hp}`;
+  if (section === "projects") return `${r.title} (${[r.governorate, r.stage].filter(Boolean).join("، ")}${h})`;
+  if (section === "awards") return `${r.title}${r.winner && !String(r.title).includes(r.winner) ? " — الفايز " + r.winner : ""}${r.date ? "، " + r.date : ""}${hp}`;
+  if (section === "rfqs") return `${r.title}${r.date ? " — " + r.date : ""}${hp}`;
+  const mt = r.member ? "، " + MEMBER_TAG : "";
+  return r.sectors !== undefined ? `${r.name} (${r.governorate}${r.sectors ? "، قطاعات: " + r.sectors : ""}${h})` : r.name ? `${r.name} (${r.activity || ""}${r.location ? "، " + r.location : ""}${mt}${h})` : r.title ? `${r.title}${hp}`
+    : r.product ? `${r.product}${r.store ? " في " + r.store + " بسعر " + r.price_egp + " جنيه" : r.maker ? " — " + r.maker : ""}${r.member ? " (" + MEMBER_TAG + ")" : ""}${hp}` : r.name_en || "";
+}
+/* the closing line of a text: what the data is and what the persona must not add */
+function tailOf(section, m) {
+  if (section === "news") return `دي أخبار منشورة على المنصة بمصدرها وتاريخها؛ ${m ? "قول المصدر والتاريخ زي ما هما، ومتضيفش" : "قولي المصدر والتاريخ زي ما هما، ومتضيفيش"} أرقام أو أسعار مش مكتوبة في الخبر.`;
+  if (section === "events") return `دي معارض من أجندة المنصة بمواعيدها المنشورة؛ ${m ? "قول التاريخ زي ما هو، واللي «بدأ» ممكن يكون لسه شغال، واللي «انتهى» قول إنه خلص" : "قولي التاريخ زي ما هو، واللي «بدأ» ممكن يكون لسه شغال، واللي «انتهى» قولي إنه خلص"}، والتسجيل والتفاصيل من موقع المعرض الرسمي.`;
+  if (section === "projects" || section === "awards") return `دي بيانات منشورة بمصادرها على المنصة؛ ${m ? "اذكر منها فقط ومتضيفش" : "اذكري منها فقط ومتضيفيش"} أرقام أو جهات مش مكتوبة، والتواصل مع الجهات دي مش من خلال المنصة.`;
+  return `هذه بيانات حقيقية من المنصة؛ ${m ? "اذكر منها فقط ولا تضيف" : "اذكري منها فقط ولا تضيفي"} بيانات تواصل (التواصل عبر زر «اطلب عرض سعر» في ملف المنشأة).`;
+}
 /* m = the caller is Bassem (his tool definition sends page / market — holo5 `paged`): the same text in the masculine; Janna keeps hers.
-   st = the honest counts of the query's words: all = results that hold every word (of one item of a list), rel = from the same field only */
+   st = the honest counts of the query's words: all = results that hold every word (of one item of a list), rel = from the same field only;
+   tenders: open = the open ones among them (none → the text starts «مفيش مناقصة سارية …», U10) */
 function summary(section, n, top, where, m, query, st = null) {
-  if (!n) return "لا توجد نتائج مطابقة في دليل المنصة لهذا البحث" + (where ? " في " + where : "") + (m ? ". لا تخترع نتائج؛ اقترح كلمات بحث أخرى أو نشر طلب عرض سعر مجاني." : ". لا تخترعي نتائج؛ اقترحي كلمات بحث أخرى أو نشر طلب عرض سعر مجاني.")
+  const LN = LIST_NAME[section] || "دليل المنصة";
+  if (!n) return "لا توجد نتائج مطابقة في " + LN + " لهذا البحث" + (where ? " في " + where : "") + (LIST_NAME[section] ? (m ? ". لا تخترع نتائج؛ اقترح كلمات بحث أخرى." : ". لا تخترعي نتائج؛ اقترحي كلمات بحث أخرى.")
+    : m ? ". لا تخترع نتائج؛ اقترح كلمات بحث أخرى أو نشر طلب عرض سعر مجاني." : ". لا تخترعي نتائج؛ اقترحي كلمات بحث أخرى أو نشر طلب عرض سعر مجاني.")
     + (!foreignQuery(query) ? "" : m ? " بيانات المنصة بالعربي والإنجليزي: لو الكلمة بلغة تانية ترجمها للعربي (acier = حديد) ودوّر تاني قبل ما تقول مفيش."
       : " بيانات المنصة بالعربي والإنجليزي: لو الكلمة بلغة تانية ترجميها للعربي (acier = حديد) ودوّري تاني قبل ما تقولي مفيش.");
   const has = r => (r.match && r.match !== "all" && r.matched && r.matched.length ? (r.match === "related" ? "؛ من نفس المجال: " : "؛ فيها: ") + r.matched.join(" و") : "");
-  const items = top.map(r => r.sectors !== undefined ? `${r.name} (${r.governorate}${r.sectors ? "، قطاعات: " + r.sectors : ""}${has(r)})` : r.name ? `${r.name} (${r.activity || ""}${r.location ? "، " + r.location : ""}${has(r)})` : r.title ? `${r.title} — ${r.entity} — ${r.status}${r.deadline ? "، آخر موعد " + r.deadline : ""}${has(r) ? " (" + has(r).slice(2) + ")" : ""}` : r.product ? `${r.product}${r.store ? " في " + r.store + " بسعر " + r.price_egp + " جنيه" : r.maker ? " — " + r.maker : ""}${has(r) ? " (" + has(r).slice(2) + ")" : ""}` : r.name_en || "");
-  const tail = `هذه بيانات حقيقية من المنصة؛ ${m ? "اذكر منها فقط ولا تضيف" : "اذكري منها فقط ولا تضيفي"} بيانات تواصل (التواصل عبر زر «اطلب عرض سعر» في ملف المنشأة).`;
-  if (!st || !st.n) return `عدد النتائج في دليل المنصة: ${n}. أهمها: ${items.join("؛ ")}. ${tail}`;
+  const items = top.map(r => itemLine(section, r, has)), tail = tailOf(section, m);
+  /* U10: no open tender for the words → said first; the nearest ones follow with their status (old with no deadline / ended) */
+  if (section === "tenders" && st && st.open === 0) {
+    const q = st.n ? st.words : st.q;
+    return `مفيش مناقصة سارية${q ? " في «" + q + "»" : ""}${where ? " في " + where : ""} على المنصة دلوقتي؛ أقرب اللي عندنا: ${items.join("؛ ")}. (${n} نتيجة، ولا واحدة منهم سارية${st.n && st.all < n ? "، و" + (st.all ? st.all + " بس فيها كل كلمات البحث" : "مفيش ولا واحدة فيها كل كلمات البحث") : ""}.) `
+      + (m ? "قولها كده: مفيش مناقصة سارية دلوقتي، ودي قديمة أو منتهية." : "قوليها كده: مفيش مناقصة سارية دلوقتي، ودي قديمة أو منتهية.") + (st.amb ? ` تنبيه: كلمة «${st.amb.word}» ليها أكتر من معنى (${st.amb.note}).` : "") + " " + tail;
+  }
+  const openNote = section === "tenders" && st && st.open ? ` (السارية منهم: ${st.open})` : "";
+  if (!st || !st.n) return `عدد النتائج في ${LN}: ${n}${openNote}. أهمها: ${items.join("؛ ")}. ${tail}`;
   const part = n - st.all - st.rel;
   const others = (part ? `${part} نتيجة فيها جزء من الكلمات بس` : "") + (part && st.rel ? " و" : "") + (st.rel ? `${st.rel} من نفس المجال بكلمات قريبة (مش نفس الكلمة)` : "");
   const amb = st.amb ? ` تنبيه: كلمة «${st.amb.word}» ليها أكتر من معنى (${st.amb.note})؛ ${m ? "اسأل العميل سؤال واحد يقصد أنهي، وبعدين دوّر" : "اسألي العميل سؤال واحد يقصد أنهي، وبعدين دوّري"} بالكلمة الأدق.` : "";
-  if (st.all) return `عدد النتائج اللي فيها كل كلمات البحث («${st.words}») في دليل المنصة: ${st.all}${others ? "، وفيه كمان " + others : ""}. أهمها: ${items.join("؛ ")}.${amb} ${tail}`;
-  return `مفيش نتيجة في دليل المنصة فيها كل كلمات البحث («${st.words}»)؛ أقرب النتائج: ${others}. أهمها: ${items.join("؛ ")}. ${m ? "قولها على إنها أقرب نتايج، مش مطابقة" : "قوليها على إنها أقرب نتايج، مش مطابقة"}.${amb} ${tail}`;
+  if (st.all) return `عدد النتائج اللي فيها كل كلمات البحث («${st.words}») في ${LN}: ${st.all}${others ? "، وفيه كمان " + others : ""}${openNote}. أهمها: ${items.join("؛ ")}.${amb} ${tail}`;
+  return `مفيش نتيجة في ${LN} فيها كل كلمات البحث («${st.words}»)؛ أقرب النتائج: ${others}${openNote}. أهمها: ${items.join("؛ ")}. ${m ? "قولها على إنها أقرب نتايج، مش مطابقة" : "قوليها على إنها أقرب نتايج، مش مطابقة"}.${amb} ${tail}`;
 }
 
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Janna-Key" };
@@ -335,6 +566,8 @@ export function leanLookup(o) {
     return x;
   });
   const y = { ...o, results };
+  /* section=customers: the groups' first factories carry open_url too (decoded the same way) */
+  if (Array.isArray(o.groups)) y.groups = o.groups.map(g => (!g || !Array.isArray(g.top) ? g : { ...g, top: g.top.map(t => { if (!t || !t.open_url) return t; try { return { ...t, open_url: decodeURI(t.open_url) }; } catch (e) { return t; } }) }));
   delete y.per_page;
   for (const k of ["place", "widened_to", "governorate"]) if (y[k] == null) delete y[k];
   return y;
@@ -395,9 +628,12 @@ const WORKER = {
     const post = req.method === "POST";
     let a = Object.fromEntries(url.searchParams);
     if (post) { try { a = Object.assign(a, await req.json()); } catch (e) { toolSoftError("/api/janna/lookup", "bad_json"); return json({ error: "bad json", count: 0, results: [], text: LOOKUP_TEXT.bad_json }, 200); } }
-    const section = ["factories", "suppliers", "products", "market", "tenders", "rfqs", "offers", "cities"].includes(a.section) ? a.section : "factories";
+    const section = lookupSection(a.section); // LOOKUP_SECTIONS (+ customers, projects, events, news, awards — U2 / U15); unknown → factories, as before
     if (!a.query && !a.governorate) { if (post) toolSoftError("/api/janna/lookup", "query_required"); return json({ error: "query required", count: 0, results: [], text: LOOKUP_TEXT.no_query }, post ? 200 : 400); }
-    const r = search(section, String(a.query || "").slice(0, 200), String(a.governorate || "").slice(0, 60), a.limit, a.page, a.market);
+    /* U16: the members' approved products / companies (D1, at most one read per isolate per 10 minutes; fail-soft) for the sections that list
+       them — only those approved since this bundle was built (data.json v): the older ones are in it already */
+    const members = /^(factories|suppliers|products|market|customers)$/.test(section) ? await memberData(env, Date.now(), DATA.v) : null;
+    const r = search(section, String(a.query || "").slice(0, 200), String(a.governorate || "").slice(0, 60), a.limit, a.page, a.market, { members });
     return json(post ? leanLookup(r) : r);
   },
   /* Cloudflare Email Routing → replies to deal-<id>@reply.madeinegyptgate.com (AI Deal Advisor) */
