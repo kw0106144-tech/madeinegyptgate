@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider (AndroidManifest.xml): files the app hands to another app. Camera photos for the file chooser
+     (MigChromeClient: cache/camera/), page-made files on Android 7–9 (MigDownloads: the app's own Downloads folder), Capacitor's
+     own camera capture (external files/Pictures). -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <external-path name="my_images" path="." />
     <cache-path name="my_cache_images" path="." />
+    <cache-path name="mig_camera" path="camera/" />
 </paths>

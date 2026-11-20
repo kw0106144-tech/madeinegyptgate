@@ -9,4 +9,20 @@
     <string name="mig_exit_no">إلغاء</string>
     <string name="mig_share_file">فتح الملف أو مشاركته</string>
     <string name="mig_file_failed">تعذّر فتح هذا الملف في التطبيق.</string>
+    <string name="mig_win_close">✕ إغلاق</string>
+    <string name="mig_win_loading">جارٍ التحميل…</string>
+    <string name="mig_call_link_title">تنهي المكالمة الحالية وتفتح الرابط؟</string>
+    <string name="mig_call_link_open">افتح الرابط</string>
+    <string name="mig_call_link_stay">كمّل المكالمة</string>
+    <string name="mig_link_copy">نسخ الرابط</string>
+    <string name="mig_link_share">مشاركة</string>
+    <string name="mig_link_browser">افتح في المتصفح</string>
+    <string name="mig_link_copied">تم نسخ الرابط</string>
+    <string name="mig_link_failed">لا يوجد على الهاتف تطبيق يفتح هذا الرابط.</string>
+    <string name="mig_dl_started">جارٍ تنزيل %1$s…</string>
+    <string name="mig_dl_done">%1$s محفوظ في التنزيلات</string>
+    <string name="mig_dl_ready">تم حفظ %1$s</string>
+    <string name="mig_dl_open">فتح</string>
+    <string name="mig_print_failed">تعذّرت طباعة هذه الصفحة.</string>
+    <string name="mig_chooser_title">اختر ملفاً</string>
 </resources>

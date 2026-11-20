@@ -32,4 +32,18 @@
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
         <item name="android:background">@drawable/splash</item>
     </style>
+
+    <!-- A page window over the page (MigWindows): full screen, the brand red behind the bars and the page window's own red bar,
+         opening like a new screen. -->
+    <style name="MigWindow" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@color/mig_red_deep</item>
+        <item name="android:statusBarColor">@color/mig_red_deep</item>
+        <item name="android:navigationBarColor">@color/mig_red_deep</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Activity</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+        <item name="colorPrimary">@color/mig_red_deep</item>
+        <item name="colorAccent">@color/mig_red</item>
+    </style>
 </resources>

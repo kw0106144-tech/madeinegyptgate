@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 6–11 Auto Backup (AndroidManifest.xml android:fullBackupContent): the same as data_extraction_rules.xml — never the
+     WebView's data (sign-in token, cookies) nor the old system's session id. -->
+<full-backup-content>
+    <exclude domain="root" path="app_webview/" />
+    <exclude domain="sharedpref" path="mig_session.xml" />
+</full-backup-content>
