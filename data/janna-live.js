@@ -376,7 +376,7 @@
   }
   /* the call's DOM events → its handlers: the widget's own events, or the same events re-dispatched by the SDK call (sdkFire) */
   function wire(el) {
-    el.addEventListener("anam-agent:tool-call-started", function (e) { var d = e.detail || {}; HT.tool = Date.now(); cmpGive(d.toolName); if (d.toolType && d.toolType !== "client") { holoTool(d.toolName, d.arguments || {}); return; } run(d.toolName, d.arguments || {}); });
+    el.addEventListener("anam-agent:tool-call-started", function (e) { var d = e.detail || {}; HT.tool = Date.now(); try { scrMark(d); } catch (x) {} cmpGive(d.toolName); if (d.toolType && d.toolType !== "client") { holoTool(d.toolName, d.arguments || {}); return; } run(d.toolName, d.arguments || {}); });
     /* speed review 2026-11-20 #5: what a janna_lookup found goes on the screen at once (lookupDone), platform_item's one item opens (itemShow) */
     el.addEventListener("anam-agent:tool-call-completed", function (e) { try { lookupDone(e.detail || {}); } catch (x) {} try { itemShow(e.detail || {}); } catch (x) {} });
     el.addEventListener("anam-agent:session-started", function (e) { SID = String((e.detail && e.detail.sessionId) || ""); sessT0 = Date.now(); onSession(); holoWelcome(); if (NUDGE) nudge(NUDGE, 0); });
@@ -594,9 +594,10 @@
     if (k === "voice") tmBeacon(me);
   }
   /* speed review 2026-11-20 #11 (the owner's «بياخد وقت» about the start, which Anam's data cannot see): POST /api/janna/timing, a
-     text/plain JSON body of numbers only — no id, no words, no address. k "start" (once, at «voice»): {p, relay 0|1, region (Anam's
-     getActiveSessionRegion), ms: {token, sdk, mic, stream, connected, ready, video, play, voice}, srv: the Worker's Server-Timing durations};
-     k "turns" (the call's end): up to 20 [first reasoning chunk, last reasoning chunk, first words], ms after the end of his speech (-1 = none) */
+     text/plain JSON body of numbers only — no id, no words, no address. k "start" (once, at «voice»): {p, lang (the page's: ar | en), relay
+     0|1, region (Anam's getActiveSessionRegion), ms: {token, sdk, mic, stream, connected, ready, video, play, voice}, srv: the Worker's
+     Server-Timing durations (boot … total)}; k "turns" (the call's end): up to 20 [first reasoning chunk, last reasoning chunk, first words],
+     ms after the end of his speech (-1 = none). worker/src/live-timing.js timingLine reads exactly these */
   function tmSend(o) {
     var u = String(window.MIG_API_BASE || "/api").replace(/\/+$/, "") + "/janna/timing", b = JSON.stringify(o);
     try { if (navigator.sendBeacon && navigator.sendBeacon(u, b)) return; } catch (e) {}
@@ -604,12 +605,12 @@
   }
   function tmRegion(me) { var rg = ""; try { rg = String((me.client && me.client.getActiveSessionRegion && me.client.getActiveSessionRegion()) || ""); } catch (e) { rg = ""; } return /^[a-z0-9._-]{1,40}$/i.test(rg) ? rg : ""; }
   function tmBeacon(me) {
-    var t = me && me.tm, ms = {}, srv = {}, k, m, rx = /(checks|ctx|persona|wait|token|total);dur=(\d+)/g;
+    var t = me && me.tm, ms = {}, srv = {}, k, m, rx = /(boot|checks|ctx|persona|wait|token|total);dur=(\d+)/g;
     if (!t || t.sent) return; t.sent = 1;
     for (k in t.marks) if (t.marks.hasOwnProperty(k) && /^(token|sdk|mic|stream|connected|ready|video|play|voice)$/.test(k)) ms[k] = Math.max(0, Math.round(+t.marks[k] || 0));
     while ((m = rx.exec(String(t.server || "")))) srv[m[1]] = +m[2];
     t.region = tmRegion(me); /* kept for the "turns" beacon: the client is gone by the call's end */
-    tmSend({ k: "start", p: t.persona === "bassem" ? "bassem" : "janna", relay: me.relay ? 1 : 0, region: t.region, ms: ms, srv: srv });
+    tmSend({ k: "start", p: t.persona === "bassem" ? "bassem" : "janna", lang: EN ? "en" : "ar", relay: me.relay ? 1 : 0, region: t.region, ms: ms, srv: srv });
   }
   function tmTurns(me, on) {
     if (!me.tm) return; /* the first part of a call only (continuation parts are not timed) */
@@ -621,7 +622,7 @@
   }
   function tmTurnsSend(me) {
     var t = me && me.tm; if (!t || !me.tmPush || t.turnsSent) return; me.tmPush(); t.turnsSent = 1;
-    if (t.turns && t.turns.length) tmSend({ k: "turns", p: t.persona === "bassem" ? "bassem" : "janna", region: t.region || tmRegion(me), turns: t.turns });
+    if (t.turns && t.turns.length) tmSend({ k: "turns", p: t.persona === "bassem" ? "bassem" : "janna", lang: EN ? "en" : "ar", region: t.region || tmRegion(me), turns: t.turns });
   }
   /* a browser whose stream → connected took over 8 s starts its next calls through Anam's TURN relay for 30 days (localStorage
      "mig-jnl-relay" = until when); a relay start that fails drops it (relayDrop: a network that blocks TURN / TLS never fails every call) */
@@ -1242,7 +1243,10 @@
   /* a new call: normal mode, no offer and no count from the last call (review 2026-11-20: the mode is per call); «🛠️ المطوّر» →
      noise_mode_default on: the call starts in noisy-room mode, which still closes the microphone only where his own voice is measured */
   function nzDefault() { NZ.on = false; NZ.why = ""; NZ.fis = []; NZ.near = 0; NZ.nearMiss = 0; NZ.missed = 0; NZ.his = 0; NZ.hv = []; if (window.MIGFLAGS && MIGFLAGS.on && MIGFLAGS.on("noise_mode_default") === true) { NZ.on = true; NZ.why = "default"; } }
+  /* the ?nzdebug=1 readout goes with the call (review F6: frozen numbers of an ended call mislead a phone test) */
+  function nzDbgOff() { if (NZ.dbg && NZ.dbg.parentNode) NZ.dbg.parentNode.removeChild(NZ.dbg); NZ.dbg = null; NZ.dbgT = 0; }
   function nzEnd(me) {
+    nzDbgOff(); /* a later part of the same call draws it again at its next tick */
     var z = me && me.nz; if (!z) return;
     if (z.cand) { clearTimeout(z.cand.tm); z.cand.done = true; }
     try { if (z.src) z.src.disconnect(); } catch (e) {}
@@ -1463,7 +1467,7 @@
   /* persona_config {languageCode} (nothing else) + the LLM's LANGUAGE line (note: 0 none — a continued part has it in resumeText —, 1 mid-call, 2 the call's start) */
   function langSend(me, code, note) {
     try { me.client.sendDataMessage(JSON.stringify({ message_type: "persona_config", data: { languageCode: code } })); } catch (e) { return false; }
-    LG.sentT = Date.now(); LG.sentTo = code; LG.applied = false;
+    LG.sentT = Date.now(); LG.sentTo = code; LG.applied = false; me.lang = code; /* what this part hears now (langOff) */
     if (note) { try { if (me.client.addContext) me.client.addContext(langNote(code, note === 2)); } catch (e) {} }
     return true;
   }
@@ -1487,7 +1491,7 @@
     var to = langRow(LG.sentTo), back = langRow(LG.prev && LG.prev !== LG.sentTo ? LG.prev : langDef());
     LG.sentT = 0; LG.warn = String(m == null ? "" : m).slice(0, 200); LG.fail = Date.now();
     langStore(back[0]);
-    try { if (me.client && me.client.addContext && to) me.client.addContext("LANGUAGE: switching what you hear to " + to[3] + " failed; the person's speech still reaches you as " + back[3] + " speech-to-text. Reply in the language of their own words (typed messages reach you exactly as written)."); } catch (e) {}
+    try { if (me.client && me.client.addContext && to) me.client.addContext("NOTE (the listening language did NOT change): switching what you hear to " + to[3] + " failed; the person's speech still reaches you as " + back[3] + " speech-to-text. Reply in the language of their own words (typed messages reach you exactly as written)."); } catch (e) {}
     langUi(); setTimeout(langChip, 10100);
   }
   /* a suggestion: the 20 s chip, once per browser and language (localStorage, else this page) */
@@ -1599,7 +1603,18 @@
     el.style.visibility = ""; el.style.left = Math.round(r.left + 10) + "px"; el.style.width = Math.max(0, Math.round(r.width - 20)) + "px"; el.style.bottom = Math.round(vh - (nr && nr.height ? nr.top : cr.top) + 6) + "px";
   }
   function langDrop() { langMenu(false); LG.ask = ""; LG.fail = 0; if (LG.el && LG.el.parentNode) LG.el.parentNode.removeChild(LG.el); LG.el = null; }
-  window.addEventListener("mig:flags", function () { try { langUi(); } catch (e) {} });
+  /* review 2026-11-20 F5: «🛠️ المطوّر» turned call_languages off while this call hears another language: the call goes back to the persona's
+     own at once — what the switch promises (every call then hears exactly as before) —, once, and the tab's choice is forgotten */
+  function langOff() {
+    var me = LV, def = langDef(), r = langRow(def), ar = def === "ar";
+    if (langOn() || !me || !me.lang || me.lang === def || !me.ready || !me.dc || !me.client || me.closed || me.swapped) return;
+    langStore(""); LG.ask = ""; LG.fail = 0; LG.warn = ""; LG.prev = def;
+    if (!langSend(me, def, 0)) return;
+    LG.sentT = 0; /* the persona's own language: no refusal to wait for (langWarn) */
+    try { if (me.client.addContext) me.client.addContext("LANGUAGE: " + r[0] + " (" + r[3] + "). The platform turned the 🌐 language switch off: their speech reaches you in " + r[3] + " again. From your next reply "
+      + (ar ? "speak Egyptian Arabic exactly as your rules say." : "speak " + r[3] + " as your rules say.") + " Tool arguments stay as your rules say (search words in Arabic or English)."); } catch (e) {}
+  }
+  window.addEventListener("mig:flags", function () { try { langOff(); } catch (e) {} try { langUi(); } catch (e) {} });
   /* the stage height inside the widget (see SHADOW_CSS); retried until the widget has rendered its shadow root */
   function shadowCss(ag, n) {
     var sr = null; try { sr = ag.shadowRoot; } catch (e) {}
@@ -1675,7 +1690,7 @@
     if (ov.classList.contains("fs")) fullscreen(false);
     /* the SDK call is ended explicitly (stops the session and its minutes); removing the widget's element ends the widget's session */
     sdkStop("close"); LV = null;
-    langDrop(); micDrop(); NZ.offerUntil = 0; if (NZ.el && NZ.el.parentNode) NZ.el.parentNode.removeChild(NZ.el); NZ.el = null; try { if (NZ.ac) { var acp = NZ.ac.close(); if (acp && acp.then) acp.then(null, function () {}); } } catch (e) {} NZ.ac = null; /* noise guard: microphone + meter released */
+    langDrop(); micDrop(); nzDbgOff(); NZ.offerUntil = 0; if (NZ.el && NZ.el.parentNode) NZ.el.parentNode.removeChild(NZ.el); NZ.el = null; try { if (NZ.ac) { var acp = NZ.ac.close(); if (acp && acp.then) acp.then(null, function () {}); } } catch (e) {} NZ.ac = null; /* noise guard: microphone + meter released */
     /* the captions box goes back to the page first */
     try { if (window.MIGCAPTIONS && MIGCAPTIONS.place) { ov.hidden = true; MIGCAPTIONS.place(); } } catch (e) {}
     ov.remove(); ov = null; frame = null; SID = ""; sessT0 = 0; NUDGE = ""; document.documentElement.style.overflow = ""; document.documentElement.classList.remove("jnl-on");
@@ -1714,7 +1729,7 @@
   })();
 
   /* ---------- tools ---------- */
-  function go(u, then) { pending = then || null; frame.src = withLang(url(u)); var sw = ov && ov.querySelector(".jnl-hd .sw"); if (sw && ov.scrollTop < 40) sw.classList.add("new"); }
+  function go(u, then) { if (!MIR && LKS) LKS.k = ""; /* the screen moves on: the mirrored search is no longer what it shows (review F2) */ pending = then || null; frame.src = withLang(url(u)); var sw = ov && ov.querySelector(".jnl-hd .sw"); if (sw && ov.scrollTop < 40) sw.classList.add("new"); }
 
   /* ---------- nothing leaves the call by the side door («باسم معاك», owner 2026-11-19) ----------
      openTab(u): a same-site page out of Bassem's call opens in a tab of its own, marked as his (window.name «mig-bassem-<ms>» + ?with=bassem,
@@ -1828,23 +1843,59 @@
      arrive nested ({bodyParams}), and a search that found nothing (a foreign word too) never replaces the screen. Never over work on the
      screen (screenBusy: the deal room, a form being filled); the first lookup in 2.5 s only. Bassem's screen tools read it as they read his
      own janna_search (data/bassem-live-tools.js watchSearch, host.shown) */
-  var LKS = { k: "", t: 0 }, LK_SEC = { factories: "factories", suppliers: "suppliers", products: "market", market: "market", tenders: "tenders", rfqs: "rfqs", offers: "offers" };
+  var LKS = { k: "", t: 0, ok: 0 }, LK_SEC = { factories: "factories", suppliers: "suppliers", products: "market", market: "market", tenders: "tenders", rfqs: "rfqs", offers: "offers" };
+  /* review 2026-11-20 F1: the page moves the screen only when the persona did not. The prompts still ask for janna_lookup + janna_search (or
+     platform_item + bassem_open_item) in ONE step: then the persona's own screen tool already shows the request, and a second load would
+     only delay the list and replace the page Bassem's awaited tools are reading. scrMark (wire(), every tool call's start): when each
+     janna_lookup / platform_item started (LK0, by toolCallId) and when the persona last started a tool that moves the screen (SCR.t — never
+     the page's own mirror, which does not come through wire()). MV0: the page's own last move (the first result in 2.5 s only). MIR: go()
+     is running for the mirror. */
+  var SCR = { t: 0 }, LK0 = {}, LK0_N = 0, MIR = 0, MV0 = 0;
+  var SCR_TOOLS = /^(janna_(search|navigate|open|fill_rfq|fill_contact|fill_registration|submit_form)|bassem_(open_item|screen|open_opportunity|start_deal|open_guide|update_deal|draft_email))$/;
+  function scrMark(d) {
+    var n = String((d && (d.toolName || d.name)) || ""), id = String((d && d.toolCallId) || ""), now = Date.now();
+    if (n === "janna_lookup" || n === "platform_item") { if (id) { if (++LK0_N > 60) { LK0 = {}; LK0_N = 1; } LK0[id] = now; } return; }
+    if (SCR_TOOLS.test(n)) SCR.t = now;
+  }
+  /* the persona started a screen tool with this lookup / item (the same step) or after it: the screen is the persona's */
+  function scrMoved(d, now) { var t0 = LK0[String((d && d.toolCallId) || "")] || now - 4000; return SCR.t > 0 && SCR.t >= t0 - 50; }
+  function mirror(name, a) { MIR = 1; try { run(name, a, { mirror: 1 }); } finally { MIR = 0; } }
   function lookupDone(d) {
     if (String(d.toolName || "") !== "janna_lookup" || !frame) return;
-    var r = resJson(d.result), now = Date.now(), sec, q, s;
-    if (!r || !(+r.count > 0) || !r.results || !r.results.length || now - LKS.t < 2500 || screenWork()) return;
-    if (r.section === "cities") { LKS = { k: "cities", t: now }; run("janna_navigate", { page: "cities" }, { mirror: 1 }); return; }
-    sec = LK_SEC[r.section] || ""; q = String(r.query || "").slice(0, 120);
-    if (!sec || !q || (sec === "tenders" && r.market && r.market !== "local")) return;
-    LKS = { k: sec + "|" + norm(q), t: now }; s = { section: sec, query: q }; if (r.governorate) s.governorate = String(r.governorate);
-    run("janna_search", s, { mirror: 1 });
+    var r = resJson(d.result), now = Date.now(), sec, q, s, ok;
+    if (!r || !(+r.count > 0) || !r.results || !r.results.length) return;
+    sec = r.section === "cities" ? "cities" : LK_SEC[r.section] || ""; q = String(r.query || "").slice(0, 120);
+    ok = sec === "cities" || (!!sec && !!q && !(sec === "tenders" && r.market && r.market !== "local"));
+    /* the persona put it on the screen in the same step: no second load; remembered, so a later janna_search for it is skipped while the
+       screen still shows it (lookupShown reads the screen) */
+    if (scrMoved(d, now)) { if (ok && sec !== "cities") LKS = { k: sec + "|" + norm(q), t: now, ok: 1 }; return; }
+    if (!ok || now - MV0 < 2500 || screenWork()) return;
+    MV0 = now;
+    if (sec === "cities") { LKS = { k: "cities", t: now, ok: 1 }; mirror("janna_navigate", { page: "cities" }); return; }
+    LKS = { k: sec + "|" + norm(q), t: now, ok: 0 }; s = { section: sec, query: q }; if (r.governorate) s.governorate = String(r.governorate);
+    mirror("janna_search", s);
   }
-  /* is this search the one lookupDone put on the screen (the last 20 s)? */
-  function lookupShown(a) { a = a || {}; return !!LKS.k && Date.now() - LKS.t < 20000 && LKS.k === (LK_SEC[a.section] || a.section) + "|" + norm(a.query); }
+  /* is this search the one on the screen from a lookup (the last 20 s)? While the mirror's page loads (ok 0, ≤ 10 s) yes; then only while
+     the screen really shows that section with these words in its search box (review F2: the screen may have moved since — another tool,
+     JANNA_LIVE.show, a tap inside it) */
+  function lookupShown(a) {
+    a = a || {}; var sec = LK_SEC[a.section] || a.section, now = Date.now();
+    if (!LKS.k || now - LKS.t >= 20000 || LKS.k !== sec + "|" + norm(a.query)) return false;
+    return LKS.ok ? frameHas(sec, a.query) : now - LKS.t < 10000;
+  }
+  /* the screen shows section sec's page with q in its search box — the same normalisation as the key (norm: a leading «ال» too);
+     data/bassem-live-tools.js boxHas compares the same way */
+  function frameHas(sec, q) {
+    var f = SEARCH[sec], w = null, b = null;
+    try { w = frame && frame.contentWindow; if (f && w && pageKey(w) === sec) b = w.document.querySelector(f[0]); } catch (e) { b = null; }
+    return !!b && norm(b.value).indexOf(norm(q)) > -1;
+  }
   function itemShow(d) {
     if (String(d.toolName || "") !== "platform_item" || !frame) return;
-    var r = resJson(d.result), u = String((r && r.found === true && !r.ambiguous && r.open_url) || ""), i = u.indexOf("/", 8), h = i > 0 ? u.slice(0, i).toLowerCase() : "";
-    if ((h === "https://madeinegyptgate.com" || h === "https://www.madeinegyptgate.com") && u.length > i + 1 && !screenWork()) go(u.slice(i));
+    var r = resJson(d.result), now = Date.now(), u = String((r && r.found === true && !r.ambiguous && r.open_url) || ""), i = u.indexOf("/", 8), h = i > 0 ? u.slice(0, i).toLowerCase() : "";
+    if (!(h === "https://madeinegyptgate.com" || h === "https://www.madeinegyptgate.com") || u.length <= i + 1) return;
+    if (scrMoved(d, now) || now - MV0 < 2500 || screenWork()) return; /* the persona's own tool shows it; one result in 2.5 s (F1) */
+    MV0 = now; go(u.slice(i));
   }
   /* work a navigation would lose, for the page's OWN moves above: the deal room open, or a text field of a real form (the RFQ, contact,
      registration and deal forms) that differs from its page value. A list's filters and its script-filled selects are no work (screenBusy
@@ -1863,11 +1914,11 @@
   }
   function run(name, a, o) {
     a = a && typeof a === "object" ? a : {};
-    if (name === "janna_search" && !(o && o.mirror) && lookupShown(a)) return; /* already on the screen (lookupDone) */
+    if (name === "janna_search" && !(o && (o.mirror || o.force)) && lookupShown(a)) return; /* already on the screen (lookupDone); force: Bassem's watchSearch found it was not */
     /* every tool call is also shown on the holographic workspace (holo.js de-duplicates the same call reported twice) */
     try { if (window.MIGHOLO && MIGHOLO.act) MIGHOLO.act(name, a, { who: /^bassem_/.test(name) ? "bassem" : persona }); } catch (e) {}
     logAct(name, a);
-    if (!(o && o.topic) && window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.take && MIG_LIVE_TOOLS.take(name, a)) return; /* data/bassem-live-tools.js (a topic ping is not a tool call) */
+    if (!(o && (o.topic || o.force)) && window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.take && MIG_LIVE_TOOLS.take(name, a)) return; /* data/bassem-live-tools.js (a topic ping is not a tool call; force = its own call) */
     if (name === "bassem_recall") return; /* answered by data/bassem-memory.js (client tool, awaitResult) — the screen stays where it is */
     if (/^bassem_/.test(name)) { bassemTool(name, a); return; }
     if (name === "janna_follow") { if (LV && !LV.closed && LV.own && LV.own.janna_follow) return; followTool(a); return; } /* Bassem's SDK call: its awaitResult handler (sdkRun) follows and answers */
@@ -1883,11 +1934,12 @@
       go(p + ".html" + h); say("➜ " + (NAMES[p] ? NAMES[p][EN ? 1 : 0] : p)); return;
     }
     if (name === "janna_search") {
-      var s = SEARCH[a.section] ? a.section : "factories", f = SEARCH[s];
+      var s = SEARCH[a.section] ? a.section : "factories", f = SEARCH[s], lk = o && o.mirror ? LKS : null;
       go(s + ".html", function (d) {
         setVal(d, f[0], a.query);
         if (a.governorate && f[1]) setVal(d, f[1], GOV[govCode(a.governorate)] || a.governorate);
         show(d, f[0]);
+        if (lk) lk.ok = 1; /* the mirror's page is on the screen with its words (lookupShown reads the screen from now on) */
       });
       say("🔎 " + (a.query || "")); return;
     }
@@ -2185,10 +2237,10 @@
   function mailOk(s) { s = String(s == null ? "" : s); return s.length <= 254 && MAILRX.test(s) && s.indexOf("..") < 0 && !/^\.|\.@/.test(s); }
   /* the spoken words of an address → its characters (Latin and Egyptian forms; letters said one by one are joined) */
   /* the 🌐 languages too: arobase / arroba / chiocciola / Klammeraffe / собака / 艾特 / ایٹ · punto / ponto / Punkt / nokta / точка / 点 / 點 /
-     ڈاٹ · Unterstrich / 下划线 / «tiret bas» «guion bajo» «trattino basso» «alt çizgi» · tiret / guion / trattino / Bindestrich / tire /
-     дефис — never Turkish «et» (French «et» = «and») nor «دات» (an Egyptian «ذات» can be heard so) */
+     ڈاٹ · Unterstrich / 下划线 / «tiret bas» «guion bajo» «trattino basso» «alt çizgi» · tiret / guion / trattino / Bindestrich / дефис —
+     never Turkish «et» (French «et» = «and»), Turkish «tire» (English «tire»: «egypt tire dot com») nor «دات» (an Egyptian «ذات» can be heard so) */
   var MSYM = [[/^(?:at|@|آت|ات|أت|إت|ايت|آيت|arobase|arroba|chiocciola|klammeraffe|собака|艾特|ایٹ)$/, "@"], [/^(?:dot|\.|point|period|دوت|نقطة|نقطه|بوينت|punto|ponto|punkt|nokta|точка|点|點|ڈاٹ)$/, "."],
-    [/^(?:underscore|_|اندرسكور|أندرسكور|إندرسكور|شرطةسفلية|unterstrich|下划线|tiretbas|guionbajo|trattinobasso|altçizgi)$/, "_"], [/^(?:dash|hyphen|minus|-|داش|هايفن|شرطة|شرطه|tiret|guion|guión|trattino|bindestrich|tire|дефис)$/, "-"]];
+    [/^(?:underscore|_|اندرسكور|أندرسكور|إندرسكور|شرطةسفلية|unterstrich|下划线|tiretbas|guionbajo|trattinobasso|altçizgi)$/, "_"], [/^(?:dash|hyphen|minus|-|داش|هايفن|شرطة|شرطه|tiret|guion|guión|trattino|bindestrich|дефис)$/, "-"]];
   var MTLD = { "كوم": "com", "نت": "net", "اورج": "org", "أورج": "org", "جوف": "gov" };
   var MSAY = { "@": ["آت", "at"], ".": ["دوت", "dot"], "_": ["أندرسكور", "underscore"], "-": ["داش", "dash"] };
   function mailTokens(text) {

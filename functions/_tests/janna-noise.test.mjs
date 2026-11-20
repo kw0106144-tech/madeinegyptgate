@@ -72,4 +72,13 @@ describe("data/janna-live.js wiring (source checks)", () => {
     assert.ok(!/z\.nk\s*=\s*Math\.min\(12/.test(LIVE));
     assert.ok(/nzUserOn[\s\S]{0,200}z\.pq\.length = 0/.test(LIVE));
   });
+  test("review F6: the ?nzdebug=1 readout goes with the call (✕, JANNA_LIVE.close(), the session's end)", () => {
+    const body = { kids: [] }, el = { parentNode: body };
+    body.removeChild = c => { body.kids.push(c); c.parentNode = null; };
+    const S = { NZ: { dbg: el, dbgT: 123 } }; vm.createContext(S); vm.runInContext(cut("  function nzDbgOff(", "\n  function nzEnd(") + "\n" + cut("  function nzEnd(", "\n  /* --- per part:"), S);
+    S.nzEnd({}); assert.deepEqual([body.kids.length, S.NZ.dbg, S.NZ.dbgT], [1, null, 0]);
+    S.nzEnd({}); assert.equal(body.kids.length, 1, "nothing left to remove");
+    assert.match(cut("  function close() {", "\n  /* the owner's switches"), /micDrop\(\); nzDbgOff\(\);/, "close() removes it too");
+    assert.match(cut("  function sdkClear(me) {", "\n"), /nzEnd\(me\);/, "every part's end (sdkClosed / sdkFail / a retired part) runs nzEnd");
+  });
 });

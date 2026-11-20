@@ -362,7 +362,9 @@
       return same >= 2 ? d : null;
     }, ms || 4000, 220).then(function (x) { return x || d; });
   }
-  function boxHas(d, S, q) { if (!q) return true; var b = null; try { b = d.querySelector(S.box); } catch (e) {} return !!b && norm(b.value).indexOf(norm(q)) > -1; }
+  /* the words in the list's search box — a leading «ال» aside on both sides, as janna-live.js lookupShown / frameHas compare (review F2:
+     a box holding «بلاستيك» holds the persona's «البلاستيك») */
+  function boxHas(d, S, q) { if (!q) return true; var b = null; try { b = d.querySelector(S.box); } catch (e) {} var al = function (x) { return norm(x).replace(/^ال/, ""); }; return !!b && al(b.value).indexOf(al(q)) > -1; }
   /* type into the page's own search box (its own input events filter the list) */
   function typeIn(d, S, q) {
     var b = null; try { b = d.querySelector(S.box); } catch (e) {} if (!b) return false;
@@ -383,10 +385,21 @@
     if (!fr()) return Promise.resolve(T("شاشة باسم مش مفتوحة دلوقتي، فمفيش نتايج ظاهرة.", "Bassem's screen is not open, so no results are shown."));
     showScreen();
     /* a search the page already put on the screen from janna_lookup's result (janna-live.js lookupDone; run() then loads nothing new): the
-       screen is read as it is once its box holds the words — no wait for a new page that is not coming (speed review 2026-11-20 #5) */
+       screen is read as it is once its box holds the words — no wait for a new page that is not coming (speed review 2026-11-20 #5). When
+       it is not there after 1.5 s and the page no longer says it is (the screen moved on, or other words — review F2), or after 6 s at
+       most, the search runs for real (run's force: no second job) and the new page is awaited as for any search */
     var pre = false; try { pre = !!(H && H.shown && H.shown(a)); } catch (e) { pre = false; }
-    return (pre ? until(function () { var d = fdoc(); return ready(d) && pageOf(d) === S.key && boxHas(d, S, q) ? d : null; }, 11000, 200)
-      : newPage(d0, function (d) { return pageOf(d) === S.key && boxHas(d, S, q); }, 11000)).then(function (d) {
+    var looks = function (d) { return pageOf(d) === S.key && boxHas(d, S, q); }, t0 = now(), REAL = {};
+    return (pre ? until(function () {
+        var d = fdoc(); if (ready(d) && looks(d)) return d;
+        var still = false, el = now() - t0; try { still = !!(H && H.shown && H.shown(a)); } catch (e) { still = false; }
+        return (el > 1500 && !still) || el > 6000 ? REAL : null;
+      }, 11000, 200).then(function (d) {
+        if (d !== REAL) return d;
+        var d1 = fdoc(); try { if (H && H.run) H.run("janna_search", a, { force: 1 }); } catch (e) {}
+        return newPage(d1, looks, Math.max(2000, 10000 - (now() - t0)));
+      })
+      : newPage(d0, looks, 11000)).then(function (d) {
       if (!d) { var d2 = fdoc(); if (ready(d2) && pageOf(d2) === S.key) d = d2; }
       if (!d) return T("الشاشة لسه ما عرضتش نتايج البحث ده — قول للعضو إن الصفحة بتحمّل وجرّب تاني بعد ثواني.", "The screen has not shown this search yet — tell the member the page is loading and try again in a few seconds.");
       return settled(d, S, 3500).then(function () { return s === "tenders" && soonest(d) ? sleep(300).then(function () { return settled(d, S, 2500); }) : d; }).then(function () {

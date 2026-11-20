@@ -119,6 +119,11 @@ describe("dictated e-mail addresses in other languages (mailTokens / spokenMail)
   test("ordinary words stay no address", () => {
     for (const s of ["le point de vente", "punto de venta", "à ce point là", "下午三点见", "info et societe point fr", "I am at the office"]) assert.equal(M.spokenMail(s), "", s);
   });
+  test("review F4: the English «tire» (tyre) stays a word — never the Turkish dash", () => {
+    for (const [said, addr] of [["info at egypt tire dot com", "info@egypttire.com"], ["sales at cairo tire dot com dot eg", "sales@cairotire.com.eg"], ["info at alex tire company dot com", "info@alextirecompany.com"]])
+      assert.equal(M.spokenMail(said), addr, said);
+    assert.equal(M.spokenMail("ventas guion norte arroba empresa punto com"), "ventas-norte@empresa.com", "the other dash words stay");
+  });
 });
 
 describe("captions in any language (data/captions.js)", () => {
@@ -146,6 +151,15 @@ describe("the scripted «اسأل جنة» bubble (data/janna.js): Franco is Ara
     for (const s of ["ana 3ayez masane3 7adid", "3ayez asa3ar el 7adid", "masna3", "ana mesh fahem", "ezayak 3amel eh"]) assert.equal(sb.franco(s), true, s);
     for (const s of ["I need steel factories in Giza", "b2b platform for factories", "price of iphone15", "wire mesh factory", "covid19 rules", "ok", "hello Janna"]) assert.equal(sb.franco(s), false, s);
   });
+  test("review F3: sizes, units and grades are English, not Franco; «3ayez», «7adid», «masane3» still are", () => {
+    for (const s of ["price of steel per m2", "concrete price per m3", "I need 8mm rebar", "5kg bags of cement", "2x2 steel tubes", "galvanized sheets 0.5mm and 3mm",
+      "need 6kw generator", "hello, do you have s3 grade?", "5tons of steel", "3pcs of 10inches pipes", "12kwh meters", "usb3 cables", "ipv6 routers"]) assert.equal(sb.franco(s), false, s);
+    for (const s of ["3ayez", "7adid", "masane3", "3andy masna3", "ba2a keda"]) assert.equal(sb.franco(s), true, s);
+  });
+  test("review F3: an accented brand or loanword inside English is English", () => {
+    for (const s of ["Do you have Nestlé suppliers?", "café equipment suppliers", "suppliers for Citroën parts", "Do you have aluminium die casting factories? Nestlé"]) assert.equal(sb.otherLang(s), false, s);
+    for (const s of ["Olá, preciso de aço", "¿Dónde está la fábrica de acero?", "Je cherche des usines d'acier en Égypte"]) assert.equal(sb.otherLang(s), true, s);
+  });
   test("another language — never English", () => {
     for (const s of ["Bonjour, je cherche de l'acier", "Hola, busco fábricas de acero", "Ich suche Stahl", "我需要钢铁", "мне нужна сталь", "Merhaba, çelik fabrikası arıyorum"]) assert.equal(sb.otherLang(s), true, s);
     for (const s of ["I need steel factories in Giza", "steel pipes cairo", "plastic factories", "what can you do", "die casting factories", "ok", "ana 3ayez masane3 7adid", "مصانع حديد"]) assert.equal(sb.otherLang(s), false, s);
@@ -155,6 +169,10 @@ describe("the scripted «اسأل جنة» bubble (data/janna.js): Franco is Ara
     assert.match(h, /if \(fr\) \{ if \(L !== "ar"\) setLang\("ar", true\); \}/);
     assert.match(h, /seg\("جنة المباشرة بتتكلم لغتك — كلّمها فيديو أو اكتبلها بلغتك", "happy"\), seg\("Live Janna speaks your language — call or type to her in it", "happy"\)\], q: q, acts: \[chip\(\["live"\]\)/);
     assert.match(h, /speak: false/);
+    assert.match(h, /if \(oth && liveOn\(\) && !langsOff\(\)\)/, "review F5: no «speaks your language» promise while call_languages is off");
+    sb.window = { MIGFLAGS: { on: k => (k === "call_languages" ? false : true) } }; assert.equal(sb.langsOff(), true);
+    sb.window = { MIGFLAGS: { on: () => true } }; assert.equal(sb.langsOff(), false);
+    sb.window = {}; assert.equal(sb.langsOff(), false, "no flags file: on");
   });
 });
 
@@ -196,6 +214,8 @@ describe("data/janna-live.js 🌐 wiring (source checks)", () => {
   test("applied only by a PERSONA_CONFIG_UPDATE_APPLIED naming languageCode; a SERVER_WARNING within 5 s puts it back", () => {
     assert.match(body("langWire"), /on\("PERSONA_CONFIG_UPDATE_APPLIED", function \(x\) \{ if \(cfHas\(x && x\.changedFields, "languageCode"\)\)/);
     assert.match(body("langWarn"), /if \(!LG\.sentT \|\| LG\.applied \|\| Date\.now\(\) - LG\.sentT > 5000\) return;/);
+    assert.match(body("langWarn"), /addContext\("NOTE \(the listening language did NOT change\): switching what you hear to "/, "review CP-3: the refusal is no LANGUAGE: line (the prompts read those as a choice made)");
+    assert.doesNotMatch(LIVE, /"LANGUAGE: switching/);
     assert.match(LIVE, /ماقدرتش أغيّر لغة السمع — تقدر تكتب بلغتك في الخانة تحت<\/bdi><br><bdi dir="ltr" lang="en">I could not switch the listening language — you can type in your language in the box below/);
     assert.match(LIVE, /on\("PERSONA_CONFIG_UPDATE_APPLIED", function \(x\) \{ var cf = x && x\.changedFields; if \(!cfAny\(cf\) \|\| cfHas\(cf, "voiceDetectionOptions"\)/, "the noise guard's listener checks changedFields too");
   });
@@ -217,6 +237,22 @@ describe("data/janna-live.js 🌐 wiring (source checks)", () => {
     assert.match(br, /if \(persona === "bassem" && EN && p === "en"\) \{ langAsk\("en"\); return; \}/);
     assert.match(br, /if \(p !== "ar" && p !== "en" && p !== def\) langAsk\(p\);/);
     assert.match(LIVE, /langTyped\(t\); \/\* 🌐 a script only some languages write in: a suggestion, never a switch \*\//);
+  });
+  test("review F5: call_languages turned off mid-call puts a call that hears another language back to the persona's own, once", () => {
+    const sent = [], ctx = [], sb = { LV: null, LG: { mem: {} }, EN: false, persona: "bassem", window: { MIGFLAGS: { on: () => false } }, sessionStorage: { getItem: () => "", setItem() {}, removeItem() {} }, Date };
+    sb.sdkBox = () => ({});
+    vm.createContext(sb);
+    vm.runInContext(cut(LIVE, "  /* @lang-pure-begin", "  /* @lang-pure-end */") + ["langOn", "langDef", "langStore", "langSend", "langOff"].map(n => body(n) + "\n  }\n").join(""), sb);
+    const me = { ready: true, dc: true, closed: false, swapped: false, lang: "fr", client: { sendDataMessage: m => sent.push(JSON.parse(m)), addContext: t => ctx.push(t) } };
+    sb.LV = me; sb.langOff(); sb.langOff();
+    assert.deepEqual(sent, [{ message_type: "persona_config", data: { languageCode: "ar" } }], "once, bypassing the switch");
+    assert.equal(ctx.length, 1); assert.match(ctx[0], /^LANGUAGE: ar \(Arabic\)\. The platform turned the 🌐 language switch off/); assert.match(ctx[0], /Egyptian Arabic exactly as your rules say/);
+    assert.equal(me.lang, "ar"); assert.equal(sb.LG.sentT, 0, "no refusal is awaited for the persona's own language");
+    const me2 = { ...me, lang: "ar", client: { sendDataMessage: m => sent.push(m) } }; sb.LV = me2; sb.langOff();
+    const me3 = { ...me, lang: "fr", ready: false, client: { sendDataMessage: m => sent.push(m) } }; sb.LV = me3; sb.langOff();
+    sb.window.MIGFLAGS.on = () => true; const me4 = { ...me, lang: "fr", client: { sendDataMessage: m => sent.push(m) } }; sb.LV = me4; sb.langOff();
+    assert.equal(sent.length, 1, "nothing for a call in its own language, a part not ready, or while the switch is on");
+    assert.match(LIVE, /window\.addEventListener\("mig:flags", function \(\) \{ try \{ langOff\(\); \} catch \(e\) \{\} try \{ langUi\(\); \} catch \(e\) \{\} \}\);/);
   });
   test("a long call's next part keeps the language; the placeholder invites any language; JANNA_LIVE.lang()", () => {
     assert.match(body("resumeText"), /s \+= "\\nLANGUAGE: " \+ lc \+ " \(" \+ langRow\(lc\)\[3\] \+ "\): continue only in " \+ langRow\(lc\)\[3\] \+ "\."/);
