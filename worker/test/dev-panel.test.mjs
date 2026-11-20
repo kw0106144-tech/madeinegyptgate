@@ -333,6 +333,35 @@ describe("features: the registry, PUT, audit, the public JSON", () => {
   });
 });
 
+describe("features: the app parity switches (app parity plan 2026-11-20)", () => {
+  test("registered at the end with the defaults that keep the apps exactly like the website; data/flags.js DEF agrees", async () => {
+    const env = env0(), o = await owner(env);
+    const r = await api(env, "GET", D + "/features", { token: o.token });
+    assert.equal(r.status, 200, r.text);
+    const want = [["app_buy_ios", true, "both"], ["app_buy_android", true, "both"], ["account_delete", false, "both"], ["visitor_erase_request", false, "both"],
+      ["store_review_signin", false, "server"], ["call_consent_app", false, "both"], ["call_consent_web", false, "both"], ["app_janna_autovoice", false, "client"]];
+    assert.deepEqual(r.data.features.slice(-want.length).map(f => [f.key, f.default, f.scope]), want);
+    const flagsJs = readFileSync(new URL("../../data/flags.js", import.meta.url), "utf8");
+    for (const [k, d] of want) assert.match(flagsJs, new RegExp("\\b" + k + ": " + d + "\\b"), "data/flags.js DEF " + k);
+    for (const k of ["app_buy_ios", "app_buy_android"]) assert.deepEqual([rowOf(r.data, k).value, rowOf(r.data, k).effective, rowOf(r.data, k).locked], [true, true, null], k);
+    assert.deepEqual([rowOf(r.data, "account_delete").locked, rowOf(r.data, "store_review_signin").locked.code], [null, "no_review_account"], "0010 is in schema.sql; no review account yet");
+  });
+  test("locks: the deletion rows wait for migration 0010, the reviewer sign-in for its address + code; OFF always works", async () => {
+    const env = env0(), o = await owner(env);
+    env.DB.db.exec("DROP TABLE cc_delete_requests"); forgetFeatures(env);
+    for (const k of ["account_delete", "visitor_erase_request"]) {
+      const r = await setFeatures(env, { [k]: true }, o.token);
+      assert.deepEqual([r.status, r.data.code, r.data.locked.code], [409, "feature_locked", "migration_needed"], k);
+      assert.match(r.data.locked.ar, /0010_delete_requests\.sql/);
+    }
+    assert.equal((await setFeatures(env, { store_review_signin: true }, o.token)).data.locked.code, "no_review_account");
+    for (const k of ["app_buy_ios", "call_consent_web"]) assert.equal((await setFeatures(env, { [k]: !FEATURES.find(f => f.key === k).default }, o.token)).status, 200, k);
+    const p = await api(env, "GET", "/api/settings");
+    assert.deepEqual([p.data.features.app_buy_ios, p.data.features.call_consent_web, p.data.features.account_delete], [false, true, false]);
+    assert.ok(!("store_review_signin" in p.data.features));
+  });
+});
+
 describe("features: enforced in the real handlers", () => {
   test("janna_live / bassem_live off → POST /api/janna/session answers 503 feature_off before any Anam call; the other persona is not touched", async () => {
     const env = env0(), o = await owner(env);

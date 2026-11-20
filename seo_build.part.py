@@ -978,6 +978,7 @@ html[dir=ltr] .sx-crumbs li+li::before{content:"›"}
 .lang-banner{display:block;text-align:center;background:var(--gold);color:#1A1204;font-weight:800;padding:6px}
 .ask-btn{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));inset-inline-end:18px;z-index:45;border:0;border-radius:999px;background:var(--green);color:#fff;font-weight:800;padding:10px 16px;box-shadow:0 10px 24px -8px rgba(0,0,0,.4);cursor:pointer}
 @media(max-width:600px){.sx-hero .wrap{padding-block:18px 20px}.sx-facts{grid-template-columns:1fr}.sx-facts dt{margin-top:4px}}
+html.mig-app .sx-share[data-mig-app-only][hidden]{display:inline-flex!important}.sx-share{align-self:flex-start;align-items:center;gap:6px;min-height:40px;border:1px solid rgba(255,255,255,.55);border-radius:999px;background:rgba(255,255,255,.14);color:inherit;font:inherit;font-weight:800;font-size:.88rem;padding:6px 16px;cursor:pointer;margin-top:4px}
 '''
 
     SEO_JS = r'''(function(){var d=document,h=d.documentElement;
@@ -1008,6 +1009,12 @@ each("[data-valid-to]",function(el){if(td>el.getAttribute("data-valid-to")){el.c
 /* "Ask Janna": the assistants load on demand. They take their language from MIGLANG, which data/i18n.js sets from ?lang=en or
    the remembered choice; an /en/ page is English already, so it sets MIGLANG itself and remembers the choice (as ?lang=en
    does) and skips data/i18n.js: no page translator and no 7.7 MB dictionary on a static page (SEO spec 1.6) */
+/* «🔗 شارك الصفحة» — inside the platform's own app only (no address bar there; [data-mig-app-only], pwa_head): the phone's share sheet
+   (navigator.share — data/pwa.js gives Android's WebView the app's own), else the link is copied */
+d.addEventListener("click",function(e){var sb=e.target.closest?e.target.closest("[data-mig-share]"):null;if(!sb)return;var u=location.href.split("#")[0],t=d.title,en=h.lang==="en";
+var ok=function(){sb.textContent=en?"✓ Link copied":"✓ اتنسخ الرابط";};
+if(navigator.share){try{var sp=navigator.share({title:t,url:u});if(sp&&sp.then)sp.then(null,function(){});}catch(x){}return;}
+if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(u).then(ok,function(){});});
 var ask=d.getElementById("seoAsk");if(ask){var go=function(){if(ask.dataset.done)return;ask.dataset.done="1";ask.disabled=true;var l=(window.SEO_ASK_SRC||[]).slice(),i=0;
 if(h.lang==="en"){window.MIGLANG="en";try{localStorage.setItem("mig-lang","en");}catch(x){}l=l.filter(function(s){return!/^\/data\/i18n\.js(\?|$)/.test(s);});}
 (function nx(){if(i>=l.length){ask.hidden=true;return;}var s=d.createElement("script");s.src=l[i++];s.charset="utf-8";s.onload=s.onerror=nx;d.body.appendChild(s);})();};
@@ -2381,7 +2388,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                          esc(logo.lstrip('/')), esc(name), w, h))
         strip = ''
         if cards:
-            strip = ('<section class="ftr-partners" aria-label="%s"><div class="wrap fp-head"><h3>%s</h3><a href="%s">%s</a></div>'
+            # «كن شريكاً ←» picks the partner plan: [data-mig-buy] (hidden inside a store app while its buying is off, data/flags.js)
+            strip = ('<section class="ftr-partners" aria-label="%s"><div class="wrap fp-head"><h3>%s</h3><a href="%s" data-mig-buy>%s</a></div>'
                      '<div class="fp-run"><div class="fp-track">%s</div></div>%s</section>'
                      % (T('شركاء المنصة', 'Platform Partners'), T('شركاء المنصة', 'Platform Partners'), stat('register', '#partner'), T('كن شريكاً ←', 'Become a partner →'),
                         cards, ('<script>%s</script>' % FTR_JS.strip()) if app else ''))
@@ -2442,10 +2450,15 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         # /panel.html: hreflang="ar" keeps shell() from adding lang=en to it — are not for crawlers)
         year = (S.get('today') or datetime.date.today()).year
         note = '' if app else '<small class="fnote">%s</small>' % T('كل الأرقام في الصفحات محسوبة من بيانات المنصة وقت آخر تحديث.', 'All figures are computed from the platform data at the last update.')
-        bottom = ('<div class="bottom"><span>%s%s</span><span><a href="%s">%s</a> · <a href="%s">%s</a> · <a href="%s">%s</a> · <a href="%s" rel="nofollow">%s</a> · <a href="/panel.html" rel="nofollow" hreflang="ar">%s</a></span></div>'
+        # inside the platform's own app only (html.mig-app, pwa_head APP_HEAD_JS; hidden everywhere else): «دخول فريق المنصة» — the app has
+        # no address bar, so the team reaches its boards (/admin/, /seo-team/, /data-desk/ …) through the sign-in page's team mode
+        team = '/en/login/?team=1' if (en and not app) else '/login/?team=1'
+        bottom = ('<div class="bottom"><span>%s%s</span><span><a href="%s">%s</a> · <a href="%s">%s</a> · <a href="%s">%s</a> · <a href="%s" rel="nofollow">%s</a> · <a href="/panel.html" rel="nofollow" hreflang="ar">%s</a>'
+                  '<span class="ftr-team" data-mig-app-only hidden> · <a href="%s" rel="nofollow">%s</a></span></span></div>'
                   % (T('جميع الحقوق محفوظة © %d لمنصة صنع في مصر' % year, 'All rights reserved © %d Made in Egypt Gate' % year), note,
                      stat('legal', '#privacy'), T('سياسة الخصوصية', 'Privacy Policy'), stat('legal', '#terms'), T('الشروط والأحكام', 'Terms & Conditions'),
-                     stat('legal'), T('المركز القانوني', 'Legal Center'), stat('dashboard'), T('لوحة المصنع', 'Factory dashboard'), T('لوحة الإدارة', 'Admin dashboard')))
+                     stat('legal'), T('المركز القانوني', 'Legal Center'), stat('dashboard'), T('لوحة المصنع', 'Factory dashboard'), T('لوحة الإدارة', 'Admin dashboard'),
+                     esc(team), T('دخول فريق المنصة', 'Platform team sign-in')))
         return ('<footer class="site-ftr%s">%s<div class="wrap ftr-main"><div class="cols">%s%s%s%s</div><div class="ftr-end">%s<div class="ftr-dock">%s%s</div></div></div></footer>'
                 % (' ftr-app' if app else '', strip, c1, c2, c3, c4, refs, quick, bottom))
 
@@ -2540,8 +2553,10 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                 cls += ' ph' + (' sm' if small else '')
                 S['hero_pre'] = pre
                 cred = vis_credit(img, L)
-        return ('<div class="%s">%s<div class="wrap">%s%s%s%s%s%s</div>%s</div>'
-                % (cls, bg, crumbs_html, h1_html, ('<p class="intro" data-seo="intro">%s</p>' % esc(intro)) if intro else '', chips_html, acts, extra, cred))
+        # «🔗 شارك الصفحة»: only inside the platform's own app (no address bar or share button there — app parity plan, share-and-copy-links)
+        share = '<button type="button" class="sx-share" data-mig-share data-mig-app-only hidden>%s</button>' % X(L, '🔗 شارك الصفحة', '🔗 Share this page')
+        return ('<div class="%s">%s<div class="wrap">%s%s%s%s%s%s%s</div>%s</div>'
+                % (cls, bg, crumbs_html, h1_html, ('<p class="intro" data-seo="intro">%s</p>' % esc(intro)) if intro else '', chips_html, acts, share, extra, cred))
 
     def pager(L, base_path, n, pages):
         if pages <= 1:
@@ -5616,13 +5631,26 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         """the JS regex of the paths the worker never touches: /api/…, /admin/, /login/ … (also /en/x/, /x and /x.html)"""
         return '/^\\/(?:en\\/)?(?:%s)(?:[\\/.?#]|$)/' % '|'.join(c['never'])
 
+    # The platform's own apps «صنع في مصر» (app/: a WebView of this site whose user agent ends «MIGApp/<v> (ios|android)»): <html> gets
+    # «mig-app mig-app-ios|android» before the first paint (generated pages load data/flags.js deferred), and — while the owner keeps
+    # buying off inside that app (data/flags.js keeps the server's last answer in localStorage "mig-flags-app") — «mig-off-app_buy_<p>»,
+    # so the [data-mig-buy] parts (prices, «ادفع الآن», renew / upgrade) are hidden from the start. Browsers: nothing (no MIGApp mark).
+    # The same rule as data/flags.js and worker/src/app-ua.js. ES5 (CLAUDE.md 2.1).
+    APP_HEAD_JS = ('<style>html.mig-app [data-mig-app-only][hidden]{display:inline!important}'   # app-only bits ([data-mig-app-only])
+                   # buying off inside that app: hidden from the first paint (data/flags.js carries the same rule for the live switch)
+                   'html.mig-app-ios.mig-off-app_buy_ios [data-mig-buy],html.mig-app-android.mig-off-app_buy_android [data-mig-buy]{display:none!important}</style>'
+                   r'<script>(function(){try{var u=navigator.userAgent||"",m=/\bMIGApp\/[^\s()]*\s*\((ios|android)\)/i.exec(u),p=m?m[1].toLowerCase():"";'
+                   r'if(!m){if(!/\bMIGApp\b/.test(u))return;p=/iPhone|iPad|iPod/.test(u)?"ios":/Android/i.test(u)?"android":"";}'
+                   r'var c=" mig-app"+(p?" mig-app-"+p:"");if(p){try{var o=JSON.parse(localStorage.getItem("mig-flags-app")||"null");'
+                   r'if(o&&o["app_buy_"+p]===false)c+=" mig-off-app_buy_"+p;}catch(e){}}document.documentElement.className+=c;}catch(e){}})();</script>')
+
     def pwa_head(L):
         c = pwa_conf()
         if S.get('pwa_src') is None:
             f = B + 'data/pwa.js'
             S['pwa_src'] = ('/data/pwa.js?v=%s' % hashlib.md5(open(f, 'rb').read()).hexdigest()[:8]) if os.path.exists(f) else ''
         en = L == 'en'
-        t = ('<meta name="theme-color" content="%s"><link rel="manifest" href="/manifest%s.webmanifest">' % (c['theme_color'], '.en' if en else '')
+        t = (APP_HEAD_JS + '<meta name="theme-color" content="%s"><link rel="manifest" href="/manifest%s.webmanifest">' % (c['theme_color'], '.en' if en else '')
              + '<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">'
              + '<meta name="apple-mobile-web-app-status-bar-style" content="default"><meta name="apple-mobile-web-app-title" content="%s">' % X(L, 'صنع في مصر', 'Made in Egypt')
              + '<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48"><link rel="icon" type="image/png" sizes="32x32" href="/img/app/favicon-32.png">'

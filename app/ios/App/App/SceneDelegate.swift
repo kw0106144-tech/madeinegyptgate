@@ -7,8 +7,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
 
+        let main = MainViewController() // CAPBridgeViewController + new windows, Universal Links, offline page, files
+        // started by a link (a Universal Link): that page, not the one kept from the last time (MainViewController.restorePlace)
+        main.launchedByLink = !connectionOptions.urlContexts.isEmpty
+            || connectionOptions.userActivities.contains { $0.activityType == NSUserActivityTypeBrowsingWeb }
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = MainViewController() // CAPBridgeViewController + Universal Links, offline page, downloads
+        window?.rootViewController = main
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)

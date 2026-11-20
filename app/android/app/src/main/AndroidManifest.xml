@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Backups (android-backup-rules): Android may back the app up and restore it on a new phone, but never the WebView's data
+         (localStorage with the member's sign-in token, cookies) nor the old system's session id: res/xml/data_extraction_rules.xml
+         (Android 12+) and res/xml/backup_rules.xml (older). A restored phone starts signed out, as Chrome does. -->
     <application
         android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -47,6 +52,13 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- The app's side of the site ↔ app association for saved passwords (the old-account form of /login/): Google's credential
+             sharing reads this from the app AND /.well-known/assetlinks.json (get_login_creds) from the site. Google picks it up only
+             for the app published on Google Play's public channel, not for the APK of /app/ (app/well-known/README.md). -->
+        <meta-data
+            android:name="asset_statements"
+            android:resource="@string/asset_statements" />
     </application>
 
     <!-- Permissions -->
@@ -56,6 +68,9 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Android 7–11: the live calls use Bluetooth earbuds / headsets for the voice and the microphone, as Chrome does (the WebView's
+         audio code lists a Bluetooth headset only when the app holds this; install-time, no prompt; Android 12+ needs none) -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <!-- push notifications (Android 13+ asks only when the app registers: off until Firebase is set up, app/README.md) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -63,14 +78,20 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
-    <!-- Android 11+: lets the file chooser of the WebView find the camera app for <input type=file capture> -->
+    <!-- Android 11+: lets the file chooser of the WebView find the camera app (<input type=file capture>, and the camera next to the
+         gallery in MigChromeClient's chooser), and the WebView's speech recognition (Web Speech: the 🎤 of Janna's chat) find the
+         phone's recognition service -->
     <queries>
         <intent>
             <action android:name="android.media.action.IMAGE_CAPTURE" />
         </intent>
         <intent>
             <action android:name="android.media.action.VIDEO_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
         </intent>
     </queries>
 </manifest>

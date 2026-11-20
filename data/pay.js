@@ -4,7 +4,17 @@
                                         company, issued_at, paid_at, test}, gateway:{ready, provider_label}, manual:{enabled, ar, en}, email_masked}
      POST /api/pay/checkout {t}      → {redirect_url} (the provider's hosted page; no card field on our site, ever)
    Honest states only: nothing is shown as paid without the server saying so; while the gateway is not live the page says
-   «بوابة الدفع لسه بتتجهّز» exactly like register.html. No tracking pixels. ES5, no dependencies. */
+   «بوابة الدفع لسه بتتجهّز» exactly like register.html. No tracking pixels. ES5, no dependencies.
+   Inside the platform's own app (user agent «MIGApp», app/ — app parity plan):
+   - pay-handoff: the gateway's page cannot load inside the app (only the platform's own site does), so «ادفع الآن» opens it in the
+     phone's secure in-app browser (Capacitor.Plugins.Browser: a Custom Tab / SFSafariViewController — cards, 3-D Secure and wallets work
+     there as in the browser; the provider's return lands on /pay/#…&r=1 inside it, which needs no session). The button comes back with
+     «كمّل الدفع في صفحة بوابة الدفع الآمنة — لما تقفلها هنأكد الدفع هنا», and the usual confirmation (waiting + polling, POLL_MAX) starts
+     only when that browser is closed ("browserFinished") or this page is shown again — never while the member is still typing his card.
+     A window without the app's bridge (a page opened over another one) hands the gateway to the phone's browser (location.assign, which
+     the app sends out) and stays: the button comes back and the confirmation starts when the member is back on this page;
+   - app_buy_ios / app_buy_android off (data/flags.js MIGFLAGS.buyOff, the store rules): the invoice and its status only — no «ادفع الآن»,
+     no transfer details, no link out: «الدفع مش متاح جوه التطبيق». */
 (function () {
   "use strict";
   var W = window, EN = W.MIGLANG === "en", T = function (a, e) { return EN ? e : a; };
@@ -87,6 +97,8 @@
     if (st === "refunded") { box(card(i) + msg("warn", "↩", T("مبلغ الفاتورة دي اترد", "This invoice was refunded"), "", contact())); return; }
     if (st === "expired") { box(card(i) + msg("warn", "⌛", T("الفاتورة دي انتهت صلاحيتها", "This invoice has expired"), T("اطلب فاتورة جديدة من «باقتي» في لوحتك.", "Ask for a new invoice from “My plan” in your dashboard."), dash() + contact())); return; }
     if (st !== "open") { bad(); return; }
+    /* the store rules: buying is off inside this app — the invoice and its status, nothing to pay with and no way out */
+    if (buyOff()) { box(card(i) + msg("info", "ℹ️", T("الدفع مش متاح جوه التطبيق.", "Payment is not available inside the app."), "", "")); return; }
     var mail = j.email_masked ? '<p class="note" style="margin:0">' + esc(T("إيصال الدفع بيوصل على ", "The receipt goes to ") + j.email_masked) + "</p>" : "";
     var man = manualHTML(j, i);
     if (g.ready) {
@@ -105,6 +117,8 @@
     req("/pay/checkout", { method: "POST", body: { t: TOKEN } }).then(function (j) {
       var u = String(j && j.redirect_url || "");
       if (!/^https:\/\/[^\s"'<>`\\]+$/i.test(u)) throw { code: "provider_error" };
+      if (inApp(u, b, er)) return;   /* the app: the gateway in the phone's secure in-app browser (pay-handoff) */
+      if (APPUA) away(b, er, false); /* an app window without the bridge (a page opened over another): the gateway opens in the phone's browser and this page stays — coming back confirms */
       (W.MIGPAYGO || function (x) { location.assign(x); })(u);   /* MIGPAYGO: test seam (the browser tests capture the hand-off) */
     }).catch(function (e) {
       b.disabled = false; b.innerHTML = "💳 " + T("ادفع الآن", "Pay now");
@@ -115,6 +129,37 @@
         : T("بوابة الدفع مش بترد دلوقتي — جرّب تاني بعد شوية.", "The payment gateway is not responding right now — please try again shortly.")) + "</span>";
     });
   }
+  /* ---------- the platform's own app (app parity plan): buying off there, and the gateway in the phone's in-app browser ---------- */
+  var APPUA = /\bMIGApp\b/.test((W.navigator && W.navigator.userAgent) || "");
+  function buyOff() { var F = W.MIGFLAGS; return !!(APPUA && F && F.buyOff && F.buyOff()); }
+  function browserPlugin() { var C = W.Capacitor; return APPUA && C && C.Plugins && C.Plugins.Browser && typeof C.Plugins.Browser.open === "function" ? C.Plugins.Browser : null; }
+  var AWAY = false;
+  /* the gateway's page is open in the in-app browser: confirm when it is closed (or this page is shown again), never before */
+  function confirmLater() {
+    if (!AWAY) return; AWAY = false;
+    T0 = Date.now(); RET = true; waiting(); poll();
+  }
+  function inApp(u, b, er) {
+    var BR = browserPlugin(); if (!BR) return false;
+    try {
+      var lp = BR.addListener && BR.addListener("browserFinished", function () { try { if (lp && lp.then) lp.then(function (h) { if (h && h.remove) h.remove(); }); else if (lp && lp.remove) lp.remove(); } catch (x) {} confirmLater(); });
+      var op = BR.open({ url: u });
+      AWAY = true;
+      if (op && op.then) op.then(null, function () { location.assign(u); }); /* no in-app browser: the system's own (coming back confirms) */
+    } catch (e) { return false; }
+    away(b, er, true);
+    return true;
+  }
+  /* the gateway is open outside this page (the in-app browser, or the phone's own browser): the button again, the confirmation when the member is back */
+  function away(b, er, tab) {
+    AWAY = true;
+    b.disabled = false; b.innerHTML = "💳 " + T("ادفع الآن", "Pay now");
+    if (er) er.innerHTML = '<span class="payst info" style="display:block">' + esc(tab ? T("كمّل الدفع في صفحة بوابة الدفع الآمنة — لما تقفلها هنأكد الدفع هنا", "Finish the payment on the secure payment gateway page — when you close it, we will confirm the payment here")
+      : T("كمّل الدفع في صفحة بوابة الدفع الآمنة — لما ترجع هنا هنأكد الدفع", "Finish the payment on the secure payment gateway page — when you come back here, we will confirm the payment")) + "</span>";
+  }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && AWAY) setTimeout(confirmLater, 600); });
+  /* the owner's switch arrived after the invoice was drawn (data/flags.js answers after this page's first paint): draw it again */
+  W.addEventListener("mig:flags", function () { if (INV && !RET && buyOff()) show(INV); });
   /* «والباقة اتفعّلت» only when the server says the activation is done (activation.status, ACC-CONTRACT D7): pending = the cron retries
      within minutes, review = a higher plan was already in force or the team must decide — the payment itself is confirmed either way */
   function paidMsg(j) {

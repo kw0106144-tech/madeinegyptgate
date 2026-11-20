@@ -85,6 +85,11 @@
   }
   var WB = wbOn();
   var EN = window.MIGLANG === "en";
+  /* the platform's own app (user agent «MIGApp/<v> (ios|android)», app/): "ios" | "android" | "" — its own words where a browser's would
+     mislead (the microphone is the app's, in the phone's settings), the consent card of the store rules (call_consent_app) — app parity plan */
+  var INAPP = (function () { var u = navigator.userAgent || "", m = /\bMIGApp\/[^\s()]*\s*\((ios|android)\)/i.exec(u); return m ? m[1].toLowerCase() : /\bMIGApp\b/.test(u) ? (/iPhone|iPad|iPod/.test(u) ? "ios" : "android") : ""; })();
+  function micAskTx() { return INAPP ? T("اسمح للتطبيق يستخدم الميكروفون علشان تتكلم مع ", "Allow the app to use the microphone so you can talk to ") : T("اسمح للمتصفح يستخدم الميكروفون علشان تتكلم مع ", "Allow the microphone so you can talk to "); }
+  function micWhereTx() { return INAPP === "ios" ? T("الإعدادات ← صنع في مصر ← الميكروفون", "Settings → Made in Egypt → Microphone") : T("إعدادات الموبايل ← التطبيقات ← صنع في مصر ← الأذونات ← الميكروفون", "the phone's Settings → Apps → Made in Egypt → Permissions → Microphone"); }
   /* personas: the Arabic Janna listens in Egyptian Arabic (accurate STT), the English one serves ?lang=en pages; Bassem (Arabic) advises members */
   var AGENTS = { janna: EN ? "e5101653-65b4-44a6-85e5-ec2e78f82685" : "5f06d835-22cc-4460-b412-84cefa9e565b", bassem: "19ef9078-5252-42a4-bbdf-9a3c4a38a4be" };
   /* the Anam widget: an exact, immutable file (not the package-root redirect) with Subresource Integrity — the page holds the platform
@@ -559,7 +564,7 @@
     VID = v; return v;
   }
   try { window.addEventListener("storage", function (e) { if (e && e.key === "mig-tok" && !/^v2\./.test(String(e.newValue || ""))) { var m = ""; try { m = localStorage.getItem(VID_M) || ""; } catch (x) {} if (m) rotateVisitor(); } }); } catch (e) {} /* signed out in another tab */
-  function sessBody(agent, extra) { var b = { agent: agent, lang: EN ? "en" : "ar", ff: 1 }; /* ff: this page knows the owner's switches (feature_off) */ if (agent === "janna") { var vi = visitorId(); if (vi) b.visitor_id = vi; } if (extra) for (var k in extra) if (extra.hasOwnProperty(k) && !b.hasOwnProperty(k)) b[k] = extra[k]; return b; }
+  function sessBody(agent, extra) { var b = { agent: agent, lang: EN ? "en" : "ar", ff: 1, cs: 1 }; /* ff: this page knows the owner's switches (feature_off); cs: and the consent card */ if (aiOk()) b.consent = true; if (agent === "janna") { var vi = visitorId(); if (vi) b.visitor_id = vi; } if (extra) for (var k in extra) if (extra.hasOwnProperty(k) && !b.hasOwnProperty(k)) b[k] = extra[k]; return b; }
   function mint(agent, extra) {
     if (agent !== "bassem") {
       var jt = signedTok(); /* Janna never needs it: a refused / old sign-in is ignored by the Worker */
@@ -682,10 +687,10 @@
     contWire(me, on);
     me.nz = me.nz || nzNew(); nzWire(me, on); /* «وضع الدوشة»: after contWire, so a continued part's cut greeting is already marked */
     langWire(me, on); /* 🌐 this tab's choice again (after contCtx), applied / refused */
-    on("MIC_PERMISSION_PENDING", function () { if (!me.ready && !me.cont) { me.micAsk = true; sdkUi("connecting", T("اسمح للمتصفح يستخدم الميكروفون علشان تتكلم مع ", "Allow the microphone so you can talk to ") + sdkName()); } });
+    on("MIC_PERMISSION_PENDING", function () { if (!me.ready && !me.cont) { me.micAsk = true; sdkUi("connecting", micAskTx() + sdkName()); } });
     on("MIC_PERMISSION_GRANTED", function () { if (me.micAsk) { me.micAsk = false; if (!me.ready && !me.closed && !me.cont) sdkUi("connecting", connMsg(me)); } });
     /* the SDK keeps the call without a microphone: the text box still works */
-    on("MIC_PERMISSION_DENIED", function () { me.micAsk = false; me.micDenied = true; updCtl(); say(T("الميكروفون مقفول للموقع ده — تقدر تكتب في الخانة تحت، أو تسمح بالميكروفون من إعدادات المتصفح.", "The microphone is blocked for this site — you can type in the box below, or allow the microphone in your browser settings.")); });
+    on("MIC_PERMISSION_DENIED", function () { me.micAsk = false; me.micDenied = true; updCtl(); say(INAPP ? T("الميكروفون مقفول للتطبيق — تقدر تكتب في الخانة تحت، أو تفتحه من ", "The microphone is off for the app — you can type in the box below, or turn it on in ") + micWhereTx() + "." : T("الميكروفون مقفول للموقع ده — تقدر تكتب في الخانة تحت، أو تسمح بالميكروفون من إعدادات المتصفح.", "The microphone is blocked for this site — you can type in the box below, or allow the microphone in your browser settings.")); });
     on("CONNECTION_ESTABLISHED", function () { tmMark(me, "connected"); relaySlow(me); });
     tmTurns(me, on); /* the reasoning time of each reply, for the call's end (numbers only) */
     on("SESSION_READY", function (sid) {
@@ -727,7 +732,8 @@
        once the browser answered (MIC_WAIT at most), else — or when ours failed — the SDK captures the microphone itself, as before */
     micFor(me).then(function (ms) {
       if (LV !== me || me.stopped || me.closed) { micStop(ms); return; } /* ✕ while the browser was asking */
-      me.micUsed = ms ? "own" : "sdk"; tmMark(me, "mic");
+      if (!ms && INAPP === "android" && (me.micDenied || me.micErr === "NotAllowedError")) { ms = silentMic(); if (ms) { var was = me.micDenied; me.micDenied = true; updCtl(); if (!was) say(T("الميكروفون مقفول للتطبيق — تقدر تكتب في الخانة تحت، أو تفتحه من ", "The microphone is off for the app — you can type in the box below, or turn it on in ") + micWhereTx() + "."); } }
+      me.micUsed = ms ? (me.micDenied ? "none" : "own") : "sdk"; tmMark(me, "mic");
       /* no session after 45 s (the widget's own start-up limit): stop and say so */
       me.connT = setTimeout(function () { if (LV !== me || me.ready || me.closed) return; me.stopped = true; try { c.stopStreaming(); } catch (x) {} if (!me.closed) sdkFail(me, "start"); }, 45000);
       tmMark(me, "stream");
@@ -1066,7 +1072,14 @@
     if (why === "start") relayDrop(me); /* a start through the relay failed: the next call tries without it */
     if (contBack(me)) return; /* a new part that did not start: the running one keeps the call (review #14) */
     me.closed = true; me.st = "error"; sdkClear(me); me.client = null; contUi(false); contEnd(me);
-    if (why === "mic") { sdkUi("error", T("الميكروفون مقفول للموقع ده. اسمح بيه من إعدادات المتصفح وجرّب تاني، أو كمّل كتابة.", "The microphone is blocked for this site. Allow it in your browser settings and try again, or continue by typing."), { go: T("جرّب تاني", "Try again"), typing: true }); return; }
+    if (why === "mic") {
+      sdkUi("error", INAPP ? T("الميكروفون مقفول للتطبيق — افتحه من ", "The microphone is off for the app — turn it on in ") + micWhereTx() + T(" وجرّب تاني، أو كمّل كتابة.", " and try again, or continue by typing.")
+        : T("الميكروفون مقفول للموقع ده. اسمح بيه من إعدادات المتصفح وجرّب تاني، أو كمّل كتابة.", "The microphone is blocked for this site. Allow it in your browser settings and try again, or continue by typing."), { go: T("جرّب تاني", "Try again"), typing: true });
+      /* the app: its own page in the phone's Settings (app-settings: — iOS opens it, and the Android app opens its own page there too) */
+      var stl = INAPP && sdkBox() ? sdkBox().querySelector(".jv-st") : null;
+      if (stl) { var al = document.createElement("a"); al.href = "app-settings:"; al.textContent = " " + T("افتح الإعدادات", "Open Settings"); al.style.cssText = "color:inherit;text-decoration:underline;font-weight:800"; stl.appendChild(al); }
+      return;
+    }
     sdkUi("error", T("الاتصال ماكملش — جرّب تاني.", "The call could not connect — please try again."), { go: T("جرّب تاني", "Try again") });
   }
   /* the Worker's answer when it gives no token */
@@ -1076,6 +1089,8 @@
     if (c === "unavailable" || c === "anam_not_configured" || c === "store_off" || s === 404) { rememberWidget(); LV = null; toWidget(true); return; }
     me.closed = true; me.st = "error";
     if (c === "feature_off") { sdkUi("error", liveOffMsg(persona), { noRetry: true }); return; }
+    /* the owner switched the consent on after this page asked (or the device's «موافق» is gone): the card, then the same call again */
+    if (c === "consent_required") { aiSet(false); sdkUi("idle"); aiCard(persona, function () { if (sdkBox()) sdkStart(!!me.textOnly); }); return; }
     if (c === "rate_limited") { var mn = Math.max(1, Math.ceil((+e.retry_after || 3600) / 60)); sdkUi("error", T("اتفتحت مكالمات فيديو كتير من نفس الشبكة الساعة دي — جرّب تاني بعد " + mn + " دقيقة.", "Too many video calls from this network this hour — please try again in " + mn + " min."), { go: T("جرّب تاني", "Try again") }); return; }
     if (c === "daily_cap") { sdkUi("error", T("مكالمات الفيديو المباشرة خلصت لليوم — جرّب تاني بكرة.", "Today's live video calls are used up — please try again tomorrow."), { noRetry: true }); return; }
     if (c === "blocked") { sdkUi("error", T("مكالمات الفيديو المباشرة مش متاحة من الشبكة دي.", "Live video calls are not available from this network."), { noRetry: true }); return; }
@@ -1146,7 +1161,7 @@
      inside the «ابدأ» tap; window.JANNA_LIVE_NOISE_METER = 0 turns it off (text timing only), = 1 turns it on for iOS / iPadOS too (off there
      by default: Web Audio on a remote WebRTC stream has not been tried on a real iPhone); window.JANNA_LIVE_MIC_WAIT (ms, 1000–60000,
      default 15000) bounds the wait for the browser's answer; JANNA_LIVE_EOS_NORMAL / _NOISY override NZ_EOS. JANNA_LIVE.noise() / .noise(true|false). */
-  var MIC_WAIT = (function () { var n = parseInt(window.JANNA_LIVE_MIC_WAIT, 10); return n >= 1000 && n <= 60000 ? n : 15000; })(), NZ_TH = 0.012, NZ_EOS = [nzNum(window.JANNA_LIVE_EOS_NORMAL, 0.45), nzNum(window.JANNA_LIVE_EOS_NOISY, -1)]; /* -1: noisy-room mode keeps the persona's value */
+  var MIC_WAIT = (function () { var n = parseInt(window.JANNA_LIVE_MIC_WAIT, 10); return n >= 1000 && n <= 60000 ? n : INAPP === "android" ? 60000 : 15000; })(), /* Android app: 60 s (its dialog; a 2nd request meanwhile is answered empty) */ NZ_TH = 0.012, NZ_EOS = [nzNum(window.JANNA_LIVE_EOS_NORMAL, 0.45), nzNum(window.JANNA_LIVE_EOS_NOISY, -1)]; /* -1: noisy-room mode keeps the persona's value */
   var NZ = { on: false, why: "", fis: [], offerUntil: 0, ac: null, mic: null, mm: null, typed: [], last: null, el: null, near: 0, nearMiss: 0, missed: 0, his: 0, hv: [] };
   try { sessionStorage.removeItem("mig-jnl-noise"); sessionStorage.removeItem("mig-jnl-noise2"); } catch (e) {} /* earlier builds kept the mode for the tab */
   var NZ_NEAR = (function () { var n = parseFloat(window.JANNA_LIVE_NEAR); return n >= 1.5 && n <= 20 ? n : 2; })(), NZ_NEAR_MIN = 0.015, NZ_HOLD = 900, NZ_RB = 50, NZ_LAG = 800, NZ_SELF = (function () { var n = parseFloat(window.JANNA_LIVE_SELF); return n >= 0.2 && n <= 0.9 ? n : 0.5; })();
@@ -1188,7 +1203,7 @@
     try { p = md.getUserMedia({ audio: c }); } catch (e) { return null; }
     /* not answered within 350 ms and not granted before = the browser is asking: the same words as the SDK's own MIC_PERMISSION_PENDING */
     var granted = false; try { navigator.permissions.query({ name: "microphone" }).then(function (r) { granted = !!r && r.state === "granted"; }, function () {}); } catch (e) {}
-    tm = setTimeout(function () { if (!granted && LV === me && !me.ready && !me.closed && !me.micUsed) { shown = true; me.micAsk = true; sdkUi("connecting", T("اسمح للمتصفح يستخدم الميكروفون علشان تتكلم مع ", "Allow the microphone so you can talk to ") + sdkName()); } }, 350);
+    tm = setTimeout(function () { if (!granted && LV === me && !me.ready && !me.closed && !me.micUsed) { shown = true; me.micAsk = true; sdkUi("connecting", micAskTx() + sdkName()); } }, 350);
     var back = function () { clearTimeout(tm); if (shown) me.micAsk = false; if (shown && LV === me && !me.ready && !me.closed && !me.micUsed) sdkUi("connecting", connMsg(me)); };
     return Promise.resolve(p).then(function (s) {
       back();
@@ -1196,6 +1211,9 @@
       micDrop(); NZ.mic = s; return s;
     }, function (e) { back(); me.micErr = String((e && e.name) || "error"); return null; });
   }
+  /* the Android app after a refused microphone: a silent stream, so the SDK does not ask a second time (the text box still works) */
+  var SILENT = null;
+  function silentMic() { try { var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; if (!SILENT || SILENT.state === "closed") SILENT = new AC(); return SILENT.createMediaStreamDestination().stream; } catch (e) { return null; } }
   /* the stream for this part: a clone of our capture, or null (= the SDK captures the microphone itself) */
   function micFor(me) {
     var clone = function (s) { if (!micLive(s)) return null; try { return s.clone(); } catch (e) { NZ.mic = null; return s; } };
@@ -1683,6 +1701,9 @@
     if (o.meeting || o.intent === "meeting") p = "janna";
     /* «🛠️ المطوّر» → «المزايا»: this persona's live calls are switched off (data/flags.js; the Worker refuses the token too) */
     if (liveOff(p)) { if (!(ov && persona === p)) note(liveOffMsg(p)); return; }
+    /* the store rules (call_consent_app in the app / call_consent_web on the website, both OFF until the owner approves the text): the
+       AI-call notice first, once per device (localStorage "mig-ai-ok"); «لا، شكراً» = no call. The Worker refuses a session without it too */
+    if (!ov && aiNeed() && !o.__aiok) { aiCard(p, function () { o.__aiok = 1; open(o); }); return; }
     if (ov && persona !== p) close();
     persona = p;
     if (p === "bassem") loadTools();
@@ -1722,6 +1743,32 @@
     ov.remove(); ov = null; frame = null; SID = ""; sessT0 = 0; NUDGE = ""; document.documentElement.style.overflow = ""; document.documentElement.classList.remove("jnl-on");
     clearInterval(scrT); scrT = 0; setTimeout(wbTell, 0);
     if (m) { m.noteEl = note(m.msg); MT = null; }
+  }
+  /* ---------- the AI-call notice (app parity plan, item ai-call-consent; the owner's switches call_consent_app / call_consent_web, both
+     OFF until he approves the words of docs/app/OWNER-APPROVAL-AR.md): «موافق، ابدأ» is kept on this device (localStorage "mig-ai-ok",
+     else for this page) and every session request then says consent: true (sessBody) ---------- */
+  var AI_KEY = "mig-ai-ok", AI_MEM = false;
+  function aiOk() { if (AI_MEM) return true; try { return localStorage.getItem(AI_KEY) === "1"; } catch (e) { return false; } }
+  function aiSet(v) { AI_MEM = !!v; try { if (v) localStorage.setItem(AI_KEY, "1"); else localStorage.removeItem(AI_KEY); } catch (e) {} }
+  function aiNeed() { var F = window.MIGFLAGS; return !!(F && F.on && F.on(INAPP ? "call_consent_app" : "call_consent_web") === true) && !aiOk(); }
+  function aiCard(p, then) {
+    var old = document.querySelector(".jnl-ai"); if (old) old.remove();
+    if (!document.getElementById("jnl-ai-css")) { var st = document.createElement("style"); st.id = "jnl-ai-css";
+      st.textContent = ".jnl-ai{position:fixed;inset:0;z-index:2147483000;display:flex;align-items:flex-end;justify-content:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));background:rgba(4,18,26,.55)}"
+        + ".jnl-ai>div{box-sizing:border-box;width:min(460px,100%);background:#fff;color:#0F172A;border-radius:16px;padding:18px;box-shadow:0 20px 50px -20px rgba(0,0,0,.6);font:600 15px/1.8 Cairo,Tahoma,Arial,sans-serif}"
+        + ".jnl-ai b{display:block;font-size:16px;font-weight:800;margin:0 0 6px}.jnl-ai p{margin:0 0 8px}.jnl-ai a{color:#8E0B20;text-decoration:underline}"
+        + ".jnl-ai .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.jnl-ai button{flex:1 1 auto;min-height:44px;border-radius:999px;border:0;padding:10px 16px;font:inherit;font-weight:800;cursor:pointer}"
+        + ".jnl-ai .ok{background:#0b5d47;color:#fff}.jnl-ai .no{background:#EEF0F3;color:#0F172A}"; document.head.appendChild(st); }
+    var B = p === "bassem", nm = B ? T("باسم", "Bassem") : T("جنة", "Janna"), leg = (CLEAN ? "/legal/" : "legal.html") + (EN ? "?lang=en" : "") + "#privacy";
+    var c = document.createElement("div"); c.className = "jnl-ai"; c.setAttribute("translate", "no"); c.setAttribute("role", "dialog"); c.setAttribute("aria-modal", "true"); c.dir = EN ? "ltr" : "rtl";
+    c.innerHTML = '<div><b>' + esc(T("قبل المكالمة", "Before the call")) + "</b><p>"
+      + esc(B ? T("المكالمة دي مع مساعد بالذكاء الاصطناعي: صوتك وكلامك بيتبعتوا لمزوّد المحادثة المرئية (Anam) علشان يتحوّل لرد، والمنصة بتحتفظ بملخص كلامكم علشان باسم يكمّل معاك.", "This call is with an AI assistant: your voice and words are sent to the video-chat provider (Anam) to be turned into a reply, and the platform keeps a summary of your conversation so Bassem can carry on with you.")
+        : T("المكالمة دي مع مساعد بالذكاء الاصطناعي: صوتك وكلامك بيتبعتوا لمزوّد المحادثة المرئية (Anam) علشان يتحوّل لرد، والمنصة بتحتفظ بملخص كلامكم علشان جنة تكمّل معاك.", "This call is with an AI assistant: your voice and words are sent to the video-chat provider (Anam) to be turned into a reply, and the platform keeps a summary of your conversation so Janna can carry on with you."))
+      + '</p><p><a href="' + esc(leg) + '">' + esc(T("سياسة الخصوصية", "Privacy policy")) + '</a></p><div class="acts"><button type="button" class="ok">' + esc(T("موافق، ابدأ", "OK, start")) + '</button><button type="button" class="no">' + esc(T("لا، شكراً", "No, thanks")) + "</button></div></div>";
+    document.body.appendChild(c);
+    var fin = function (yes) { c.remove(); if (yes) { aiSet(true); then(); } else note(T("تمام — تقدر تكلّم " + nm + " كتابة من غير مكالمة.", "OK — you can still write to " + nm + " without a call.")); };
+    c.querySelector(".ok").onclick = function () { fin(true); }; c.querySelector(".no").onclick = function () { fin(false); };
+    try { c.querySelector(".ok").focus(); } catch (e) {}
   }
   /* the owner's switches (data/flags.js MIGFLAGS; absent → nothing is off) */
   function liveOff(p) { var F = window.MIGFLAGS; return !!(F && F.on && F.on(p === "bassem" ? "bassem_live" : "janna_live") === false); }
@@ -1771,10 +1818,10 @@
     if (!/[?&]with=bassem(?:&|$)/.test(a.search)) a.search = (a.search && a.search !== "?" ? a.search + "&" : "?") + "with=bassem";
     var nm = "mig-bassem-" + new Date().getTime(), w = null;
     try { w = window.open(a.href, nm); } catch (e) { w = null; }
-    if (!w) { say(T("المتصفح منع فتح تاب جديدة — اسمح بالنوافذ المنبثقة للموقع، أو كمّل هنا على الشاشة", "The browser blocked the new tab — allow pop-ups for this site, or carry on here on the screen")); return null; }
+    if (!w) { say(INAPP ? T("مقدرتش أفتح الصفحة — كمّل هنا على الشاشة", "I couldn't open the page — carry on here on the screen") : T("المتصفح منع فتح تاب جديدة — اسمح بالنوافذ المنبثقة للموقع، أو كمّل هنا على الشاشة", "The browser blocked the new tab — allow pop-ups for this site, or carry on here on the screen")); return null; }
     try { if (w.name !== nm) w.name = nm; } catch (e) {}
     TABS.push(w); if (TABS.length > 12) TABS.shift();
-    say(T("فتحتلك الصفحة في تاب جديدة — وأنا معاك هنا في المكالمة", "I opened the page in a new tab — I'm right here with you on the call"));
+    say(INAPP ? T("فتحتلك الصفحة فوق المكالمة — وأنا معاك هنا", "I opened the page over the call — I'm right here with you") : T("فتحتلك الصفحة في تاب جديدة — وأنا معاك هنا في المكالمة", "I opened the page in a new tab — I'm right here with you on the call"));
     return w;
   }
   /* the call ended here: Bassem's tabs say so at once (data/bassem-tab.js update()) instead of at their next look */

@@ -257,6 +257,10 @@ async function create(req, env, ctx) {
 /* kinds that are not routed to factories: recorded, honest timeline, auto-follow the item for the logged-in user */
 async function recordOnly(env, inq, user) {
   const FOLLOWED = /^(opp_offer|lead_interest|project_interest)$/.test(inq.kind) && inq.target_type && inq.target_id;
+  // a membership application WITHOUT a plan (the platform's own app while the owner keeps buying off there — app parity plan, item
+  // app-buy-switch): no invoice is issued for it (payments.js onInquiryCreated), so its answer promises no payment link either
+  let noPlan = false;
+  if (inq.kind === "signup") { let pl = ""; try { const o = JSON.parse(inq.payload_json || "{}"); pl = (o && o.plan) || ""; } catch (e) { pl = ""; } noPlan = canonPlan(pl || inq.target_id) === "visitor"; }
   const T = {
     contact: ["رسالتك اتسجّلت. جنة (المساعدة الذكية) بترد فوراً على أغلب الأسئلة من أي صفحة في المنصة، وتقدر تحجز اجتماع تعريفي معاها في أي وقت.", "Your message is recorded. Janna (the AI assistant) answers most questions instantly on any page, and you can book an introductory meeting with her at any time."],
     opp_offer: ["عرضك اتسجّل على الفرصة. بيانات صاحب الفرصة مش متاحة على المنصة، فالتقديم الرسمي بيكون عند الجهة من الإعلان الرسمي.", "Your offer is recorded on this opportunity. The publisher's contact is not available on the platform, so the official submission is made to the entity through its official notice."],
@@ -266,6 +270,8 @@ async function recordOnly(env, inq, user) {
     signup: ["طلب الاشتراك اتسجّل. تقدر تدخل دلوقتي بكود على الإيميل وتكمّل بيانات شركتك. الدفع الإلكتروني الآمن لسه بيتجهّز — أول ما يشتغل هيوصلك رابطه تلقائياً على الإيميل ده، ومش هنطلب منك بيانات كارت على صفحاتنا أبداً.", "Your application is recorded. You can sign in now with an email code and complete your company data. Secure online payment is being set up — once live, its link is emailed to you automatically; we never ask for card details on our pages."],
     profile_fix: ["طلب التصحيح اتسجّل وهيتطبّق في تحديث البيانات الجاي بعد التحقق من المصدر.", "Your correction is recorded and will be applied in the next data update after the source is checked."],
   }[inq.kind] || ["طلبك اتسجّل.", "Your request is recorded."];
+  if (noPlan) T.splice(0, 2, "طلب الاشتراك اتسجّل. تقدر تدخل دلوقتي بكود على الإيميل وتكمّل بيانات شركتك، وفريق المنصة هيتابع معاك الباقة المناسبة لحسابك.",
+    "Your application is recorded. You can sign in now with an e-mail code and complete your company data; the platform team will follow up with you on the right plan for your account.");
   // «you will be notified» only where it is true: a signed-in sender follows the item now; anyone else after signing in
   // with this same e-mail (auth.js attaches their requests and follows the items then)
   const F = !FOLLOWED ? ["", ""] : user ? [" وبقيت متابعه في حسابك، فهتوصلك تحديثاته تلقائياً.", " You now follow it in your account, so its updates reach you automatically."]

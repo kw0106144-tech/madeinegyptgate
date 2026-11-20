@@ -43,6 +43,7 @@ exec(open(B + 'inbox.part.py', encoding='utf-8').read())  # inbox.html → /inbo
 exec(open(B + 'seo-admin.part.py', encoding='utf-8').read())  # seo-admin.html → /seo-admin/: SEO workspace (admin/seo role; noindex)
 exec(open(B + 'signin.part.py', encoding='utf-8').read())  # key «signin» → /login/ + /en/login/: «دخول المصانع» (e-mail code + «حساب قديم؟» old-password card; standalone, noindex) — not the legacy /login.html
 exec(open(B + 'pay.part.py', encoding='utf-8').read())  # pay.html → /pay/: invoice payment page (public, noindex; ACC-CONTRACT §1.8)
+exec(open(B + 'delete-account.part.py', encoding='utf-8').read())  # delete-account.html → /delete-account/: «حذف الحساب» requests (app parity; noindex; switch account_delete)
 exec(open(B + 'team-seo.part.py', encoding='utf-8').read())  # seo-team.html → /seo-team/: «لوحة فريق الـ SEO» (roles seo/editor/admin/owner; noindex, not in sitemaps)
 exec(open(B + 'team-data.part.py', encoding='utf-8').read())  # data-desk.html → /data-desk/: «لوحة فريق الداتا — مكتب الاستقبال» (roles data/admin/owner; noindex)
 exec(open(B + 'panel.part.py', encoding='utf-8').read())  # key «admin» → /admin/: «لوحة التحكم» Admin Control Center (ACC-CONTRACT §1; standalone PAGE_WRITERS page, noindex,nofollow)
@@ -382,7 +383,7 @@ def sbn(cls, label, badge, slides, cta_href, cta_text):
         stage = ''.join(_a(n, x) for n, x in enumerate(sl))
     return ('<section class="sbn %s" aria-label="%s"><div class="sbn-in"><div class="sbn-head"><span class="sbn-badge">%s</span><span class="sbn-dots"></span></div>'
             '<div class="sbn-stage">%s<button class="sbn-nav p" type="button" aria-label="السابق">›</button><button class="sbn-nav n" type="button" aria-label="التالي">‹</button><span class="sbn-bar"><i></i></span></div>'
-            '<a class="sbn-cta" href="%s">%s</a></div></section>') % (cls, label, badge, stage, cta_href, cta_text)
+            '<a class="sbn-cta" href="%s" data-mig-buy>%s</a></div></section>') % (cls, label, badge, stage, cta_href, cta_text)  # «احجز باقة …»: a plan purchase (hidden in a store app while its buying is off, data/flags.js)
 
 # Egypt: no partner banners yet (UAE banners removed) — both lists are empty, so each slot shows the «مساحة إعلانية محجوزة» placeholder
 STRAT = sbn('strat', 'الشركاء الاستراتيجيين', '🏆 الشركاء الاستراتيجيون', [

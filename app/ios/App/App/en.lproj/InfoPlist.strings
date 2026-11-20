@@ -1,6 +1,7 @@
 /* en: the home-screen name and the purpose texts iOS shows before it asks (app/tools/ios_project.py) */
 "CFBundleDisplayName" = "Made in Egypt Gate";
-"NSMicrophoneUsageDescription" = "The microphone is used only when you start a live call with Janna or Bassem, the platform's assistants, so they can hear you.";
-"NSCameraUsageDescription" = "The camera is used only when you choose to take a photo or video to upload (registration documents, product photos) or turn on your camera in a live call.";
+"NSMicrophoneUsageDescription" = "The microphone is used only when you start a live call with Janna or Bassem, the platform's assistants, or tap the microphone in Janna's chat to speak instead of typing.";
+"NSCameraUsageDescription" = "The camera is used only when you choose to take a photo to upload, such as registration documents or product photos.";
 "NSPhotoLibraryUsageDescription" = "Your photo library is used only when you choose a photo or document to upload, such as registration documents or product photos.";
 "NSPhotoLibraryAddUsageDescription" = "Lets you save an image from the platform to your photos when you choose to.";
+"NSSpeechRecognitionUsageDescription" = "Speech recognition turns what you say to Janna into text when you tap the microphone in her chat.";

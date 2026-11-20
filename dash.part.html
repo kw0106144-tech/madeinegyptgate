@@ -212,7 +212,7 @@
       if (buyer && FAC[t[0]]) return;
       var locked = lv() < t[4], badge = t[0] === "notifications" && S.unread ? '<span class="badge num">' + S.unread + "</span>" : t[0] === "incoming" && S.inc && S.inc.newN ? '<span class="badge num">' + S.inc.newN + "</span>" : locked ? '<span class="lk" aria-hidden="true">🔒</span>' : "";
       h += '<button type="button" data-t="' + t[0] + '"' + (S.tab === t[0] ? ' class="on" aria-current="page"' : "") + "><span aria-hidden=\"true\">" + t[1] + "</span>" + T(t[2], t[3]) + badge + "</button>";
-      if (t[0] === "opps") h += lv() >= 4 ? '<a class="dadv" href="advisor.html">🤖 ' + T("المستشار الذكي (باسم)", "AI Advisor (Bassem)") + "</a>" : '<a class="dadv lk2" href="register.html#partner" title="' + esc(T("متاح لباقة الشريك الأساسي أو الاستراتيجي", "Core / Strategic Partner plans")) + '">🔒 ' + T("المستشار الذكي (باسم)", "AI Advisor (Bassem)") + "</a>";
+      if (t[0] === "opps") h += lv() >= 4 ? '<a class="dadv" href="advisor.html">🤖 ' + T("المستشار الذكي (باسم)", "AI Advisor (Bassem)") + "</a>" : '<a class="dadv lk2" data-mig-buy href="register.html#partner" title="' + esc(T("متاح لباقة الشريك الأساسي أو الاستراتيجي", "Core / Strategic Partner plans")) + '">🔒 ' + T("المستشار الذكي (باسم)", "AI Advisor (Bassem)") + "</a>";
     });
     /* the platform team (review UX-4, the same rule as mig-api.js staffLinks()): «لوحة التحكم» (/admin/, the Admin Control Center) for
        staff_role owner / admin / editor / support, the team boards for seo / data (before migration 0006: the old members.role "admin"
@@ -234,11 +234,17 @@
     var pr = Math.max(2, Math.round(i.used * 100 / i.total)), left = i.expired ? T("انتهت مدة الخدمة", "Service period ended") : (EN ? i.left + " of 365 days left" : "فاضل " + i.left + " يوم من 365");
     return '<section class="bsc" translate="no" dir="' + (EN ? "ltr" : "rtl") + '" aria-label="' + T("مستشارك: باسم", "Your advisor: Bassem") + '"><img src="' + B.headshot + '" alt="" width="68" height="68"><div class="bsc-t"><b>' + T("مستشارك: باسم", "Your advisor: Bassem") + "</b><small>" + esc(i.planName) + "</small>"
       + '<div class="bsc-p"><span class="num">' + left + '</span><span class="bsc-bar" role="progressbar" aria-valuemin="0" aria-valuemax="365" aria-valuenow="' + i.used + '"><i style="width:' + pr + '%"></i></span><em>' + fd(i.start) + " – " + fd(i.end) + "</em></div></div>"
-      + '<div class="bsc-a">' + (i.expired ? '<a class="btn btn-gold btn-sm" href="register.html#' + i.plan + '">🔄 ' + T("جدّد الاشتراك", "Renew") + "</a>"
+      + '<div class="bsc-a">' + (i.expired ? '<a class="btn btn-gold btn-sm" data-mig-buy href="register.html#' + i.plan + '">🔄 ' + T("جدّد الاشتراك", "Renew") + "</a>"
         : '<a class="btn btn-gold btn-sm" href="advisor.html#brief">📰 ' + T("افتح المستشار", "Open the Advisor") + '</a><button class="btn btn-sm bsc-v" type="button" data-bsc="video">🎥 ' + T("كلّم باسم فيديو", "Video call with Bassem") + "</button>") + '<button class="btn btn-sm bsc-w" type="button" data-bsc="welcome">👋 ' + T("رسالة الترحيب", "Welcome note") + "</button></div></section>";
   }
   document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest("[data-bsc]"); if (!b || !window.BASSEM) return; if (b.dataset.bsc === "video") BASSEM.video(); else BASSEM.welcome(true); });
   window.addEventListener("bassem:change", function () { if (S.me && S.tab === "overview") render(); });
+  /* the owner's switches answered after the plan tab was drawn (a slow /api/settings): «🗑 طلب حذف الحساب» (delCard) appears / goes */
+  window.addEventListener("mig:flags", function () {
+    if (!S.me || S.tab !== "plan" || !$("#panel")) return;
+    var F = window.MIGFLAGS, want = !!(F && F.on && F.on("account_delete") === true);
+    if (want !== !!$("#panel [data-delcard]")) render();
+  });
 
   /* ---------- data loaders (each tab asks the server; nothing is invented) ---------- */
   function load(k, fn) { if (S[k] && !S[k].err) return Promise.resolve(S[k]); return fn().then(function (j) { S[k] = j; return j; }, function (e) { S[k] = { err: e }; return S[k]; }); }
@@ -296,7 +302,7 @@
     var f = S.fol, KN = { factory: T("مصنع", "Factory"), company: T("شركة", "Company"), tender: T("مناقصة", "Tender"), rfq: T("طلب عرض سعر", "RFQ"), project: T("مشروع", "Project"), offer: T("عرض", "Offer"), entity: T("جهة", "Entity"), agency: T("جهة", "Entity"), region: T("محافظة", "Governorate"), governorate: T("محافظة", "Governorate"), city: T("منطقة", "Area"), product: T("منتج", "Product"), sector: T("قطاع", "Sector"), store: T("متجر", "Store"), event: T("معرض", "Exhibition"), news: T("خبر", "News"), award: T("ترسية", "Award"), opportunity: T("فرصة", "Opportunity"), lead: T("فرصة", "Lead"), radar: T("رادار قطاعي", "Sector radar"), search: T("بحث متابَع", "Saved search") };
     return head(T("متابعاتي", "My follows"), T("اللي بتتابعه", "What you follow"), T("اضغط «☆ تابع» على أي مصنع أو مناقصة أو طلب أو مشروع أو محافظة. بنبعتلك تنبيه لما يظهر جديد حقيقي فيه (بند جديد أو ميعاد إغلاق قرّب) — ومفيش تنبيهات وهمية.", "Press “☆ Follow” on any factory, tender, request, project or governorate. You'll be alerted when something really new appears (a new item or an approaching deadline) — never fake alerts."))
       /* the plan matrix: alerts (and digests) only on the plans that have them — Basic and up */
-      + (capOn("alerts", 2) ? "" : '<p class="note">🔔 ' + T("التنبيهات بالجديد بتشتغل من الباقة الأساسية وطالع", "Alerts on new items start with the Basic plan") + ' — <a href="register.html#plans">' + T("قارن الباقات", "Compare plans") + "</a></p>")
+      + (capOn("alerts", 2) ? "" : '<p class="note">🔔 ' + T("التنبيهات بالجديد بتشتغل من الباقة الأساسية وطالع", "Alerts on new items start with the Basic plan") + ' — <a data-mig-buy href="register.html#plans">' + T("قارن الباقات", "Compare plans") + "</a></p>")
       + (!f ? loading() : f.err ? errBox(f.err) : f.items.length ? '<div class="ilist">' + f.items.map(function (x) { return '<div class="frow"><span aria-hidden="true">★</span><div><a href="' + esc((U.fixUrl ? U.fixUrl(x.url) : x.url) || "#") + '" dir="auto">' + esc(x.label || x.ref_id) + '</a><span class="sub">' + esc(KN[x.kind] || x.kind) + (x.created_at ? " · " + T("من ", "since ") + esc(U.date(x.created_at)) : "") + '</span></div><button class="btn btn-line btn-sm" type="button" data-unf="' + esc(x.kind) + "|" + esc(x.ref_id) + '">' + T("إلغاء المتابعة", "Unfollow") + "</button></div>"; }).join("") + "</div>" : '<div class="empty">' + T("مش بتتابع حاجة لسه.", "You don't follow anything yet.") + '<div class="tools" style="justify-content:center"><a class="btn btn-line btn-sm" href="tenders.html">' + T("المناقصات", "Tenders") + '</a><a class="btn btn-line btn-sm" href="rfqs.html">' + T("طلبات الأسعار", "RFQs") + '</a><a class="btn btn-line btn-sm" href="factories.html">' + T("المصانع", "Factories") + "</a></div></div>");
   };
   V.notifications = function () {
@@ -325,7 +331,7 @@
     if (!capOn("incoming", 2)) return head(T("مصنعي", "My factory"), T("طلبات واردة لي", "Requests routed to me"), "") + (P ? P.lockHTML("incoming", T("استقبال الطلبات متاح من الباقة الأساسية", "Receiving requests starts with the Basic plan")) : "");
     var c = S.inc, pri = capOn("priority", 3);
     return head(T("مصنعي", "My factory"), T("طلبات واردة لي", "Requests routed to me"), T("الطلبات دي اتوزّعت عليك تلقائي لأنها مطابقة لقطاعك ومنتجاتك ومحافظتك ونطاق باقتك (", "These requests were routed to you automatically because they match your sector, products, governorate and plan scope (") + esc(scopeText()) + T("). عرض السعر اللي بتبعته بيوصل للمشتري تلقائي على إيميله وفي صفحة التتبع، ورقمك الشخصي مش بيظهر.", "). The quote you send reaches the buyer automatically by e-mail and on the tracking page; your personal number is never shown."))
-      + '<p class="note">' + (pri ? "⭐ " + T("باقتك فيها أولوية: بتتصنّف أول في المطابقة والظهور.", "Your plan has priority: you rank first in matching and listings.") : T("الباقة المميزة فأعلى ليها أولوية في المطابقة والظهور.", "Premium and higher plans get priority in matching and listings.") + ' <a href="register.html#premium">' + T("ترقية", "Upgrade") + "</a>") + (!S.me.sector || !S.me.governorate ? ' · <a href="#profile">' + T("كمّل القطاع والمحافظة عشان المطابقة تشتغل صح", "Complete your sector and governorate so matching works") + "</a>" : "") + "</p>"
+      + '<p class="note">' + (pri ? "⭐ " + T("باقتك فيها أولوية: بتتصنّف أول في المطابقة والظهور.", "Your plan has priority: you rank first in matching and listings.") : T("الباقة المميزة فأعلى ليها أولوية في المطابقة والظهور.", "Premium and higher plans get priority in matching and listings.") + ' <a data-mig-buy href="register.html#premium">' + T("ترقية", "Upgrade") + "</a>") + (!S.me.sector || !S.me.governorate ? ' · <a href="#profile">' + T("كمّل القطاع والمحافظة عشان المطابقة تشتغل صح", "Complete your sector and governorate so matching works") + "</a>" : "") + "</p>"
       + (!c ? loading() : c.err ? errBox(c.err) : c.items.length ? '<div class="ilist">' + c.items.map(incRow).join("") + "</div>" : '<div class="empty">' + T("مفيش طلبات واردة لسه. أول ما يوصل طلب مطابق هيتبعتلك تلقائي هنا وعلى إيميلك (والواتساب لو مفعّل).", "No routed requests yet. As soon as a matching request arrives it is sent to you automatically here and by e-mail (and WhatsApp if enabled).") + "</div>");
   };
   /* one request routed to me (GET /api/me/incoming): {ref, kind, my_status, status, title, target_name (only when the buyer addressed it to me),
@@ -465,18 +471,26 @@
       gcard += "</div>";
     }
     var st = acctState(), signup = S.inq && S.inq.items ? S.inq.items.filter(function (x) { return x.kind === "signup"; })[0] : null;
-    return head(T("الإعدادات", "Settings"), T("باقتي", "My plan"), '<span class="ast ast-' + st.k + '">' + esc(st.t) + "</span>" + (st.href ? ' <a href="' + esc(st.href) + '">' + esc(st.ht || "") + "</a>" : ""), '<a class="btn btn-gold" href="register.html#plans">' + T("قارن الباقات", "Compare plans") + "</a>")
+    return head(T("الإعدادات", "Settings"), T("باقتي", "My plan"), '<span class="ast ast-' + st.k + '">' + esc(st.t) + "</span>" + (st.href ? ' <a href="' + esc(st.href) + '">' + esc(st.ht || "") + "</a>" : ""), '<a class="btn btn-gold" data-mig-buy href="register.html#plans">' + T("قارن الباقات", "Compare plans") + "</a>")
       + '<div class="kpis"><div class="kpi"><span>' + T("باقتك الحالية", "Current plan") + '</span><b style="font-size:1.15rem">' + esc(planName(k)) + '</b></div><div class="kpi"><span>' + T("النطاق الجغرافي", "Geographic scope") + '</span><b style="font-size:1.05rem">' + esc(scopeText()) + '</b></div><div class="kpi"><span>' + T("سارية لحد", "Valid until") + '</span><b style="font-size:1.05rem">' + (u.plan_expires ? esc(U.date(u.plan_expires)) : "—") + '</b></div><div class="kpi"><span>' + T("بداية الاشتراك", "Activated on") + '</span><b style="font-size:1.05rem">' + (u.activated_at ? esc(U.date(u.activated_at)) : "—") + "</b></div></div>"
       + gcard
       /* payment: honest until the owner saves the gateway's merchant credentials — no card fields here, ever */
-      + '<div class="dcard"><h2>💳 ' + T("الدفع والتجديد", "Payment and renewal") + "</h2>"
+      + '<div class="dcard" data-mig-buy><h2>💳 ' + T("الدفع والتجديد", "Payment and renewal") + "</h2>"
       + '<p class="erbox" style="background:#FFF4D6;color:#7A5A00" role="status">⏳ ' + T("بوابة الدفع لسه بتتجهّز.", "The payment gateway is still being set up.") + "</p>"
       + '<p class="note">' + T("أول ما بوابة الدفع تشتغل، رابط الدفع الآمن بيوصلك تلقائي على بريدك المسجّل، والباقة بتتفعّل تلقائي بعد الدفع، والفاتورة الإلكترونية بتوصلك على نفس البريد. الدفع بيتم في صفحة بوابة الدفع نفسها؛ المنصة مش بتطلب ولا بتحفظ بيانات أي كارت.", "As soon as the payment gateway is live, the secure payment link reaches your registered e-mail automatically, your plan is activated automatically after payment, and the e-invoice reaches the same e-mail. Payment happens on the gateway's own page; the platform never asks for or stores card details.") + "</p>"
       + (lv() < 1 ? (signup ? '<p class="okbox">✓ ' + T("طلب اشتراكك متسجّل برقم ", "Your membership application is recorded as ") + '<span class="num" dir="ltr">' + esc(signup.ref) + "</span>" + T(" — رابط الدفع هيوصلك عليه تلقائي.", " — the payment link will reach you automatically.") + "</p>" : '<div class="tools"><a class="btn btn-green" href="register.html#plans">✍️ ' + T("اختار باقتك وسجّل منشأتك", "Choose your plan and register your company") + "</a></div>") : "")
       + "</div>"
       + '<div class="dcard"><h2>' + T("باقتك بتفتحلك", "Your plan includes") + '</h2><ul class="todo">' + INC.map(function (x) { var on = x[3] ? capOn(x[3], x[0]) : lv() >= x[0]; return '<li class="' + (on ? "done" : "") + '"><span class="ck" aria-hidden="true">' + (on ? "✓" : "") + "</span>" + esc(T(x[1], x[2])) + (on ? "" : " 🔒") + "</li>"; }).join("") + "</ul>"
-      + '<p class="note">' + T("الفواتير والتجديد هيظهروا هنا أول ما الدفع الإلكتروني يشتغل.", "Invoices and renewals will appear here once online payment is live.") + "</p></div>";
+      + '<p class="note">' + T("الفواتير والتجديد هيظهروا هنا أول ما الدفع الإلكتروني يشتغل.", "Invoices and renewals will appear here once online payment is live.") + "</p></div>"
+      + delCard();
   };
+  /* «🗑 طلب حذف الحساب» (app parity plan, item account-delete-request): only while the owner's switch account_delete is on (data/flags.js);
+     the request itself, its second confirmation and its status are on /delete-account/ (data/delete-account.js) */
+  function delCard() {
+    var F = window.MIGFLAGS; if (!(F && F.on && F.on("account_delete") === true)) return "";
+    return '<div class="dcard" data-delcard><h2>🗑 ' + T("طلب حذف الحساب", "Request account deletion") + '</h2><p class="note">' + T("تقدر تطلب حذف حسابك وبياناته؛ الحذف بيتنفّذ خلال 30 يوم، وبيفضل محفوظ اللي القانون بيطلبه بس (زي الفواتير الضريبية).", "You can ask for your account and its data to be deleted; the deletion is carried out within 30 days, and only what the law requires (such as tax invoices) is kept.")
+      + '</p><div class="tools"><a class="btn btn-line" href="/delete-account/">🗑 ' + T("طلب حذف الحساب", "Request account deletion") + "</a></div></div>";
+  }
 
   /* ---------- render / routing ---------- */
   var NEEDS = { overview: [loadInq, loadFol, loadNotif], inquiries: [loadInq], follows: [loadFol], notifications: [loadNotif], incoming: [loadInc], stats: [loadStats], plan: [loadInq] };

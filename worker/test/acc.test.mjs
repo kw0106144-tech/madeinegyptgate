@@ -104,7 +104,7 @@ describe("migration 0006", () => {
   test("applies twice on schema.sql: every cc_* table, the seeds, no ALTER TABLE, team roles allowed", async () => {
     const env = mkEnv();
     const t = (await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'cc_%'").all()).results.map(r => r.name);
-    assert.equal(t.length, 31);
+    assert.equal(t.length, 32); // + cc_delete_requests (0010, appended to schema.sql)
     for (const n of ["cc_staff", "cc_session_meta", "cc_audit", "cc_member_meta", "cc_plans", "cc_plan_keys", "cc_settings", "cc_secrets", "cc_content", "cc_overlay", "cc_media", "cc_invoices", "cc_pv_day", "cc_persona_sync", "cc_import_runs", "cc_legacy_companies"]) assert.ok(t.includes(n), n);
     assert.ok(!MIG.split("\n").some(l => /^\s*ALTER TABLE/i.test(l)));
     const plans = (await env.DB.prepare("SELECT * FROM cc_plans ORDER BY sort").all()).results;

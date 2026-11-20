@@ -33,6 +33,7 @@ import { eraseMemory } from "./acc-memory.js";          // 0009: the owner's aud
 import { listKnowledge, answerKnowledge } from "./knowledge.js"; // 0009: «بنك المعلومات» — «محتاجة إجابة» for the team
 import { loadServiceKeys } from "./service-keys.js";
 import { userOut } from "./common.js";
+import * as DREQ from "./delete-requests.js";        // 0010: «طلبات حذف الحساب» — the owner's queue (requests only: the deletion is members.delete)
 import * as DEV from "./acc-dev.js";                  // «🛠️ المطوّر» — the owner-only developer panel
 import { loadFeatures } from "./flags.js";           // the feature switches (≤ 1 D1 read per isolate per 30 s)
 import * as BMEET from "./bassem-meetings.js";        // «📞 اجتماعات باسم» — Bassem joins the team's Meet / Zoom / Teams calls (Anam Meetings API)
@@ -182,6 +183,9 @@ const ROUTES = [
   R("GET", P("/bassem"), "bassem.read", (q, e) => MEM.bassemList(e)),
   // 0009 memory: the ONLY erasure = the owner's (members.delete ∈ OWNER_ONLY) legal data-subject request, one person per call, audited
   R("POST", P("/memory/erase"), "members.delete", (q, e, c, a) => eraseMemory(q, e, c, a)),
+  // 0010 «طلبات حذف الحساب»: the queue of members' / visitors' REQUESTS (nothing is deleted here) — closed after the audited deletion / erasure
+  R("GET", P("/delete-requests"), "members.delete", (q, e, c, a, u) => DREQ.listDeleteRequests(e, u)),
+  R("POST", P("/delete-requests/:id"), "members.delete", (q, e, c, a, u, m) => DREQ.closeDeleteRequest(q, e, c, a, m[1])),
   // 0009 «بنك المعلومات»: the questions asked to Janna / Bassem — list («محتاجة إجابة» first), answer / approve / hide (audited)
   R("GET", P("/knowledge"), "content.read", (q, e, c, a, u) => listKnowledge(e, u)),
   R("PUT", P("/knowledge/:id"), "content.write", async (q, e, c, a, u, m) => answerKnowledge(e, a.actor, m[1], await body0(q), { ipHash: a.ipHash, reqId: a.reqId })),
@@ -205,6 +209,9 @@ const ROUTES = [
   R("POST", P("/dev/deploys/rollback"), "dev.manage", (q, e, c, a) => DEV.postRollback(q, e, c, a)),
   R("GET", P("/dev/health"), "dev.manage", (q, e, c, a) => DEV.getHealth(q, e, c, a)),
   R("GET", P("/dev/audit"), "dev.manage", (q, e, c, a, u) => DEV.devAudit(e, u)),
+  R("GET", P("/dev/review"), "dev.manage", (q, e) => DEV.getReview(e)),
+  R("PUT", P("/dev/review"), "dev.manage", (q, e, c, a) => DEV.putReview(q, e, c, a)),
+  R("DELETE", P("/dev/review"), "dev.manage", (q, e, c, a) => DEV.deleteReview(q, e, c, a)),
   // «📞 اجتماعات باسم» (meetings.bassem: owner + admin; the cap: meetings.cap ∈ OWNER_ONLY) — every invite uses paid Anam minutes
   R("GET", P("/meetings"), "meetings.bassem", (q, e, c, a, u) => BMEET.listMeetings(q, e, c, a, u)),
   R("POST", P("/meetings"), "meetings.bassem", (q, e, c, a) => BMEET.createMeeting(q, e, c, a)),

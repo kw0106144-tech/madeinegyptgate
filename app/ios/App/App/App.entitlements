@@ -2,10 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Universal Links: the site must serve /.well-known/apple-app-site-association (app/well-known/) -->
+	<!-- Universal Links + shared web credentials: the site must serve /.well-known/apple-app-site-association (app/well-known/) -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:madeinegyptgate.com</string>
+		<string>webcredentials:madeinegyptgate.com</string>
 	</array>
 </dict>
 </plist>

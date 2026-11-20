@@ -175,7 +175,8 @@ export function todayLineAr(nowMs = Date.now()) {
   return "النهارده: " + DOW_AR[new Date(Date.UTC(y, mo - 1, d)).getUTCDay()] + " " + arDigits(d) + " " + MONTH_AR[mo - 1] + " " + arDigits(y);
 }
 /* the whole block appended to the saved prompt stays ≤ BLOCK_MAX characters (Anam documents no systemPrompt limit, but latency grows
-   with the prompt — personas/llms/prompting-guide: performance drops past ~8,000 tokens; the saved prompt is ~12,000 characters) */
+   with the prompt — personas/llms/prompting-guide: performance drops past ~8,000 tokens; the saved prompt is ~12,000 characters); a call
+   from a store app with buying off there adds the fixed «no prices» rule (~300 characters) in front of it, never cutting it (janna-session.js) */
 export const BLOCK_MAX = 5200;
 export function fitBlock(s, max = BLOCK_MAX) {
   s = String(s || "");

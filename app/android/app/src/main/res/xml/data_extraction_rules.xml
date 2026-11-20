@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ cloud backup and device-to-device transfer (AndroidManifest.xml android:dataExtractionRules). Left out: the
+     WebView's own data (app_webview/: localStorage with the member's 30-day sign-in token, cookies, caches; a restored phone
+     must not come back signed in, as Chrome does not restore them) and the old system's session id (mig_session.xml,
+     MainActivity.keepLegacySession). Older Android versions: backup_rules.xml. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="app_webview/" />
+        <exclude domain="sharedpref" path="mig_session.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="app_webview/" />
+        <exclude domain="sharedpref" path="mig_session.xml" />
+    </device-transfer>
+</data-extraction-rules>

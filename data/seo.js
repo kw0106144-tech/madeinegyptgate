@@ -2,7 +2,11 @@
    so nothing is built here at run time any more).
    MIGSEOCFG: analytics / tag managers / webmaster verification — fill the IDs on the live site; nothing loads while an ID is empty.
    Security: no third-party tag runs on the private pages (dashboard, requests console, advisor, SEO workspace, admin) or for a
-   visitor with a platform session — a tag manager could otherwise read the session token in localStorage. */
+   visitor with a platform session — a tag manager could otherwise read the session token in localStorage.
+   Inside the platform's own iPhone app (user agent «MIGApp/<v> (ios)», app/): no advertising / retargeting pixel ever runs (google_ads,
+   meta_pixel, snap_pixel, tiktok_pixel, linkedin_partner, x_pixel) — Apple counts them as tracking (5.1.2), which needs the App Tracking
+   Transparency prompt the app does not have. First-party analytics (GA4, Clarity, Hotjar) stay, as in every browser, and are declared in
+   the App Privacy form. A tag manager (gtm) gets {mig_app: "ios" | "android" | ""} in its data layer: its own ad tags must skip "ios". */
 window.MIGSEOCFG = {
   google_site_verification: "",   // Google Search Console
   bing_verification: "",          // Bing Webmaster Tools (msvalidate.01)
@@ -32,15 +36,18 @@ window.MIGSEOCFG = {
   var signed = false; try { signed = !!localStorage.getItem("mig-tok"); } catch (e) {}
   if (PRIV[pg] || signed) return;
   function js(src) { var s = document.createElement("script"); s.async = true; s.src = src; H.appendChild(s); }
+  var AM = /\bMIGApp\/[^\s()]*\s*\((ios|android)\)/i.exec(navigator.userAgent || ""), APP = AM ? AM[1].toLowerCase() : /\bMIGApp\b/.test(navigator.userAgent || "") && /iPhone|iPad|iPod/.test(navigator.userAgent || "") ? "ios" : "";
+  var ADS = APP !== "ios"; /* the iPhone app: no ad / retargeting pixels (no App Tracking Transparency prompt there) */
   /* Tags only load when an ID is set (the live site). Track key events with MIGTRACK(name, params). */
-  if (C.gtm) { window.dataLayer = window.dataLayer || []; window.dataLayer.push({ "gtm.start": new Date().getTime(), event: "gtm.js" }); js("https://www.googletagmanager.com/gtm.js?id=" + C.gtm); }
-  if (C.ga4 || C.google_ads) { window.dataLayer = window.dataLayer || []; window.gtag = function () { window.dataLayer.push(arguments); }; window.gtag("js", new Date()); if (C.ga4) window.gtag("config", C.ga4); if (C.google_ads) window.gtag("config", C.google_ads); js("https://www.googletagmanager.com/gtag/js?id=" + (C.ga4 || C.google_ads)); }
+  if (C.gtm) { window.dataLayer = window.dataLayer || []; window.dataLayer.push({ "gtm.start": new Date().getTime(), event: "gtm.js", mig_app: APP }); js("https://www.googletagmanager.com/gtm.js?id=" + C.gtm); }
+  var GADS = ADS ? C.google_ads : "";
+  if (C.ga4 || GADS) { window.dataLayer = window.dataLayer || []; window.gtag = function () { window.dataLayer.push(arguments); }; window.gtag("js", new Date()); if (C.ga4) window.gtag("config", C.ga4); if (GADS) window.gtag("config", GADS); js("https://www.googletagmanager.com/gtag/js?id=" + (C.ga4 || GADS)); }
   if (C.clarity) { window.clarity = window.clarity || function () { (window.clarity.q = window.clarity.q || []).push(arguments); }; js("https://www.clarity.ms/tag/" + C.clarity); }
-  if (C.meta_pixel) { window.fbq = window.fbq || function () { (window.fbq.q = window.fbq.q || []).push(arguments); }; window.fbq("init", C.meta_pixel); window.fbq("track", "PageView"); js("https://connect.facebook.net/en_US/fbevents.js"); }
-  if (C.snap_pixel) { window.snaptr = window.snaptr || function () { (window.snaptr.q = window.snaptr.q || []).push(arguments); }; window.snaptr("init", C.snap_pixel); window.snaptr("track", "PAGE_VIEW"); js("https://sc-static.net/scevent.min.js"); }
-  if (C.tiktok_pixel) { js("https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=" + C.tiktok_pixel); }
-  if (C.linkedin_partner) { window._linkedin_partner_id = C.linkedin_partner; js("https://snap.licdn.com/li.lms-analytics/insight.min.js"); }
-  if (C.x_pixel) { js("https://static.ads-twitter.com/uwt.js"); }
+  if (ADS && C.meta_pixel) { window.fbq = window.fbq || function () { (window.fbq.q = window.fbq.q || []).push(arguments); }; window.fbq("init", C.meta_pixel); window.fbq("track", "PageView"); js("https://connect.facebook.net/en_US/fbevents.js"); }
+  if (ADS && C.snap_pixel) { window.snaptr = window.snaptr || function () { (window.snaptr.q = window.snaptr.q || []).push(arguments); }; window.snaptr("init", C.snap_pixel); window.snaptr("track", "PAGE_VIEW"); js("https://sc-static.net/scevent.min.js"); }
+  if (ADS && C.tiktok_pixel) { js("https://analytics.tiktok.com/i18n/pixel/events.js?sdkid=" + C.tiktok_pixel); }
+  if (ADS && C.linkedin_partner) { window._linkedin_partner_id = C.linkedin_partner; js("https://snap.licdn.com/li.lms-analytics/insight.min.js"); }
+  if (ADS && C.x_pixel) { js("https://static.ads-twitter.com/uwt.js"); }
   if (C.hotjar) { window.hj = window.hj || function () { (window.hj.q = window.hj.q || []).push(arguments); }; window._hjSettings = { hjid: C.hotjar, hjsv: 6 }; js("https://static.hotjar.com/c/hotjar-" + C.hotjar + ".js?sv=6"); }
   window.MIGTRACK = function (name, params) {
     try {

@@ -1,5 +1,6 @@
 package com.madeinegyptgate.app;
 
+import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -8,7 +9,8 @@ import com.getcapacitor.Bridge;
 import com.getcapacitor.BridgeWebViewClient;
 
 /**
- * Capacitor's WebView client (local assets, external links to the browser, plugin hooks) plus the offline page.
+ * Capacitor's WebView client (local assets, external links to the browser, plugin hooks) plus the offline page, the end of a
+ * page load (pull to reload) and a page process that Android stopped (MainActivity starts again at the same page).
  *
  * The offline page (www/offline.html) appears only when the site really cannot be reached: no network, DNS, timeout, TLS.
  * It never replaces the site's own pages: a 404 / 410 / a Cloudflare challenge stays on screen (that is why
@@ -17,15 +19,24 @@ import com.getcapacitor.BridgeWebViewClient;
  */
 class MigWebViewClient extends BridgeWebViewClient {
 
-    interface OfflineHandler {
+    interface Host {
         void showOffline(WebView view, String failedUrl);
+
+        /** a page finished loading in the main WebView */
+        void pageFinished(WebView view, String url);
+
+        /** Android stopped the page's process (memory) or it crashed: true = the app handled it (else Android closes the app) */
+        boolean rendererGone(WebView view);
+
+        /** an app-settings: link: this app's page in the phone's settings */
+        void appSettings();
     }
 
-    private final OfflineHandler offline;
+    private final Host host;
 
-    MigWebViewClient(Bridge bridge, OfflineHandler offline) {
+    MigWebViewClient(Bridge bridge, Host host) {
         super(bridge);
-        this.offline = offline;
+        this.host = host;
     }
 
     @Override
@@ -33,8 +44,31 @@ class MigWebViewClient extends BridgeWebViewClient {
         super.onReceivedError(view, request, error); // notifies Capacitor's WebView listeners (no errorPath is configured)
         if (request == null || error == null || !request.isForMainFrame()) return;
         if (isUnreachable(error.getErrorCode(), String.valueOf(error.getDescription()))) {
-            offline.showOffline(view, request.getUrl() != null ? request.getUrl().toString() : null);
+            host.showOffline(view, request.getUrl() != null ? request.getUrl().toString() : null);
         }
+    }
+
+    /** app-settings: → this app's page in the phone's settings (MigOut); everything else as Capacitor decides */
+    @Override
+    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        String url = request != null && request.getUrl() != null ? request.getUrl().toString() : null;
+        if (MigOut.isAppSettings(url)) {
+            host.appSettings();
+            return true;
+        }
+        return super.shouldOverrideUrlLoading(view, request);
+    }
+
+    @Override
+    public void onPageFinished(WebView view, String url) {
+        super.onPageFinished(view, url);
+        host.pageFinished(view, url);
+    }
+
+    @Override
+    public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+        super.onRenderProcessGone(view, detail); // Capacitor's WebView listeners
+        return host.rendererGone(view);
     }
 
     /** true = the page could not be fetched at all; false = an error the visitor should not see as "offline" */

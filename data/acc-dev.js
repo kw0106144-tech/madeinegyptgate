@@ -25,7 +25,7 @@
     var REPO = /^[\w.-]+\/[\w.-]+$/.test(str(CFGD.repo)) ? str(CFGD.repo) : "kw0106144-tech/madeinegyptgate";
     var ACCOUNT = /^[0-9a-f]{32}$/.test(str(CFGD.account)) ? str(CFGD.account) : "88c77c2b7595dd0ce510270175f69143";
     var PAGES_PROJECT = "madeinegyptgate";
-    var API = { features: "/admin/cc/dev/features", deploys: "/admin/cc/dev/deploys", rollback: "/admin/cc/dev/deploys/rollback", health: "/admin/cc/dev/health", audit: "/admin/cc/dev/audit", keys: "/admin/cc/keys" };
+    var API = { review: "/admin/cc/dev/review", features: "/admin/cc/dev/features", deploys: "/admin/cc/dev/deploys", rollback: "/admin/cc/dev/deploys/rollback", health: "/admin/cc/dev/health", audit: "/admin/cc/dev/audit", keys: "/admin/cc/keys" };
     var SLOT = "cloudflare.dev_token";       /* «مفاتيح الخدمات» slot «Cloudflare — لوحة المطوّر» */
     var CONFIRM = "ارجع";                    /* the typed confirmation of a rollback (sent as is; the Worker checks it again) */
     var OWNER = function () { var f = X.features(); return X.role() === "owner" && (X.can("dev.manage") || f.dev === true); };
@@ -129,7 +129,8 @@
         body(c, '<div class="info">' + h(T("كل مفتاح بيشغّل أو بيوقف ميزة حقيقية: اللي في السيرفر بيتطبّق خلال 30 ثانية، واللي في صفحات الموقع بيظهر أو يختفي خلال دقايق. الميزة المتوقفة السيرفر بيرفض طلباتها برسالة واضحة، والتشغيل تاني بيرجّعها زي ما كانت.", "Each switch turns a real feature on or off: on the server within 30 seconds, on the site's pages within minutes. The server refuses requests for a stopped feature with a clear message; switching it on again brings it back as it was.")) + "</div>"
           + (j.updated_at ? '<p class="mut sm">' + h(T("آخر تغيير في المزايا: ", "Last change to the features: ")) + when(j.updated_at) + (j.updated_by ? ' <bdi dir="ltr">' + h(j.updated_by) + "</bdi>" : "") + "</p>" : "")
           + (fs.length ? '<div class="dv-fs">' + fs.map(featH).join("") + "</div>" : '<div class="cd"><div class="in mut">' + h(T("السيرفر مارجّعش أي مزايا.", "The server returned no features.")) + "</div></div>")
-          + policyH(j.policies || j.policy));
+          + policyH(j.policies || j.policy) + '<div id="dvRev"></div>');
+        review(c);
       };
       var take = function (j) { j = j || {}; c.st.j = j; c.st.fs = arr(j.features).map(nFeat).filter(function (f) { return f.key; }); };
       var load = function () { X.GET(API.features).then(function (j) { if (!X.alive(c)) return; take(j); paint(); }, function (e) { body(c, X.errH(e)); }); };
@@ -172,6 +173,39 @@
       };
       load();
     };
+
+    /* «دخول مراجعي المتاجر» (switch store_review_signin; worker/src/review-signin.js, GET|PUT|DELETE /dev/review): ONE address (a mailbox
+       the team owns) + a 6-digit code the owner types, ≤ 30 days; only an HMAC of the code is stored and the code is never shown again.
+       The switch stays locked until they are saved; every review sign-in is in «السجل» (review.signin). App parity plan, store-review-signin */
+    function review(c) {
+      var box = $("#dvRev"); if (!box) return;
+      var paint = function (j, msg) {
+        if (!X.alive(c) || !$("#dvRev")) return; j = j || {};
+        var st = j.active ? chip(T("شغّال دلوقتي ✓", "Active now ✓"), "ok") : j.set && !j.live ? chip(T("المدة خلصت", "Expired"), "x") : j.set ? chip(T("محفوظ — المفتاح مقفول", "Saved — the switch is off"), "p") : chip(T("مش متحدد", "Not set"), "g");
+        $("#dvRev").innerHTML = X.cardH(T("دخول مراجعي المتاجر — الإيميل والكود", "App-store reviewer sign-in — address and code"),
+          '<p class="sm" dir="auto">' + h(T("إيميل واحد (صندوق بريد بتاع الفريق) وكود ثابت من 6 أرقام بتكتبه إنت، صالحين لحد " + (j.max_days || 30) + " يوم. الكود بيتحفظ متشفّر ومش بيظهر تاني. حطّهم في ملاحظات مراجعة App Store و«App access» في Google Play، وفعّل باقة حقيقية على الحساب ده، واقفل المفتاح «دخول مراجعي المتاجر» فوق بعد الموافقة.", "One address (a mailbox the team owns) and a fixed 6-digit code you type, valid up to " + (j.max_days || 30) + " days. The code is stored encrypted and never shown again. Put them in the App Store review notes and Google Play «App access», activate a real plan on that account, and switch «App-store reviewer sign-in» above off after the approval.")) + "</p>"
+          + '<p class="sm" dir="auto">' + h(T("الإيميل لازم يكون لحساب مخصص للمراجعة بس: حساب عميل فيه طلبات أو منتجات أو ذاكرة أو فواتير بيترفض، وكذلك حسابات فريق المنصة. دخول المراجع بيخلص مع آخر المدة، ولما تقفل المفتاح أو تشيل الإيميل والكود بيخرج من الحساب على طول.", "The address must be an account kept for the review only: a customer's account with requests, products, memory or invoices is refused, and so are the platform team's accounts. The reviewer's sign-in ends with the period, and switching the key off or removing the address and code signs him out at once.")) + "</p>"
+          + '<p class="sm">' + st + (j.set ? ' <bdi dir="ltr">' + h(j.email) + "</bdi> · " + h(T("لحد ", "until ")) + X.fdh(j.until, true) : "") + "</p>" + msgH(msg)
+          + '<div class="fr"><label>' + h(T("الإيميل", "E-mail")) + '<input data-rv="email" type="email" dir="ltr" autocomplete="off" maxlength="254" value="' + h(j.email || "") + '"></label>'
+          + "<label>" + h(T("الكود (6 أرقام)", "Code (6 digits)")) + '<input data-rv="code" type="text" inputmode="numeric" dir="ltr" autocomplete="off" maxlength="6" pattern="[0-9]{6}"></label>'
+          + "<label>" + h(T("المدة بالأيام", "Days")) + '<input data-rv="days" type="number" min="1" max="' + (j.max_days || 30) + '" value="14" dir="ltr"></label></div>'
+          + '<div class="acts2">' + X.btn("dvRvSave", h(T("💾 حفظ الإيميل والكود", "💾 Save the address and code")), "s") + (j.set ? X.btn("dvRvDel", h(T("🗑 شيلهم", "🗑 Remove them")), "l s") : "") + "</div>");
+      };
+      var val = function (k) { var e = $('#dvRev [data-rv="' + k + '"]'); return e ? trim(e.value) : ""; };
+      var load = function (msg) { X.GET(API.review).then(function (j) { paint(j, msg); }, function (e) { if (X.alive(c) && $("#dvRev")) $("#dvRev").innerHTML = X.errH(e); }); };
+      c.on.dvRvSave = function (b) {
+        b.disabled = true;
+        X.PUT(API.review, { email: val("email"), code: val("code").replace(/[^0-9]/g, ""), days: parseInt(val("days"), 10) || 0 }).then(function (j) { X.toast(T("اتحفظ ✓ — واتسجّل في السجل", "Saved ✓ — logged")); paint(j, { ok: true, t: T("اتحفظ. شغّل المفتاح «دخول مراجعي المتاجر» فوق وقت المراجعة بس.", "Saved. Switch «App-store reviewer sign-in» on above only during a review.") }); X.GET(API.features).then(function () {}, function () {}); },
+          function (e) { b.disabled = false; X.toast(errFull(e), 1); load({ ok: false, t: errFull(e), e: e }); });
+      };
+      c.on.dvRvDel = function (b) {
+        ask(T("تشيل إيميل المراجعة والكود؟", "Remove the review address and code?"), "<p>" + h(T("بعد كده الإيميل ده بيدخل بكود على الإيميل زي أي حد.", "After that this address signs in with an e-mailed code like anyone else.")) + "</p>", T("🗑 شيلهم", "🗑 Remove them"), true, false).then(function (a) {
+          if (!a.ok || !X.alive(c)) return; b.disabled = true;
+          X.DEL(API.review).then(function (j) { X.toast(T("اتشالوا ✓ — واتسجّل في السجل", "Removed ✓ — logged")); paint(j); }, function (e) { b.disabled = false; X.toast(errFull(e), 1); });
+        });
+      };
+      load();
+    }
 
     /* ---------------------------------------------------------------- 2) deploys ---------------------------------------------------------------- */
     var STATUS = { success: ["نجح", "Success", "ok"], active: ["شغّال", "Active", "ok"], failure: ["فشل", "Failed", "x"], failed: ["فشل", "Failed", "x"], canceled: ["اتلغى", "Canceled", "g"], skipped: ["اتعدّى", "Skipped", "g"], idle: ["مستني", "Waiting", "p"], active_build: ["بيتبني", "Building", "p"], building: ["بيتبني", "Building", "p"], queued: ["في الطابور", "Queued", "p"] };

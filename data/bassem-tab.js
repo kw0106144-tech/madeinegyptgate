@@ -16,6 +16,11 @@
      there only by the member's own tap) and the mark is dropped: the tab's next pages are ordinary ones, with Janna as everywhere.
      Without an opener to ask (a link that carried ?with=bassem by itself) the bar keeps its first words and the mark lasts its 4 h.
    - It never covers a page dialog (aria-modal) or the phone menu (it slides away meanwhile); ✕ hides it on this page.
+   - Inside the platform's own app (user agent «MIGApp», app/: no tabs there) the page opens OVER the call, which goes on under it (the
+     app's page window, app parity plan same-site-new-windows): the bar says «باسم معاك في المكالمة ورا الصفحة دي» and «ارجع للمكالمة»
+     says «أهلاً بيك تاني» on the call's page (JANNA_LIVE.welcomeBack) and closes this page (window.close: the call shows again). A page
+     that cannot be closed (an older app that replaced the call's page) has no call under it: the bar says the call is over. Never the
+     «شريط التابات» hint there.
    Bilingual in code (T(ar, en)), translate="no" (the page translator leaves it alone). ES5, no libraries, no network.
    API: window.MIG_WB_TAB = {back(), state() → "live" | "ended" | "unknown", update(), end()} */
 (function () {
@@ -25,6 +30,7 @@
   try { if (W.top !== W) return; } catch (e0) { return; }
   if (W.MIG_WB !== true) return; /* only in Bassem's tab (janna-live.js / janna-welcome.js decided, and loaded this file) */
   var EN = String(W.MIGLANG || DE.getAttribute("lang") || "ar").slice(0, 2).toLowerCase() === "en";
+  var APP = /\bMIGApp\b/.test((W.navigator && W.navigator.userAgent) || ""); /* the platform's own app: this page sits over the call */
   function T(ar, en) { return EN ? en : ar; }
   function lsGet(k) { try { return W.localStorage.getItem(k); } catch (e) { return null; } }
   var CSS = ""
@@ -101,6 +107,7 @@
     bar.classList.toggle("ended", k === "ended");
     tx.textContent = k === "ended" ? T("المكالمة مع باسم خلصت", "Your call with Bassem has ended")
       : k === "hint" ? T("المكالمة مفتوحة في التاب اللي جيت منها — ارجعلها من شريط التابات", "The call is open in the tab you came from — switch to it from your tab bar")
+      : APP ? T("باسم معاك في المكالمة ورا الصفحة دي", "Bassem is with you on the call behind this page")
       : T("باسم معاك في الصفحة التانية", "Bassem is with you in the other tab");
     dash.hidden = k !== "live"; go.hidden = k !== "live"; cl.hidden = k !== "hint"; desk.hidden = k !== "ended";
   }
@@ -121,6 +128,14 @@
   function back() {
     var o = opener();
     if (state() === "ended") { end(); return; }
+    /* the app: the call is UNDER this page — its welcome back, then this page closes (no tab to bring forward, never the tab-bar hint) */
+    if (APP) {
+      try { if (o && o.JANNA_LIVE && o.JANNA_LIVE.welcomeBack) o.JANNA_LIVE.welcomeBack(); } catch (e) {}
+      try { W.close(); } catch (e) {}
+      clearTimeout(hintT);
+      hintT = setTimeout(function () { if (W.closed || D.hidden) return; if (o) show("live"); else end(); }, 700); /* not closable: no call under it */
+      return;
+    }
     if (o) {
       front(o);
       try { if (o.JANNA_LIVE && o.JANNA_LIVE.welcomeBack) o.JANNA_LIVE.welcomeBack(); } catch (e) {}

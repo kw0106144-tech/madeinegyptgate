@@ -15,6 +15,16 @@
      whatsapp_send             whatsapp.js       waLive() false → every send is a dry run: an extra OFF on top of «مفاتيح الخدمات»
                                acc-keys.js       POST /keys/wa-test (the owner's test message) → 409 feature_off; can_send_test false
      bassem_web_search         websearch.js      POST /api/advisor/web → 503 feature_off
+   The platform's own apps (user agent «MIGApp/<v> (ios|android)», app-ua.js; app parity plan 2026-11-20 — the defaults keep the apps
+   exactly like the website, the texts of the OFF rows wait for the owner's approval: docs/app/OWNER-APPROVAL-AR.md):
+     app_buy_ios / app_buy_android  payments.js + acc-me.js  POST /api/pay/checkout, POST /api/me/invoices from THAT app → 403 app_buy_off
+                               janna-session.js  a session asked from THAT app gets a fixed «no prices» line (data/flags.js hides the UI)
+     account_delete            delete-requests.js GET|POST /api/me/delete-request → 503 feature_off (locked until migration 0010)
+     visitor_erase_request     delete-requests.js POST /api/janna/memory/erase-request → 503 feature_off (locked until migration 0010)
+     store_review_signin       review-signin.js  POST /api/auth/request + /verify: the ONE review address with the owner's code (locked
+                                                 until that address + code are saved and unexpired: acc-dev.js /dev/review)
+     call_consent_app / _web   janna-session.js  POST /api/janna/session without consent: true from the app / a browser → 400 consent_required
+     app_janna_autovoice       (site only)       data/janna-welcome.js: Janna's voice waits for a tap in the app unless this is on
    Two rows are LOCKED (effective off, cannot be switched ON from here; OFF is always allowed) while what they need is missing, both in
    «مفاتيح الخدمات»: whatsapp_send until the respond.io token test passed; bassem_web_search until a web-search key + tool secret exist.
    The two privacy rules are PERMANENT POLICY (POLICIES): shown, never switches.
@@ -98,6 +108,52 @@ export const FEATURES = Object.freeze([
     desc_en: "Bassem searches the web (not only the platform's data) and says the result comes from the web. Needs a web-search key and «Bassem's tool secret» in «Service keys».",
     lock_rule_ar: "مقفول لحد ما يتحط مفتاح بحث الإنترنت في «مفاتيح الخدمات»", lock_rule_en: "Locked until a web-search key is saved in «Service keys»",
     enforced_by: ["POST /api/advisor/web → 503 feature_off"] },
+  /* ---- the platform's own apps (app/: Android + iPhone, user agent «MIGApp/<v> (ios|android)», app-ua.js) and the store rules (app parity
+     plan 2026-11-20). The defaults keep the apps EXACTLY like the website; the texts behind the rows that ship OFF wait for the owner's
+     word-for-word approval (docs/app/OWNER-APPROVAL-AR.md). ---- */
+  { key: "app_buy_ios", default: true, scope: "both",
+    label_ar: "الأسعار والدفع جوه تطبيق الآيفون", label_en: "Prices and payment inside the iPhone app",
+    desc_ar: "شغّالة = تطبيق الآيفون زي الموقع بالظبط: الباقات وأسعارها و«ادفع الآن» والتجديد والترقية. لو قفلتها (مراجعة App Store، قاعدة Apple 3.1.1)، كل ده بيختفي جوه تطبيق الآيفون بس — الموقع وتطبيق الأندرويد زي ما هم — وجنة ماتتكلمش في أسعار جوه التطبيق، والسيرفر بيرفض أي دفع جاي من التطبيق. التسجيل بيفضل شغّال، والفريق بيتابع الباقة مع العضو.",
+    desc_en: "On = the iPhone app is exactly like the website: plans and prices, «Pay now», renewal and upgrade. Off (App Store review, Apple rule 3.1.1): all of it disappears inside the iPhone app only — the website and the Android app stay as they are — Janna talks about no prices in the app, and the server refuses any payment coming from the app. Registration keeps working, and the team settles the plan with the member.",
+    enforced_by: ["POST /api/me/invoices, POST /api/pay/checkout from the iPhone app → 403 app_buy_off", "POST /api/janna/session from the iPhone app → a «no prices» line", "site"] },
+  { key: "app_buy_android", default: true, scope: "both",
+    label_ar: "الأسعار والدفع جوه تطبيق الأندرويد", label_en: "Prices and payment inside the Android app",
+    desc_ar: "شغّالة = تطبيق الأندرويد زي الموقع بالظبط: الباقات وأسعارها و«ادفع الآن» والتجديد والترقية. لو قفلتها (سياسة الدفع في Google Play)، كل ده بيختفي جوه تطبيق الأندرويد بس — الموقع وتطبيق الآيفون زي ما هم — وجنة ماتتكلمش في أسعار جوه التطبيق، والسيرفر بيرفض أي دفع جاي من التطبيق. التسجيل بيفضل شغّال، والفريق بيتابع الباقة مع العضو.",
+    desc_en: "On = the Android app is exactly like the website: plans and prices, «Pay now», renewal and upgrade. Off (Google Play payments policy): all of it disappears inside the Android app only — the website and the iPhone app stay as they are — Janna talks about no prices in the app, and the server refuses any payment coming from the app. Registration keeps working, and the team settles the plan with the member.",
+    enforced_by: ["POST /api/me/invoices, POST /api/pay/checkout from the Android app → 403 app_buy_off", "POST /api/janna/session from the Android app → a «no prices» line", "site"] },
+  { key: "account_delete", default: false, scope: "both",
+    label_ar: "طلب حذف الحساب", label_en: "Account deletion requests",
+    desc_ar: "زرار «🗑 طلب حذف الحساب» في لوحة العضو وصفحة /delete-account/ (رابط Google Play). الطلب نفسه مابيمسحش أي حاجة: بيوصلك في «الأعضاء والاشتراكات» ← «طلبات حذف الحساب»، وإنت بتنفّذ الحذف المسجّل خلال 30 يوم. شغّله بعد ما توافق على النصوص (docs/app/OWNER-APPROVAL-AR.md).",
+    desc_en: "The «🗑 Request account deletion» button in the member dashboard and the /delete-account/ page (Google Play's link). The request deletes nothing by itself: it reaches you in «Members & subscriptions» → «Account deletion requests», and you run the audited deletion within 30 days. Switch it on after you approve the texts (docs/app/OWNER-APPROVAL-AR.md).",
+    lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0010_delete_requests.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0010_delete_requests.sql is applied (GitHub → Actions → d1-migrate)",
+    enforced_by: ["GET|POST /api/me/delete-request → 503 feature_off", "site"] },
+  { key: "visitor_erase_request", default: false, scope: "both",
+    label_ar: "طلب مسح كلام الزائر مع جنة", label_en: "Visitor requests to erase their Janna conversations",
+    desc_ar: "استثناء من قاعدة «ذاكرة جنة دايمة» (قرارك): زائر من غير حساب يقدر يطلب من صفحة /delete-account/ مسح كلامه مع جنة على الجهاز ده. الطلب بيسجّل رقم الزائر العشوائي بس، ومابيمسحش حاجة لوحده: إنت بتنفّذ المسح المسجّل من «ذاكرة جنة وباسم».",
+    desc_en: "An exception to the «Janna's memory is permanent» rule (your decision): a visitor without an account can ask on the /delete-account/ page to erase their conversations with Janna on this device. The request records only the random visitor id and deletes nothing by itself: you run the audited erasure from «Janna & Bassem memory».",
+    lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0010_delete_requests.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0010_delete_requests.sql is applied (GitHub → Actions → d1-migrate)",
+    enforced_by: ["POST /api/janna/memory/erase-request → 503 feature_off", "site"] },
+  { key: "store_review_signin", default: false, scope: "server",
+    label_ar: "دخول مراجعي المتاجر", label_en: "App-store reviewer sign-in",
+    desc_ar: "علشان مراجع App Store أو Google Play يدخل بحساب عضو من غير كود على الإيميل: إيميل واحد وكود ثابت من 6 أرقام بتحطهم تحت، صالحين 30 يوم بالكتير. كل دخول بيتسجّل في السجل. فعّل باقة حقيقية على الحساب ده وقت المراجعة، واقفل المفتاح بعد الموافقة.",
+    desc_en: "So an App Store or Google Play reviewer can sign in to a member account without an e-mailed code: one address and a fixed 6-digit code you set below, valid 30 days at most. Every sign-in is logged. Activate a real plan on that account for the review, and switch this off after the approval.",
+    lock_rule_ar: "مقفول لحد ما تحفظ إيميل المراجعة والكود (تحت) وتاريخ انتهائهم لسه ماجاش", lock_rule_en: "Locked until you save the review address and code (below) and they have not expired",
+    enforced_by: ["POST /api/auth/request + /verify for that address with that code → a normal session, audited review.signin"] },
+  { key: "call_consent_app", default: false, scope: "both",
+    label_ar: "موافقة قبل مكالمة الذكاء الاصطناعي — جوه التطبيق", label_en: "Consent before the AI call — inside the app",
+    desc_ar: "قبل أول مكالمة مع جنة أو باسم جوه التطبيق بتظهر رسالة إن المكالمة مع مساعد بالذكاء الاصطناعي وإن الصوت بيروح لمزوّد المحادثة المرئية (Anam)، والعضو بيوافق (قاعدة Apple 5.1.2). شغّله بعد ما توافق على نص الرسالة (docs/app/OWNER-APPROVAL-AR.md). السيرفر بيرفض أي مكالمة من التطبيق من غير الموافقة.",
+    desc_en: "Before the first call with Janna or Bassem inside the app, a message says the call is with an AI assistant and the voice goes to the video-chat provider (Anam), and the member agrees (Apple rule 5.1.2). Switch it on after you approve the message (docs/app/OWNER-APPROVAL-AR.md). The server refuses any call from the app without that consent.",
+    enforced_by: ["POST /api/janna/session from the app without consent → 400 consent_required", "site"] },
+  { key: "call_consent_web", default: false, scope: "both",
+    label_ar: "موافقة قبل مكالمة الذكاء الاصطناعي — على الموقع", label_en: "Consent before the AI call — on the website",
+    desc_ar: "نفس رسالة الموافقة قبل أول مكالمة مع جنة أو باسم، على الموقع في المتصفح (قانون حماية البيانات 151 لسنة 2020). شغّله بعد ما توافق على النص. السيرفر بيرفض أي مكالمة من الموقع من غير الموافقة.",
+    desc_en: "The same consent message before the first call with Janna or Bassem, on the website in a browser (Egypt's data protection law 151/2020). Switch it on after you approve the text. The server refuses any call from the website without that consent.",
+    enforced_by: ["POST /api/janna/session from a browser without consent → 400 consent_required", "site"] },
+  { key: "app_janna_autovoice", default: false, scope: "client",
+    label_ar: "جنة بتتكلم لوحدها أول ما التطبيق يفتح", label_en: "Janna speaks by herself when the app opens",
+    desc_ar: "مقفولة = زي المتصفحات على الموبايل بالظبط: صندوق جنة بيقول «🔊 اسمع صوتي» وصوتها بيبدأ أول ما الزائر يلمس الشاشة. شغّالة = جنة بتتكلم بصوت عالي لوحدها مع كل فتحة للتطبيق (والآيفون ممكن يشغّل صوتها حتى وهو على الصامت).",
+    desc_en: "Off = exactly like phone browsers: Janna's box says «🔊 Hear my voice» and her voice starts at the visitor's first tap. On = Janna speaks aloud by herself every time the app opens (an iPhone may play it even on silent).",
+    enforced_by: ["site"] },
 ].map(f => Object.freeze({ ...f, ...(f.lock_rule_ar ? { locked: f.lock_rule_ar + " / " + f.lock_rule_en } : {}), enforced_by: Object.freeze([...f.enforced_by]) })));
 /* registry shape: {key, label_ar, label_en, desc_ar, desc_en, default, scope: server|client|both, locked?: "<ar> / <en>" (the rule of a row
    that can be locked — whether it is locked NOW is stateOf(), returned by the API as `locked: null | {code, ar, en}`), enforced_by} */
@@ -205,8 +261,42 @@ export async function stateOf(env, d) {
       if (c.cap <= 0) return { locked: null, needs: T("cap_zero", "الحد اليومي للبحث = 0 في «مفاتيح الخدمات»", "The daily search cap is 0 in «Service keys»"), ready: false };
       return NONE;
     }
+    // the app's store rows: the deletion requests need their table (migration 0010); the reviewer sign-in needs its address + code, unexpired
+    if (d.key === "account_delete" || d.key === "visitor_erase_request") {
+      return (await deleteStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
+    }
+    if (d.key === "store_review_signin") {
+      const r = await readReview(env);
+      if (!r) return { locked: T("no_review_account", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
+      if (!r.live) return { locked: T("review_expired", "مقفول: مدة إيميل المراجعة والكود خلصت — حطّهم تاني بمدة جديدة (30 يوم بالكتير)", "Locked: the review address and code have expired — save them again with a new period (30 days at most)"), needs: null, ready: false };
+      return NONE;
+    }
   } catch (e) { return { locked: T("state_unknown", "مش قادرين نتأكد من المفاتيح دلوقتي", "The keys cannot be checked right now"), needs: null, ready: false }; }
   return NONE;
+}
+
+/* ---------- the app's store rows: what their locks read (leaf helpers; review-signin.js and delete-requests.js use the same) ---------- */
+/* migration 0010 (cc_delete_requests) applied? A table that exists stays known for the isolate; a missing one is asked again after 60 s */
+const DEL_MEMO = new WeakMap(); // env.DB → {ok, at}
+export async function deleteStoreOn(env) {
+  const db = dbOf(env); if (!db) return false;
+  const m = DEL_MEMO.get(db); if (m && (m.ok || Date.now() - m.at < 60000)) return m.ok;
+  let ok = false; try { await db.prepare("SELECT 1 AS x FROM cc_delete_requests LIMIT 1").first(); ok = true; } catch (e) { ok = false; }
+  DEL_MEMO.set(db, { ok, at: Date.now() }); return ok;
+}
+/* «دخول مراجعي المتاجر»: cc_settings k = REVIEW_KEY (scope 'system'; dev.* is reserved for the owner's /dev API, acc-plans.js RESERVED):
+   {v:1, email, code_hash (HMAC of the code with CONFIG_SECRET — never the code), until (ISO, ≤ 30 days after it was set), by, at}.
+   → null (nothing saved / unreadable) | {email, code_hash, until, by, at, live: until is still ahead} — never throws */
+export const REVIEW_KEY = "dev.review_signin", REVIEW_MAX_DAYS = 30;
+export async function readReview(env) {
+  const db = dbOf(env); if (!db) return null;
+  try {
+    const r = await db.prepare("SELECT v FROM cc_settings WHERE k = ? AND scope = 'system'").bind(REVIEW_KEY).first();
+    const o = r ? JSON.parse(String(r.v || "")) : null;
+    if (!o || typeof o !== "object" || typeof o.email !== "string" || !o.email || typeof o.code_hash !== "string" || !/^[A-Za-z0-9_-]{20,128}$/.test(o.code_hash)) return null;
+    const until = String(o.until || ""), t = Date.parse(until);
+    return { email: o.email, code_hash: o.code_hash, until, by: String(o.by || ""), at: String(o.at || ""), live: t > Date.now() };
+  } catch (e) { return null; }
 }
 
 /* ---------- the views ---------- */

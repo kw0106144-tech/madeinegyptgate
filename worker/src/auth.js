@@ -18,10 +18,15 @@
    email-code sign-in — never a row someone else created (e.g. the advisor's test-only open mode).
    Turnstile (TURNSTILE_SECRET): checked on /request when the page sends a token; the login dialog may omit it (rate limits apply).
    Token v2.<b64url(member id)>.<session id>.<exp>.<HMAC(secret, v2|id|sid|exp)> — secret AUTH_SECRET or ADVISOR_SECRET.
-   The same token is accepted by /api/advisor/* (Bassem) when the member's plan is partner / strategic (checked on the server). */
+   The same token is accepted by /api/advisor/* (Bassem) when the member's plan is partner / strategic (checked on the server).
+   App-store reviewers (review-signin.js, «🛠️ المطوّر» store_review_signin, default OFF): while the owner's switch is on and his period runs,
+   /request for the ONE review address sends nothing and /verify takes the owner's code for it (audited review.signin) — a normal full
+   session that ends with the owner's review period at the latest, and that never adopts the mailbox's earlier anonymous requests; every
+   other address and code follows the rules above exactly. */
 import { json, err, preflight, readJson, bodyErr, line, now, iso, hex, sha256, hmac, safeEq, b64url, unb64url, enc, isEmail, emailKey, ipHash, rateOk, rateCount, isBlocked, human, mail, emailOn, secretOf, userOut, effPlan, membersByMailbox, isGmail, site, isAdmin } from "./common.js";
 import { respondioToken } from "./service-keys.js"; // the WhatsApp token: RESPONDIO_TOKEN or the Control Center slot (leaf module, no cycle)
 import { featureOn, offMessage } from "./flags.js";   // «🛠️ المطوّر»: registrations off → a NEW mailbox gets 503 feature_off (members sign in)
+import { reviewFor, reviewCodeOk, auditReviewSignin, staffish } from "./review-signin.js"; // «دخول مراجعي المتاجر»: store_review_signin (owner-only, audited)
 
 const CODES_GLOBAL_HOUR = 300, LINK_SESSION_HOURS = 24;
 const CODE_MIN = 10, MAX_ATTEMPTS = 5, TOKEN_DAYS = 30, CODES_PER_EMAIL_HOUR = 5, CODES_PER_EMAIL_DAY = 10, CODES_PER_IP_HOUR = 20, FAILS_PER_EMAIL_DAY = 15, LINK_DAYS = 7, LINKS_PER_IP_10MIN = 30;
@@ -116,6 +121,7 @@ async function requestCode(req, env) {
   const b = await readJson(req, 8192); const be = bodyErr(b); if (be) return be;
   const email = line(b.email, 254).toLowerCase(), lang = String(b.lang || "").startsWith("en") ? "en" : "ar";
   if (!isEmail(email)) return err(400, "invalid_email", "valid email required");
+  if (await reviewFor(env, email)) return json({ ok: true }); // «دخول مراجعي المتاجر»: no e-mail — the code of this one address is the owner's
   if (!emailOn(env)) return err(503, "email_off", "email not configured");
   const h = await human(req, env, b); if (h) return h; // TURNSTILE_SECRET set → the sign-in dialog MUST send a token (SEC M1)
   const key = emailKey(email), ih = await ipHash(req, env);
@@ -141,36 +147,51 @@ async function verify(req, env) {
   if (!/^\d{6}$/.test(code)) return err(400, "invalid_code", "6-digit code required");
   const key = emailKey(email), t = now();
   if (!(await rateOk(env, "authv|" + await ipHash(req, env), 30, 600))) return err(429, "rate_limited", "too many attempts, try again later"); // guessing across many addresses
-  // the code works only for the exact address it was mailed to (a "+tag" address may be someone else's mailbox)
-  const row = await env.DB.prepare("SELECT * FROM auth_codes WHERE email = ? AND used_at = '' ORDER BY id DESC LIMIT 1").bind(email).first();
-  if (!row || row.expires_at < t) return err(401, "invalid_code", "invalid or expired code");
-  // every attempt is counted BEFORE the compare, atomically (SEC L1): parallel guesses can never all be checked against one code
-  if (!(await rateOk(env, "authvf|" + key, FAILS_PER_EMAIL_DAY, 86400))) return err(429, "locked", "too many wrong codes for this address today, try again tomorrow");
-  const claim = await env.DB.prepare("UPDATE auth_codes SET attempts = attempts + 1 WHERE id = ? AND used_at = '' AND attempts < ?").bind(row.id, MAX_ATTEMPTS).run();
-  if (!claim.meta || claim.meta.changes !== 1) { await env.DB.prepare("UPDATE auth_codes SET used_at = ? WHERE id = ? AND used_at = ''").bind(t, row.id).run(); return err(429, "too_many_attempts", "too many attempts, request a new code"); }
-  if (!safeEq(await codeHash(env, row.email, code), row.code_hash)) {
-    const n = (await env.DB.prepare("SELECT attempts FROM auth_codes WHERE id = ?").bind(row.id).first("attempts")) || MAX_ATTEMPTS;
-    if (n >= MAX_ATTEMPTS) await env.DB.prepare("UPDATE auth_codes SET used_at = ? WHERE id = ? AND used_at = ''").bind(t, row.id).run(); // 5 wrong → the code is burnt
-    return err(401, "invalid_code", "invalid or expired code", { attempts_left: Math.max(0, MAX_ATTEMPTS - n) });
+  // «دخول مراجعي المتاجر» (review-signin.js): the ONE review address takes the owner's code while his switch is on and the period runs. The
+  // attempt counts against the address's daily wrong-code limit first, like any code; a code that is not his falls through to the e-mailed one
+  const rv = await reviewFor(env, email);
+  let review = false, row = null;
+  if (rv) {
+    if (!(await rateOk(env, "authvf|" + key, FAILS_PER_EMAIL_DAY, 86400))) return err(429, "locked", "too many wrong codes for this address today, try again tomorrow");
+    review = await reviewCodeOk(env, rv, email, code);
   }
+  if (!review) {
+    // the code works only for the exact address it was mailed to (a "+tag" address may be someone else's mailbox)
+    row = await env.DB.prepare("SELECT * FROM auth_codes WHERE email = ? AND used_at = '' ORDER BY id DESC LIMIT 1").bind(email).first();
+    if (!row || row.expires_at < t) return err(401, "invalid_code", "invalid or expired code");
+    // every attempt is counted BEFORE the compare, atomically (SEC L1): parallel guesses can never all be checked against one code
+    if (!rv && !(await rateOk(env, "authvf|" + key, FAILS_PER_EMAIL_DAY, 86400))) return err(429, "locked", "too many wrong codes for this address today, try again tomorrow");
+    const claim = await env.DB.prepare("UPDATE auth_codes SET attempts = attempts + 1 WHERE id = ? AND used_at = '' AND attempts < ?").bind(row.id, MAX_ATTEMPTS).run();
+    if (!claim.meta || claim.meta.changes !== 1) { await env.DB.prepare("UPDATE auth_codes SET used_at = ? WHERE id = ? AND used_at = ''").bind(t, row.id).run(); return err(429, "too_many_attempts", "too many attempts, request a new code"); }
+    if (!safeEq(await codeHash(env, row.email, code), row.code_hash)) {
+      const n = (await env.DB.prepare("SELECT attempts FROM auth_codes WHERE id = ?").bind(row.id).first("attempts")) || MAX_ATTEMPTS;
+      if (n >= MAX_ATTEMPTS) await env.DB.prepare("UPDATE auth_codes SET used_at = ? WHERE id = ? AND used_at = ''").bind(t, row.id).run(); // 5 wrong → the code is burnt
+      return err(401, "invalid_code", "invalid or expired code", { attempts_left: Math.max(0, MAX_ATTEMPTS - n) });
+    }
+  }
+  const mailbox = review ? email : row.email; // the exact address the code belongs to
   // registrations paused (the owner's switch): only after a right code (the mailbox is proven, so nothing is revealed to anyone else), and
   // before the code is used up — an existing member signs in as usual, a new address hears it clearly and nothing is created
-  if (!(await featureOn(env, "registrations")) && !(await findByEmail(env, row.email))) return err(503, "feature_off", undefined, { feature: "registrations", message: offMessage("registrations") });
-  const used = await env.DB.prepare("UPDATE auth_codes SET used_at = ? WHERE id = ? AND used_at = ''").bind(t, row.id).run();
-  if (!used.meta || used.meta.changes !== 1) return err(401, "invalid_code", "invalid or expired code");
+  if (!(await featureOn(env, "registrations")) && !(await findByEmail(env, mailbox))) return err(503, "feature_off", undefined, { feature: "registrations", message: offMessage("registrations") });
+  if (!review) {
+    const used = await env.DB.prepare("UPDATE auth_codes SET used_at = ? WHERE id = ? AND used_at = ''").bind(t, row.id).run();
+    if (!used.meta || used.meta.changes !== 1) return err(401, "invalid_code", "invalid or expired code");
+  }
   // one account per mailbox: an existing member row (e.g. activated by the platform for Bassem) is reused
-  let m = await findByEmail(env, row.email);
+  let m = await findByEmail(env, mailbox);
+  if (review && (await staffish(env, m))) return err(401, "invalid_code", "invalid or expired code"); // the review code never opens a staff account
   if (!m) {
     const id = "u" + hex(8);
-    await env.DB.prepare("INSERT INTO members (id, company, email, plan, verified, created_at, updated_at, email_verified_at) VALUES (?, '', ?, 'visitor', 0, ?, ?, ?)").bind(id, row.email, t, t, t).run();
+    await env.DB.prepare("INSERT INTO members (id, company, email, plan, verified, created_at, updated_at, email_verified_at) VALUES (?, '', ?, 'visitor', 0, ?, ?, ?)").bind(id, mailbox, t, t, t).run();
     m = await env.DB.prepare("SELECT * FROM members WHERE id = ?").bind(id).first();
   } else await env.DB.prepare("UPDATE members SET email_verified_at = CASE WHEN email_verified_at = '' THEN ? ELSE email_verified_at END, last_seen_at = ? WHERE id = ?").bind(t, t, m.id).run();
   m = await env.DB.prepare("SELECT * FROM members WHERE id = ?").bind(m.id).first();
   // requests this mailbox sent before signing in become theirs (tracking without last-4, bell notifications on replies), and
-  // the opportunities / projects they registered interest in are followed now — once, at attach time (what their receipt said)
-  const { results: loose } = isGmail(row.email)
-    ? await env.DB.prepare("SELECT id, kind, target_type, target_id, target_name FROM inquiries WHERE user_id = '' AND email_key = ? AND (lower(email) LIKE '%@gmail.com' OR lower(email) LIKE '%@googlemail.com') LIMIT 200").bind(emailKey(row.email)).all()
-    : await env.DB.prepare("SELECT id, kind, target_type, target_id, target_name FROM inquiries WHERE user_id = '' AND lower(email) = ? LIMIT 200").bind(row.email).all();
+  // the opportunities / projects they registered interest in are followed now — once, at attach time (what their receipt said).
+  // Never at a review sign-in: the owner's code proves nothing about who sent them (review-signin.js; review F5)
+  const { results: loose } = review ? { results: [] } : isGmail(mailbox)
+    ? await env.DB.prepare("SELECT id, kind, target_type, target_id, target_name FROM inquiries WHERE user_id = '' AND email_key = ? AND (lower(email) LIKE '%@gmail.com' OR lower(email) LIKE '%@googlemail.com') LIMIT 200").bind(emailKey(mailbox)).all()
+    : await env.DB.prepare("SELECT id, kind, target_type, target_id, target_name FROM inquiries WHERE user_id = '' AND lower(email) = ? LIMIT 200").bind(mailbox).all();
   const att = [];
   for (const q of loose || []) {
     att.push(env.DB.prepare("UPDATE inquiries SET user_id = ? WHERE id = ? AND user_id = ''").bind(m.id, q.id));
@@ -178,11 +199,15 @@ async function verify(req, env) {
       att.push(env.DB.prepare("INSERT OR IGNORE INTO follows (user_id, kind, ref_id, label, url, created_at) VALUES (?, ?, ?, ?, '', ?)").bind(m.id, String(q.target_type).slice(0, 30), q.target_id, q.target_name || "", t));
   }
   if (att.length) await env.DB.batch(att);
-  return json(await issueSession(env, m));
+  if (review) await auditReviewSignin(env, req, m, rv); // «دخول مراجعي المتاجر»: every review sign-in is in the audit log
+  // a review session ends with the owner's review period at the latest (review F4); turning the sign-in off ends it at once (review-signin.js)
+  return json(await issueSession(env, m, review ? { expMs: Date.parse(rv.until) } : {}));
 }
-/* a normal 30-day session for a member (email-code sign-in or a login link) */
-export async function issueSession(env, m, { scope = "full" } = {}) {
-  const link = scope === "link", sid = link ? "lk" + hex(15) : hex(16), exp = Math.floor(Date.now() / 1000) + (link ? LINK_SESSION_HOURS * 3600 : TOKEN_DAYS * 86400);
+/* a normal 30-day session for a member (email-code sign-in or a login link); expMs: a session that must end earlier (the store reviewer's) */
+export async function issueSession(env, m, { scope = "full", expMs } = {}) {
+  const link = scope === "link", sid = link ? "lk" + hex(15) : hex(16);
+  let exp = Math.floor(Date.now() / 1000) + (link ? LINK_SESSION_HOURS * 3600 : TOKEN_DAYS * 86400);
+  if (Number.isFinite(expMs) && expMs > Date.now()) exp = Math.min(exp, Math.floor(expMs / 1000));
   await env.DB.prepare("INSERT INTO auth_sessions (sid_hash, member_id, created_at, expires_at) VALUES (?, ?, ?, ?)").bind(await sha256(sid), m.id, now(), iso(exp * 1000)).run();
   return { token: await signSession(secretOf(env), m.id, sid, exp), expires_at: iso(exp * 1000), user: userOut(env, m), scope: link ? "link" : "full" };
 }
