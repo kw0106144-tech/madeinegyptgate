@@ -291,9 +291,12 @@ describe("calls report: who talked", () => {
     addAtlal(1, T_ATLAL, { label: "madeinegyptgate-janna-ar.aaaaaaaaaaaa" }); await tagRow(env, "aaaaaaaaaaaa", { subject: "v:" + vLinked, member_id: "" });            // signed out
     addBuyer(2, T_BUYER, { label: "madeinegyptgate-janna-ar.bbbbbbbbbbbb" }); await tagRow(env, "bbbbbbbbbbbb", { subject: "v:" + vFree });
     addBuyer(3, T_BUYER + 3600e3, { label: "madeinegyptgate-janna-ar.cccccccccccc" }); await tagRow(env, "cccccccccccc", { subject: "v:" + vLinked, member_id: "m-1" }); // his own sign-in
+    addBuyer(4, T_BUYER + 7200e3, { label: "madeinegyptgate-janna-ar.dddddddddddd" }); await tagRow(env, "dddddddddddd", { subject: "", member_id: "" });          // a page id that had to be replaced
     const b = await buildReport(env, { day: D, nowMs: AT, settings: await readSettings(env), CC, sleep: nap });
     const by = n => b.rep.convs.find(c => c.sessions.includes(sid(n))).who;
     assert.deepEqual([by(1).kind, by(1).name, by(1).visits, by(1).stage, by(1).confidence], ["visitor", undefined, undefined, undefined, "sure"]);
+    assert.deepEqual([by(4).kind, by(4).confidence], ["visitor", ""], "a tag that names nobody confirms nothing");
+    assert.ok(!b.rendered.html.includes("زائر مش معروف (مؤكد)"), "never «unknown visitor (confirmed)»");
     assert.match(by(1).alias, /^[0-9a-f]{4}$/);
     assert.deepEqual([by(2).kind, by(2).visits, by(2).stage], ["visitor", 3, "interested"]);
     assert.deepEqual([by(3).kind, by(3).name, by(3).company, by(3).email, by(3).phone, by(3).link], ["member", "عضو تجربة", "شركة العضو التجريبية", "m•••@example.com", "…٧٧", SITE + "/admin/#users/m-1"]);
@@ -302,7 +305,7 @@ describe("calls report: who talked", () => {
     assert.notEqual(by(2).alias, by(1).alias, "two visitor ids, two aliases");
     assert.ok(!b.rendered.html.includes(vLinked) && !b.rendered.csv.includes(vLinked) && !b.rendered.html.includes("aaaaaaaaaaaa"), "never the raw visitor id or the tag");
     const fill = await rowsOf(env, "SELECT tag, session_id FROM call_sessions ORDER BY tag");
-    assert.deepEqual(fill.map(r => r.session_id), [sid(1), sid(2), sid(3)], "the report fills session_id of the tags it found");
+    assert.deepEqual(fill.map(r => r.session_id), [sid(1), sid(2), sid(3), sid(4)], "the report fills session_id of the tags it found");
     void owner;
   });
   test("a session of a meeting without recording consent: counts, the outcome and the booking only — no text read, no quote, no «قالت»", async () => {

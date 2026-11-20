@@ -311,7 +311,8 @@ export async function buildReport(env, { day, nowMs = Date.now(), settings, mode
   for (const r of listed) {
     const d = detail.get(r.id) || null, tag = r.tag ? tags.get(r.tag) : null, mt = meetBySid.get(r.id) || null;
     const who = { kind: "unknown", confidence: "", subject: "", memberId: "", meeting: mt ? mt.id : "", block: null, staff: false, app: tag ? tag.app : "" };
-    if (tag) { who.confidence = "sure"; who.subject = tag.subject || ""; if (tag.member_id) { who.kind = "member"; who.memberId = tag.member_id; } else if (/^v:/.test(tag.subject)) who.kind = "visitor"; if (Number(tag.staff) === 1) who.staff = true; }
+    /* a tag that names nobody (no member, no visitor id, not staff) confirms nothing: never «زائر مش معروف (مؤكد)» */
+    if (tag) { who.confidence = tag.member_id || tag.subject || Number(tag.staff) === 1 ? "sure" : ""; who.subject = tag.subject || ""; if (tag.member_id) { who.kind = "member"; who.memberId = tag.member_id; } else if (/^v:/.test(tag.subject)) who.kind = "visitor"; if (Number(tag.staff) === 1) who.staff = true; }
     if (!who.memberId && mt) { who.kind = "meeting"; who.confidence = "sure"; }
     if (who.kind === "unknown" && r.block && !r.block.anonymous) { who.kind = "member"; who.block = r.block; who.confidence = "sure"; }
     else if (who.kind === "unknown" && r.block && r.block.anonymous) { who.kind = "member"; who.block = r.block; who.confidence = "sure"; }
