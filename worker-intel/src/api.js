@@ -131,7 +131,18 @@ export function publicItem(r, lang, src) {
     url: r.url, page: SITE + itemPath(r, lang), source: src ? { id: src.id, name: en ? src.name : (src.name_ar || src.name) } : { id: r.source_id },
   };
 }
-async function sourcesMap(db) { const r = (await db.prepare("SELECT id, name, name_ar, homepage FROM intel_sources").all()).results || []; return new Map(r.map(s => [s.id, s])); }
+/* the sources (id → name, Arabic name, homepage), kept 10 minutes per database (speed 2026-11-20: one D1 read less on Bassem's tool path;
+   the sources change daily at most). The promise is shared by concurrent callers and forgotten when the read fails. */
+export const SOURCES_TTL_MS = 600000;
+const SOURCES = new WeakMap(); // db → {at, p}
+function sourcesMap(db, nowMs = Date.now()) {
+  const hit = SOURCES.get(db);
+  if (hit && nowMs - hit.at >= 0 && nowMs - hit.at < SOURCES_TTL_MS) return hit.p;
+  const p = db.prepare("SELECT id, name, name_ar, homepage FROM intel_sources").all().then(r => new Map(((r && r.results) || []).map(s => [s.id, s])));
+  SOURCES.set(db, { at: nowMs, p });
+  p.catch(() => { const h = SOURCES.get(db); if (h && h.p === p) SOURCES.delete(db); });
+  return p;
+}
 export async function feed(env, p, nowMs = Date.now()) {
   const db = env.DB;
   const [res, upd] = await Promise.all([queryItems(db, p, nowMs), db.prepare("SELECT MAX(finished_at) AS t FROM intel_runs").first()]);
@@ -368,7 +379,8 @@ export async function tool(env, body = {}, nowMs = Date.now(), o = {}) {
   const kind = resolveKind(body.kind), newsAsked = kind === "news" || parsed.news;
   const sec = resolveSector(body.sector);
   const concepts = parsed.concepts.length > 0, spokenQ = clip(stripUrls(query), 40);
-  const sm = await sourcesMap(db);
+  /* the sources' names are needed only where the results are built: started now (usually a memo hit), awaited there (speed 2026-11-20) */
+  const smP = sourcesMap(db); smP.catch(() => { /* awaited below, where a failure still answers as before */ });
   /* no product words: the sector (if any) filters, as on the site */
   const sector = concepts ? "" : sec >= 0 ? sec : "";
   const askedWhere = markets.length ? join(markets.map(marketWord)) : scopeWords(plan);
@@ -376,7 +388,7 @@ export async function tool(env, body = {}, nowMs = Date.now(), o = {}) {
     const days = 1, mf = markets.length ? marketsFilter(markets) : null;
     const { rows, total } = await toolSearch(db, { kind, q, days, mf, sector, boostSector: sec, strictWindow: true }, nowMs);
     const opp = rows.filter(r => !isPureNews(r)), list = newsAsked || !opp.length ? rows : opp;
-    const results = list.slice(0, MAX_RESULTS).map(r => toolItem(r, sm));
+    const sm = await smP, results = list.slice(0, MAX_RESULTS).map(r => toolItem(r, sm));
     return { count: total, results, text: toolText("brief", total, results, { where: markets.length ? askedWhere : "", nowMs }) };
   }
   const days = Math.min(Math.max(parseInt(body.days, 10) || 30, 1), 90);
@@ -396,7 +408,9 @@ export async function tool(env, body = {}, nowMs = Date.now(), o = {}) {
     else if (!a.all.length && b.news.length) { list = b.news; widened = true; newsOnly = true; }
     else if (!a.all.length) widened = "none";
   }
-  const top = list.slice(0, MAX_RESULTS), results = top.map(r => toolItem(r, sm));
+  /* several markets in one call («gcc,africa»): every asked market is heard in the top 5 (interleaveMarkets) */
+  if (markets.length > 1 && !newsAsked && widened !== true) list = interleaveMarkets(list, markets);
+  const sm = await smP, top = list.slice(0, MAX_RESULTS), results = top.map(r => toolItem(r, sm));
   const partial = !!q && concepts && top.some(r => !fullMatch(parsed.concepts, matchItem(itemHay(r), parsed.concepts).hit));
   const since = new Date(nowMs - days * 864e5).toISOString(), olderOpen = top.slice(0, 3).some(r => (r.published_at || r.first_seen_at || "") < since);
   const unknown = mk.unknown.length && !mk.codes.length ? mk.unknown[0] : "";
@@ -405,10 +419,38 @@ export async function tool(env, body = {}, nowMs = Date.now(), o = {}) {
     toolText("search", list.length, results, { query: q || "", partial, sectorName: !q && sec >= 0 ? sectorName(sec, "ar") : "", days, olderOpen, where: unknown ? "" : askedWhere, widenedTo: widened ? scopeWords(plan) : "", newsOnly, newsAsked, inMarket, nowMs });
   return { count: list.length, results, text, days, market: markets.length ? markets.join(",") : scope ? "plan" : "all", widened: widened === true ? (scope ? scope.join(",") : "all") : null, ...(plan ? { plan } : {}) };
 }
-async function rateLimited(env, req, perMin = 30, prefix = "rl:") {
+/* several asked markets: the ranked list interleaved by the ASKED market each item belongs to (an item of «sa» counts for «gcc», of
+   «africa:ke» for «africa»), so one market's many results cannot fill the top 5 alone; the order inside each market stays the ranking.
+   Not for news, and not for a widened search (that list says first what was found outside the asked markets). */
+import { GCC, ARAB_CODES } from "./markets.js";
+function askedMarketOf(m, asked) {
+  m = String(m || "");
+  for (const a of asked) {
+    if (a === m) return a;
+    if (a === "gcc" && GCC.includes(m)) return a;
+    if (a === "arab" && (m === "gcc" || ARAB_CODES.includes(m))) return a;
+    if ((a === "africa" || a === "asia") && m.startsWith(a + ":")) return a;
+  }
+  return m;
+}
+export function interleaveMarkets(list, asked) {
+  const by = new Map();
+  for (const r of list) { const k = askedMarketOf(r && r.market, asked); if (!by.has(k)) by.set(k, []); by.get(k).push(r); }
+  if (by.size < 2) return list;
+  const groups = [...by.values()], mx = Math.max(...groups.map(g => g.length)), out = [];
+  for (let i = 0; i < mx; i++) for (const g of groups) if (g[i]) out.push(g[i]);
+  return out;
+}
+/* per network and minute in KV. The counter write no longer holds the answer (speed 2026-11-20): with ctx it runs in waitUntil — the count
+   can lag a call or two, it is a soft limit; without ctx (tests, other callers) it is awaited as before */
+async function rateLimited(env, req, perMin = 30, prefix = "rl:", ctx) {
   if (!env.KV) return false;
   const ip = req.headers.get("CF-Connecting-IP") || "0", key = prefix + ip + ":" + Math.floor(Date.now() / 60000);
-  try { const n = +(await env.KV.get(key)) || 0; if (n >= perMin) return true; await env.KV.put(key, String(n + 1), { expirationTtl: 120 }); } catch (e) {}
+  try {
+    const n = +(await env.KV.get(key)) || 0; if (n >= perMin) return true;
+    const put = env.KV.put(key, String(n + 1), { expirationTtl: 120 });
+    if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(Promise.resolve(put).catch(() => {})); else await put;
+  } catch (e) {}
   return false;
 }
 
@@ -495,11 +537,14 @@ export async function handleApi(req, env, ctx) {
     if (path === "/api/intel/tool") {
       if (req.method !== "POST" && req.method !== "GET") return json(req, { error: "method" }, 405);
       if (env.TOOL_KEY && !timingSafeEqual(req.headers.get("X-Intel-Key") || "", env.TOOL_KEY)) return json(req, { error: "unauthorized" }, 401);
-      if (await rateLimited(env, req, +(env.TOOL_RATE_PER_MIN || 30))) return json(req, { error: "rate limited", text: "لحظة واحدة، طلبات كتير ورا بعض. جرّب تاني بعد دقيقة." }, 429);
-      let b = p; if (req.method === "POST") { try { b = Object.assign({}, p, await req.json()); } catch (e) { return json(req, { error: "bad json" }, 400); } }
+      /* speed 2026-11-20: Bassem's webhook (bassem_intel, POST) gets 200 ok:false + a text it can act on instead of a 400 / 429 — a refused
+         call reached the model as a bare "HTTP error" and it retried blind; GET keeps the status codes. One log line each, never the body. */
+      const post = req.method === "POST", soft = (status, code, o) => { if (post) console.warn("tool-soft-error", path, code); return json(req, { ok: false, ...o }, post ? 200 : status); };
+      if (await rateLimited(env, req, +(env.TOOL_RATE_PER_MIN || 30), "rl:", ctx)) return soft(429, "rate_limited", { error: "rate limited", flags: ["busy"], text: "لحظة واحدة، طلبات كتير ورا بعض. جرّب تاني بعد دقيقة." });
+      let b = p; if (post) { try { b = Object.assign({}, p, await req.json()); } catch (e) { return soft(400, "bad_json", { error: "bad json", flags: ["bad_request"], text: "طلب البحث وصل ناقص. ابعته تاني مرة واحدة بس؛ ولو فشل تاني قول إن البحث مش متاح دلوقتي، ومفيش نتايج تتقال من غير بحث." }); } }
       /* reading a document fetches from the official site: its own, smaller budget (DOC_RATE_PER_MIN, default 10 a minute) */
-      if (ACTIONS[String(b.action || "").toLowerCase().trim()] === "doc" && await rateLimited(env, req, +(env.DOC_RATE_PER_MIN || 10), "rld:"))
-        return json(req, { error: "rate limited", action: "doc", ok: false, flags: ["busy"], text: "لحظة واحدة، طلبات قراءة مستندات كتير ورا بعض. جرّب تاني بعد دقيقة." }, 429);
+      if (ACTIONS[String(b.action || "").toLowerCase().trim()] === "doc" && await rateLimited(env, req, +(env.DOC_RATE_PER_MIN || 10), "rld:", ctx))
+        return soft(429, "doc_rate_limited", { error: "rate limited", action: "doc", flags: ["busy"], text: "لحظة واحدة، طلبات قراءة مستندات كتير ورا بعض. جرّب تاني بعد دقيقة." });
       return json(req, await tool(env, b));
     }
     const m = /^\/api\/intel\/admin\/(hide|unhide|source-enable|source-disable|run|reenrich)$/.exec(path);

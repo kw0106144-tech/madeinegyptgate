@@ -331,8 +331,12 @@ test("handleApi: POST /api/intel/tool {action:'doc'} → JSON; the document read
     const r = await call({ action: "doc", id: RW.id });
     assert.equal(r.status, 200); const j = await r.json(); assert.equal(j.ok, true); assert.equal(j.action, "doc");
     assert.equal((await call({ action: "doc", id: RW.id })).status, 200);
+    /* speed 2026-11-20: Bassem's webhook (POST) hears the refusal as 200 ok:false + a text it can act on; GET keeps the 429 */
     const third = await call({ action: "doc", id: RW.id });
-    assert.equal(third.status, 429); assert.deepEqual((await third.json()).flags, ["busy"]);
+    assert.equal(third.status, 200); const tj = await third.json();
+    assert.deepEqual([tj.ok, tj.action, tj.flags], [false, "doc", ["busy"]]); assert.match(tj.text, /جرّب تاني بعد دقيقة/);
+    const get = await handleApi(new Request("https://madeinegyptgate.com/api/intel/tool?action=doc&id=" + RW.id, { headers: { "CF-Connecting-IP": "203.0.113.9" } }), env, {});
+    assert.equal(get.status, 429, "GET keeps the status code");
     assert.equal((await call({ action: "item", id: RW.id })).status, 200, "item is not limited by the document budget");
   } finally { globalThis.fetch = saved; }
 });
