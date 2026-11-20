@@ -7,6 +7,7 @@
     python3 deploy/stage.py emulate --out build/pages-stage --to build/pages-prod-emu
     python3 deploy/stage.py contacts [--html] FILE …
     python3 deploy/stage.py refs [--path /x/] FILE
+    python3 deploy/stage.py apk FILE.apk …
 
 stage    Copies <site> into <out>/site:
            - every symlink is resolved into real files (site/data, site/img, site/media point into the repository);
@@ -27,11 +28,17 @@ check    Runs the checks on an existing stage:
            generated pages, JSON-LD, sitemaps, the manifest or the CSV downloads, public-source factories labelled, no
            VideoObject, no pages built from sample leads. The installable app (check_pwa): both manifests valid, their icons
            present at the sizes they declare, start_url and shortcuts on staged pages, and /sw.js never handling the API, the
-           private pages or the old system's paths (or it is the kill switch, a warning).
+           private pages, the old system's paths or the APK downloads (or it is the kill switch, a warning). The Android app on
+           the site (check_app): .apk files only in downloads/android/, latest.json naming a staged file of the same size and
+           SHA-256 (25 MiB at most), every APK signed by a certificate that /.well-known/assetlinks.json lists (no debug key),
+           assetlinks.json naming com.madeinegyptgate.app, the 302 /app/android.apk → the published file in _redirects (none
+           without an APK), and that path outside the Functions.
 emulate  Hard-links a stage into a copy whose _redirects keeps only the rules that production applies (requests the
          Functions do not serve), for `wrangler pages dev` tests that behave like production.
 contacts Prints the phone numbers / e-mails a file contains (same detector as the gate; used by smoke-test.sh).
 refs     Prints the local scripts, styles and images an HTML page loads (used by smoke-test.sh).
+apk      Prints the signing certificates (SHA-256, as apksigner prints them) of APK files, «debug» for the Android debug key
+         (used by tools/publish_apk.py; no Android SDK needed).
 
 Writes <out>/STAGE-REPORT.json. Exit status: 0 = no errors (warnings allowed), 1 = errors, 2 = usage problem.
 Standard library only (Python >= 3.8); runs on Linux, macOS and WSL.
@@ -40,14 +47,17 @@ import argparse
 import calendar
 import concurrent.futures
 import fnmatch
+import hashlib
 import html
 import json
 import os
 import re
 import shutil
+import struct
 import sys
 import time
 import unicodedata
+import zipfile
 import xml.etree.ElementTree as ET
 from urllib.parse import quote, unquote, urljoin, urlsplit
 
@@ -107,6 +117,7 @@ EMAIL_LOCAL_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw
 EMAIL_DOMAIN_RX = re.compile(r"((?:[A-Za-z0-9-]{1,63}\.)+([A-Za-z]{2,24}))(?![A-Za-z0-9-])")
 DIGITRUN_RX = re.compile(r"\d[\d\s\-./() ‎‏‪-‮]{3,}\d")
 URL_IN_TEXT_RX = re.compile(r"(?:https?://|www\.)[^\s\"'<>]+", re.I)     # file names / ids inside URLs are not phone numbers
+HASH_IN_TEXT_RX = re.compile(r"(?<![0-9A-Za-z])[0-9A-Fa-f]{64}(?![0-9A-Za-z])")   # a SHA-256 (the APK's, /app/ and latest.json)
 STRICT_MOBILE_RX = re.compile(r"(?<![\d+])(?:\+?20|0)?1[0125]\d{8}(?!\d)")
 ALLOW = {"keys": set(), "literals": set()}     # deploy/privacy-allow.txt
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -181,6 +192,8 @@ def contacts(text):
     found += emails_in(t)
     if DIGITRUN_RX.search(t):
         u = URL_IN_TEXT_RX.sub(" ", t) if ("http" in t or "www." in t) else t
+        # the digit runs inside a hex digest are not phone numbers (about 1 SHA-256 in 250 holds a landline-like run)
+        u = HASH_IN_TEXT_RX.sub(" ", u) if len(u) >= 64 else u
         for rx in (MOBILE_RX, LAND_RX):
             found += [m.group(0).strip() for m in rx.finditer(u) if not _allowed_phone(m.group(0))]
         found += [m.group(0).strip() for m in LABEL_RX.finditer(u) if not _allowed_phone(m.group(1))]
@@ -851,6 +864,7 @@ def check_pwa(site, rep):
                 errs.append("sw.js has no fetch handler and does not unregister itself")
         else:
             m = re.search(r"var NEVER = /(.+?)/;", t)
+            rx = None
             if not m:
                 errs.append("sw.js: no NEVER rule (the paths it must never handle)")
             else:
@@ -876,6 +890,11 @@ def check_pwa(site, rep):
             miss = [x for x in want if x not in nf]
             if miss:
                 errs.append("sw.js would store files that must always come live (the Worker's overlay, the old system): " + ", ".join(miss))
+            # the Android APK downloads (seo_app.part.py): the file and its stable link go to the network as they are
+            apk = [x for x in ("/" + APK_DIR + "madeinegyptgate-1.0.0-1.apk", "/" + APK_DIR + "latest.json", APK_STABLE)
+                   if not ((rx and rx.search(x)) or x in nf)]
+            if apk and rx is not None:          # (no NEVER rule at all: reported above)
+                errs.append("sw.js would handle the Android APK downloads (seo_build.part.py PWA_DEF never / never_files): " + ", ".join(apk))
             # the precache list itself (a mention of /offline/ in a comment is not enough): /offline/ in it, every entry staged
             # (one missing file and the worker never installs)
             m = re.search(r"PRECACHE = (\[.*?\]);", t)
@@ -908,6 +927,304 @@ def check_pwa(site, rep):
         rep.error("pwa", "the installable app (seo_build.part.py emit_pwa: manifests, icons, /sw.js)", errs)
     if warns:
         rep.warn("pwa_review", "the installable app: worth a look", warns)
+
+
+# ------------------------------------------------------------------------------- the Android app on the site (seo_app.part.py)
+# /downloads/android/: madeinegyptgate-<versionName>-<versionCode>.apk + latest.json (tools/publish_apk.py), the 302
+# /app/android.apk → the published file (_redirects: the path skips the Functions, so Pages applies the rule itself) and
+# /.well-known/assetlinks.json (Android App Links: the package and the SHA-256 of the signing certificates, seo/config.json "app").
+APK_DIR = "downloads/android/"
+APK_NAME_RX = re.compile(r"^madeinegyptgate-([0-9][0-9A-Za-z._-]{0,39})-([1-9][0-9]{0,9})\.apk$")
+APK_STABLE = "/app/android.apk"
+APK_TYPE = "application/vnd.android.package-archive"
+APP_PACKAGE = "com.madeinegyptgate.app"
+CERT_FP_RX = re.compile(r"^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$")
+APK_SIG_MAGIC = b"APK Sig Block 42"
+APK_SIG_SCHEMES = {0x7109871a: "v2", 0xf05368c0: "v3", 0x1b93ad61: "v3.1"}
+
+
+def _lp(buf, off, end):
+    """one uint32-length-prefixed field of an APK signing block: (value, offset after it)"""
+    if off + 4 > end:
+        raise ValueError("truncated length prefix")
+    n = struct.unpack_from("<I", buf, off)[0]
+    if off + 4 + n > end:
+        raise ValueError("length %d past the end" % n)
+    return buf[off + 4:off + 4 + n], off + 4 + n
+
+
+def apk_signers(path):
+    """The certificates that sign an APK, read from its APK Signature Scheme v2 / v3 block (the scheme every APK with minSdk 24+
+    carries; no Android SDK needed). Returns {"certs": [«AA:BB:…» SHA-256 of each signer's certificate, as apksigner and keytool
+    print it], "schemes": ["v2", …], "debug": True when a certificate is the Android debug key (CN=Android Debug),
+    "problem": text or None}. Nothing is verified cryptographically here: Android does that at install, apksigner before
+    publishing (tools/publish_apk.py --sdk)."""
+    out = {"certs": [], "schemes": [], "debug": False, "problem": None}
+    try:
+        size = os.path.getsize(path)
+        with open(path, "rb") as f:
+            if f.read(4) != b"PK\x03\x04":
+                out["problem"] = "not a ZIP / APK file"
+                return out
+            tail_len = min(size, 22 + 65535)
+            f.seek(size - tail_len)
+            tail = f.read(tail_len)
+            eocd = -1
+            i = tail.rfind(b"PK\x05\x06")
+            while i >= 0:
+                if i + 22 <= len(tail) and i + 22 + struct.unpack_from("<H", tail, i + 20)[0] == len(tail):
+                    eocd = i
+                    break
+                i = tail.rfind(b"PK\x05\x06", 0, i)
+            if eocd < 0:
+                out["problem"] = "no ZIP end-of-central-directory record"
+                return out
+            cd_off = struct.unpack_from("<I", tail, eocd + 16)[0]
+            if cd_off < 32 or cd_off > size:
+                out["problem"] = "no APK signing block (unsigned, or signed with the old JAR scheme only)"
+                return out
+            f.seek(cd_off - 24)
+            foot = f.read(24)
+            if foot[8:] != APK_SIG_MAGIC:
+                out["problem"] = "no APK signing block (unsigned, or signed with the old JAR scheme only): sign it with apksigner"
+                return out
+            blk = struct.unpack_from("<Q", foot, 0)[0]
+            if blk < 24 or blk + 8 > cd_off or blk > 64 * 1024 * 1024:
+                out["problem"] = "APK signing block of an impossible size"
+                return out
+            f.seek(cd_off - blk - 8)
+            buf = f.read(blk + 8)
+        if struct.unpack_from("<Q", buf, 0)[0] != blk:
+            out["problem"] = "APK signing block sizes disagree"
+            return out
+        pos, end, certs = 8, len(buf) - 24, []
+        while pos + 12 <= end:
+            ln = struct.unpack_from("<Q", buf, pos)[0]
+            if ln < 4 or pos + 8 + ln > end:
+                raise ValueError("pair of length %d past the end" % ln)
+            pid = struct.unpack_from("<I", buf, pos + 8)[0]
+            if pid in APK_SIG_SCHEMES:
+                out["schemes"].append(APK_SIG_SCHEMES[pid])
+                vstart, vend = pos + 12, pos + 8 + ln
+                signers, _ = _lp(buf, vstart, vend)
+                so = 0
+                while so < len(signers):
+                    signer, so = _lp(signers, so, len(signers))
+                    signed, _ = _lp(signer, 0, len(signer))
+                    _digests, o = _lp(signed, 0, len(signed))
+                    chain, _ = _lp(signed, o, len(signed))
+                    if chain:
+                        der, _ = _lp(chain, 0, len(chain))           # the signer's own certificate comes first
+                        fp = ":".join("%02X" % b for b in hashlib.sha256(der).digest())
+                        if fp not in certs:
+                            certs.append(fp)
+                        if b"Android Debug" in der:
+                            out["debug"] = True
+            pos += 8 + ln
+        out["certs"] = certs
+        if not out["schemes"]:
+            out["problem"] = "the signing block has no v2 / v3 signature: sign it with apksigner"
+        elif not certs:
+            out["problem"] = "the signing block names no certificate"
+    except (OSError, ValueError, struct.error) as e:
+        out["problem"] = "unreadable APK signing block (%s)" % e
+    return out
+
+
+def apk_problems(path):
+    """the file is an Android package: a ZIP with AndroidManifest.xml and classes*.dex"""
+    try:
+        with zipfile.ZipFile(path) as z:
+            names = set(z.namelist())
+    except (OSError, zipfile.BadZipFile) as e:
+        return ["not a ZIP / APK file (%s)" % e]
+    out = []
+    if "AndroidManifest.xml" not in names:
+        out.append("no AndroidManifest.xml")
+    if not any(re.match(r"^classes\d*\.dex$", n) for n in names):
+        out.append("no classes.dex")
+    return out
+
+
+def file_sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _rule_rx(pattern):
+    """a _headers / _redirects URL pattern of Pages: one * splat, :placeholders (one path segment)"""
+    parts = re.split(r"(\*|:[A-Za-z]\w*)", pattern)
+    return re.compile("^" + "".join(".*" if x == "*" else "[^/]+" if x.startswith(":") else re.escape(x) for x in parts) + "$")
+
+
+def effective_headers(site, path):
+    """the _headers values Pages sends with a static file (a path the Functions do not serve), merged as the asset server merges
+    them: the matching rules in file order, a rule's «! Name» first, then its own lines; a header a second rule sets again is
+    appended («a, b»). Lower-case names."""
+    out, setmap, cur = {}, set(), None
+    p = os.path.join(site, "_headers")
+    if not os.path.isfile(p):
+        return out
+    rules = []
+    with open(p, encoding="utf-8") as f:
+        for line in f:
+            s = line.rstrip("\n")
+            if not s.strip() or s.lstrip().startswith("#"):
+                continue
+            if s[0] not in " \t":
+                cur = {"rx": _rule_rx(s.strip()), "set": [], "unset": []}
+                rules.append(cur)
+            elif cur is not None:
+                t = s.strip()
+                if t.startswith("!"):
+                    cur["unset"].append(t[1:].strip().lower())
+                elif ":" in t:
+                    k, v = t.split(":", 1)
+                    cur["set"].append((k.strip().lower(), v.strip()))
+    for r in rules:
+        if not r["rx"].match(path):
+            continue
+        for k in r["unset"]:
+            out.pop(k, None)
+        for k, v in r["set"]:
+            if k in setmap and k in out:
+                out[k] = out[k] + ", " + v
+            else:
+                out[k] = v
+                setmap.add(k)
+    return out
+
+
+def check_app(site, rep):
+    errs, warns, stats = [], [], {}
+    inc, exc = routes_rules(site)
+    rules, _ = parse_redirects_file(site)
+    apk_rules = [r for r in rules if nfc(unquote(r[0])) == APK_STABLE]
+    # every .apk of the upload: only the published channel downloads/android/<name>
+    apks = []
+    for d, dirs, files in os.walk(site):
+        dirs.sort()
+        for fn in sorted(files):
+            if fn.lower().endswith(".apk"):
+                apks.append(os.path.relpath(os.path.join(d, fn), site).replace(os.sep, "/"))
+    outside = [r for r in apks if not r.startswith(APK_DIR) or "/" in r[len(APK_DIR):]]
+    if outside:
+        errs.append("APK files outside %s (only the channel of tools/publish_apk.py is published): %s" % (APK_DIR, ", ".join(outside)))
+    chan = [r for r in apks if r not in outside]
+    badname = [r for r in chan if not APK_NAME_RX.match(r[len(APK_DIR):])]
+    if badname:
+        errs.append("APK files not named madeinegyptgate-<versionName>-<versionCode>.apk (tools/publish_apk.py): " + ", ".join(badname))
+    # assetlinks.json: the app's package and the certificates that may sign it
+    fps, al_path = [], os.path.join(site, ".well-known", "assetlinks.json")
+    if os.path.isfile(al_path):
+        al = load_json_file(al_path)
+        mine = [x for x in (al if isinstance(al, list) else []) if isinstance(x, dict) and isinstance(x.get("target"), dict)
+                and x["target"].get("namespace") == "android_app" and x["target"].get("package_name") == APP_PACKAGE]
+        if not isinstance(al, list):
+            errs.append(".well-known/assetlinks.json is not a JSON list of statements")
+        elif not mine:
+            errs.append(".well-known/assetlinks.json has no android_app statement for %s" % APP_PACKAGE)
+        for x in mine:
+            if "delegate_permission/common.handle_all_urls" not in (x.get("relation") or []):
+                errs.append(".well-known/assetlinks.json: the %s statement lacks delegate_permission/common.handle_all_urls" % APP_PACKAGE)
+            for fp in x["target"].get("sha256_cert_fingerprints") or []:
+                if isinstance(fp, str) and CERT_FP_RX.match(fp):
+                    fps.append(fp)
+                else:
+                    errs.append(".well-known/assetlinks.json: %r is not a certificate SHA-256 «AA:BB:…»" % (fp,))
+        if mine and not fps:
+            errs.append(".well-known/assetlinks.json lists no certificate SHA-256 for %s" % APP_PACKAGE)
+        h = effective_headers(site, "/.well-known/assetlinks.json")
+        if "application/json" not in h.get("content-type", "application/json"):
+            warns.append("_headers: /.well-known/assetlinks.json is sent as %r (Android wants application/json)" % h.get("content-type"))
+        if served_by_functions("/.well-known/assetlinks.json", inc, exc):
+            warns.append("_routes.json sends /.well-known/assetlinks.json through the Functions (exclude /.well-known/*)")
+        stats["assetlinks"] = {"package": APP_PACKAGE if mine else None, "certs": len(fps)}
+    elif chan:
+        warns.append("no /.well-known/assetlinks.json: links to the site open in the browser instead of the app (seo/config.json \"app\")")
+    # latest.json → the published APK
+    lj_path = os.path.join(site, APK_DIR, "latest.json")
+    pub = None
+    if os.path.isfile(lj_path):
+        lj = load_json_file(lj_path)
+        if not isinstance(lj, dict):
+            errs.append("%slatest.json is not a JSON object" % APK_DIR)
+        else:
+            f, v, c = lj.get("file"), lj.get("version"), lj.get("code")
+            if not isinstance(f, str) or not APK_NAME_RX.match(f):
+                errs.append("%slatest.json names %r, not madeinegyptgate-<versionName>-<versionCode>.apk" % (APK_DIR, f))
+            elif f != "madeinegyptgate-%s-%s.apk" % (v, c):
+                errs.append("%slatest.json: file %s does not match version %r / code %r" % (APK_DIR, f, v, c))
+            elif not os.path.isfile(os.path.join(site, APK_DIR, f)):
+                errs.append("%slatest.json names %s, which is not in the upload" % (APK_DIR, f))
+            else:
+                pub = f
+                fp_ = os.path.join(site, APK_DIR, f)
+                size = os.path.getsize(fp_)
+                if lj.get("bytes") != size:
+                    errs.append("%slatest.json says %r bytes, %s has %d" % (APK_DIR, lj.get("bytes"), f, size))
+                if size > MAX_FILE_BYTES:
+                    errs.append("%s%s is %s: Cloudflare Pages takes 25 MiB per file at most" % (APK_DIR, f, human(size)))
+                if lj.get("sha256") != file_sha256(fp_):
+                    errs.append("%slatest.json SHA-256 does not match %s (the page shows that SHA-256 to the visitors)" % (APK_DIR, f))
+                stats["published"] = {"file": f, "version": v, "code": c, "bytes": size, "min_sdk": lj.get("min_sdk")}
+            if not isinstance(lj.get("min_sdk"), int) or isinstance(lj.get("min_sdk"), bool):
+                errs.append("%slatest.json: min_sdk %r is not an Android API level" % (APK_DIR, lj.get("min_sdk")))
+            if lj.get("package") not in (None, APP_PACKAGE):
+                errs.append("%slatest.json: package %r is not %s" % (APK_DIR, lj.get("package"), APP_PACKAGE))
+    elif chan:
+        errs.append("%s has APK files but no latest.json (tools/publish_apk.py writes both)" % APK_DIR)
+    # each APK of the channel: an Android package signed by a certificate assetlinks.json lists — never the debug key
+    signed = {}
+    for r in chan:
+        fpath = os.path.join(site, *r.split("/"))
+        bad = apk_problems(fpath)
+        if bad:
+            errs.append("%s: %s" % (r, "; ".join(bad)))
+            continue
+        sg = apk_signers(fpath)
+        signed[r] = {"certs": sg["certs"], "schemes": sg["schemes"], "debug": sg["debug"]}
+        if sg["problem"]:
+            errs.append("%s: %s" % (r, sg["problem"]))
+        elif sg["debug"]:
+            errs.append("%s is signed with the Android DEBUG key: never publish a debug build (tools/publish_apk.py refuses one)" % r)
+        elif not fps:
+            errs.append("%s: no /.well-known/assetlinks.json certificate to check its signer against" % r)
+        else:
+            other = [x for x in sg["certs"] if x not in fps]
+            if other:
+                errs.append("%s is signed by %s, a certificate /.well-known/assetlinks.json does not list (seo/config.json app."
+                            "android_cert_sha256: the release key)" % (r, ", ".join(other)))
+    stats["apks"] = signed
+    # the stable link: 302 /app/android.apk → the published file, applied by Pages itself (outside the Functions)
+    if pub:
+        want = "/" + APK_DIR + pub
+        if len(apk_rules) != 1 or nfc(unquote(apk_rules[0][1])) != want:
+            errs.append("_redirects must send %s to %s (302) once: %s" % (APK_STABLE, want, [r[:3] for r in apk_rules] or "no rule"))
+        elif apk_rules[0][2] not in ("302", "307"):
+            warns.append("_redirects: %s → %s is a %s (a 302 follows each new version; browsers keep a 301)" % (APK_STABLE, want, apk_rules[0][2]))
+        if served_by_functions(APK_STABLE, inc, exc):
+            errs.append("_routes.json sends %s through the Functions, where Pages does not apply _redirects (exclude it)" % APK_STABLE)
+        h = effective_headers(site, want)
+        if APK_TYPE not in h.get("content-type", ""):
+            warns.append("_headers: %s is sent as %r (expected %s)" % (want, h.get("content-type"), APK_TYPE))
+        if "attachment" not in h.get("content-disposition", ""):
+            warns.append("_headers: %s has no Content-Disposition: attachment" % want)
+        if h.get("x-content-type-options", "").replace(" ", "").lower() != "nosniff":
+            warns.append("_headers: %s: X-Content-Type-Options %r (expected exactly nosniff)" % (want, h.get("x-content-type-options")))
+        if served_by_functions(want, inc, exc):
+            warns.append("_routes.json sends %s through the Functions, where Pages does not apply _headers" % want)
+        stats["redirect"] = "%s → %s %s" % (APK_STABLE, apk_rules[0][1], apk_rules[0][2]) if apk_rules else None
+    elif apk_rules:
+        errs.append("_redirects sends %s to %s, but no APK is published in this upload (latest.json)" % (APK_STABLE, apk_rules[0][1]))
+    rep.stats["app"] = stats
+    if errs:
+        rep.error("app", "the Android app on the site (seo_app.part.py: downloads/android/, /app/android.apk, assetlinks.json)", errs)
+    if warns:
+        rep.warn("app_review", "the Android app on the site: worth a look", warns)
 
 
 def read_text(path, limit=None):
@@ -1027,6 +1344,9 @@ def ref_status(p):
             st = "ok"
         elif p in exact or (p.rstrip("/") if p.endswith("/") else p + "/") in exact:
             st = "redirect"
+        elif p in (_W.get("static_redirects") or {}):
+            # a _redirects rule that Pages applies itself (a path the Functions do not serve: 302 /app/android.apk …)
+            st = "redirect" if rel_for_path(_W["static_redirects"][p]) in files else "missing"
         elif any(p.startswith(pre) for pre, _ in _W["prefixes"]):
             st = "redirect"
         elif any(rx.search(p) for rx in _W["gone_rx_c"]):
@@ -1235,6 +1555,7 @@ def run_checks(out, a, rep):
     check_redirects(site, rep)
     check_robots(site, rep)
     check_pwa(site, rep)
+    check_app(site, rep)
 
     # --- the build manifest: which pages this build wrote ---------------------------------------------------------------
     man = load_json_file(os.path.join(site, "_seo", "pages.json"), {}) or {}
@@ -1280,8 +1601,15 @@ def run_checks(out, a, rep):
     if shadow_warn:
         rep.warn("legacy_live_shadowed", "on madeinegyptgate.com these files are served by the old system (Worker "
                  "mis-egypt, deploy/legacy-live.txt), not by this upload", shadow_warn)
+    inc_r, exc_r = routes_rules(site)
+    static_redirects = {}
+    for src_, to_, code_, dyn_, line_ in parse_redirects_file(site)[0]:
+        s_ = nfc(unquote(src_))
+        if not dyn_ and to_.startswith("/") and not served_by_functions(s_, inc_r, exc_r):
+            static_redirects[s_] = nfc(unquote(to_.split("#")[0].split("?")[0]))
     ctx = {"files": frozenset(all_files), "exact": exact, "prefixes": prefixes, "gone_rx": gone_rx,
-           "allow_keys": sorted(ALLOW["keys"]), "allow_literals": sorted(ALLOW["literals"]), "legacy_live": legacy}
+           "allow_keys": sorted(ALLOW["keys"]), "allow_literals": sorted(ALLOW["literals"]), "legacy_live": legacy,
+           "static_redirects": static_redirects}
     t0 = time.time()
     results = scan_pages(html_files, ctx, max(1, int(getattr(a, "jobs", 0) or min(4, os.cpu_count() or 1))))
     rep.stats["page_scan_seconds"] = round(time.time() - t0, 1)
@@ -1363,7 +1691,7 @@ def run_checks(out, a, rep):
             if ext not in ("xml", "json", "csv", "webmanifest", "txt", "js"):
                 continue
             text = read_text(os.path.join(d, fn))
-            strict = rel.startswith(("sitemaps/", "_seo/", "downloads/")) or rel in ("sitemap.xml", "manifest.webmanifest",
+            strict = rel.startswith(("sitemaps/", "_seo/", "downloads/", ".well-known/")) or rel in ("sitemap.xml", "manifest.webmanifest",
                                                                                      "manifest.en.webmanifest", "sw.js", "robots.txt")
             span = find_claim(text)                       # the figure itself: an error in every file
             if span:
@@ -1785,6 +2113,19 @@ def cmd_contacts(a):
     return 0 if not a.exit_code else rc
 
 
+def cmd_apk(a):
+    rc = 0
+    for f in a.files:
+        sg = apk_signers(f)
+        bad = apk_problems(f) if os.path.isfile(f) else ["no such file"]
+        if bad or sg["problem"]:
+            print("%s: %s" % (f, "; ".join(bad + ([sg["problem"]] if sg["problem"] else []))))
+            rc = 1
+            continue
+        print("%s: %s signer %s%s" % (f, ",".join(sg["schemes"]), " ".join(sg["certs"]), "  DEBUG KEY" if sg["debug"] else ""))
+    return rc
+
+
 def main(argv=None):
     here = os.path.dirname(os.path.abspath(__file__))
     repo = os.path.dirname(here)
@@ -1816,6 +2157,8 @@ def main(argv=None):
     p.add_argument("--path", default="/", help="URL path of the page (to resolve relative references)")
     p.add_argument("--limit", type=int, default=40)
     p.add_argument("file")
+    p = sub.add_parser("apk")
+    p.add_argument("files", nargs="+")
     p = sub.add_parser("contacts")
     p.add_argument("--html", action="store_true", help="the files are HTML pages (visible text, attributes, links)")
     p.add_argument("--exit-code", action="store_true", help="exit 3 when something was found")
@@ -1832,6 +2175,8 @@ def main(argv=None):
         return cmd_contacts(a)
     if a.cmd == "refs":
         return cmd_refs(a)
+    if a.cmd == "apk":
+        return cmd_apk(a)
     ap.print_help()
     return 2
 

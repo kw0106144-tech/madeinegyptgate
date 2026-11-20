@@ -39,6 +39,7 @@ def _seo_build_module(HOST):
     S = {}                 # build state (data, model, config, page registry)
     PERSIST = {}           # survives _init(): build start time (seo_prepare), notes from seo_rewrite_links() on site.py pages
     FPROF = {}             # FPROF hook: rich company profile (seo_fprof.part.py): {'render', 'assets'}; filled at the end of this module
+    APPDL = {}             # APPDL hook: the app download page /app/, the APK channel, assetlinks.json (seo_app.part.py); filled at the end
 
     # ------------------------------------------------------------------ small utilities
     def esc(s):
@@ -1279,6 +1280,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         common = _host_or_file('COMMON_CSS', 'pages.part.py', r"COMMON_CSS = '''(.*?)'''")
         css = base + '\n' + shared + '\n' + common + '\n' + SEO_CSS + VIS_CSS + GOV_CSS
         css += PPROF.get('css', '')   # PPROF hook: product-view CSS (seo_pprof.part.py)
+        css += APPDL.get('css', '')   # APPDL hook: the app download page (seo_app.part.py)
         # same theme handling as site.py page(): dark mode only through the theme toggle (data-theme), never automatic
         css = css.replace('@media (prefers-color-scheme: dark)', '@media not all')
         fonts_local = [f for f in (os.listdir(OUT + 'fonts') if os.path.isdir(OUT + 'fonts') else []) if f.endswith('.woff2')]
@@ -2397,7 +2399,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         c2 = ('<div><h4>%s</h4><ul>%s</ul></div>'
               % (T('المنصة', 'Platform'), li(stat('about'), X(L, 'عن المنصة', 'About the platform')) + li(stat('market'), X(L, 'السوق الإلكتروني', 'Online Marketplace'))
                  + li(hub('/factories/'), X(L, 'دليل المصانع', 'Factory directory')) + li(hub('/tenders/'), X(L, 'المناقصات', 'Tenders'))
-                 + li(hub('/industrial-zones/'), X(L, 'المناطق الصناعية والحرة', 'Industrial and Free Zones')) + li(stat('intl'), X(L, 'المنصات الدولية', 'International Platforms'))))
+                 + li(hub('/industrial-zones/'), X(L, 'المناطق الصناعية والحرة', 'Industrial and Free Zones')) + li(stat('intl'), X(L, 'المنصات الدولية', 'International Platforms'))
+                 + li(hub('/app/'), X(L, 'التطبيق', 'App'))))   # the app download page (seo_app.part.py)
         # column 3: the top 10 sector hubs (site.py pages: one list for both languages, so the English strings pair with the Arabic ones)
         secs = [h for h in S.get('hub_sectors') or [] if h['indexable'] and (app or not en or h.get('en'))][:10]
         if secs:
@@ -5243,6 +5246,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             for m in S['exports']:
                 spec(m['path'], 'export', (lambda L, m=m: render_export(m, L)), True, 'market', key=('ex', m), cluster='J', rec=m)
         spec('/site-map/', 'sitemap-html', render_sitemap_html, True, 'html_sitemap', key=('sm', len(S['specs'])), cluster='')
+        if APPDL:   # APPDL hook: «تطبيق صنع في مصر» /app/ + /en/app/ (seo_app.part.py)
+            spec(APPDL['path'], 'app-download', APPDL['render'], True, 'app_download', key=APPDL['key'](), cluster='')
         if cfg.get('en', {}).get('enabled') and cfg.get('en_home', True):
             # EN-only spec: the Arabic "/" is site.py's home page; lastmod keyed as /en/
             add_page({'path': '/', 'type': 'home', 'render': render_en_home, 'index': True, 'why': 'home_en', 'key': ('home-en', len(S['dir_members']), len(S['tenders']),
@@ -5483,6 +5488,10 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                 break
             lines.append('%s %s 301' % (pct(k), pct(v)))
         lines += ['/tenders/page/* /tenders/ 301', '/category/* /factories/ 301']
+        if APPDL and APPDL['redirect_rule']():
+            # APPDL hook: /app/android.apk → the published APK, 302 (it follows every new version); the path skips the Functions
+            # (emit_routes), so Pages applies this rule itself — it is not a 301 of the edge map
+            lines.insert(1, APPDL['redirect_rule']())
         open(OUT + '_redirects', 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
         S['redirects'] = R
         return R
@@ -5522,6 +5531,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         txt += ('/sw.js\n  Cache-Control: no-cache\n  Service-Worker-Allowed: /\n'
                 '/manifest.webmanifest\n  Content-Type: application/manifest+json; charset=utf-8\n  Cache-Control: public, max-age=3600\n'
                 '/manifest.en.webmanifest\n  Content-Type: application/manifest+json; charset=utf-8\n  Cache-Control: public, max-age=3600\n')
+        if APPDL:   # APPDL hook: the APKs (attachments, nosniff, a year: versioned names), latest.json, assetlinks.json (seo_app.part.py)
+            txt += APPDL['headers']()
         open(OUT + '_headers', 'w', encoding='utf-8').write(txt)
         return {'data_immutable': False, 'data_cache': data_cc, 'unversioned_data_refs': bad[:20]}
 
@@ -5529,6 +5540,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         R = {"version": 1, "include": ["/*"],
              "exclude": ["/data/*", "/img/*", "/media/*", "/fonts/*", "/assets/*", "/downloads/*", "/_seo/*", "/sitemaps/*", "/sitemap.xml", "/manifest.webmanifest",
                          "/manifest.en.webmanifest", "/sw.js", "/favicon.ico", "/apple-touch-icon.png"]}
+        if APPDL:   # APPDL hook: /app/android.apk (its 302 is a _redirects rule) and /.well-known/assetlinks.json (_headers) are static
+            R['exclude'] += [x for x in APPDL['routes_exclude'] if x not in R['exclude']]
         open(OUT + '_routes.json', 'w', encoding='utf-8').write(json.dumps(R, indent=1))
         return R
 
@@ -5557,8 +5570,9 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
     # seo/config.json "pwa" may add to the never-lists (never remove: PWA_DEF is the floor) and holds the kill switch "kill": true
     # (or MIG_PWA_KILL=1 at build time) → a sw.js that deletes the app's caches and unregisters itself, and pages that unregister it.
     PWA_DEF = {'kill': False, 'theme_color': '#8E0B20', 'background_color': '#FFFFFF',
-               'never': ['api', 'admin', 'login', 'dashboard', 'advisor', 'meeting', 'inbox', 'seo-admin', 'seo-team', 'data-desk', 'pay', 'panel'],
-               'never_files': ['/data/overlay.js'], 'cache_max': {'code': 80, 'img': 250}, 'max_bytes': 12 * 1048576}
+               # downloads: the CSV lists and the Android APKs (seo_app.part.py) — a download goes to the network as it is, never through the worker
+               'never': ['api', 'admin', 'login', 'dashboard', 'advisor', 'meeting', 'inbox', 'seo-admin', 'seo-team', 'data-desk', 'pay', 'panel', 'downloads'],
+               'never_files': ['/data/overlay.js', '/app/android.apk'], 'cache_max': {'code': 80, 'img': 250}, 'max_bytes': 12 * 1048576}
     PWA_ICONS = ('icon-192.png', 'icon-512.png', 'maskable-192.png', 'maskable-512.png', 'monochrome-512.png', 'apple-touch-icon.png', 'favicon-32.png',
                  'favicon.ico', 'sc-factories.png', 'sc-tenders.png', 'sc-rfq.png', 'sc-janna.png')
     PWA_PRECACHE = ['/offline/', '/img/app/icon-192.png']
@@ -5614,7 +5628,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
              + '<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48"><link rel="icon" type="image/png" sizes="32x32" href="/img/app/favicon-32.png">'
              + '<link rel="icon" type="image/png" sizes="192x192" href="/img/app/icon-192.png"><link rel="apple-touch-icon" sizes="180x180" href="/img/app/apple-touch-icon.png">')
         if S['pwa_src']:
-            t += '<script src="%s" defer%s></script>' % (S['pwa_src'], ' data-pwa="off"' if c['kill'] else '')
+            apk = bool(APPDL) and APPDL['apk_info']().get('state') == 'ok'   # APPDL hook: data/pwa.js offers «أو نزّل تطبيق أندرويد» → /app/
+            t += '<script src="%s" defer%s%s></script>' % (S['pwa_src'], ' data-pwa="off"' if c['kill'] else '', ' data-apk="1"' if apk else '')
         return t
 
     def pwa_link(u):
@@ -6280,7 +6295,7 @@ location.replace(%s);})();'''
         return re.sub(r'''(["'(])(img|data|media)/''', r'\1/\2/', text)
 
     GEN_DIRS = ('factories', 'industrial_products', 'tender-item', 'rfq', 'governorates', 'industrial-zones', 'free-zones', 'products', 'tenders', 'awards',
-                'news', 'events', 'projects', 'offers', 'export', 'site-map', 'en')
+                'news', 'events', 'projects', 'offers', 'export', 'site-map', 'app', 'en')
     NOT_PAGES = ('_seo', 'sitemaps', 'assets', 'downloads', 'data', 'img', 'media', 'fonts', 'offline')   # offline/: the app's offline page (emit_pwa)
 
     def static_candidates(OUT):
@@ -6670,6 +6685,7 @@ location.replace(%s);})();'''
         emit_routes(OUT)
         emit_error_pages(OUT)
         pwa = emit_pwa(OUT)               # the installable app: manifests, /sw.js, /offline/, root icons
+        app_dl = APPDL['emit'](OUT) if APPDL else None   # APPDL hook: /downloads/android/ (APKs + latest.json), /.well-known/assetlinks.json
         emit_manifest(OUT)
         if save_lastmod:
             pages = dict(S['lastmod_new'])
@@ -6691,6 +6707,7 @@ location.replace(%s);})();'''
         t1 = time.time()
         problems, dups = validate(OUT, validate_sample)
         problems += S.get('pwa_problems') or []
+        problems += (app_dl or {}).get('problems') or []
         tm['validate'] = round(time.time() - t1, 1)
         total_files = 0
         total_bytes = 0
@@ -6707,7 +6724,7 @@ location.replace(%s);})();'''
                'stale_removed': {'generated_pages': stale_pages, 'flat_html': stale_flat}, 'stale_static_not_scanned': S['stale_static'],
                'static_thin_noindex': dict(sorted((PERSIST.get('static_thin') or {}).items())), 'static_h1_not_1': dict(sorted((PERSIST.get('static_h1') or {}).items())),
                'en_fail': stats['en_fail'], 'by_type': stats['by_type'], 'warnings': S['warnings'][:50],
-               'pwa': pwa, 'problems': problems[:50], 'problem_count': len(problems), 'dup_titles': len(dups), 'dup_title_examples': list(dups.items())[:5],
+               'pwa': pwa, 'app': app_dl, 'problems': problems[:50], 'problem_count': len(problems), 'dup_titles': len(dups), 'dup_title_examples': list(dups.items())[:5],
                'seconds': round(time.time() - t0, 1), 'timing': tm, 'today': S['today'].isoformat()}
         S['stats'] = out
         PERSIST.pop('t_start', None)
@@ -6755,6 +6772,12 @@ location.replace(%s);})();'''
             type_label=type_label, sec_name=sec_name, gov_name=gov_name, city_text=city_text, company_desc_en=company_desc_en, first_words=first_words,
             fmt_date=fmt_date, is_team=is_team, is_pub=is_pub, rfq_link=rfq_link, static_url=static_url, en_gate=en_gate,
             VER_AR=VER_AR, VER_EN=VER_EN, PUB_AR=PUB_AR, PUB_EN=PUB_EN, AR_RX=AR_RX, scrub=scrub)))
+    # APPDL hook: «تطبيق صنع في مصر» — /app/ + /en/app/ (Android APK download, iPhone from Safari, QR code), /downloads/android/ (the APKs
+    # of the repository + latest.json, tools/publish_apk.py), the 302 /app/android.apk, /.well-known/assetlinks.json (seo/config.json "app")
+    if os.path.exists(B + 'seo_app.part.py'):
+        _ad = {}
+        exec(compile(open(B + 'seo_app.part.py', encoding='utf-8').read(), B + 'seo_app.part.py', 'exec'), _ad)
+        APPDL.update(_ad['appdl_module'](locals()))
 
     return {'build_static_seo': build_static_seo, 'head_html': head_html, 'url_for': url_for, 'abs_url': abs_url, 'slug_ascii': slug_ascii, 'legacy_slug': legacy_slug,
             'norm_sector': norm_sector, 'gov_of': gov_of, 'indexable': indexable, 'load_data': load_data, 'write_page': write_page, 'MANIFEST': MANIFEST,

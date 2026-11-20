@@ -621,6 +621,56 @@ PY
     else warn "$p → $CODE (a build from before the installable app?)"; fi
   done
 
+  # the app download page, Android App Links and the APK (seo_app.part.py). With --stage, what the staged build has must answer
+  # (FAIL); without it (an older live build) a WARN. The APK is checked when the build publishes one (downloads/android/latest.json:
+  # the staged one, else the live one): /app/android.apk → 302 → the file. HEAD only (no 8 MB download); header details: WARN only.
+  section "app download page and the Android APK"
+  for p in /app/ /en/app/; do
+    REQ=0; [ -n "$STAGE" ] && [ -f "$STAGE/site${p}index.html" ] && REQ=1
+    fetch "$BASE$p"
+    if [ "$CODE" = 200 ] && grep -q 'class="ad-card' "$TMP/body"; then pass "$p → 200 (the app download page)"
+    elif [ "$REQ" = 1 ]; then fail "$p → $CODE (this build has it: seo_app.part.py)"
+    else warn "$p → $CODE (a build from before the app download page?)"; fi
+  done
+  REQ=0; [ -n "$STAGE" ] && [ -f "$STAGE/site/.well-known/assetlinks.json" ] && REQ=1
+  fetch "$BASE/.well-known/assetlinks.json"
+  if [ "$CODE" = 200 ]; then
+    if grep -q '"com.madeinegyptgate.app"' "$TMP/body" && { [ -z "$PY" ] || "$PY" -c 'import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+sys.exit(0 if any(x["target"]["package_name"] == "com.madeinegyptgate.app" and x["target"]["sha256_cert_fingerprints"] for x in d) else 1)' "$TMP/body" 2>/dev/null; }; then
+      pass "/.well-known/assetlinks.json → 200 JSON for com.madeinegyptgate.app"
+    else fail "/.well-known/assetlinks.json → 200 but not the App Links statement of com.madeinegyptgate.app"; fi
+    printf '%s' "$CTYPE" | grep -qi 'application/json' || warn "/.well-known/assetlinks.json served as '$CTYPE' (Android wants application/json, _headers)"
+  elif [ "$REQ" = 1 ]; then fail "/.well-known/assetlinks.json → $CODE ${LOC:+$LOC }(this build has it; Android verifies it without following redirects)"
+  else warn "/.well-known/assetlinks.json → $CODE (a build from before Android App Links?)"; fi
+  APK_FILE="" APK_BYTES="" LJ=""
+  if [ -n "$STAGE" ]; then
+    [ -f "$STAGE/site/downloads/android/latest.json" ] && LJ="$STAGE/site/downloads/android/latest.json"
+  else
+    fetch "$BASE/downloads/android/latest.json"
+    [ "$CODE" = 200 ] && cp "$TMP/body" "$TMP/latest.json" && LJ="$TMP/latest.json"
+  fi
+  if [ -n "$LJ" ]; then
+    APK_FILE=$(sed -nE 's/.*"file": *"([^"]+)".*/\1/p' "$LJ" | head -n 1)
+    APK_BYTES=$(sed -nE 's/.*"bytes": *([0-9]+).*/\1/p' "$LJ" | head -n 1)
+  fi
+  fetch "$BASE/app/android.apk" -I
+  if [ -n "$APK_FILE" ]; then
+    if { [ "$CODE" = 302 ] || [ "$CODE" = 307 ]; } && [ "$(upath "$LOC")" = "/downloads/android/$APK_FILE" ]; then pass "/app/android.apk → $CODE /downloads/android/$APK_FILE"
+    else fail "/app/android.apk → $CODE ${LOC:-no Location} (expected 302 → /downloads/android/$APK_FILE: _redirects, seo_app.part.py)"; fi
+    fetch "$BASE/downloads/android/$APK_FILE" -I
+    if [ "$CODE" = 200 ]; then
+      if printf '%s' "$CTYPE" | grep -qi 'application/vnd.android.package-archive'; then pass "/downloads/android/$APK_FILE → 200 $CTYPE"
+      else warn "/downloads/android/$APK_FILE served as '$CTYPE' (expected application/vnd.android.package-archive, _headers)"; fi
+      hdr Content-Disposition | grep -qi attachment || warn "/downloads/android/$APK_FILE: Content-Disposition '$(hdr Content-Disposition)' (expected attachment, _headers)"
+      [ "$(hdr X-Content-Type-Options | tr -d ' ' | tr 'A-Z' 'a-z')" = nosniff ] || warn "/downloads/android/$APK_FILE: X-Content-Type-Options '$(hdr X-Content-Type-Options)' (expected nosniff)"
+      hdr Cache-Control | grep -qi immutable || warn "/downloads/android/$APK_FILE: Cache-Control '$(hdr Cache-Control)' (expected a year, immutable: the name carries the version)"
+      len=$(hdr Content-Length)
+      [ -z "$len" ] || [ -z "$APK_BYTES" ] || [ "$len" = "$APK_BYTES" ] || warn "/downloads/android/$APK_FILE: Content-Length $len, latest.json says $APK_BYTES bytes"
+    else fail "/downloads/android/$APK_FILE → $CODE (the published APK)"; fi
+  elif [ "$CODE" = 404 ]; then pass "/app/android.apk → 404 (no APK published: /app/ says the Android app is coming soon)"
+  else warn "/app/android.apk → $CODE ${LOC:-} although this build publishes no APK"; fi
+
   if [ "$HOST" = "madeinegyptgate.com" ]; then
     section "host canonicalisation"
     fetch "https://www.madeinegyptgate.com/about/"

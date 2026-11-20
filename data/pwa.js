@@ -6,7 +6,9 @@
       is removed and the app's caches (mig-pwa-*) are deleted.
    2. The install invitation (Arabic first, English twin; translate="no", this file renders both languages itself):
       - Android / Chrome / Edge / Samsung on a phone or tablet: the browser's beforeinstallprompt is kept (its own mini-bar is held
-        back) and a slim bar at the top of the page offers «📲 نزّل التطبيق» + «تثبيت» (the browser's own install dialog) + ✕;
+        back) and a slim bar at the top of the page offers «📲 نزّل التطبيق» + «تثبيت» (the browser's own install dialog) + ✕; while an
+        Android APK is published (this tag carries data-apk="1", seo_build.part.py pwa_head) a second line links the download page:
+        «أو نزّل تطبيق أندرويد» → /app/ (/en/app/ in English; not on that page itself);
       - iPhone / iPad Safari (no install event there): the same bar with the hint «شارك ← أضف إلى الشاشة الرئيسية» and the share icon;
       - never when the site already runs as the app (display-mode standalone, navigator.standalone), never on the staff and members'
         pages (/admin/, /login/, /dashboard/, /advisor/, /meeting/, /inbox/, /seo-admin/, /seo-team/, /data-desk/, /pay/, the kiosk),
@@ -19,7 +21,7 @@
         → never again ("mig-pwa-in"). Without localStorage the bar is not shown at all (a dismissal could not be remembered).
    3. On an app page in English (MIGLANG "en": the page's own head names the Arabic manifest) the manifest link is switched to
       /manifest.en.webmanifest, so an English visitor installs the English app.
-   window.MIGPWA: {off, app, state()} — state() tells what happened on this page (for support and tests). */
+   window.MIGPWA: {off, app, apk, state()} — state() tells what happened on this page (for support and tests). */
 (function () {
   "use strict";
   var W = window, D = document, N = navigator, DE = D.documentElement, UA = N.userAgent || "";
@@ -27,10 +29,11 @@
   var me = D.currentScript || null, i;
   if (!me) { var ss = D.getElementsByTagName("script"); for (i = ss.length - 1; i >= 0; i--) if (/\/data\/pwa\.js/.test(ss[i].src || "")) { me = ss[i]; break; } }
   var OFF = !!(me && me.getAttribute("data-pwa") === "off");
+  var APK = !!(me && me.getAttribute("data-apk") === "1");
   var TOP = false; try { TOP = W.top === W.self; } catch (e) { TOP = false; }
   var APP = /\bMIGApp\b/.test(UA);
   var ST = { sw: "", banner: "", why: "" };
-  W.MIGPWA = { off: OFF, app: APP, state: function () { return { sw: ST.sw, banner: ST.banner, why: ST.why, installed: installed(), off: OFF, app: APP, top: TOP }; } };
+  W.MIGPWA = { off: OFF, app: APP, apk: APK, state: function () { return { sw: ST.sw, banner: ST.banner, why: ST.why, installed: installed(), off: OFF, app: APP, apk: APK, top: TOP }; } };
   if (!TOP) { ST.why = "frame"; return; }
 
   function en() { return W.MIGLANG === "en" || (DE.getAttribute("lang") || "").slice(0, 2) === "en"; }
@@ -139,6 +142,8 @@
       + ".mig-pwa .mp-t span{font-weight:500;font-size:12.5px;line-height:1.5;opacity:.95}"
       + ".mig-pwa .mp-t svg{display:inline-block;vertical-align:-3px;margin:0 2px}"
       + ".mig-pwa .mp-t i{font-style:normal;font-weight:800;white-space:nowrap}"
+      + ".mig-pwa .mp-t a{align-self:flex-start;color:#fff;font-weight:700;font-size:12.5px;line-height:1.6;text-decoration:underline;text-underline-offset:2px}"
+      + ".mig-pwa .mp-t a:focus-visible{outline:2px solid #fff;outline-offset:2px;border-radius:4px}"
       + ".mig-pwa button{flex:none;cursor:pointer;-webkit-tap-highlight-color:transparent}"
       + ".mig-pwa .mp-go{min-height:40px;padding:6px 18px;border:0;border-radius:999px;background:#fff;color:#8E0B20;font:800 14px Cairo,Tahoma,\"Segoe UI\",sans-serif}"
       + ".mig-pwa .mp-x{width:40px;height:40px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:16px;line-height:40px}"
@@ -158,7 +163,9 @@
     EL.innerHTML = '<img src="/img/app/icon-192.png" alt="" width="40" height="40">'
       + '<div class="mp-t"><b>' + T("📲 نزّل التطبيق", "📲 Get the app") + '</b><span>'
       + (ios ? T("اضغط " + SHARE + " <i>«شارك»</i> ← <i>«أضف إلى الشاشة الرئيسية»</i>", "Tap " + SHARE + " <i>Share</i> → <i>Add to Home Screen</i>")
-             : T("منصة صنع في مصر على شاشة موبايلك", "Made in Egypt Gate on your phone's home screen")) + '</span></div>'
+             : T("منصة صنع في مصر على شاشة موبايلك", "Made in Egypt Gate on your phone's home screen")) + '</span>'
+      + (!ios && APK && !/^\/(?:en\/)?app(?:\/|$)/.test(location.pathname) ? '<a class="mp-apk" href="' + T("/app/", "/en/app/") + '">' + T("أو نزّل تطبيق أندرويد", "or download the Android app") + "</a>" : "")
+      + "</div>"
       + (ios ? "" : '<button type="button" class="mp-go">' + T("تثبيت", "Install") + "</button>")
       + '<button type="button" class="mp-x" aria-label="' + T("إغلاق", "Close") + '">✕</button>';
     var sk = b.querySelector("a.skip");
