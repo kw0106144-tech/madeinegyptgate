@@ -122,7 +122,7 @@ describe("calls report e-mail: privacy", () => {
     }
     assert.ok(b.rendered.html.includes("m•••@example.com") && b.rendered.text.includes("موبايل …٧١"), "a member's contact: masked");
     assert.ok(!/[0-9a-f]{32}/.test(b.rendered.html + b.rendered.text + b.rendered.csv), "no 32-hex id anywhere");
-    assert.ok(/^تقرير مكالمات جنة وباسم — الجمعة ٢٠ نوفمبر: ٤ مكالمة \(\S+ عملاء، \S+ مفيدة\) \/ Calls report 2026-11-20: 4 calls \(\d+ customers, \d+ useful\)$/.test(b.rendered.subject), b.rendered.subject);
+    assert.ok(/^تقرير مكالمات جنة وباسم — الجمعة ٢٠ نوفمبر: ٤ مكالمات \((?:[٠-٩]+ عملاء|عميل واحد|عميلين)، (?:ولا واحدة مفيدة|واحدة مفيدة|اتنين مفيدين|[٠-٩]+ مفيدة)\) \/ Calls report 2026-11-20: 4 calls \(\d+ customers?, \d+ useful\)$/.test(b.rendered.subject), b.rendered.subject);
     assert.equal(subjectOf(b.rep), b.rendered.subject);
   });
   test("«full»: the platform's records of the member and of the meeting in clear — still nothing spoken in a call, no visitor id, no user agent", async () => {
@@ -138,5 +138,72 @@ describe("calls report e-mail: privacy", () => {
     assert.equal(c.review.verdict, "no_consent");
     const one = renderReport({ ...clone(b.rep), convs: [c] });
     for (const s of ["«", "قالت", "أكياس"]) assert.ok(!one.text.split("== باقي المكالمات ==")[1].split("\n==")[0].includes(s), s);
+  });
+});
+
+/* report review 2026-11-20: the e-mail's defects found on the preview of that day's REAL calls, on SYNTHETIC conversations (invented names,
+   companies and titles; mixed Arabic / Latin / digits like the real lines) */
+describe("calls report e-mail: the real-call preview of 2026-11-20 (synthetic)", () => {
+  const DAY_AR = "الجمعة ٢٠ نوفمبر", MARKS = /[\uE000\uE001]/;
+  const review = (over = {}) => ({ verdict: "not_useful", ask: "demand_search", askQuote: "إحنا في 6 أكتوبر وبنصنع Rollers مقاس 50 مم", personaQuote: "لقيت مناقصة Roller door maintenance — مجلس تجريبي 2026",
+    flags: [{ code: "dissatisfied", turns: [31], q: "مستفدتش حاجة خالص" }, { code: "zero_results", turns: [5], n: 3 }, { code: "long_turn", turns: [2, 3, 4, 5, 10, 11, 12, 13], secs: [31, 32, 41, 30.04, 34, 32, 44, 35] },
+      { code: "bad_tag", turns: [27], tags: ["صاف", "whispers", "x1", "y2"] }, { code: "no_next_step", turns: [] }],
+    na: [], searches: [{ kind: "search", tool: "janna_lookup", section: "tenders", query: "rollers 50", titles: ["Roller door maintenance — مجلس تجريبي 2026", "RFQ-2026/118 بكر 50 مم"], more: 2, off: true, zero: false, turn: 4 }],
+    searchCount: 14, zeroCount: 13, itemCount: 1, kbCount: 2, kbZero: 1, zeroQueries: ["بكر"], zeroCounts: {}, productWords: [], tools: 31, turns: 32, wrong: [], correct: true, ...over });
+  const conv = (over = {}) => ({ agent: "janna", lang: "ar", kind: "customer", startMs: T_BUYER, time: "11:17", minutes: 13, parts: 1, sessions: [sid(700)], device: { os: "iphone", inapp: "google" },
+    who: { kind: "visitor", confidence: "", said: { title: "مهندس", first: "سامح", company: "Testco Group", place: "6 أكتوبر", links: ["example.org"], echo: "مصنعكم في 6 أكتوبر بيصنع البكر" } },
+    outcomes: [], missed: [{ ar: "«بكر» ولسه مفيش في طلبات الأسعار", en: "x" }, { ar: "ماعرضتش عليه ملف بخدماته في الدليل", en: "y" }], review: review(), ...over });
+  const rep = (convs, counts = {}) => ({ day: D, dayAr: DAY_AR, counts: { conversations: convs.length, customers: convs.length, verdicts: {}, minutes: 13, ...counts }, convs, settings: { tests: "summary" }, notes: [] });
+  const cardText = r => r.text.split("== مكالمات محتاجة نظرة ==")[1].split("\n==")[0];
+
+  test("#5 every part with a Latin / number run sits in its own <bdi> (6 stays with «أكتوبر», «Testco Group» apart); the text part has no marks", () => {
+    const r = renderReport(rep([conv()]));
+    for (const x of ["قال في المكالمة — مش متأكد: مهندس سامح · <bdi>Testco Group</bdi> · <bdi>6 أكتوبر</bdi> · <bdi>لينك example.org</bdi>", "<bdi>Roller door maintenance — مجلس تجريبي 2026</bdi>",
+      "<bdi>RFQ-2026/118 بكر 50 مم</bdi>", "«<bdi>إحنا في 6 أكتوبر وبنصنع Rollers مقاس 50 مم</bdi>»", "«<bdi>مصنعكم في 6 أكتوبر بيصنع البكر</bdi>»", "<bdi>[whispers]</bdi>"]) assert.ok(r.html.includes(x), x);
+    assert.ok(!r.html.includes("<bdi>مهندس سامح</bdi>") && !r.html.includes("<bdi>آيفون"), "Arabic with Arabic-Indic digits keeps its order alone: no <bdi> needed");
+    assert.equal((r.html.match(/<bdi>/g) || []).length, (r.html.match(/<\/bdi>/g) || []).length, "balanced");
+    for (const [k, v] of Object.entries({ html: r.html, text: r.text, csv: r.csv, subject: r.subject })) assert.ok(!MARKS.test(v), "no isolation mark left in the " + k);
+    assert.ok(!r.text.includes("<bdi>") && r.text.includes("قال في المكالمة — مش متأكد: مهندس سامح · Testco Group · 6 أكتوبر · لينك example.org"), cardText(r));
+  });
+  test("#8 the card's counts are the whole call's: «١٤ عملية بحث (١٣ منهم رجّعوا صفر) · فتحت تفاصيل نتيجة واحدة · سألت بنك المعلومات مرتين (مرة من غير إجابة)»", () => {
+    const t = cardText(renderReport(rep([conv()])));
+    assert.ok(t.includes("عملت إيه: ١٤ عملية بحث (١٣ منهم رجّعوا صفر): Roller door maintenance — مجلس تجريبي 2026 «مش مطابقة»؛ RFQ-2026/118 بكر 50 مم «مش مطابقة»؛ … · فتحت تفاصيل نتيجة واحدة · سألت بنك المعلومات مرتين (مرة من غير إجابة)"), t);
+    const one = cardText(renderReport(rep([conv({ review: review({ searchCount: 1, zeroCount: 1, itemCount: 0, kbCount: 1, kbZero: 1, searches: [] }) })])));
+    assert.ok(one.includes("عملت إيه: بحث واحد ورجّع صفر · سألت بنك المعلومات مرة ومالقاش إجابة"), one);
+    const bas = cardText(renderReport(rep([conv({ agent: "bassem", review: review({ searchCount: 2, zeroCount: 2, itemCount: 2 }) })])));
+    assert.ok(/عمل إيه: بحثين \(الاتنين رجّعوا صفر\): [^\n]+؛ … · فتح تفاصيل نتيجتين · سأل بنك المعلومات مرتين/.test(bas), bas);
+  });
+  test("#11 a cut list says so («… و٢ كمان») and the seconds keep what shows the excess («٣٠٫٠٤ ث», never «٣٠ ث»)", () => {
+    const r = renderReport(rep([conv()])), t = cardText(r);
+    assert.ok(t.includes("ردود طويلة (أكتر من ٣٠ ثانية): ٣١ ث، ٣٢ ث، ٤١ ث، ٣٠٫٠٤ ث، ٣٤ ث، ٣٢ ث، … و٢ كمان (الردود ٢، ٣، ٤، ٥، ١٠، ١١، … و٢ كمان)"), t);
+    assert.ok(t.includes("[صاف] [whispers] [x1] … و١ كمان"), "three tags, then the count");
+    assert.ok(!/(^|[ ،:])٣٠ ث(،|$| )/m.test(t), "no «٣٠ ث» under «أكتر من ٣٠ ثانية»");
+    const en = renderReport(rep([conv({ review: review({ flags: [review().flags[2]] }) })])).text.split("== Calls ==")[1];
+    assert.ok(en.includes("long replies (over 30 s): 31 s, 32 s, 41 s, 30.04 s, 34 s, 32 s, … and 2 more (turns 2, 3, 4, 5, 10, 11, … and 2 more)"), "the English twin too: " + en);
+    const refs = renderReport(rep([conv()], { outcomes: { rfqs: ["MIG-1", "MIG-2", "MIG-3", "MIG-4", "MIG-5", "MIG-6", "MIG-7"] } }));
+    assert.ok(refs.text.includes("طلبات ٧ (MIG-1، MIG-2، MIG-3، MIG-4، MIG-5، … و٢ كمان)"), "the summary's request refs");
+  });
+  test("#12 numbers agree with their noun («٦ مكالمات», «دقيقتين», «٥ دقايق»); the minutes are the calls' length; problems counted in calls", () => {
+    const sub = (n, cu, u) => subjectOf({ day: D, dayAr: DAY_AR, counts: { conversations: n, customers: cu, verdicts: { useful: u } } });
+    assert.equal(sub(6, 6, 0), "تقرير مكالمات جنة وباسم — الجمعة ٢٠ نوفمبر: ٦ مكالمات (٦ عملاء، ولا واحدة مفيدة) / Calls report 2026-11-20: 6 calls (6 customers, 0 useful)");
+    assert.ok(sub(1, 1, 1).includes(": مكالمة واحدة (عميل واحد، واحدة مفيدة) / Calls report 2026-11-20: 1 call (1 customer, 1 useful)"));
+    assert.ok(sub(2, 2, 2).includes(": مكالمتين (عميلين، اتنين مفيدين)") && sub(12, 11, 3).includes(": ١٢ مكالمة (١١ عميل، ٣ مفيدة)"));
+    assert.ok(sub(0, 0, 0).endsWith(": مفيش مكالمات / Calls report 2026-11-20: no calls"));
+    const r = renderReport(rep([conv({ minutes: 2 }), conv({ minutes: 5, sessions: [sid(701)] }), conv({ minutes: 39, sessions: [sid(702)], review: review({ verdict: "useful" }) })],
+      { minutes: 46, problems: [{ code: "long_turn", n: 2, agent: "janna" }, { code: "zero_results", n: 1, agent: "janna" }] }));
+    assert.ok(r.text.includes(" · جنة · ١١:١٧ · دقيقتين · ") && r.text.includes(" · ٥ دقايق · ") && r.text.includes("- ١١:١٧ · جنة · ٣٩ دقيقة · "), r.text.slice(0, 1200));
+    assert.ok(r.text.includes("— مدة المكالمات كلها ٤٦ دقيقة") && !r.text.includes("دقيقة كلام") && r.text.includes("— 46 min of calls in all"));
+    assert.ok(r.text.includes("أكتر المشاكل (عدد المكالمات): ردود طويلة (أكتر من ٣٠ ثانية): ٢ · بحث رجّع صفر: ١") && r.text.includes("Top problems (number of calls): "));
+  });
+  test("#13 a card: the mistakes and «كان ممكن» are separate rows, one item a line; a one-line row says the call had 3 parts", () => {
+    const r = renderReport(rep([conv()])), lines = cardText(r).split("\n"), at = lines.indexOf("  الغلط:"), cm = lines.indexOf("  كان ممكن:");
+    assert.ok(at > 0 && cm > at, lines.join("\n"));
+    assert.deepEqual(lines.slice(at + 1, cm).map(l => l.slice(0, 5)), Array(5).fill("   - "), "the 5 mistakes, one a line");
+    assert.deepEqual(lines.slice(cm + 1, cm + 3), ["   - «بكر» ولسه مفيش في طلبات الأسعار", "   - ماعرضتش عليه ملف بخدماته في الدليل"]);
+    assert.ok(r.html.includes('<b style="color:#5b0816">الغلط:</b>') && r.html.includes('<b style="color:#5b0816">كان ممكن:</b>') && !r.html.includes("الغلط وكان ممكن"));
+    const one = renderReport(rep([conv({ parts: 3, review: review({ verdict: "useful" }) })]));
+    assert.match(one.text, /^- ١١:١٧ · جنة · ١٣ دقيقة · على ٣ أجزاء · مفيدة · /m);
+    assert.match(one.text, /^- 11:17 · Janna · 13 min · in 3 parts · useful · /m);
+    assert.match(renderReport(rep([conv({ parts: 2 })])).text, /^• مافادتش \(تقييم تلقائي\) · جنة · ١١:١٧ · ١٣ دقيقة · على جزئين · /m);
   });
 });

@@ -62,7 +62,7 @@ describe("calls report: the schedule and the gate", () => {
     assert.equal(st.mails.length, 1);
     const m = st.mails[0];
     assert.deepEqual([m.to, m.from.split(" <")[1], m.reply_to], [["info@madeinegyptgate.com", "owner@mig.test"], "noreply@madeinegyptgate.com>", "info@madeinegyptgate.com"], "the default: the platform's own mailboxes (TEAM_EMAIL + ADMIN_EMAILS)");
-    assert.ok(m.subject.startsWith("تقرير مكالمات جنة وباسم — الجمعة ٢٠ نوفمبر: ٢ مكالمة") && m.subject.includes("/ Calls report 2026-11-20: 2 calls"), m.subject);
+    assert.ok(m.subject.startsWith("تقرير مكالمات جنة وباسم — الجمعة ٢٠ نوفمبر: مكالمتين (عميلين، ") && m.subject.includes("/ Calls report 2026-11-20: 2 calls (2 customers, "), m.subject);
     assert.deepEqual(await gate(env), ["calls-report"]);
     const a = await audits(env, "calls_report.sent");
     assert.deepEqual([a.length, a[0].actor_id, a[0].target_id, JSON.parse(a[0].after_json).provider_id], [1, "system", D, "re_1"]);
@@ -157,7 +157,7 @@ describe("calls report: the schedule and the gate", () => {
   test("an empty day: a short report (empty = send, the default) or nothing (empty = skip, with the gate)", async () => {
     const env = env0();
     assert.equal((await cron(env)).sent, true);
-    assert.ok(st.mails[0].text.includes("مفيش مكالمة عميل") && st.mails[0].subject.includes(": ٠ مكالمة"), st.mails[0].subject);
+    assert.ok(st.mails[0].text.includes("مفيش مكالمة عميل") && st.mails[0].subject.endsWith("الجمعة ٢٠ نوفمبر: مفيش مكالمات / Calls report 2026-11-20: no calls"), st.mails[0].subject);
     const e2 = env0();
     await e2.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES (?, 'system', ?, ?)").bind(CALLS_REPORT_KEY, JSON.stringify({ v: 1, to: [], empty: "skip" }), NOW()).run();
     st.mails.length = 0;
@@ -326,7 +326,7 @@ describe("calls report: who talked", () => {
     const b = await buildReport(env, { day: D, nowMs: AT, settings: await readSettings(env), CC, sleep: nap });
     const c = b.rep.convs[0];
     assert.equal(c.review.verdict, "useful");
-    assert.ok(c.outcomes[0].ar.includes("MIG-26-TEST01") && c.outcomes[0].ar.includes("(مؤكد)") && c.outcomes[0].ar.includes("اتبعت لـ ٢ مصنع مسجّل"), c.outcomes[0].ar);
+    assert.ok(c.outcomes[0].ar.includes("MIG-26-TEST01") && c.outcomes[0].ar.includes("(مؤكد)") && c.outcomes[0].ar.includes("اتبعت لمصنعين مسجّلين"), c.outcomes[0].ar);
     assert.ok(c.outcomes[0].ar.includes("b•••@example.com") && c.outcomes[0].ar.includes("…٩٩") && !c.outcomes[0].ar.includes("buyer.person"), c.outcomes[0].ar);
     assert.equal(c.outcomes[0].link, SITE + "/admin/#messages/MIG-26-TEST01");
     assert.deepEqual(b.counts.outcomes.rfqs, ["MIG-26-TEST01"]);
@@ -376,12 +376,16 @@ describe("calls report: the memory read and the 0011 fallback", () => {
     assert.ok(!seen2.some(s => /FROM advisor_memory WHERE kind IN/.test(s)));
     assert.ok(b2.rendered.text.includes("ذاكرة جنة وباسم مااتقرتش"));
   });
-  test("migration 0011 not applied (its tables dropped) → the report still goes out, with the other joins and the note «شغّل 0011»", async () => {
+  test("migration 0011 not applied (its tables dropped) → the report still goes out, with the other joins and a plain note; the file and the workflow only for «المطوّر»", async () => {
     const env = env0(); addAtlal(1, T_ATLAL, { label: "madeinegyptgate-janna-ar.ffffffffffff" });
     env.DB.db.exec("DROP TABLE call_sessions; DROP TABLE call_reviews");
     const r = await cron(env);
     assert.equal(r.sent, true);
-    assert.ok(st.mails[0].text.includes("0011_calls_report.sql لسه ماتشغّلش") && st.mails[0].text.includes("شغّل 0011"));
+    const m = st.mails[0], body = m.text + "\n" + m.html;
+    assert.ok(m.text.includes("معرفة مين اللي اتكلم في كل مكالمة لسه بالتقريب") && m.text.includes("«المطوّر» ← «تقرير المكالمات»"), m.text.slice(-900));
+    for (const dev of ["0011", ".sql", "GitHub", "Actions", "d1-migrate", "migration"]) assert.ok(!body.includes(dev), "a developer reference in the body: " + dev); // report review 2026-11-20 #14
+    const b = await buildReport(env, { day: D, nowMs: AT, settings: await readSettings(env), CC, sleep: nap });
+    assert.ok(b.warnings.some(w => w.includes("0011_calls_report.sql") && w.includes("GitHub → Actions → d1-migrate")), "the technical detail goes to the warnings «المطوّر» shows");
   });
 });
 
@@ -506,6 +510,53 @@ describe("calls report: the legal erasure takes its rows", () => {
     assert.deepEqual((await rowsOf(env, "SELECT session_id FROM call_reviews")).map(r => r.session_id), [sid(2)]);
     assert.match(JSON.parse((await audits(env, "member.delete"))[0].after_json).call_rows + "", /^3$/);
     void m;
+  });
+});
+
+/* report review 2026-11-20: the preview on that day's REAL calls (synthetic data here, in Anam's real shapes) */
+describe("calls report: the real-call preview of 2026-11-20 (synthetic)", () => {
+  const plain = t => String(t).replace(/[\uE000\uE001]/g, "");
+  test("#7 «كان ممكن» runs each zero-result search again in the section that returned nothing, never all in the factories", async () => {
+    const env = env0(); addAtlal(); // the 8bacbfac-shaped call: «سلندرات ودرافيل» returned nothing in the factories, the suppliers and the products
+    const seen = [], CC2 = { ...CC, lookup: { ...CC.lookup, search: (sec, q, gov, n, page, mkt) => { seen.push([sec, q, gov || "", mkt || ""]); return { count: sec === "suppliers" ? 2 : 0, results: [] }; } } };
+    const b = await buildReport(env, { day: D, nowMs: AT, settings: await readSettings(env), CC: CC2, sleep: nap });
+    const q = "سلندرات ودرافيل";
+    for (const sec of ["factories", "suppliers", "products"]) assert.equal(seen.filter(x => x[0] === sec && x[1] === q).length, 1, sec + " once");
+    const c = b.rep.convs[0], lines = c.missed.map(m => plain(m.ar));
+    assert.ok(lines.includes("«سلندرات ودرافيل» دلوقتي بيرجّع ٢ في الموردين — ولسه مفيش في المصانع والمنتجات"), JSON.stringify(lines));
+    assert.ok(b.rendered.text.includes("   - «سلندرات ودرافيل» دلوقتي بيرجّع ٢ في الموردين — ولسه مفيش في المصانع والمنتجات"), "the card shows it, one item a line");
+  });
+  test("#12 «أكتر المشاكل» counts every problem the same way — the customer calls it happened in (not long replies per reply, zero results per search)", async () => {
+    const env = env0(); addAtlal(1); addAtlal(3, T_ATLAL + 3600e3); addBuyer(2); // two calls with 4 long replies and 3 empty searches each, a buyer without a request
+    const b = await buildReport(env, { day: D, nowMs: AT, settings: await readSettings(env), CC, sleep: nap });
+    assert.equal(b.counts.customers, 3);
+    assert.deepEqual(b.counts.problems.map(p => [p.code, p.n]), [["no_next_step", 3], ["dissatisfied", 2], ["promise_no_tool", 2]], "per call; ties in the card's order");
+    assert.ok(b.rendered.text.includes("- أكتر المشاكل (عدد المكالمات): مفيش خطوة جاية (طلب، اجتماع، تسجيل أو متابعة): ٣ · العميل قال إنه مااستفادش: ٢ · وعدت تدوّر ومادوّرتش: ٢"), b.rendered.text.slice(0, 900));
+  });
+  test("#14 what degraded is said in plain words; the file, table, permission and workflow names go to the warnings and the developer card only", async () => {
+    const env = env0(); st.listStatus = 403;
+    env.DB.db.exec("DROP TABLE cc_pv_day; DROP TABLE cc_pv_src; DROP TABLE call_sessions; DROP TABLE call_reviews");
+    const b = await buildReport(env, { day: D, nowMs: AT, settings: await readSettings(env), CC, sleep: nap });
+    const body = b.rendered.html + "\n" + b.rendered.text + "\n" + b.rendered.subject;
+    for (const dev of ["Sessions: Read", "Anam Lab", "cc_pv_day", "cc_pv_src", "0011", ".sql", "d1-migrate", "GitHub", "Actions", "migration", "calls-" + D + ".csv"]) assert.ok(!body.includes(dev), "a developer reference in the body: " + dev);
+    assert.ok(b.rendered.text.startsWith("! Anam رفض قراية الجلسات — التقرير ده من بيانات المنصة بس"), b.rendered.text.slice(0, 120));
+    assert.ok(b.rendered.text.includes("- بعض البيانات مش متاحة في التقرير ده: زيارات الموقع، مصادر الزيارات — التفاصيل عند «المطوّر» ← «تقرير المكالمات»."), b.rendered.text);
+    assert.ok(b.rendered.text.includes("- معرفة مين اللي اتكلم في كل مكالمة لسه بالتقريب"));
+    for (const w of [/Sessions: Read in Anam Lab/, /^Missing tables: cc_pv_day, cc_pv_src$/, /0011_calls_report\.sql is not applied: run it from GitHub → Actions → d1-migrate/]) assert.ok(b.warnings.some(x => w.test(x)), "warnings: " + w);
+    const o = await member(env, "u-owner", "owner@mig.test");
+    const g = await api(env, "GET", R, { token: o.token });
+    assert.deepEqual(g.data.setup, { exact_ids: false, migration: "0011_calls_report.sql", how: "GitHub → Actions → d1-migrate" }, "«المطوّر» shows the technical side");
+    const e2 = env0(), o2 = await member(e2, "u-owner", "owner@mig.test");
+    assert.equal((await api(e2, "GET", R, { token: o2.token })).data.setup.exact_ids, true);
+  });
+  test("#12 the request outcome: «اتبعت لمصنع واحد مسجّل» / «لمصنعين» / «لـ ٣ مصانع» / «لسه ماتبعتش لأي مصنع»", async () => {
+    for (const [n, want] of [[0, "لسه ماتبعتش لأي مصنع"], [1, "اتبعت لمصنع واحد مسجّل"], [3, "اتبعت لـ ٣ مصانع مسجّلة"], [12, "اتبعت لـ ١٢ مصنع مسجّل"]]) {
+      const env = env0(); st.rows = []; st.sessions = {}; const id = addBuyer();
+      await env.DB.prepare("INSERT INTO inquiries (id, ref, kind, name, company, email, phone, payload_json, status, source, routed_count, created_at, updated_at) VALUES ('q1', 'MIG-26-TEST09', 'rfq', 'مشتري تجريبي', '', '', '', ?, 'routed', 'janna', ?, ?, ?)")
+        .bind(JSON.stringify({ call_sid: id }), n, new Date(T_BUYER + 60000).toISOString(), new Date(T_BUYER + 60000).toISOString()).run();
+      const b = await buildReport(env, { day: D, nowMs: AT, settings: await readSettings(env), CC, sleep: nap });
+      assert.ok(plain(b.rep.convs[0].outcomes[0].ar).includes(" — " + want + " (مؤكد)"), n + ": " + plain(b.rep.convs[0].outcomes[0].ar));
+    }
   });
 });
 

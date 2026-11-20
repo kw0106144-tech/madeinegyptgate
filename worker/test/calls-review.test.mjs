@@ -4,8 +4,8 @@
 // Run: cd worker && npm test
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { reviewConversation, memoryJoin, quote, selfDescription, PROMISE_RX, STYLE_TAGS, outcomeKind } from "../src/calls-review.js";
-import { turnsFromAnalytics, turnsFromTranscript } from "../src/calls-report.js";
+import { reviewConversation, memoryJoin, quote, selfDescription, PROMISE_RX, STYLE_TAGS, outcomeKind, flatArgs, relatedClaim, ownPlace, overLimit } from "../src/calls-review.js";
+import { turnsFromAnalytics, turnsFromTranscript, missedLines } from "../src/calls-report.js";
 import { clean } from "../src/text.js";
 import { atlalSession, sid, analytics, sessionDetail, BUYER_TURNS, ATLAL_LIKE } from "./calls-fixtures.mjs";
 
@@ -211,5 +211,147 @@ describe("calls-review: a concrete answer names a result", () => {
       { i: 1, user: "عايز مصنع حديد تسليح", persona: "تمام، بدور على مصنع حديد دلوقتي.", t: 10, tools: [lk("حديد تسليح", ["مصنع حديد تسليح المتحدة"])] },
       { i: 2, user: "ها؟", persona: "فيه نتايج كتير، تحب نشوف؟", t: 25 }]));
     assert.deepEqual([r.concrete, r.verdict], [false, "not_useful"]);
+  });
+});
+
+/* report review 2026-11-20: the preview of the e-mail on the REAL calls of that day found 14 defects. These cases are SYNTHETIC — invented
+   companies, names and products — in the shapes Anam really sends (a webhook tool's arguments nested as {bodyParams}, a client tool's
+   flat with no result: calls-fixtures.mjs sessionDetail) and in phrasings like the callers' (Egyptian Arabic, misheard speech, mixed
+   scripts). None of them holds a real call's text, name, phone or e-mail. */
+describe("calls-review: the real-call preview of 2026-11-20 (synthetic, real-shaped)", () => {
+  const plain = t => String(t).replace(/[\uE000\uE001]/g, "");
+  const lk = (query, section, names, extra = {}) => ({ name: "janna_lookup", args: { section, query, ...extra }, result: { section, query, count: names.length, results: names.map(n => ({ name: n })), text: names.length ? "x" : "لا توجد نتائج مطابقة في دليل المنصة لهذا البحث." } });
+  const echo = (query, section) => ({ name: "janna_search", args: { section, query } }); // the screen echo: a client tool, no result
+  const hi = { i: 0, persona: "أهلاً بيك في منصة صنع في مصر! أنا جنة.", t: 1, engine: true };
+
+  test("#1 a webhook tool's arguments arrive nested as {bodyParams}: the query and section are read (zero results, «مش مطابقة», off-target)", () => {
+    const turns = [hi, { i: 1, user: "إحنا مصنع بنصنّع بكر بلاستيك للمطابع", persona: "لقيت مناقصة مرتبطة بشغلك في المناقصات.", t: 12,
+      tools: [lk("بكر بلاستيك", "rfqs", []), echo("بكر بلاستيك", "rfqs"), lk("بكر بلاستيك", "tenders", ["توريد أبواب صاج لمخزن تجريبي"]), echo("بكر بلاستيك", "tenders")] }];
+    const d = sessionDetail(sid(31), T0, turns);
+    assert.deepEqual([d.toolCalls[0].toolType, d.toolCalls[0].arguments], ["server", { bodyParams: { section: "rfqs", query: "بكر بلاستيك" } }], "the fixture sends Anam's real shape");
+    assert.deepEqual([d.toolCalls[1].toolType, d.toolCalls[1].arguments, d.toolCalls[1].result], ["client", { section: "rfqs", query: "بكر بلاستيك" }, null], "a client tool: flat, no result");
+    const c = conv(turns), r = reviewConversation(c);
+    assert.deepEqual(c.turns[1].tools[0].args, { section: "rfqs", query: "بكر بلاستيك" }, "turnsFromAnalytics flattens it");
+    assert.deepEqual(r.zeroQueries, ["بكر بلاستيك"]);
+    assert.deepEqual(r.zeroSearches.map(z => [z.query, z.section, z.tool]), [["بكر بلاستيك", "rfqs", "janna_lookup"]]);
+    assert.ok(r.searches.some(x => x.section === "tenders" && x.off), "the tender with none of the query's words is «مش مطابقة»");
+    assert.deepEqual(flagOf(r, "off_target").turns, [1]);
+    assert.deepEqual([r.searchCount, r.zeroCount], [2, 1], "two lookups; the two screen echoes are no searches");
+    const raw = reviewConversation({ agent: "janna", mode: "anam", startMs: T0, endMs: T0 + 60000, outcome: {}, // nested arguments straight into the review
+      turns: [{ i: 1, user: "دوري على بكر", persona: "مفيش.", tools: [{ name: "janna_lookup", status: "completed", args: { bodyParams: { query: "بكر", section: "products" } }, result: JSON.stringify({ count: 0, results: [] }) }] }] });
+    assert.deepEqual(raw.zeroSearches.map(z => [z.query, z.section]), [["بكر", "products"]]);
+    assert.deepEqual(flatArgs({ bodyParams: { query: "x" }, queryParams: { lang: "ar" }, headers: { "X-Key": "k" } }), { query: "x", lang: "ar" }, "headers are never read");
+    assert.deepEqual([flatArgs('{"bodyParams":{"query":"y"}}'), flatArgs(null), flatArgs("nope"), flatArgs({ page: "intl" })], [{ query: "y" }, null, null, { page: "intl" }]);
+  });
+
+  test("#2 a seller in the words callers use: the factory «هو اللي بيصنع», work «كمصنع», export, «مش عارف أبيع» — not a buyer's «المصنع اللي بيصنع…»", () => {
+    const one = u => reviewConversation(conv([hi, { i: 1, user: u, persona: "تمام، فهمت حضرتك.", t: 10 }]));
+    for (const u of ["مصنع النموذج للبكر موجودين في العاشر من رمضان، المصنع هو اللي بيصنع البكر بكل المقاسات وبيعمل لها صيانة",
+      "أنا عايزك تجيبلي فرص حقيقية ليا كمصنع", "إحنا بنصدّر أعشاب مجففة ومحتاج أوصل منتجاتي للأسواق برّه", "أنا محتاج أوصل للتصدير", "المصنع عندي واقف ومش عارف أبيع ولا أجيب عملا",
+      "مصنعنا بيصنّع علب كرتون مطبوعة", "عايزين نسوّق منتجاتنا في الخليج", "شركتنا بتورّد خامات تغليف للمصانع", "عندي مصنع بكر في العاشر"]) {
+      const r = one(u);
+      assert.deepEqual([r.seller, r.buyer, r.ask], [true, false, "demand_search"], u);
+    }
+    for (const [u, ask] of [["فين المصنع اللي بيصنع الأكياس دي؟", "none"], ["عايز أسعار منافسة لحديد التسليح", "none"], ["أنا محتاج مورد أكياس ورق", "supplier_search"], ["عندي مصنع ومحتاج مورد خامات بلاستيك", "supplier_search"]]) {
+      const r = one(u);
+      assert.deepEqual([r.seller, r.ask], [false, ask], u);
+    }
+  });
+
+  test("#2 «ده مصنع منافس ليا» makes him a seller: the competitor rule runs, and «كان ممكن» has the seller's lines", () => {
+    const turns = [hi, { i: 1, user: "أنا بشتغل في البكر", persona: "تمام، بدوّرلك.", t: 10, tools: [lk("بكر", "factories", ["مصنع التجربة للبكر"]), echo("بكر", "factories")] },
+      { i: 2, user: "طيب", persona: "لقيت مصنع التجربة للبكر، تحب أوريك تفاصيله؟", t: 25 },
+      { i: 3, user: "ده مصنع منافس ليا", persona: "حقك عليّا، خليني أدوّر بطريقة تانية.", t: 40 }];
+    const r = reviewConversation(conv(turns));
+    assert.deepEqual([r.seller, r.ask, r.askTurn], [true, "demand_search", 3]);
+    assert.deepEqual(flagOf(r, "competitor_offered").turns, [2, 3], "offered (named + an offer) and said «منافس»");
+    assert.deepEqual(r.wrong, ["competitor_offered"]);
+    const seen = [], lines = missedLines({ agent: "janna", review: r }, { search: (sec, q) => { seen.push(sec); return { count: sec === "rfqs" ? 2 : 0, results: sec === "tenders" ? [{ status: "سارية" }] : [] }; } }, T0, () => true).map(l => plain(l.ar));
+    assert.ok(lines.includes("النهارده الصبح على المنصة لـ «بكر»: مناقصات سارية ١، طلبات أسعار ٢"), JSON.stringify(lines));
+    assert.ok(lines.includes("ماعرضتش عليه ملف بخدماته في الدليل"), "a seller never offered a profile");
+    assert.ok(seen.includes("tenders") && seen.includes("rfqs"));
+  });
+
+  test("#3 «مش مطابقة …، فمش هاعتبرها فرصة مناسبة» and «بدوّرلك على فرص مناسبة» are no off-target claim (no «فيه غلط»); «لقيت مناقصة مرتبطة بشغلك» still is", () => {
+    const call = persona => conv([hi, { i: 1, user: "إحنا مصنع بنصنّع بكر للمطابع وعايزين شغل", persona, t: 10, tools: [lk("بكر مطابع", "tenders", ["صيانة أبواب رولر لمبنى تجريبي"])] }]);
+    for (const p of ["لقيت مناقصة عن صيانة أبواب رولر، بس مش مطابقة لمنتج مصنعكم، فمش هاعتبرها فرصة مناسبة.", "ثواني، بدوّرلك على فرص مرتبطة بنشاطك. لقيت مناقصة واحدة بس مش هي اللي محتاجها.",
+      "النتيجة اللي ظهرت مش مرتبطة بالبكر ولا مناسبة لمصنعكم.", "The tender I found is not relevant to your rollers."]) {
+      const r = reviewConversation(call(p));
+      assert.deepEqual([flagOf(r, "off_target"), r.correct], [undefined, true], p);
+    }
+    assert.deepEqual(flagOf(reviewConversation(call("لقيت مناقصة مرتبطة بشغلك: صيانة أبواب رولر.")), "off_target").turns, [1]);
+    assert.ok(relatedClaim("دي ليها علاقة بشغلك") && !relatedClaim("دي مالهاش علاقة بشغلك") && !relatedClaim("مش كلها مرتبطة بشغلك") && !relatedClaim("هدوّرلك على حاجة مناسبة"));
+  });
+
+  test("#4 the strongest self-introduction names him: a later «أنا المهندس …» beats a misheard «أنا X من …»; «أنا أنا الدكتور …» beats «معاك المهندس …»", () => {
+    const sd = turns => selfDescription(turns, []);
+    let s = sd([{ i: 1, user: "انا وابل من حمد لله", persona: "معلش، مش متأكدة إني سمعت حضرتك كويس." }, { i: 2, user: "الحمد لله", persona: "أتشرف بمين؟" },
+      { i: 3, user: "أنا المهندس كريم", persona: "أهلاً يا باشمهندس كريم، اتشرفت بحضرتك." }]);
+    assert.deepEqual([s.title, s.first], ["مهندس", "كريم"]);
+    s = sd([{ i: 1, user: "طيب بصي انا انا الدكتور حسام بس هيكلمك دلوقتي شريكي", persona: "" }, { i: 2, user: "وعايز يفهم المنصة هتفيده بإيه معاك المهندس فريدك", persona: "" },
+      { i: 3, user: "لا ده المهندس فريد", persona: "أهلاً يا باشمهندس فريد." }]);
+    assert.deepEqual([s.title, s.first], ["دكتور", "حسام"]);
+    s = sd([{ i: 1, user: "انا وابل من الصبح بدور", persona: "" }, { i: 2, user: "اسمي منى", persona: "أهلاً يا مدام منى." }]);
+    assert.deepEqual([s.title, s.first], ["", "منى"]);
+    assert.equal(sd([{ i: 1, user: "انا كريم", persona: "" }]).first, "", "a bare «أنا X» proves nothing");
+    assert.equal(sd([{ i: 1, user: "انا كريم", persona: "أهلاً يا أستاذ كريم." }]).first, "كريم", "… unless the persona then addresses him by it");
+    assert.equal(sd([{ i: 1, user: "انا المهندس", persona: "" }]).first, "", "a title alone is no name");
+  });
+
+  test("#6 the quote budget: the ask and the persona's answer first, then the flags in their order; no slot for a quote not shown; never the same text twice", () => {
+    const r = reviewConversation(atlal());
+    assert.ok(r.personaQuote.startsWith("فهمت إن حضرتك بتصنّع"), "«جنة قالت» is kept: " + r.personaQuote);
+    const all = [r.askQuote, r.personaQuote, ...r.flags.map(f => f.q)].filter(Boolean);
+    assert.equal(new Set(all).size, all.length, "no text twice");
+    assert.ok(flagOf(r, "dissatisfied").q, "the first flag in the card's order gets its quote");
+    assert.equal(flagOf(r, "last_user_unanswered").q, undefined, "the same words are not quoted again");
+    assert.ok(flagOf(r, "promise_no_tool").q.startsWith("حاضر، هجرّب"), "a flag keeps its FIRST turn's quote (turn 28)");
+    assert.ok(all.length <= 4 && r.flags.every(f => !("qc" in f)), "≤ 2 quotes a side, no candidate left in the result");
+  });
+
+  test("#7 «كان ممكن» runs each zero search again where it returned nothing — RFQs, tenders, a governorate, the lookup's default; never the intel centre's or a memory row's; > 3 queries counted", () => {
+    const seen = [], lookup = { search: (sec, q, gov) => { seen.push([sec, q, gov]); return { count: sec === "rfqs" ? 2 : 0, results: [] }; } };
+    const z = (query, section, extra = {}) => ({ query, section, governorate: "", market: "", tool: "janna_lookup", ...extra });
+    const review = { productWords: [], zeroSearches: [z("بكر", "rfqs"), z("بكر", "tenders"), z("علب", "suppliers", { governorate: "الجيزة" }), z("rollers", "", { tool: "bassem_intel" }), z("من الذاكرة", "", { memory: true }),
+      z("ورق", ""), z("حبر", "products")] };
+    const out = missedLines({ agent: "janna", review }, lookup, T0, () => true).map(l => plain(l.ar));
+    assert.deepEqual(seen, [["rfqs", "بكر", ""], ["tenders", "بكر", ""], ["suppliers", "علب", "الجيزة"], ["factories", "ورق", ""]], "the lookup's own default section is the factories");
+    assert.deepEqual(out, ["«بكر» دلوقتي بيرجّع ٢ في طلبات الأسعار — ولسه مفيش في المناقصات", "«علب» ولسه مفيش في الموردين (الجيزة)", "«ورق» ولسه مفيش في المصانع", "وكلمة بحث تانية رجّعت صفر — في الملف المرفق"]);
+  });
+
+  test("#8 every search counted, never the screen echoes: 14 lookups (13 empty) + 14 janna_search + 2 knowledge lookups + 1 opened item", () => {
+    const tools = [];
+    for (let k = 0; k < 14; k++) tools.push(lk("كلمة تجربة " + (k + 1), "factories", k < 13 ? [] : ["مصنع التجربة الأخير"]), echo("كلمة تجربة " + (k + 1), "factories"));
+    tools.push({ name: "knowledge_lookup", args: { lang: "ar", query: "الباقات" }, result: { count: 0, results: [], text: "مفيش إجابة متسجلة" } }, { name: "knowledge_lookup", args: { lang: "ar", query: "التسجيل" }, result: { count: 1, results: [{ q: "x" }] } },
+      { name: "platform_item", args: { section: "factories", id: "77" }, result: { found: true, title: "مصنع التجربة الأخير", name: "مصنع التجربة الأخير" } });
+    const r = reviewConversation(conv([hi, { i: 1, user: "عايز مصنع بلاستيك", persona: "لقيت مصنع التجربة الأخير.", t: 10, tools }]));
+    assert.deepEqual([r.searchCount, r.zeroCount, r.itemCount, r.kbCount, r.kbZero, r.tools], [14, 13, 1, 2, 1, 31]);
+    assert.deepEqual([flagOf(r, "zero_results").n, r.zeroQueries.length], [13, 13], "nothing capped");
+  });
+
+  test("#9 a result named in a sentence that rejects it, or listed as what came up instead after «مالقيتش», is no concrete answer", () => {
+    const call = said => conv([hi, { i: 1, user: "أنا محتاج مورد علب كرتون مطبوعة", persona: "تمام، هدوّر لك.", t: 10, tools: [lk("علب كرتون مطبوعة", "suppliers", ["مصنع النموذج للتغليف", "شركة الأمل للورق"])] },
+      { i: 2, user: "ها؟", persona: said, t: 25 }, { i: 3, user: "طيب", persona: "تحت أمرك.", t: 40 }]);
+    for (const said of ["ظهر مصنع النموذج للتغليف وشركة الأمل للورق، بس النتايج دي مش مطابقة لطلبك.", "مالقيتش مورد علب مطبوعة في الدليل. اللي ظهر مصنع النموذج للتغليف وشركة الأمل للورق.",
+      "ظهرت نتيجة مختلفة باسم مصنع النموذج للتغليف."]) {
+      const r = reviewConversation(call(said));
+      assert.deepEqual([r.concrete, r.verdict], [false, "not_useful"], said);
+    }
+    const ok = reviewConversation(call("لقيت مصنع النموذج للتغليف وشركة الأمل للورق، تحب أبعتلهم طلب عرض سعر؟"));
+    assert.deepEqual([ok.concrete, ok.verdict], [true, "partial"]);
+  });
+
+  test("#10 the place is the caller's own («إحنا موجودين في …», «مصنعنا في …»), never the place of what he looks for («شركة البترول في …», «هي موجودة في …»)", () => {
+    const P = ["القاهرة", "الإسكندرية", "الجيزة", "القليوبية", "العاشر من رمضان", "6 أكتوبر"];
+    for (const [u, want] of [["تمام شركة البترول في الإسكندرية", ""], ["هي موجودة في المنطقة الصناعية في القليوبية", ""], ["عايز مصنع رخام في الجيزة", ""], ["هم موجودين في القليوبية", ""],
+      ["إحنا موجودين في الجيزة", "الجيزة"], ["مصنع النموذج للبكر موجودين في العاشر من رمضان", "العاشر من رمضان"], ["أنا من الإسكندرية ومحتاج مورد في القاهرة", "الإسكندرية"], ["وانا مصنعي في 6 أكتوبر", "6 أكتوبر"]])
+      assert.equal(ownPlace(u, P), want, u);
+    assert.equal(selfDescription([{ i: 1, user: "هي موجودة في القليوبية وعايز رقمهم" }, { i: 2, user: "إحنا موجودين في الجيزة" }], P).place, "الجيزة", "the first OWN place of the call");
+  });
+
+  test("#11 seconds over a limit keep the decimals that show it: a 30.041 s reply is «30.04», never «30» under «أكتر من ٣٠ ثانية»", () => {
+    assert.deepEqual([overLimit(30.041, 30, 1), overLimit(42.041, 30, 1), overLimit(30.841, 30, 1), overLimit(7.259, 6, 10), overLimit(6.04, 6, 10)], [30.04, 42, 31, 7.3, 6.04]);
+    const r = reviewConversation(conv([hi, { i: 1, user: "اشرحيلي الباقات", persona: "شرح طويل عن الباقات وأسعارها وإزاي التسجيل بيتم.", t: 10, speak: 30.041 }]));
+    assert.deepEqual(flagOf(r, "long_turn").secs, [30.04]);
   });
 });

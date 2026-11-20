@@ -10,6 +10,12 @@ const hex = n => Array.from({ length: n }, (_, i) => "0123456789abcdef"[(i * 7 +
 /* a deterministic UUID per test number */
 export const sid = n => { const h = (n.toString(16).padStart(8, "0") + "aaaabbbbccccddddeeeeffff").slice(0, 32); return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`; };
 export const iso = ms => new Date(ms).toISOString();
+/* the tool shapes Anam REALLY sends (seen on the live calls of 2026-11-20): a client tool (the page runs it: janna_search, janna_navigate,
+   the forms …) has flat arguments and no result; a server (webhook) tool (janna_lookup, bassem_intel, platform_item, knowledge_lookup …)
+   has its arguments nested as {bodyParams: {…}} and the webhook's answer as a JSON string. A fixture tool takes `type` or is typed by name */
+export const CLIENT_TOOLS = /^(janna_search|janna_navigate|janna_submit_form|janna_fill_.*|janna_open.*|janna_show.*|bassem_open_item|bassem_open_opportunity|bassem_screen|bassem_open_guide|bassem_start_deal|bassem_update_deal)$/;
+export const toolType = x => x.type || (CLIENT_TOOLS.test(x.name) ? "client" : "server");
+export const anamArgs = x => (toolType(x) === "server" ? { bodyParams: x.args || {} } : x.args || {});
 
 /* a list row as GET /v1/sessions answers it: the persona snapshot stays inside (the report must cut it down at once) */
 export function listRow({ id, label = "madeinegyptgate-janna-ar", personaId = null, startMs, lenMs = 60000, exit = "CLOSED_BY_ENGINE", ua = UA_DESKTOP, prompt = "اسمك جنة.\n# قواعد\nاتكلمي مصري.", extra = {} }) {
@@ -33,15 +39,17 @@ export function analytics(id, startMs, turns, { endMs } = {}) {
       return { turnIndex: t.i, correlationId: t.engine ? "engine::" + t.i : t.typed ? "external::" + t.i : "user::" + t.i, userSpeechStartTime: t.user ? iso(uEnd - 2000) : null, userSpeechEndTime: t.user ? iso(uEnd) : null,
         userTranscriptionTime: t.user ? iso(uEnd + 200) : null, personaStartSpeakingTime: t.persona ? iso(p0) : null, personaStopSpeakingTime: t.persona ? iso(p0 + (t.speak || 3) * 1000) : null,
         firstAudioLatencySeconds: t.persona && t.user ? (t.fa != null ? t.fa : 1.5) : null, speakingDurationSeconds: t.persona ? (t.speak || 3) : null, finishReason: t.persona ? "completed" : null, wasInterrupted: false,
-        toolCalls: (t.tools || []).map((x, k) => ({ toolCallId: "tc-" + t.i + "-" + k, toolName: x.name, toolType: "server", status: x.status || "completed", startedAt: iso(p0), completedAt: iso(p0 + 500), durationSeconds: 0.5 })),
+        toolCalls: (t.tools || []).map((x, k) => ({ toolCallId: "tc-" + t.i + "-" + k, toolName: x.name, toolType: toolType(x), status: x.status || "completed", startedAt: iso(p0), completedAt: iso(p0 + 500), durationSeconds: 0.5 })),
         ...(t.user !== undefined ? { userMessage: t.user || "" } : {}), ...(t.persona !== undefined ? { assistantMessage: t.persona || "" } : {}) };
     }) };
 }
-/* GET /v1/sessions/{id}: the tool calls with arguments + results (a JSON string, as webhooks answer) */
+/* GET /v1/sessions/{id}: the tool calls with arguments + results, in Anam's real shapes (a server tool's arguments nested as {bodyParams},
+   its result a JSON string; a client tool flat, no result) */
 export function sessionDetail(id, startMs, turns) {
   const toolCalls = [];
-  for (const t of turns) (t.tools || []).forEach((x, k) => toolCalls.push({ turnIndex: t.i, correlationId: "user::" + t.i, toolCallId: "tc-" + t.i + "-" + k, toolName: x.name, toolType: x.type || "server", toolSubtype: "webhook",
-    status: x.status || "completed", startedAt: iso(startMs + (t.t || 0) * 1000), completedAt: iso(startMs + (t.t || 0) * 1000 + 500), durationSeconds: 0.5, errorMessage: x.error || null, arguments: x.args || {}, result: x.result === undefined ? null : typeof x.result === "string" ? x.result : JSON.stringify(x.result), documentsAccessed: null }));
+  for (const t of turns) (t.tools || []).forEach((x, k) => { const tt = toolType(x); toolCalls.push({ turnIndex: t.i, correlationId: "user::" + t.i, toolCallId: "tc-" + t.i + "-" + k, toolName: x.name, toolType: tt, toolSubtype: tt === "server" ? "webhook" : null,
+    status: x.status || "completed", startedAt: iso(startMs + (t.t || 0) * 1000), completedAt: iso(startMs + (t.t || 0) * 1000 + 500), durationSeconds: 0.5, errorMessage: x.error || null, arguments: anamArgs(x),
+    result: x.result === undefined || (tt === "client" && x.result == null) ? null : typeof x.result === "string" ? x.result : JSON.stringify(x.result), documentsAccessed: null }); });
   return { id, toolCalls };
 }
 

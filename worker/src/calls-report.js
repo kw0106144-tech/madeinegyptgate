@@ -35,8 +35,8 @@ import { budgetEnv, budgetLeft } from "./memory.js"; // the cron's own D1 budget
 import { anamKey } from "./service-keys.js";
 import { featureOn, featureDef, stateOf, CALLS_REPORT_KEY } from "./flags.js";
 import { clean, norm, maskPII, asciiDigits } from "./text.js";
-import { reviewConversation, memoryJoin, quote, words } from "./calls-review.js";
-import { renderReport, ar } from "./calls-render.js";
+import { reviewConversation, memoryJoin, quote, words, flatArgs, FLAG_ORDER } from "./calls-review.js";
+import { renderReport, ar, bdi, nAr } from "./calls-render.js";
 import { RETURN_GREETING } from "./visitor.js";
 import { PERSONAS } from "./janna-session.js";
 
@@ -172,10 +172,11 @@ export function memberBlock(prompt) {
   return { title, first, company, sector, plan, anonymous: !addr };
 }
 
-/* Anam's session detail + analytics → the turns calls-review.js reads; the transcript (≤ 5 pages of 100) only while analytics answers 404 */
+/* Anam's session detail + analytics → the turns calls-review.js reads; the transcript (≤ 5 pages of 100) only while analytics answers 404.
+   A server (webhook) tool's arguments come nested as {bodyParams: {…}}: they are flattened here (calls-review.js flatArgs) */
 export function turnsFromAnalytics(an, ses) {
   const byTurn = new Map(), all = Array.isArray(ses && ses.toolCalls) ? ses.toolCalls : [];
-  for (const t of all) { const k = Number.isInteger(t.turnIndex) ? t.turnIndex : -1; if (!byTurn.has(k)) byTurn.set(k, []); byTurn.get(k).push({ name: t.toolName || "", status: t.status || "", args: t.arguments && typeof t.arguments === "object" ? t.arguments : null, result: t.result, error: t.errorMessage || "", id: t.toolCallId || "" }); }
+  for (const t of all) { const k = Number.isInteger(t.turnIndex) ? t.turnIndex : -1; if (!byTurn.has(k)) byTurn.set(k, []); byTurn.get(k).push({ name: t.toolName || "", status: t.status || "", args: flatArgs(t.arguments), result: t.result, error: t.errorMessage || "", id: t.toolCallId || "" }); }
   return (Array.isArray(an && an.turns) ? an.turns : []).map(t => {
     const tools = [...(byTurn.get(t.turnIndex) || [])];
     for (const x of Array.isArray(t.toolCalls) ? t.toolCalls : []) if (!tools.some(y => y.id && y.id === x.toolCallId)) tools.push({ name: x.toolName || "", status: x.status || "", args: null, result: null, error: x.errorMessage || "", id: x.toolCallId || "" });
@@ -233,6 +234,16 @@ const DOW_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأرب�
 export const dayLabelAr = d => { const [y, m, dd] = d.split("-").map(Number); return DOW_AR[new Date(Date.UTC(y, m - 1, dd)).getUTCDay()] + " " + ar(dd) + " " + MONTH_AR[m - 1]; };
 const cairoTime = t => (Number.isFinite(t) ? cairoHM(t) : "");
 const OPEN_ST = new Set(["سارية", "تنتهي قريباً"]);
+/* «اتبعت لمصنعين مسجّلين» (report review 2026-11-20 #12: numbers agree with their noun) */
+const routedAr = n => (n ? "اتبعت " + nAr(n, "لمصنع واحد مسجّل", "لمصنعين مسجّلين", "مصانع مسجّلة", "مصنع مسجّل").replace(/^([٠-٩]+) /, "لـ $1 ") : "لسه ماتبعتش لأي مصنع");
+/* the parts of the platform's data a note names, in the owner's words (#14: no table names in the body — they go to the warnings that
+   «المطوّر» shows) */
+const DATA_AR = { inquiries: ["الطلبات", "requests"], meetings: ["الاجتماعات", "meetings"], memory_tasks: ["المهام", "tasks"], follows: ["المتابعات", "follows"], cc_mail_log: ["سجل الإيميلات", "the e-mail log"],
+  wa_messages: ["رسايل الواتساب", "WhatsApp messages"], deals: ["الصفقات", "deals"], cc_staff: ["فريق المنصة", "the platform team"], members: ["الأعضاء", "members"], janna_visitors: ["زوار جنة", "Janna's visitors"],
+  advisor_memory: ["ذاكرة جنة وباسم", "Janna's and Bassem's memory"], cc_pv_day: ["زيارات الموقع", "site visits"], cc_pv_src: ["مصادر الزيارات", "visit sources"], knowledge_bank: ["بنك المعلومات", "the knowledge bank"],
+  cron_runs: ["سجل التقارير اللي فاتت", "the earlier reports"], cc_audit: ["سجل العمليات", "the audit log"], call_sessions: ["ربط المكالمات بأصحابها", "the call tags"] };
+const dataAr = keys => [...new Set(keys.map(k => (DATA_AR[k] || ["بيانات تانية", "other data"])[0]))].join("، ");
+const dataEn = keys => [...new Set(keys.map(k => (DATA_AR[k] || ["بيانات تانية", "other data"])[1]))].join(", ");
 
 /* opts: {day, nowMs, settings, mode: cron | send | preview, actor (audit fields), CC (CC.lookup = index.js search / tenderStatus / places)} → {rep, rendered, counts, warnings} */
 export async function buildReport(env, { day, nowMs = Date.now(), settings, mode = "cron", actor = SYSTEM, CC, sleep } = {}) {
@@ -399,8 +410,8 @@ export async function buildReport(env, { day, nowMs = Date.now(), settings, mode
     const outcomes = [];
     for (const q of c.outcome.inquiries) {
       const k = KIND_AR[q.kind] || [q.kind, q.kind], st = INQ_ST[q.status] || [q.status, q.status], conf = q.conf === "sure" ? "مؤكد" : "غالباً";
-      const by = [clean(q.name, 60), clean(q.company, 80), showMail(q.email), q.phone ? "موبايل " + showPhone(q.phone) : ""].filter(Boolean).join(" · ");
-      outcomes.push({ ar: k[0] + " " + q.ref + " — " + st[0] + (q.kind !== "signup" ? " — اتبعت لـ " + ar(Number(q.routed_count) || 0) + " مصنع مسجّل" : "") + " (" + conf + ")" + (by ? " — " + by : ""),
+      const by = [clean(q.name, 60), clean(q.company, 80), showMail(q.email), q.phone ? "موبايل " + bdi(showPhone(q.phone)) : ""].filter(Boolean).map(bdi).join(" · ");
+      outcomes.push({ ar: k[0] + " " + bdi(q.ref) + " — " + st[0] + (q.kind !== "signup" ? " — " + routedAr(Number(q.routed_count) || 0) : "") + " (" + conf + ")" + (by ? " — " + by : ""),
         en: k[1] + " " + q.ref + " — " + st[1] + (q.kind !== "signup" ? ", routed to " + (Number(q.routed_count) || 0) : "") + " (" + (q.conf === "sure" ? "confirmed" : "likely") + ")", link: S + "admin/#messages/" + enc(q.ref), ref: q.ref });
     }
     for (const m of c.outcome.meetings) outcomes.push({ ar: "اجتماع " + (m.kind === "instant" ? "فوري" : "متحدد") + (m.starts_at ? " " + ar(cairoDay(Date.parse(m.starts_at))) + " " + ar(cairoTime(Date.parse(m.starts_at))) : "") + (m.consent ? " — بموافقة على التسجيل" : " — من غير موافقة على التسجيل"),
@@ -410,7 +421,7 @@ export async function buildReport(env, { day, nowMs = Date.now(), settings, mode
     if (c.outcome.tasks) outcomes.push({ ar: "مهام اتسجّلت: " + ar(c.outcome.tasks), en: "tasks recorded: " + c.outcome.tasks });
     if (c.outcome.profile) outcomes.push({ ar: "ملف المصنع اتحفظ", en: "factory profile saved" });
     if (c.outcome.emails_sent || c.outcome.emails_failed) outcomes.push({ ar: "إيميلات باسم: " + ar(c.outcome.emails_sent) + " اتبعتت" + (c.outcome.emails_failed ? "، " + ar(c.outcome.emails_failed) + " فشلت" : ""), en: "Bassem e-mails: " + c.outcome.emails_sent + " sent" + (c.outcome.emails_failed ? ", " + c.outcome.emails_failed + " failed" : "") });
-    if (c.outcome.wa_sent) outcomes.push({ ar: "واتساب: " + ar(c.outcome.wa_sent) + " رسالة طلعت", en: "WhatsApp: " + c.outcome.wa_sent + " sent" });
+    if (c.outcome.wa_sent) outcomes.push({ ar: "واتساب: " + nAr(c.outcome.wa_sent, "رسالة واحدة طلعت", "رسالتين طلعوا", "رسايل طلعت", "رسالة طلعت"), en: "WhatsApp: " + c.outcome.wa_sent + " sent" });
     if (c.outcome.deals) outcomes.push({ ar: "صفقات اتفتحت أو اتحدّثت: " + ar(c.outcome.deals), en: "deals opened or updated: " + c.outcome.deals });
     outConvs.push({ agent: c.agent, lang: c.lang, kind: c.kind, startMs: c.start, time: cairoTime(c.start), minutes: Math.round(c.len / 60000), parts: c.parts.length, sessions: c.parts.map(p => p.r.id).filter(Boolean),
       device: c.device, who: w, review: c.review, outcomes, missed: c.missed, notReady: c.notReady, consentless: c.mode === "counts" });
@@ -425,37 +436,45 @@ export async function buildReport(env, { day, nowMs = Date.now(), settings, mode
   const cust = outConvs.filter(c => c.kind === "customer");
   const verdicts = {}; for (const c of cust) verdicts[c.review.verdict] = (verdicts[c.review.verdict] || 0) + 1;
   const probs = new Map();
-  for (const c of cust) for (const f of c.review.flags || []) { const n = f.code === "zero_results" ? f.n || 1 : (f.turns && f.turns.length) || 1, e = probs.get(f.code) || { code: f.code, n: 0, janna: 0, bassem: 0 }; e.n += n; e[c.agent] += n; probs.set(f.code, e); }
+  /* every problem counted the same way: the customer calls it happened in (report review 2026-11-20 #12: long replies were counted per reply,
+     zero results per search, the rest per call) */
+  for (const c of cust) for (const f of c.review.flags || []) { const e = probs.get(f.code) || { code: f.code, n: 0, janna: 0, bassem: 0 }; e.n++; e[c.agent]++; probs.set(f.code, e); }
   const byAgent = {}; for (const c of outConvs.filter(x => x.kind !== "team")) { const k = c.agent === "bassem" ? "bassem" : c.lang === "en" ? "janna_en" : "janna_ar"; byAgent[k] = (byAgent[k] || 0) + 1; }
   const counts = { conversations: outConvs.length, sessions: listed.length, byAgent, customers: cust.length, team: outConvs.filter(c => c.kind === "team").length, outside: outConvs.filter(c => c.kind === "outside").length,
     short: outConvs.filter(c => c.review.verdict === "short").length, minutes: Math.round(outConvs.reduce((n, c) => n + (c.minutes || 0), 0)), verdicts,
     outcomes: { rfqs: cust.flatMap(c => c.outcomes.filter(o => o.ref && !/^طلب اشتراك/.test(o.ar)).map(o => o.ref)), meetings: cust.reduce((n, c) => n + c.outcomes.filter(o => /^اجتماع/.test(o.ar)).length, 0),
       registrations: cust.reduce((n, c) => n + (c.review.outcome === "registration" || c.outcomes.some(o => /^طلب اشتراك|^فتحت فورم التسجيل/.test(o.ar)) ? 1 : 0), 0),
       follows: convs.filter(c => c.kind === "customer").reduce((n, c) => n + (c.outcome.follows || 0), 0), bassem_emails: convs.reduce((n, c) => n + (c.outcome.emails_sent || 0), 0) },
-    problems: [...probs.values()].sort((a, b) => b.n - a.n).slice(0, 3).map(p => ({ code: p.code, n: p.n, agent: p.janna && p.bassem ? "janna" : p.bassem ? "bassem" : "janna" })),
+    problems: [...probs.values()].sort((a, b) => b.n - a.n || FLAG_ORDER.indexOf(a.code) - FLAG_ORDER.indexOf(b.code)).slice(0, 3).map(p => ({ code: p.code, n: p.n, agent: p.janna && p.bassem ? "janna" : p.bassem ? "bassem" : "janna" })),
     pv: pvDay ? { views: Number(pvDay.views) || 0, uniq: Number(pvDay.uniq) || 0, mobile: Number(pvDay.mobile_uniq) || 0, sources: pvSrc.map(r => [line(r.src, 40), Number(r.n) || 0]) } : notes.missing.has("cc_pv_day") ? null : { views: 0, uniq: 0, mobile: 0, sources: [] },
     opps, needs: { fresh: needs.length, total: needTotal.length ? Number(needTotal[0].n) || 0 : null }, meetingsTeam: listed.filter(r => r.meeting).length, notRead, gets };
   /* 10) the notes («ملاحظات النظام»: only what degraded) */
-  const N = [];
+  /* the notes say what degraded in the owner's words (report review 2026-11-20 #14): no file, table, workflow or permission names in the
+     body — the technical detail goes to `tech`, which joins the warnings «المطوّر» shows (the preview) and the card's setup status */
+  const N = [], tech = [], DEV = " — التفاصيل عند «المطوّر» ← «تقرير المكالمات».", DEV_EN = " — the details are in «Developer» → «Calls report».";
   let banner = null;
   if (!anamOk) {
-    banner = anam === "no_read" ? { ar: "Anam رفض قراية الجلسات (المفتاح مالوش صلاحية Sessions: Read) — التقرير ده من بيانات المنصة بس، ومن غير توقيت ولا أدوات المكالمات.", en: "Anam refused to list the sessions (the key lacks Sessions: Read) — this report uses the platform's data only." }
-      : anam === "no_key" ? { ar: "مفيش مفتاح Anam — التقرير ده من بيانات المنصة بس.", en: "No Anam key — this report uses the platform's data only." }
+    banner = anam === "no_read" ? { ar: "Anam رفض قراية الجلسات — التقرير ده من بيانات المنصة بس، من غير توقيت ولا أدوات المكالمات. السبب والحل عند «المطوّر» ← «تقرير المكالمات».", en: "Anam refused to list the sessions — this report uses the platform's data only. The cause and the fix are in «Developer» → «Calls report»." }
+      : anam === "no_key" ? { ar: "مفيش مفتاح Anam — التقرير ده من بيانات المنصة بس." + DEV, en: "No Anam key — this report uses the platform's data only." + DEV_EN }
       : { ar: "Anam مش متاح دلوقتي — التقرير ده من بيانات المنصة بس.", en: "Anam is not reachable — this report uses the platform's data only." };
     warn.push(banner.en); // the banner heads the e-mail (not repeated in «ملاحظات النظام»)
+    if (anam === "no_read") tech.push("Anam answered 401/403 on GET /v1/sessions: give the key Sessions: Read in Anam Lab (or save a key that has it in «Service keys»).");
   }
-  if (!has0011) N.push({ ar: "ملف قاعدة البيانات 0011_calls_report.sql لسه ماتشغّلش، فالهوية هنا بالتقريب — شغّل 0011 من GitHub ← Actions ← d1-migrate.", en: "Database file 0011_calls_report.sql is not applied yet, so identities are approximate — run 0011 from GitHub → Actions → d1-migrate." });
+  if (!has0011) {
+    N.push({ ar: "معرفة مين اللي اتكلم في كل مكالمة لسه بالتقريب: تحديث قاعدة البيانات الخاص بالتقرير لسه ماتعملش" + DEV, en: "Who talked in each call is still approximate: the report's database update has not been run yet" + DEV_EN });
+    tech.push("Migration 0011_calls_report.sql is not applied: run it from GitHub → Actions → d1-migrate (the backup first, after the Worker code is live). Until then identities come from the other joins.");
+  }
   const nr = outConvs.filter(c => c.notReady).length;
-  if (nr) N.push({ ar: ar(nr) + " مكالمة تفاصيلها لسه ماوصلتش من Anam: اتراجعت من النص بس.", en: nr + " calls: Anam's details were not ready yet; reviewed from the transcript only." });
-  if (notRead) N.push({ ar: ar(notRead) + " مكالمة مااتقرتش من Anam (الحد " + ar(CALLS_LIM.anamGets) + " قراية في التقرير) — اتعدّت بس.", en: notRead + " calls were not read from Anam (the " + CALLS_LIM.anamGets + "-read cap of a report) — counted only." });
+  if (nr) N.push({ ar: nAr(nr, "مكالمة واحدة تفاصيلها", "مكالمتين تفاصيلهم", "مكالمات تفاصيلها", "مكالمة تفاصيلها") + " لسه ماوصلتش من Anam: اتراجعت من النص بس.", en: nr + " calls: Anam's details were not ready yet; reviewed from the transcript only." });
+  if (notRead) N.push({ ar: nAr(notRead, "مكالمة واحدة مااتقرتش", "مكالمتين مااتقروش", "مكالمات مااتقرتش", "مكالمة مااتقرتش") + " من Anam (الحد " + ar(CALLS_LIM.anamGets) + " قراية في التقرير) — اتعدّت بس.", en: notRead + " calls were not read from Anam (the " + CALLS_LIM.anamGets + "-read cap of a report) — counted only." });
   if (listCut) N.push({ ar: "اليوم ده فيه أكتر من " + ar(CALLS_LIM.perPage * CALLS_LIM.listPages) + " جلسة — الأولانيين بس اتعدّوا.", en: "More than " + CALLS_LIM.perPage * CALLS_LIM.listPages + " sessions that day — only the first ones are counted." });
   if (memAudit === "failed") N.push({ ar: "ذاكرة جنة وباسم مااتقرتش (سجل الاطلاع ماتكتبش).", en: "Janna's and Bassem's memory was not read (the access log could not be written)." });
   const missing = [...notes.missing].filter(k => k !== "call_sessions"), failed = [...notes.failed];
-  if (missing.length) N.push({ ar: "أجزاء مش متاحة (الجدول مش موجود): " + missing.join("، "), en: "Parts not available (missing tables): " + missing.join(", ") });
-  if (failed.length) N.push({ ar: "أجزاء ماتقرتش (خطأ في القراية): " + failed.join("، "), en: "Parts not read (read errors): " + failed.join(", ") });
+  if (missing.length) { N.push({ ar: "بعض البيانات مش متاحة في التقرير ده: " + dataAr(missing) + DEV, en: "Some data is not in this report: " + dataEn(missing) + DEV_EN }); tech.push("Missing tables: " + missing.join(", ")); }
+  if (failed.length) { N.push({ ar: "بعض البيانات ماتقرتش المرة دي: " + dataAr(failed) + DEV, en: "Some data could not be read this time: " + dataEn(failed) + DEV_EN }); tech.push("Read errors on: " + failed.join(", ")); }
   if (notes.budget) N.push({ ar: "بيانات المنصة اتقرت جزئياً (حد القراية في الدورة دي).", en: "The platform's data was read partly (this run's read budget)." });
   const route = attachOk(env);
-  if (!route) N.push({ ar: "الملف المرفق مش مدعوم على طريقة الإرسال الحالية — التفاصيل الكاملة (calls-" + day + ".csv) مش مرفقة.", en: "Attachments are not supported by the current e-mail route — calls-" + day + ".csv is not attached." });
+  if (!route) { N.push({ ar: "طريقة الإرسال الحالية مابتبعتش ملفات مرفقة، فملف التفاصيل مش مرفق المرة دي" + DEV, en: "The current e-mail route sends no attachments, so the details file is not attached this time" + DEV_EN }); tech.push("The e-mail route has no attachments: calls-" + day + ".csv was not attached."); }
   /* the previous report that never went out */
   let failedPrev = null;
   const prev = addDays(day, -1), pg = await Q("cron_runs", "SELECT job FROM cron_runs WHERE day = ? AND job IN ('calls-report', 'calls-report-failed')", prev);
@@ -467,7 +486,7 @@ export async function buildReport(env, { day, nowMs = Date.now(), settings, mode
     defaultNote: settings.usingDefault ? { to: shownDefault(settings.to) } : null, links: { dataDesk: S + "data-desk/" }, csv: route };
   const rendered = renderReport(rep);
   if (!route) rendered.csv = "";
-  warn.push(...N.map(n => n.en));
+  warn.push(...N.map(n => n.en), ...tech);
   return { rep, rendered, counts, warnings: warn, anam, has0011, attach: route };
 }
 
@@ -569,29 +588,50 @@ function groupConversations(sess) {
 }
 /* «كان ممكن» — only real results, run on the report morning (index.js search on the bundled data): (a) a seller: open tenders / RFQs for
    his product (+ customers once the lookup has that section); (b) a buyer: suppliers for his words (top 3 with every word); (c) every
-   zero-result query again; (d) a seller never offered a profile; (e) a general question left without an answer */
-function missedLines(c, lookup, nowMs, budget) {
-  const r = c.review, out = [], search = typeof lookup.search === "function" ? lookup.search : null, she = c.agent === "bassem" ? "" : "ت";
-  const run = (sec, q) => { if (!search || !q || !budget()) return null; try { return search(sec, String(q).slice(0, 120), "", 10); } catch (e) { return null; } };
-  const words0 = r.productWords.length ? r.productWords : [];
+   zero-result search again IN THE SECTION (+ governorate / market) THAT RETURNED NOTHING (report review 2026-11-20 #7: every query was
+   run again in the factories only) — the platform's own lookup only: the intel centre's and the web's searches are not on the bundled
+   data, and a D1-only call does not know the section; ≤ 3 queries, the others counted; (d) a seller never offered a profile; (e) a
+   general question left without an answer */
+const SECTION_AR = { factories: ["المصانع", "factories"], suppliers: ["الموردين", "suppliers"], products: ["المنتجات", "products"], market: ["السوق", "the market"], tenders: ["المناقصات", "tenders"],
+  rfqs: ["طلبات الأسعار", "RFQs"], offers: ["العروض", "offers"], cities: ["المدن الصناعية", "industrial cities"] };
+export function missedLines(c, lookup, nowMs, budget) {
+  const r = c.review, out = [], search = lookup && typeof lookup.search === "function" ? lookup.search : null, she = c.agent === "bassem" ? "" : "ت";
+  const run = (sec, q, gov, mkt) => { if (!search || !q || !budget()) return null; try { return search(sec, String(q).slice(0, 120), String(gov || "").slice(0, 60), 10, undefined, mkt || undefined); } catch (e) { return null; } };
+  const words0 = r.productWords && r.productWords.length ? r.productWords : [];
   if (r.seller && words0.length) {
     const q = words0[0], t = run("tenders", q), f = run("rfqs", q), cu = run("customers", q);
     const open = t ? (t.results || []).filter(x => OPEN_ST.has(x.status)).length : 0, rq = f ? f.count || 0 : 0;
-    out.push(open || rq ? { ar: "النهارده الصبح على المنصة لـ «" + quote(q, 60) + "»: مناقصات سارية " + ar(open) + "، طلبات أسعار " + ar(rq), en: "This morning for “" + quote(q, 60) + "”: open tenders " + open + ", RFQs " + rq }
-      : { ar: "النهارده الصبح مفيش مناقصة سارية ولا طلب سعر لـ «" + quote(q, 60) + "» على المنصة", en: "This morning there is no open tender or RFQ for “" + quote(q, 60) + "” on the platform" });
+    out.push(open || rq ? { ar: "النهارده الصبح على المنصة لـ «" + bdi(quote(q, 60)) + "»: مناقصات سارية " + ar(open) + "، طلبات أسعار " + ar(rq), en: "This morning for “" + quote(q, 60) + "”: open tenders " + open + ", RFQs " + rq }
+      : { ar: "النهارده الصبح مفيش مناقصة سارية ولا طلب سعر لـ «" + bdi(quote(q, 60)) + "» على المنصة", en: "This morning there is no open tender or RFQ for “" + quote(q, 60) + "” on the platform" });
     if (cu && Array.isArray(cu.groups) && cu.groups.length) out.push({ ar: "عملاء محتملين في الدليل (مصانع في الصناعات اللي بيخدمها): " + ar(cu.groups.reduce((n, g) => n + (Number(g.factories) || 0), 0)), en: "Possible customers in the directory: " + cu.groups.reduce((n, g) => n + (Number(g.factories) || 0), 0) });
   }
   if (r.buyer && words0.length) {
-    const q = words0[0], s = run("suppliers", q), qw = words(q);
-    const all = s ? (s.results || []).filter(x => (x.match ? x.match === "all" : qw.every(w => words(x.name + " " + (x.activity || "") + " " + (x.products || "")).some(z => z === w || z.startsWith(w))))).slice(0, 3) : [];
-    out.push(all.length ? { ar: "موردين في الدليل فيهم كل كلمات «" + quote(q, 60) + "»: " + all.map(x => quote(x.name, 60)).join("، "), en: "Suppliers in the directory with every word of “" + quote(q, 60) + "”: " + all.length }
-      : { ar: "مفيش مورّد في الدليل فيه كل كلمات «" + quote(q, 60) + "»", en: "No supplier in the directory has every word of “" + quote(q, 60) + "”" });
+    const q = words0[0], sr = run("suppliers", q), qw = words(q);
+    const all = sr ? (sr.results || []).filter(x => (x.match ? x.match === "all" : qw.every(w => words(x.name + " " + (x.activity || "") + " " + (x.products || "")).some(z => z === w || z.startsWith(w))))).slice(0, 3) : [];
+    out.push(all.length ? { ar: "موردين في الدليل فيهم كل كلمات «" + bdi(quote(q, 60)) + "»: " + all.map(x => bdi(quote(x.name, 60))).join("، "), en: "Suppliers in the directory with every word of “" + quote(q, 60) + "”: " + all.length }
+      : { ar: "مفيش مورّد في الدليل فيه كل كلمات «" + bdi(quote(q, 60)) + "»", en: "No supplier in the directory has every word of “" + quote(q, 60) + "”" });
   }
-  for (const q of [...new Set(r.zeroQueries)].slice(0, 3)) {
-    const s = run("factories", q), n = s ? s.count || 0 : null;
-    if (n == null) continue;
-    out.push(n ? { ar: "«" + q + "» دلوقتي بيرجّع " + ar(n), en: "“" + q + "” now returns " + n } : { ar: "«" + q + "» ولسه مفيش", en: "“" + q + "” still returns nothing" });
+  /* (c) one line per query: where it now returns something, and where still nothing */
+  const byQ = new Map();
+  for (const z of r.zeroSearches || []) {
+    if (z.tool !== "janna_lookup" || !z.query || z.memory) continue; // a D1-only call's memory row does not say its section
+    const sec = SECTION_AR[z.section] ? z.section : "factories"; // the lookup's own default (index.js: an unknown or missing section is the factories)
+    const list = byQ.get(z.query) || []; if (!list.some(x => x.sec === sec && x.gov === z.governorate && x.mkt === z.market)) list.push({ sec, gov: z.governorate || "", mkt: z.market || "" });
+    byQ.set(z.query, list);
   }
+  let shownQ = 0, leftQ = 0;
+  for (const [q, list] of byQ) {
+    if (shownQ >= 3) { leftQ++; continue; }
+    const res = []; for (const x of list.slice(0, 4)) { const sr = run(x.sec, q, x.gov, x.mkt); if (sr) res.push({ ...x, n: Number(sr.count) || 0 }); }
+    if (!res.length) continue;
+    shownQ++;
+    const where = x => SECTION_AR[x.sec][0] + (x.gov ? " (" + bdi(x.gov) + ")" : ""), whereEn = x => SECTION_AR[x.sec][1] + (x.gov ? " (" + x.gov + ")" : "");
+    const hit = res.filter(x => x.n > 0), none = res.filter(x => !x.n);
+    out.push(hit.length ? { ar: "«" + bdi(q) + "» دلوقتي بيرجّع " + hit.map(x => ar(x.n) + " في " + where(x)).join(" و") + (none.length ? " — ولسه مفيش في " + none.map(where).join(" و") : ""),
+      en: "“" + q + "” now returns " + hit.map(x => x.n + " in " + whereEn(x)).join(", ") + (none.length ? " — still nothing in " + none.map(whereEn).join(", ") : "") }
+      : { ar: "«" + bdi(q) + "» ولسه مفيش في " + none.map(where).join(" و"), en: "“" + q + "” still returns nothing in " + none.map(whereEn).join(", ") });
+  }
+  if (leftQ) out.push({ ar: "و" + nAr(leftQ, "كلمة بحث تانية", "كلمتين بحث تانيين", "كلمات بحث تانية", "كلمة بحث تانية") + " رجّع" + (leftQ === 1 ? "ت" : "وا") + " صفر — في الملف المرفق", en: "and " + leftQ + " more zero-result queries — in the attached file" });
   if (r.seller && !r.offeredProfile) out.push({ ar: "ماعرض" + she + "ش عليه ملف بخدماته في الدليل", en: "never offered him a profile of his services" });
   if (r.generalUnanswered) out.push({ ar: "سؤاله محتاج إجابة من الفريق", en: "his question needs an answer from the team" });
   return out;
@@ -685,7 +725,9 @@ export async function callsReportView(env) {
   return { settings: { to: s.savedTo, time: s.time, detail: s.detail, tests: s.tests, empty: s.empty, keep_days: s.keep_days, by: s.by, at: s.at, saved: s.saved, full_confirmed: !!s.full_confirmed },
     using_default: s.usingDefault, default_to: shownDefault(adminEmails(env)), recipients: s.usingDefault ? shownDefault(s.to) : s.to, domain: DOMAIN, full_confirm: FULL_CONFIRM,
     limits: { to_max: CALLS_LIM.toMax, time_min: CALLS_LIM.timeMin, time_max: CALLS_LIM.timeMax, keep_min: CALLS_LIM.keepMin, keep_max: CALLS_LIM.keepMax, sends_per_day: CALLS_LIM.sendsPerDay, previews_per_10min: CALLS_LIM.previewsPer10Min, days_back: CALLS_LIM.daysBack },
-    feature: await featureState(env), route: { ready: mailReady(env), attachments: attachOk(env) }, anam: await anamProbe(env), runs, yesterday: addDays(cairoDay(nowMs), -1) };
+    feature: await featureState(env), route: { ready: mailReady(env), attachments: attachOk(env) }, anam: await anamProbe(env), runs, yesterday: addDays(cairoDay(nowMs), -1),
+    /* for «المطوّر» only (the e-mail says it in plain words): exact caller identities need migration 0011 */
+    setup: { exact_ids: await hasTable(env, "call_sessions"), migration: "0011_calls_report.sql", how: "GitHub → Actions → d1-migrate" } };
 }
 export async function callsReportPut(req, env, ctx, adm) {
   const b = await readBody(req, 8192), cur = await readSettings(env), t = new Date().toISOString(), by = line((adm && adm.actor && (adm.actor.actor_email || adm.actor.actor_id)) || "owner", 254);
