@@ -59,8 +59,11 @@
     if (!r) { memberAsk(); return; }
     var head = "<h2>" + esc(T("حذف حساب العضو", "Delete a member account")) + "</h2>";
     if (r.status === "pending") { mbox.innerHTML = head + st("ok", T("طلب حذف حسابك اتسجّل برقم " + r.id + " يوم " + day(r.created_at) + "، والحذف بيتنفّذ خلال " + DAYS + " يوم.", "Your account deletion request is recorded as " + r.id + " on " + day(r.created_at) + "; the deletion is carried out within " + DAYS + " days.")); return; }
-    if (r.status === "done") { mbox.innerHTML = head + st("info", T("طلب حذف الحساب رقم " + r.id + " اتنفّذ يوم " + day(r.decided_at) + ".", "Deletion request " + r.id + " was carried out on " + day(r.decided_at) + ".")); return; }
-    mbox.innerHTML = head + st("warn", T("طلب حذف الحساب رقم " + r.id + " اتقفل من غير حذف — لو عندك سؤال ابعتلنا على info@madeinegyptgate.com.", "Deletion request " + r.id + " was closed without a deletion — write to us at info@madeinegyptgate.com with any question.")) + '<div class="daa"><button type="button" class="dabtn" id="daAsk">🗑 ' + esc(T("اطلب تاني", "Ask again")) + "</button></div>";
+    /* «done» is set only once the account is anonymised (worker/src/delete-requests.js), and such an account can never sign in again — so a
+       signed-in member who sees one still has his account: a neutral «closed», never «carried out» (CLAUDE.md 2.6) */
+    if (r.status === "done") mbox.innerHTML = head + st("info", T("طلب حذف الحساب رقم " + r.id + " اتقفل يوم " + day(r.decided_at) + " — لو عندك سؤال ابعتلنا على info@madeinegyptgate.com.", "Deletion request " + r.id + " was closed on " + day(r.decided_at) + " — write to us at info@madeinegyptgate.com with any question."));
+    else mbox.innerHTML = head + st("warn", T("طلب حذف الحساب رقم " + r.id + " اتقفل من غير حذف — لو عندك سؤال ابعتلنا على info@madeinegyptgate.com.", "Deletion request " + r.id + " was closed without a deletion — write to us at info@madeinegyptgate.com with any question."));
+    mbox.innerHTML += '<div class="daa"><button type="button" class="dabtn" id="daAsk">🗑 ' + esc(T("اطلب تاني", "Ask again")) + "</button></div>";
     D.getElementById("daAsk").onclick = memberConfirm;
   }
   function memberShow() {
@@ -89,23 +92,31 @@
     b.onclick = function () {
       b.disabled = true;
       var done = function (r) { vbox.innerHTML = head + st("ok", T("طلبك اتسجّل برقم " + r.id + "، والمسح بيتنفّذ خلال " + DAYS + " يوم.", "Your request is recorded as " + r.id + "; the erasure is carried out within " + DAYS + " days.")); };
+      var none = function () { vbox.innerHTML = head + st("info", T("مفيش كلام محفوظ مع جنة على الجهاز ده.", "There are no saved conversations with Janna on this device.")); };
       if (!W.fetch) { b.disabled = false; return; }
-      fetch("/api/janna/memory/erase-request", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ visitor_id: v, lang: EN ? "en" : "ar" }), credentials: "same-origin", cache: "no-store" }).then(function (r) {
+      /* the same human check as the site's forms (Cloudflare Turnstile, only when a site key is configured: MIGAPI.human) */
+      (A && A.human ? A.human() : Promise.resolve("")).then(function (tk) {
+        var body = { visitor_id: v, lang: EN ? "en" : "ar" }; if (tk) body.turnstile = tk;
+        return fetch("/api/janna/memory/erase-request", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body), credentials: "same-origin", cache: "no-store" });
+      }).then(function (r) {
         var ct = (r.headers.get("content-type") || "").toLowerCase(); if (ct.indexOf("json") < 0) throw { code: "offline" };
-        return r.json().then(function (j) { if (!r.ok || !j || !j.request) throw { code: (j && (j.code || j.error)) || "http_" + r.status, status: r.status }; return j; });
-      }).then(function (j) { done(j.request); }, function (e) { b.disabled = false; var p = D.createElement("div"); p.innerHTML = st("err", errText(e && e.code ? e : { code: "offline" })); vbox.appendChild(p.firstChild); });
+        return r.json().then(function (j) { if (r.ok && j && j.nothing) return j; if (!r.ok || !j || !j.request) throw { code: (j && (j.code || j.error)) || "http_" + r.status, status: r.status }; return j; });
+      }).then(function (j) { if (j.nothing) none(); else done(j.request); }, function (e) { b.disabled = false; var p = D.createElement("div"); p.innerHTML = st("err", errText(e && e.code ? e : { code: "offline" })); vbox.appendChild(p.firstChild); });
     };
   }
 
   function start() {
     var F = W.MIGFLAGS;
+    /* the sections ship hidden (no flash while the switches load); data/flags.js hides them again if a switch goes off. A section is
+       filled the first time its switch reads on — at F.ready, or later when the answer of /api/settings comes after F.ready's 3 s
+       (the "mig:flags" event) — and never twice (a member half-way through the confirmation keeps it) */
     var go = function () {
-      /* the sections ship hidden (no flash while the switches load); data/flags.js hides them again if a switch goes off */
-      if (!F || F.on("account_delete") === true) { mbox.hidden = false; memberShow(); }
-      if (!F || F.on("visitor_erase_request") === true) { vbox.hidden = false; visitorShow(); }
+      if ((!F || F.on("account_delete") === true) && !mbox.getAttribute("data-da")) { mbox.setAttribute("data-da", "1"); mbox.hidden = false; memberShow(); }
+      if ((!F || F.on("visitor_erase_request") === true) && !vbox.getAttribute("data-da")) { vbox.setAttribute("data-da", "1"); vbox.hidden = false; visitorShow(); }
       if (F && F.apply) F.apply();
     };
     if (F && F.ready) F.ready(go, 3000); else go();
+    W.addEventListener("mig:flags", go);
   }
   W.addEventListener("mig:logout", function () { if (mbox && !mbox.hidden) memberSignin(); });
   if (D.readyState === "loading") D.addEventListener("DOMContentLoaded", start); else start();

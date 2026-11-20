@@ -12,12 +12,14 @@ import { storeJson, forgetFeatures } from "../src/flags.js";
 
 const SITE = "https://madeinegyptgate.com";
 const VID = "0123456789abcdef0123456789abcdef", VID2 = "fedcba9876543210fedcba9876543210";
-let mails, realFetch;
+let mails, realFetch, checks;
 beforeEach(() => {
-  realFetch = globalThis.fetch; mails = [];
+  realFetch = globalThis.fetch; mails = []; checks = [];
   globalThis.fetch = async (input, init = {}) => {
     const u = String(input && input.url ? input.url : input);
     if (u === "https://api.resend.com/emails") { mails.push(JSON.parse(init.body)); return new Response(JSON.stringify({ id: "re_" + mails.length }), { status: 200, headers: { "Content-Type": "application/json" } }); }
+    // Cloudflare Turnstile (mocked): the token "human-ok" passes, any other fails
+    if (u === "https://challenges.cloudflare.com/turnstile/v0/siteverify") { const b = JSON.parse(init.body); checks.push(b); return new Response(JSON.stringify({ success: b.response === "human-ok" }), { status: 200, headers: { "Content-Type": "application/json" } }); }
     throw new Error("unexpected fetch " + u);
   };
 });
@@ -47,6 +49,8 @@ async function api(env, method, path, { body, token, origin = SITE, ua = "Mozill
   return { status: res.status, data, text };
 }
 const rows = async env => (await env.DB.prepare("SELECT * FROM cc_delete_requests ORDER BY created_at").all()).results;
+/* Janna's memory of a visitor id (a janna_visitors row, as data/janna-live.js leaves one) */
+const stored = async (env, vid) => { const t = new Date().toISOString(); await env.DB.prepare("INSERT INTO janna_visitors (visitor_id, first_at, last_at, calls) VALUES (?, ?, ?, 2)").bind(vid, t, t).run(); };
 const audits = async (env, action) => (await env.DB.prepare("SELECT * FROM cc_audit WHERE action = ? ORDER BY id").bind(action).all()).results;
 const P = "/api/me/delete-request", V = "/api/janna/memory/erase-request";
 
@@ -112,6 +116,7 @@ describe("a visitor's request: /api/janna/memory/erase-request", () => {
     let r = await api(env, "POST", V, { body: { visitor_id: VID } });
     assert.deepEqual([r.status, r.data.code], [503, "feature_off"]);
     await setF(env, { visitor_erase_request: true });
+    await stored(env, VID);
     assert.equal((await api(env, "POST", V, { body: { visitor_id: VID }, origin: "https://evil.example" })).status, 403);
     assert.equal((await api(env, "POST", V, { body: { visitor_id: "nope" } })).data.code, "invalid");
     r = await api(env, "POST", V, { body: { visitor_id: VID, lang: "ar" } });
@@ -124,6 +129,33 @@ describe("a visitor's request: /api/janna/memory/erase-request", () => {
     r = await api(env, "POST", V, { body: { visitor_id: VID2 } });
     assert.deepEqual([r.status, r.data.code], [409, "visitor_linked"]);
     const vrows = (await rows(env)).filter(x => x.kind === "visitor"); assert.equal(vrows.length, 1); assert.equal(vrows[0].visitor_id, VID);
+  });
+  test("an id with nothing stored (review F6) → 200 nothing: true — no row, no audit, no e-mail to the owner, whatever a script sends", async () => {
+    const env = env0(); await setF(env, { visitor_erase_request: true });
+    for (let i = 0; i < 5; i++) {
+      const vid = (i + "0123456789abcdef0123456789abcde").slice(0, 32);
+      const r = await api(env, "POST", V, { body: { visitor_id: vid } });
+      assert.deepEqual([r.status, r.data.ok, r.data.nothing, r.data.request], [200, true, true, undefined], r.text);
+    }
+    assert.equal((await rows(env)).length, 0); assert.equal((await audits(env, "visitor.erase_request")).length, 0); assert.equal(mails.length, 0);
+    // Janna's memory rows alone (advisor_memory 'v:<id>') count as stored too
+    const t = new Date().toISOString();
+    await env.DB.prepare("INSERT INTO advisor_memory (member_id, kind, at, text, hash, agent) VALUES (?, 'turn', ?, 'hello', 'h1', 'janna')").bind("v:" + VID2, t).run();
+    assert.equal((await api(env, "POST", V, { body: { visitor_id: VID2 } })).status, 201);
+  });
+  test("the site's human check (Turnstile) before a new row, when TURNSTILE_SECRET is set", async () => {
+    const env = env0({ TURNSTILE_SECRET: "ts-test-secret" }); await setF(env, { visitor_erase_request: true });
+    await stored(env, VID);
+    let r = await api(env, "POST", V, { body: { visitor_id: VID } });
+    assert.deepEqual([r.status, r.data.code], [403, "verification_required"]);
+    r = await api(env, "POST", V, { body: { visitor_id: VID, turnstile: "bot" } });
+    assert.deepEqual([r.status, r.data.code], [403, "verification_failed"]);
+    assert.equal((await rows(env)).length, 0); assert.equal(mails.length, 0, "no e-mail without a human");
+    r = await api(env, "POST", V, { body: { visitor_id: VID, turnstile: "human-ok" } });
+    assert.equal(r.status, 201, r.text); assert.equal(checks.length, 2);
+    // nothing stored: answered before any check (no Turnstile call, nothing recorded)
+    r = await api(env, "POST", V, { body: { visitor_id: VID2 } });
+    assert.deepEqual([r.status, r.data.nothing, checks.length], [200, true, 2]);
   });
   test("the memory itself is untouched by the request (the owner's audited erasure does that)", async () => {
     const env = env0(); await setF(env, { visitor_erase_request: true });
@@ -140,6 +172,7 @@ describe("the owner's queue: /api/admin/cc/delete-requests", () => {
     const o = await member(env, "u-owner", "owner@mig.test"), adm = await member(env, "u-adm", "adm@mig.test", { role: "admin" });
     const m = await member(env, "u-d4", "d4@mig.test");
     const req = (await api(env, "POST", P, { token: m.token, body: {} })).data.request;
+    await stored(env, VID);
     await api(env, "POST", V, { body: { visitor_id: VID } });
     assert.equal((await api(env, "GET", "/api/admin/cc/delete-requests", { token: adm.token })).status, 403, "members.delete is the owner's");
     let r = await api(env, "GET", "/api/admin/cc/delete-requests?status=pending", { token: o.token });
@@ -150,11 +183,37 @@ describe("the owner's queue: /api/admin/cc/delete-requests", () => {
     assert.ok(r.data.items.find(x => x.kind === "visitor").visitor_id === VID);
     r = await api(env, "POST", "/api/admin/cc/delete-requests/" + req.id, { token: o.token, body: { status: "rejected", note: "x" } });
     assert.equal(r.status, 422);
+    // «done» only once the deletion really ran (review F3): the member's page would say so
+    r = await api(env, "POST", "/api/admin/cc/delete-requests/" + req.id, { token: o.token, body: { status: "done", note: "deleted from the members list" } });
+    assert.deepEqual([r.status, r.data.code], [409, "not_deleted"], r.text);
+    assert.equal((await rows(env)).find(x => x.id === req.id).status, "pending");
+    assert.equal((await api(env, "GET", P, { token: m.token })).data.request.status, "pending", "the member still sees it waiting");
+    // the owner's audited deletion (acc-members.js deleteMember), then «done»
+    r = await api(env, "DELETE", "/api/admin/cc/members/u-d4", { token: o.token, body: { confirm: "d4@mig.test" } });
+    assert.equal(r.status, 200, r.text);
     r = await api(env, "POST", "/api/admin/cc/delete-requests/" + req.id, { token: o.token, body: { status: "done", note: "deleted from the members list" } });
     assert.equal(r.status, 200, r.text); assert.equal(r.data.request.status, "done");
     assert.equal((await api(env, "POST", "/api/admin/cc/delete-requests/" + req.id, { token: o.token, body: { status: "done" } })).status, 409);
     const a = await audits(env, "delete_request.close"); assert.equal(a.length, 1); assert.equal(a[0].target_id, "u-d4");
-    r = await api(env, "GET", P, { token: m.token });
-    assert.deepEqual([r.data.request.status, !!r.data.request.decided_at], ["done", true]);
+    assert.equal((await api(env, "GET", P, { token: m.token })).status, 401, "the deleted account signs in no more: nobody reads «done» as a still-existing member");
+    // a visitor's request: «done» once the owner's erasure removed the memory
+    const vr = (await rows(env)).find(x => x.kind === "visitor");
+    r = await api(env, "POST", "/api/admin/cc/delete-requests/" + vr.id, { token: o.token, body: { status: "done" } });
+    assert.deepEqual([r.status, r.data.code], [409, "not_erased"], r.text);
+    r = await api(env, "POST", "/api/admin/cc/memory/erase", { token: o.token, body: { visitor_id: VID, confirm: VID, reason: "a formal data-subject request (PDPL 151/2020)" } });
+    assert.equal(r.status, 200, r.text);
+    r = await api(env, "POST", "/api/admin/cc/delete-requests/" + vr.id, { token: o.token, body: { status: "done" } });
+    assert.equal(r.status, 200, r.text);
+    // a request of an account removed altogether (no members row) can be closed too
+    const t = new Date().toISOString();
+    await env.DB.prepare("INSERT INTO cc_delete_requests (id, kind, member_id, status, lang, source, created_at) VALUES ('dr-gone000001', 'member', 'u-gone', 'pending', 'ar', 'web', ?)").bind(t).run();
+    assert.equal((await api(env, "POST", "/api/admin/cc/delete-requests/dr-gone000001", { token: o.token, body: { status: "done" } })).status, 200);
+    // a rejection needs no deletion
+    const m5 = await member(env, "u-d5", "d5@mig.test");
+    const req5 = (await api(env, "POST", P, { token: m5.token, body: {} })).data.request;
+    r = await api(env, "POST", "/api/admin/cc/delete-requests/" + req5.id, { token: o.token, body: { status: "rejected", note: "asked by mistake, the member wrote back" } });
+    assert.equal(r.status, 200, r.text);
+    r = await api(env, "GET", P, { token: m5.token });
+    assert.deepEqual([r.data.request.status, !!r.data.request.decided_at], ["rejected", true]);
   });
 });

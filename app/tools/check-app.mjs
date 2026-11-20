@@ -83,6 +83,10 @@ const enStrings = read("android/app/src/main/res/values/strings.xml");
 const arStrings = read("android/app/src/main/res/values-ar/strings.xml");
 need(/name="app_name">Made in Egypt Gate</.test(enStrings), "values/strings.xml app_name");
 need(/name="app_name">صنع في مصر</.test(arStrings), "values-ar/strings.xml app_name");
+// saved passwords shared between the site and the app (assetlinks.json get_login_creds): Google also needs the app's own statement,
+// and acts on it only for the app on Google Play's public channel (app/well-known/README.md)
+need(/<meta-data\s+android:name="asset_statements"\s+android:resource="@string\/asset_statements"\s*\/>/.test(man), "AndroidManifest.xml: <meta-data android:name=\"asset_statements\" android:resource=\"@string/asset_statements\" /> under <application> (the app's side of get_login_creds)");
+need(enStrings.includes('<string name="asset_statements" translatable="false">[{\\"include\\": \\"https://madeinegyptgate.com/.well-known/assetlinks.json\\"}]</string>'), "values/strings.xml: asset_statements must include https://madeinegyptgate.com/.well-known/assetlinks.json (translatable=\"false\")");
 const names = (x) => [...x.matchAll(/<string name="([^"]+)"(?![^>]*translatable="false")/g)].map((m) => m[1]);
 for (const n of names(enStrings)) need(names(arStrings).includes(n), `values-ar/strings.xml has no «${n}» (every native text in Arabic and English)`);
 for (const n of names(arStrings)) need(names(enStrings).includes(n), `values/strings.xml has no "${n}"`);

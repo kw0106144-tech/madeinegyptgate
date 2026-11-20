@@ -24,7 +24,9 @@ const ok = (c, m) => { if (!c) { fails++; console.log("FAIL " + m); } else conso
 const html = `<!doctype html><html><head><meta name=viewport content="width=device-width"><style>
 body{margin:0;font:16px sans-serif} .long{height:3000px} #box{height:100px;overflow-y:auto} #box div{height:400px}
 #drawer{position:fixed;top:0;right:0;width:200px;height:200px;background:#eee} canvas{width:100px;height:100px}
+#row{width:200px;overflow-x:auto;white-space:nowrap} #row span{display:inline-block;width:600px}
 </style></head><body><p id=text>hello</p><div id=box><div>scroll</div></div><div id=drawer><b id=inDrawer>basket</b></div>
+<div id=row><span id=chip>chips that scroll sideways</span></div>
 <canvas id=cv></canvas><a id=plain href="/x/">plain</a><iframe id=fr src="/frame/"></iframe><div class=long></div></body></html>`;
 const browser = await chromium.launch({ executablePath: process.env.CHROME || "/usr/bin/google-chrome", args: ["--no-sandbox"] });
 const ctx = await browser.newContext({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 800 } });
@@ -46,7 +48,22 @@ ok(JSON.stringify(await touch("#text")) === '["1"]', "pull: at the top, on text 
 ok(JSON.stringify(await touch("#box div")) === '["0"]', "pull: inside a box that scrolls → no");
 ok(JSON.stringify(await touch("#inDrawer")) === '["0"]', "pull: inside a fixed panel (the market basket) → no");
 ok(JSON.stringify(await touch("#cv")) === '["0"]', "pull: on a canvas (a map) → no");
-ok(JSON.stringify(await touch("#text", 2)) === "[]", "pull: two fingers (a pinch) → nothing sent");
+ok(JSON.stringify(await touch("#text", 2)) === '["0"]', "pull: two fingers at once (a pinch) → no");
+/* a pinch as fingers land: the first finger's yes, then the second finger's no — the last answer the app holds for the touch is no
+   (MigPullLayout also refuses any touch with a second finger, and one that goes sideways before a pull starts) */
+const pinch = await page.evaluate(() => {
+  window.__msgs = [];
+  const el = document.getElementById("text"), r = el.getBoundingClientRect();
+  const t1 = new Touch({ identifier: 1, target: el, clientX: r.left + 5, clientY: r.top + 5 });
+  el.dispatchEvent(new TouchEvent("touchstart", { touches: [t1], targetTouches: [t1], changedTouches: [t1], bubbles: true, cancelable: true }));
+  const t2 = new Touch({ identifier: 2, target: el, clientX: r.left + 60, clientY: r.top + 60 });
+  el.dispatchEvent(new TouchEvent("touchstart", { touches: [t1, t2], targetTouches: [t1, t2], changedTouches: [t2], bubbles: true, cancelable: true }));
+  return window.__msgs.filter((m) => m[0] === "MIGAppPull").map((m) => m[1]);
+});
+ok(JSON.stringify(pinch) === '["1","0"]', "pull: finger 1 then finger 2 (a pinch) → yes, then no: the app holds no");
+/* a row that scrolls sideways (the market's department bar, the home rows): a pull DOWN on it reloads, as in Chrome (the row does not
+   scroll up or down); a SIDEWAYS swipe on it never does — MigPullLayout.pinchOrSideways refuses the touch natively (MigLogicTest) */
+ok(JSON.stringify(await touch("#chip")) === '["1"]', "pull: on a row that scrolls sideways → yes for a pull down (a sideways swipe is refused by the app)");
 await page.evaluate(() => document.documentElement.classList.add("jnl-on"));
 ok(JSON.stringify(await touch("#text")) === '["0"]', "pull: during a live call (html.jnl-on) → no");
 await page.evaluate(() => { document.documentElement.classList.remove("jnl-on"); document.documentElement.classList.add("nav-open"); });

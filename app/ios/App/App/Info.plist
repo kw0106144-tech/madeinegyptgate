@@ -67,7 +67,7 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>The microphone is used only when you start a live call with Janna or Bassem, the platform's assistants, so they can hear you.</string>
+	<string>The microphone is used only when you start a live call with Janna or Bassem, the platform's assistants, or tap the microphone in Janna's chat to speak instead of typing.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>The camera is used only when you choose to take a photo to upload, such as registration documents or product photos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

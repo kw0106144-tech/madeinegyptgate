@@ -28,7 +28,8 @@ import java.util.Set;
  * - pull to reload (android-pull-to-reload): the same script tells MIGAppPull, at each touch, whether this pull may reload the page:
  *   only at the top of the page, never in the phone menu (html.nav-open) or a live call (html.jnl-on), never inside a box that
  *   scrolls, a fixed panel (the market's basket, a dialog), a map, a video, a frame or a slider, never when the page locked its
- *   own scrolling (MigPullLayout asks it);
+ *   own scrolling, and "0" at a second finger's touchstart (a pinch) — MigPullLayout asks it, and refuses by itself a touch that
+ *   goes sideways before a pull starts (a row that scrolls sideways keeps the swipe, as in Chrome);
  * - a long press on a link: «نسخ الرابط» / «مشاركة» / «افتح في المتصفح» (share-and-copy-links);
  * - the back/forward cache where the WebView has it (android-list-back-cache): Back to a long list shows the same cards at the same
  *   place, as Chrome.
@@ -68,8 +69,9 @@ final class MigPage {
         "var ta=s.touchAction||'auto';if(ta!=='auto'&&ta!=='manipulation'&&ta.indexOf('pan-y')<0)return false;" +
         "if((s.overflowY==='auto'||s.overflowY==='scroll')&&e.scrollHeight>e.clientHeight+1)return false;}" +
         "return true;}" +
-        "window.addEventListener('touchstart',function(ev){if(!window." + PULL + "||!ev.touches||ev.touches.length!==1)return;" +
-        "var y=false;try{y=ok(ev.target);}catch(e){}try{window." + PULL + ".postMessage(y?'1':'0');}catch(e){}}," +
+        "window.addEventListener('touchstart',function(ev){if(!window." + PULL + "||!ev.touches)return;" +
+        "var y=false;if(ev.touches.length===1){try{y=ok(ev.target);}catch(e){}}" +
+        "try{window." + PULL + ".postMessage(y?'1':'0');}catch(e){}}," +
         "{capture:true,passive:true});})();";
 
     /** print + pull (when `pull` is given) + the link menu + the back/forward cache, for one WebView */

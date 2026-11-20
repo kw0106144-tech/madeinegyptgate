@@ -383,7 +383,7 @@ def sbn(cls, label, badge, slides, cta_href, cta_text):
         stage = ''.join(_a(n, x) for n, x in enumerate(sl))
     return ('<section class="sbn %s" aria-label="%s"><div class="sbn-in"><div class="sbn-head"><span class="sbn-badge">%s</span><span class="sbn-dots"></span></div>'
             '<div class="sbn-stage">%s<button class="sbn-nav p" type="button" aria-label="السابق">›</button><button class="sbn-nav n" type="button" aria-label="التالي">‹</button><span class="sbn-bar"><i></i></span></div>'
-            '<a class="sbn-cta" href="%s">%s</a></div></section>') % (cls, label, badge, stage, cta_href, cta_text)
+            '<a class="sbn-cta" href="%s" data-mig-buy>%s</a></div></section>') % (cls, label, badge, stage, cta_href, cta_text)  # «احجز باقة …»: a plan purchase (hidden in a store app while its buying is off, data/flags.js)
 
 # Egypt: no partner banners yet (UAE banners removed) — both lists are empty, so each slot shows the «مساحة إعلانية محجوزة» placeholder
 STRAT = sbn('strat', 'الشركاء الاستراتيجيين', '🏆 الشركاء الاستراتيجيون', [

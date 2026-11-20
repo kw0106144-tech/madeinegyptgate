@@ -52,6 +52,13 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- The app's side of the site ↔ app association for saved passwords (the old-account form of /login/): Google's credential
+             sharing reads this from the app AND /.well-known/assetlinks.json (get_login_creds) from the site. Google picks it up only
+             for the app published on Google Play's public channel, not for the APK of /app/ (app/well-known/README.md). -->
+        <meta-data
+            android:name="asset_statements"
+            android:resource="@string/asset_statements" />
     </application>
 
     <!-- Permissions -->

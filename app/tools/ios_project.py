@@ -36,7 +36,7 @@ SPM = os.path.join(IOS, "CapApp-SPM", "Package.swift")
 PURPOSE = {
     "en": {
         "CFBundleDisplayName": "Made in Egypt Gate",
-        "NSMicrophoneUsageDescription": "The microphone is used only when you start a live call with Janna or Bassem, the platform's assistants, so they can hear you.",
+        "NSMicrophoneUsageDescription": "The microphone is used only when you start a live call with Janna or Bassem, the platform's assistants, or tap the microphone in Janna's chat to speak instead of typing.",
         "NSCameraUsageDescription": "The camera is used only when you choose to take a photo to upload, such as registration documents or product photos.",
         "NSPhotoLibraryUsageDescription": "Your photo library is used only when you choose a photo or document to upload, such as registration documents or product photos.",
         "NSPhotoLibraryAddUsageDescription": "Lets you save an image from the platform to your photos when you choose to.",
@@ -44,7 +44,7 @@ PURPOSE = {
     },
     "ar": {
         "CFBundleDisplayName": "صنع في مصر",
-        "NSMicrophoneUsageDescription": "يُستخدم الميكروفون فقط عندما تبدأ مكالمة مباشرة مع جنة أو باسم، مساعدَي المنصة، ليسمعا صوتك.",
+        "NSMicrophoneUsageDescription": "يُستخدم الميكروفون فقط عندما تبدأ مكالمة مباشرة مع جنة أو باسم، مساعدَي المنصة، أو عندما تضغط على زر الميكروفون في محادثة جنة لتتحدث بدلًا من الكتابة.",
         "NSCameraUsageDescription": "تُستخدم الكاميرا فقط عندما تختار تصوير صورة لرفعها، مثل مستندات التسجيل أو صور المنتجات.",
         "NSPhotoLibraryUsageDescription": "تُستخدم مكتبة الصور فقط عندما تختار صورة أو مستندًا لرفعه، مثل مستندات التسجيل أو صور المنتجات.",
         "NSPhotoLibraryAddUsageDescription": "لحفظ صورة من المنصة في صورك عندما تختار ذلك.",

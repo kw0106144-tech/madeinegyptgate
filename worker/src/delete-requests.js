@@ -11,11 +11,15 @@
    Visitor (switch visitor_erase_request, default OFF — an exception to «Janna's memory is permanent», the owner's own decision):
      POST /api/janna/memory/erase-request  {visitor_id}  → 201 / 200 {request} — Janna's random visitor id only (no e-mail, no phone,
      nothing that links it to anyone). An id linked to a member account → 409 visitor_linked (that memory is the member's: he signs in and
-     asks for his account's deletion). Same-site Origin only, 3 a day per network, one audited row visitor.erase_request.
+     asks for his account's deletion). An id with nothing stored (no janna_visitors row, no Janna memory) → 200 {ok, nothing: true}: no row,
+     no e-mail (the page says there is nothing saved). Same-site Origin only, the site's human check (Turnstile, when TURNSTILE_SECRET is
+     set, as /api/inquiries), 3 a day per network, one audited row visitor.erase_request.
    Without the table (0010 not applied yet) → 503 delete_off; switch off → 503 feature_off. Nothing here ever deletes anything.
    Control Center (acc.js /api/admin/cc/delete-requests*, permission members.delete = the owner): the queue, and closing a request
-   (done / rejected + a note), audited delete_request.close. */
-import { line, now, iso, hex, rateOk, ipHash, isBlocked, mail, adminEmails, site } from "./common.js";
+   (done / rejected + a note), audited delete_request.close. «done» only once the deletion really ran (CLAUDE.md 2.6: the member's page
+   would say so): a member's account anonymised by the audited deleteMember (or gone), a visitor's janna_visitors row erased — else 409
+   not_deleted / not_erased. */
+import { line, now, iso, hex, rateOk, ipHash, isBlocked, human, mail, adminEmails, site } from "./common.js";
 import { authUser, isLinkSession } from "./auth.js";
 import { featureOn, offMessage, deleteStoreOn } from "./flags.js";
 import { appOf } from "./app-ua.js";
@@ -95,11 +99,17 @@ export async function handleVisitorEraseRequest(req, env, ctx) {
     const ih = await ipHash(req, env);
     if (await isBlocked(env, { ip_hash: ih })) return vfail(403, "blocked", cors);
     // an id linked to a member is HIS memory (CLAUDE.md 2.5): he signs in and asks for his account's deletion instead
-    let linked = false;
-    try { const r = await env.DB.prepare("SELECT member_id FROM janna_visitors WHERE visitor_id = ?").bind(vid).first(); linked = !!(r && r.member_id); } catch (e) { linked = false; }
+    let linked = false, stored = false;
+    try { const r = await env.DB.prepare("SELECT member_id FROM janna_visitors WHERE visitor_id = ?").bind(vid).first(); linked = !!(r && r.member_id); stored = !!r; } catch (e) { linked = false; }
     if (linked) return vfail(409, "visitor_linked", cors, { message: "الكلام ده مربوط بحساب عضو — ادخل بحسابك واطلب حذف الحساب / these conversations belong to a member account — sign in and request the account's deletion" });
+    if (!stored) { try { stored = !!(await env.DB.prepare("SELECT 1 AS x FROM advisor_memory WHERE member_id = ? LIMIT 1").bind("v:" + vid).first()); } catch (e) { stored = false; } }
+    // nothing stored for this id: nothing to erase — no row in the owner's queue, no e-mail (a script cannot fill them with random ids)
+    if (!stored) return vjson({ ok: true, nothing: true, days: DELETE_DAYS }, 200, cors);
     const open = await pendingFor(env, "visitor_id", vid);
     if (open) return vjson({ ok: true, request: out(open), existing: true, days: DELETE_DAYS }, 200, cors);
+    // a new row: the site's human check first (Turnstile when TURNSTILE_SECRET is set, as /api/inquiries)
+    const hu = await human(req, env, b);
+    if (hu) { let code = "verification_required"; try { const j = await hu.json(); code = (j && (j.code || j.error)) || code; } catch (e) { /* not JSON */ } return vfail(hu.status, code, cors); }
     if (!(await rateOk(env, "delvis|" + ih, 3, 86400))) return vfail(429, "rate_limited", cors);
     const id = "dr-" + hex(5), t = now();
     await batch(env, [
@@ -130,6 +140,21 @@ export async function listDeleteRequests(env, url) {
     due_at: iso(Date.parse(r.created_at) + DELETE_DAYS * 86400000), overdue: r.status === "pending" && Date.parse(r.created_at) + DELETE_DAYS * 86400000 < nowMs,
     ...(r.kind === "member" ? { member: { id: r.member_id, email: r.m_email || "", company: r.m_company || "", name: r.m_name || "", plan: r.m_plan || "", deleted: !r.m_email || /@invalid$/.test(String(r.m_email)) } } : { visitor_id: r.visitor_id }) })) };
 }
+/* «done» says the deletion was carried out — the member's own page and the audit log repeat it — so it is accepted only when it is true:
+   a member's account is gone or anonymised by the audited deletion (acc-members.js deleteMember: «deleted+<id>@invalid», a mailbox
+   nobody can sign in with again); a visitor's janna_visitors row is erased (acc-memory.js eraseMemory). Otherwise → 409 */
+export const DELETED_EMAIL_RX = /^deleted\+.+@invalid$/;
+async function deletionRan(env, r) {
+  if (r.kind === "member") {
+    const m = r.member_id ? await first(env, "SELECT email FROM members WHERE id = ?", r.member_id) : null;
+    if (m && !DELETED_EMAIL_RX.test(String(m.email || "")))
+      fail(409, "not_deleted", "الحساب لسه موجود: نفّذ الحذف المسجّل من «الأعضاء والاشتراكات» الأول، وبعدين علّم الطلب «تم» / the account still exists: run the audited deletion in «Members & subscriptions» first, then mark the request done");
+    return;
+  }
+  let kept = false;
+  try { kept = !!(await env.DB.prepare("SELECT 1 AS x FROM janna_visitors WHERE visitor_id = ?").bind(r.visitor_id).first()); } catch (e) { kept = false; } // no table (before 0009): nothing kept
+  if (kept) fail(409, "not_erased", "ذاكرة الزائر لسه موجودة: امسحها الأول («امسح ذاكرة الزائر») / the visitor's memory is still stored: erase it first («Erase the visitor's memory»)");
+}
 /* POST /delete-requests/:id {status: "done" | "rejected", note?} — closes it (the deletion itself is the separate audited action) */
 export async function closeDeleteRequest(req, env, ctx, adm, id) {
   const b = await readBody(req, 4096), status = line(b.status, 20), note = line(b.note, 500);
@@ -139,6 +164,7 @@ export async function closeDeleteRequest(req, env, ctx, adm, id) {
   const r = await first(env, "SELECT * FROM cc_delete_requests WHERE id = ?", id);
   if (!r) fail(404, "not_found", "request not found");
   if (r.status !== "pending") fail(409, "state", "this request is already closed", { status: r.status });
+  if (status === "done") await deletionRan(env, r);
   const t = now(), by = line((adm.actor && (adm.actor.actor_email || adm.actor.actor_id)) || "owner", 254);
   await batch(env, [
     env.DB.prepare("UPDATE cc_delete_requests SET status = ?, decided_at = ?, decided_by = ?, note = ? WHERE id = ? AND status = 'pending'").bind(status, t, by, note, id),

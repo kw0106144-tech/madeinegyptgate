@@ -724,7 +724,7 @@ function renderBrief() {
   var body;
   if (BS.tab !== "all" && !inPlan(BS.tab)) {
     var cnt = all.filter(function (o) { return o.market === BS.tab; }).length;
-    body = '<div class="advup"><div><b>🔒 ' + (EN ? mName(BS.tab) + " is not included in your plan" : "سوق " + esc(mName(BS.tab)) + " مش ضمن باقتك") + "</b><p style=\"opacity:.9;font-size:.88rem\">" + (EN ? cnt + " open opportunities are published in this market. Asia and Europe are included in the Strategic Partner plan." : "فيه " + cnt + " فرصة مفتوحة منشورة في السوق ده. أسواق آسيا وأوروبا متاحة في باقة الشريك الاستراتيجي.") + '</p></div><a class="btn btn-gold btn-sm" href="register.html#strategic">⬆️ ' + T("ترقية للشريك الاستراتيجي", "Upgrade to Strategic Partner") + "</a></div>";
+    body = '<div class="advup"><div><b>🔒 ' + (EN ? mName(BS.tab) + " is not included in your plan" : "سوق " + esc(mName(BS.tab)) + " مش ضمن باقتك") + "</b><p style=\"opacity:.9;font-size:.88rem\">" + (EN ? cnt + " open opportunities are published in this market. Asia and Europe are included in the Strategic Partner plan." : "فيه " + cnt + " فرصة مفتوحة منشورة في السوق ده. أسواق آسيا وأوروبا متاحة في باقة الشريك الاستراتيجي.") + '</p></div><a class="btn btn-gold btn-sm" data-mig-buy href="register.html#strategic">⬆️ ' + T("ترقية للشريك الاستراتيجي", "Upgrade to Strategic Partner") + "</a></div>";
   } else {
     var L = briefList();
     body = L.length ? '<div class="advg">' + L.slice(0, BS.n).map(oppCard).join("") + "</div>" + (L.length > BS.n ? '<button class="btn btn-line advmore" type="button" id="advMore">' + T("عرض المزيد", "Show more") + " (" + (L.length - BS.n) + ")</button>" : "")

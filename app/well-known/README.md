@@ -4,9 +4,11 @@
 only templates that show the format; never copy them into the build.
 
 - **Android, served since 2026-11-20**: `/.well-known/assetlinks.json` lists the package and `android_cert_sha256` (today the release
-  key that signs the APK offered on `/app/`), with two relations: `handle_all_urls` (App Links) and `get_login_creds` (Android shares
-  the old-account form's saved passwords between the site and the app). When the Google Play app exists, add Play's **app signing
-  key** SHA-256 to `android_cert_sha256` in `seo/config.json`, not here.
+  key that signs the APK offered on `/app/`), with two relations: `handle_all_urls` (App Links) and `get_login_creds` (the site's
+  half of sharing the old-account form's saved passwords between the site and the app; the app's half is the `asset_statements`
+  meta-data of `AndroidManifest.xml`, which includes this file). Google honours that pair **only once the app is released on Google
+  Play's public channel**: until then (today: only the APK of `/app/`) passwords are not shared. When the
+  Google Play app exists, add Play's **app signing key** SHA-256 to `android_cert_sha256` in `seo/config.json`, not here.
 - **iOS, not served yet, on purpose**: `/.well-known/apple-app-site-association` is written only once `seo/config.json` `"app"`
   `ios_team_id` holds the owner's Apple Team ID (10 characters; empty today, because a wrong file is worse than none, and a malformed
   value stops the build). Its components, in this order (the first match wins): `/api/*`, `/pay*`, `/media/*`, `/panel.html` and

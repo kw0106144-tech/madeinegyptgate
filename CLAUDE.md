@@ -290,7 +290,8 @@ switch wait for the owner's word-for-word approval: `docs/app/OWNER-APPROVAL-AR.
   `seo.js` (no ad pixels in the iPhone app), `janna-welcome.js` (no self-start voice). Tests: `worker/test/app-parity*.test.mjs`,
   `review-signin.test.mjs`, `delete-request.test.mjs`, `bassem-tab.test.mjs`, `dev-panel.test.mjs`;
 - App Links files (`seo_app.part.py`, from `seo/config.json` `"app"`): `/.well-known/assetlinks.json` (`handle_all_urls` +
-  `get_login_creds`) always; `/.well-known/apple-app-site-association` only once `app.ios_team_id` holds the owner's Apple Team ID
+  `get_login_creds`, whose other half is the app's `asset_statements` meta-data; Google shares saved passwords only once the app is out on
+  Google Play's public channel, not for today's `/app/` APK) always; `/.well-known/apple-app-site-association` only once `app.ios_team_id` holds the owner's Apple Team ID
   (empty today: no file, because a wrong one is worse than none; a malformed value stops the build). It sends `/api/*`, `/pay*`,
   `/media/*`, `/panel.html` and `/login.html` to the browser and every other path to the app, plus `webcredentials` for the same app.
   The templates in `app/well-known/` and `app/tools/check-app.mjs` follow the same rules (`npm run check` compares them);

@@ -21,16 +21,18 @@ const tick = () => new Promise(r => setTimeout(r, 0));
 /* ---------- data/flags.js ---------- */
 function flagsPage({ ua, features, ls = {}, anchors = [] } = {}) {
   const de = { className: "", getAttribute: k => (k === "lang" ? "ar" : null) }, events = [];
-  const doc = { documentElement: de, head: { appendChild() {} }, body: {}, readyState: "complete", getElementById: () => null, createElement: () => ({ style: {} }),
-    querySelectorAll: sel => (/#plans/.test(sel) ? anchors : []), addEventListener() {} };
+  const listeners = {}, styles = [];
+  const doc = { documentElement: de, head: { appendChild(x) { styles.push(x); } }, body: {}, readyState: "complete", getElementById: () => null, createElement: () => ({ style: {} }),
+    querySelectorAll: sel => (/#plans/.test(sel) ? anchors : []), addEventListener(n, fn) { (listeners[n] = listeners[n] || []).push(fn); } };
   const win = { navigator: { userAgent: ua }, sessionStorage: store(), localStorage: store(ls), addEventListener() {}, dispatchEvent: e => events.push(e) };
   win.fetch = () => Promise.resolve({ ok: true, headers: { get: () => "application/json" }, json: () => Promise.resolve({ features: features || {}, features_v: "v1" }) });
   const ctx = vm.createContext({ window: win, document: doc, fetch: win.fetch, setTimeout, clearTimeout, CustomEvent: function (n, o) { this.type = n; this.detail = o && o.detail; }, JSON, Object, String, Date, Math });
   vm.runInContext(read("data/flags.js"), ctx);
-  return { win, doc, de, F: win.MIGFLAGS, events };
+  return { win, doc, de, F: win.MIGFLAGS, events, listeners, css: () => styles.map(x => x.textContent || "").join("") };
 }
 const cls = de => (" " + de.className + " ");
-function anchor(href, text) { const a = { attrs: { href }, textContent: text, getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }, setAttribute(k, v) { this.attrs[k] = String(v); }, removeAttribute(k) { delete this.attrs[k]; }, hasAttribute(k) { return k in this.attrs; } }; return a; }
+/* a link; `inside` = the element it sits in ("NAV" / "HEADER" = the main menu, "SECTION" = a page's own text) */
+function anchor(href, text, inside = "NAV", attrs = {}) { const a = { nodeType: 1, nodeName: "A", parentNode: { nodeType: 1, nodeName: inside, parentNode: null }, attrs: { href, ...attrs }, textContent: text, getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }, setAttribute(k, v) { this.attrs[k] = String(v); }, removeAttribute(k) { delete this.attrs[k]; }, hasAttribute(k) { return k in this.attrs; } }; return a; }
 
 describe("data/flags.js — the app's switches", () => {
   test("a browser: no app, never buyOff, whatever the switches say", async () => {
@@ -64,6 +66,30 @@ describe("data/flags.js — the app's switches", () => {
     await tick(); await tick();
     assert.equal(B.F.buyOff(), true);
     assert.deepEqual([a.textContent, a.getAttribute("href")], ["التسجيل", "/register/#form"]);
+    // the switch back on: the menu item comes back as it was
+    const C = flagsPage({ ua: UA_AND, features: { app_buy_android: true }, ls: { "mig-flags-app": JSON.stringify({ app_buy_android: false }) }, anchors: [a] });
+    assert.equal(C.F.buyOff(), true, "the memo first");
+    await tick(); await tick();
+    assert.equal(C.F.buyOff(), false);
+    assert.deepEqual([a.textContent, a.getAttribute("href"), a.hasAttribute("data-mig-buy-was")], ["الباقات والتسجيل", "/register/#plans", false]);
+  });
+  test("buying off (review F1): every link to the plans leads to the form — words kept outside the menu — and a link marked [data-mig-buy] is left to the CSS", async () => {
+    const hub = anchor("/register/#plans", "🏭 سجّل منشأتك بالدليل الآن", "SECTION"), buy = anchor("/register/#plans", "📦 الباقات والأسعار ←", "SECTION", { "data-mig-buy": "" });
+    const P = flagsPage({ ua: UA_IOS, features: { app_buy_ios: false }, anchors: [hub, buy] });
+    await tick(); await tick();
+    assert.deepEqual([hub.textContent, hub.getAttribute("href")], ["🏭 سجّل منشأتك بالدليل الآن", "/register/#form"], "a page's own link: the form, its words kept");
+    assert.equal(buy.getAttribute("href"), "/register/#plans", "a buying link is hidden, not turned");
+    // a link a page writes later (Janna's chat, the dashboard): turned at the tap, before the WebView follows it
+    const late = anchor("register.html#plans", "الباقات", "SECTION"), inner = { nodeType: 1, nodeName: "SPAN", parentNode: late };
+    assert.equal((P.listeners.click || []).length, 1, "one tap listener, in the app only");
+    P.listeners.click[0]({ target: inner });
+    assert.equal(late.getAttribute("href"), "register.html#form");
+    const web = flagsPage({ ua: UA_WEB, features: { app_buy_ios: false }, anchors: [anchor("/register/#plans", "x", "SECTION")] });
+    assert.equal((web.listeners.click || []).length, 0, "no tap listener in a browser");
+    // the paid plans' own links (the banners' «احجز باقة …», the footer's «كن شريكاً») are hidden by the CSS, inside THAT app only
+    const css = P.css();
+    for (const h of ["partner", "strategic", "premium", "basic", "profile"])
+      for (const p of ["ios", "android"]) assert.ok(css.includes(`html.mig-app-${p}.mig-off-app_buy_${p} a[href*='register'][href$='#${h}']`), p + " #" + h);
   });
   test("the CSS hides [data-mig-buy] only under html.mig-app-<p>.mig-off-app_buy_<p>", () => {
     const src = read("data/flags.js");

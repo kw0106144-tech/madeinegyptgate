@@ -49,6 +49,8 @@ import org.json.JSONObject;
 public class MainActivity extends BridgeActivity implements MigWebViewClient.Host {
 
     private static final String KEY_PLACE = "mig-place";
+    /** an App Link still waiting for the page's answer about a call when the activity was recreated: the new one opens it */
+    private static final String KEY_INCOMING = "mig-incoming";
     /** private, never backed up (res/xml/backup_rules.xml, data_extraction_rules.xml): the old system's session id */
     private static final String SESSION_PREFS = "mig_session";
     private static final long SESSION_KEEP_MS = 24L * 3600L * 1000L;
@@ -65,6 +67,7 @@ public class MainActivity extends BridgeActivity implements MigWebViewClient.Hos
     private BroadcastReceiver downloadsDone;
     private String failedUrl;
     private String pendingLink;
+    private String incoming;
     private String offlineTemplate;
     private String gonePlace;
     private boolean ready;
@@ -107,7 +110,9 @@ public class MainActivity extends BridgeActivity implements MigWebViewClient.Hos
             return;
         }
         String place = savedInstanceState != null ? savedInstanceState.getString(KEY_PLACE) : null;
-        String go = MigLinks.restoreUrl(place, pendingLink);
+        // a link that arrived while the old activity waited for its page's answer (openIncoming): the call went with that page
+        String waiting = savedInstanceState != null ? savedInstanceState.getString(KEY_INCOMING) : null;
+        String go = MigLinks.restoreUrl(place, pendingLink != null ? pendingLink : waiting);
         pendingLink = null;
         if (go != null) webView.loadUrl(go);
     }
@@ -132,23 +137,31 @@ public class MainActivity extends BridgeActivity implements MigWebViewClient.Hos
         openIncoming(link);
     }
 
-    /** a page of the site from another app while the app runs: as a browser opens it in a new tab when the current one is busy */
+    /**
+     * a page of the site from another app while the app runs: as a browser opens it in a new tab when the current one is busy. A page
+     * that does not answer in time counts as a call (MigWindows.callOpen null: likely busy with the call, or still waking up after the
+     * app came back), so a late answer never replaces the call's page; the link is kept across a recreate meanwhile (KEY_INCOMING).
+     */
     private void openIncoming(String link) {
+        incoming = link;
         windows.callOpen(open -> {
-            if (isFinishing() || bridge == null) return;
+            if (link.equals(incoming)) incoming = null;
+            if (isFinishing() || isDestroyed() || bridge == null) return;
             WebView webView = bridge.getWebView();
-            if (!open) {
+            int action = MigLinks.incomingAction(open, link);
+            if (action == MigLinks.INCOMING_LOAD) {
                 windows.closeAll();
                 webView.loadUrl(link);
                 return;
             }
-            if (!MigLinks.startsCall(link)) {
+            if (action == MigLinks.INCOMING_WINDOW) {
                 windows.openLink(link); // over the call, which goes on
                 return;
             }
             new AlertDialog.Builder(this)
                 .setTitle(R.string.mig_call_link_title)
                 .setPositiveButton(R.string.mig_call_link_open, (d, w) -> {
+                    if (isFinishing() || isDestroyed()) return;
                     windows.closeAll();
                     webView.loadUrl(link);
                 })
@@ -162,6 +175,7 @@ public class MainActivity extends BridgeActivity implements MigWebViewClient.Hos
         super.onSaveInstanceState(outState);
         String place = placeToKeep();
         if (place != null) outState.putString(KEY_PLACE, place);
+        if (incoming != null) outState.putString(KEY_INCOMING, incoming);
     }
 
     @Override
@@ -173,7 +187,8 @@ public class MainActivity extends BridgeActivity implements MigWebViewClient.Hos
     @Override
     public void onDestroy() {
         keepLegacySession();
-        if (windows != null) windows.closeAll();
+        ui.removeCallbacksAndMessages(null); // a Back still waiting for its page's answer
+        if (windows != null) windows.destroy(); // its call checks and windows
         if (downloadsDone != null) {
             try {
                 unregisterReceiver(downloadsDone);
@@ -232,7 +247,9 @@ public class MainActivity extends BridgeActivity implements MigWebViewClient.Hos
     /**
      * Back: full screen first; then asks the page whether a live call is open (JANNA_LIVE.isOpen()) and goes back by
      * MigLinks.backOffset. During a call one step is WebView.goBack(), Chromium's own Back: the shared screen's last page, with
-     * Chrome's rule for entries a page added without a tap. Page windows handle their own Back (MigWindows).
+     * Chrome's rule for entries a page added without a tap. A page that does not answer within BACK_ASK_MS is taken as one with a
+     * call (likely busy with it): that single step is harmless without a call, while skipping the shared screen's entries would
+     * leave the call's page and end the call. Page windows handle their own Back (MigWindows).
      */
     private void onBack() {
         if (chrome != null && chrome.isFullScreen()) {
@@ -244,7 +261,7 @@ public class MainActivity extends BridgeActivity implements MigWebViewClient.Hos
         Runnable noAnswer = () -> {
             if (done[0]) return;
             done[0] = true;
-            back(webView, false); // a page busy for a second: as without a call
+            back(webView, true); // a page busy for a second (likely with the call): as with a call
         };
         try {
             webView.evaluateJavascript(MigWindows.CALL_JS, r -> {
@@ -253,7 +270,8 @@ public class MainActivity extends BridgeActivity implements MigWebViewClient.Hos
                 back(webView, "true".equals(r));
             });
         } catch (RuntimeException e) {
-            noAnswer.run();
+            done[0] = true;
+            back(webView, false); // no page to ask: no call
             return;
         }
         ui.postDelayed(noAnswer, BACK_ASK_MS);
@@ -281,7 +299,7 @@ public class MainActivity extends BridgeActivity implements MigWebViewClient.Hos
     }
 
     private void confirmExit() {
-        if (isFinishing()) return;
+        if (isFinishing() || isDestroyed()) return;
         new AlertDialog.Builder(this)
             .setTitle(R.string.mig_exit_title)
             .setMessage(R.string.mig_exit_message)

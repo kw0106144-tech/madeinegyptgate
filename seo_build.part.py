@@ -2388,7 +2388,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                          esc(logo.lstrip('/')), esc(name), w, h))
         strip = ''
         if cards:
-            strip = ('<section class="ftr-partners" aria-label="%s"><div class="wrap fp-head"><h3>%s</h3><a href="%s">%s</a></div>'
+            # «كن شريكاً ←» picks the partner plan: [data-mig-buy] (hidden inside a store app while its buying is off, data/flags.js)
+            strip = ('<section class="ftr-partners" aria-label="%s"><div class="wrap fp-head"><h3>%s</h3><a href="%s" data-mig-buy>%s</a></div>'
                      '<div class="fp-run"><div class="fp-track">%s</div></div>%s</section>'
                      % (T('شركاء المنصة', 'Platform Partners'), T('شركاء المنصة', 'Platform Partners'), stat('register', '#partner'), T('كن شريكاً ←', 'Become a partner →'),
                         cards, ('<script>%s</script>' % FTR_JS.strip()) if app else ''))

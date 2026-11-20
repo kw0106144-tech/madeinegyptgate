@@ -45,7 +45,7 @@
   function lv() { var P = plan(); return P && P.plan ? P.plan.lv : 0; }
   function inScope(m) { var P = plan(); if (!P) return m === "local"; if (P.plan.lv < 1) return false; return P.market(marketOf(m)); }
   function planOK(f) { var P = plan(); return !!(P && P.can(f)); }
-  function lockHTML(f, title) { var P = plan(); return P && P.lockHTML ? P.lockHTML(f, title) : '<div class="mgq-er">' + esc(T("الخدمة دي للأعضاء.", "This is for members.")) + ' <a href="register.html#plans">' + esc(T("الباقات", "Plans")) + "</a></div>"; }
+  function lockHTML(f, title) { var P = plan(); return P && P.lockHTML ? P.lockHTML(f, title) : '<div class="mgq-er">' + esc(T("الخدمة دي للأعضاء.", "This is for members.")) + ' <a data-mig-buy href="register.html#plans">' + esc(T("الباقات", "Plans")) + "</a></div>"; }
   function scopeLockHTML(m, title) { var P = plan(); return P && P.scopeLockHTML ? P.scopeLockHTML(marketOf(m), title) : lockHTML("tenders", title); }
 
   /* ---------- page context for Janna, follows and beacons ---------- */

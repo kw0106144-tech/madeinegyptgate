@@ -15,7 +15,10 @@
   function start(X) {
     var T = X.T, h = X.h, str = X.str, trim = X.trim;
     var API = "/admin/cc/delete-requests";
-    var MORE = { delete_off: ["طلبات حذف الحساب محتاجة ملف قاعدة البيانات 0010_delete_requests.sql (GitHub ← Actions ← d1-migrate).", "Account deletion requests need the database file 0010_delete_requests.sql (GitHub → Actions → d1-migrate)."] };
+    var MORE = { delete_off: ["طلبات حذف الحساب محتاجة ملف قاعدة البيانات 0010_delete_requests.sql (GitHub ← Actions ← d1-migrate).", "Account deletion requests need the database file 0010_delete_requests.sql (GitHub → Actions → d1-migrate)."],
+      /* «تم» only once the deletion really ran (worker/src/delete-requests.js deletionRan): the member's page says so */
+      not_deleted: ["الحساب لسه موجود: افتح العضو ونفّذ «حذف» الأول، وبعدين علّم الطلب «تم».", "The account still exists: open the member and run «Delete» first, then mark the request done."],
+      not_erased: ["ذاكرة الزائر لسه موجودة: اضغط «امسح ذاكرة الزائر» الأول.", "The visitor's memory is still stored: press «Erase the visitor's memory» first."] };
     Object.keys(MORE).forEach(function (k) { if (!X.ERRS[k]) X.ERRS[k] = MORE[k]; });
     var KIND = { member: ["حساب عضو", "Member account"], visitor: ["زائر (كلامه مع جنة)", "Visitor (Janna conversations)"] };
     var STATUS = { pending: ["مستني تنفيذ", "Waiting", "p"], done: ["اتنفّذ", "Done", "ok"], rejected: ["اترفض", "Rejected", "x"] };

@@ -53,9 +53,12 @@ import java.util.List;
  * - a page of the site → a full-screen window with a red bar: the page's title and «✕ إغلاق» / "✕ Close". The page under it keeps
  *   running (the call goes on, a half-filled form keeps its values). Back steps back inside the window, then closes it;
  *   window.close() and opener.focus() (data/bassem-tab.js «ارجع للمكالمة») close it too, and the opener's w.closed turns true;
- * - another site while a live call is open (JANNA_LIVE.isOpen() in the app's pages) → the same window, so the app stays in front
- *   and the call keeps its microphone (Android silences an app in the background); without a call → the phone's browser, as before;
- * - mail, phone, WhatsApp … → their app, as before;
+ * - another site while a live call is open (JANNA_LIVE.isOpen() in the app's pages; a page too busy to answer counts as a call) →
+ *   the same window, so the app stays in front and the call keeps its microphone (Android silences an app in the background);
+ *   without a call → the phone's browser, as before;
+ * - the payment gateway that the site's /pay/ page goes to (no Capacitor bridge in a window, data/pay.js) → the phone's browser,
+ *   call or not: cards, 3-D Secure and wallet links need it (pay-handoff);
+ * - mail, phone, WhatsApp … → their app, as before, after a tap only: another site's automatic jump to an app is cancelled (Chrome);
  * - a file (an .ics, an export) → downloaded (MigDownloads), and the window that never showed a page closes.
  * A window has no Capacitor bridge (Capacitor injects it only into the main WebView), the microphone only for the site's pages
  * (MigChromeClient), its own downloads, print, pull to reload and link menu (MigPage), and full-screen video inside its own window.
@@ -88,12 +91,17 @@ final class MigWindows {
 
     /** onCreateWindow (main page or a window, from a tap): a new window for the page; false = refused (window.open gives null) */
     boolean open(WebView opener, Message msg) {
-        if (activity.isFinishing() || wins.size() >= MAX || msg == null || !(msg.obj instanceof WebView.WebViewTransport)) return false;
+        if (gone() || wins.size() >= MAX || msg == null || !(msg.obj instanceof WebView.WebViewTransport)) return false;
         Win w;
         try {
             w = new Win();
         } catch (RuntimeException e) {
             return false; // no WebView right now (being updated by Google Play)
+        }
+        try {
+            w.openerUrl = opener != null ? opener.getUrl() : null;
+        } catch (RuntimeException ignored) {
+            // the opener is going away: no opener page to know
         }
         wins.add(w);
         ((WebView.WebViewTransport) msg.obj).setWebView(w.view);
@@ -104,7 +112,7 @@ final class MigWindows {
 
     /** a link of the site that came from another app during a live call: a window of its own, like a new tab (no opener) */
     void openLink(String url) {
-        if (activity.isFinishing()) return;
+        if (gone()) return;
         if (wins.size() >= MAX) wins.get(0).close();
         Win w;
         try {
@@ -125,6 +133,17 @@ final class MigWindows {
         for (Win w : new ArrayList<>(wins)) w.close();
     }
 
+    /** the activity is going away (MainActivity.onDestroy): no late call check, address wait or window after this */
+    void destroy() {
+        ui.removeCallbacksAndMessages(null);
+        closeAll();
+    }
+
+    /** the activity can no longer show a window or a dialog */
+    private boolean gone() {
+        return activity.isFinishing() || activity.isDestroyed();
+    }
+
     boolean any() {
         return !wins.isEmpty();
     }
@@ -140,7 +159,12 @@ final class MigWindows {
         for (int j = wins.size() - 1; j > i; j--) wins.get(j).close();
     }
 
-    /** is a live call open in the main page or in a page window of the site? (answers within CALL_ASK_MS, on the UI thread) */
+    /**
+     * Is a live call open in the main page or in a page window of the site? On the UI thread, within CALL_ASK_MS: TRUE as soon as a
+     * page says so, FALSE once every page said no, null when a page did not answer in time. A page busy for a second and a half is
+     * likely busy with the call itself (WebRTC on a slow phone) or still waking up after the app came back: callers take null as a call,
+     * the side where nothing ends it (MainActivity's Back and incoming links, the windows' other sites).
+     */
     void callOpen(ValueCallback<Boolean> then) {
         List<WebView> views = new ArrayList<>();
         views.add(main);
@@ -151,19 +175,19 @@ final class MigWindows {
         final Runnable finish = () -> {
             if (done[0]) return;
             done[0] = true;
-            then.onReceiveValue(any[0]);
+            then.onReceiveValue(any[0] ? Boolean.TRUE : left[0] <= 0 ? Boolean.FALSE : null);
         };
         for (WebView v : views) {
             try {
                 v.evaluateJavascript(CALL_JS, r -> {
                     if ("true".equals(r)) any[0] = true;
-                    if (--left[0] <= 0) finish.run();
+                    if (--left[0] <= 0 || any[0]) finish.run();
                 });
             } catch (RuntimeException e) {
-                if (--left[0] <= 0) finish.run();
+                if (--left[0] <= 0) finish.run(); // a page that is gone has no call
             }
         }
-        ui.postDelayed(finish, CALL_ASK_MS);
+        if (!done[0]) ui.postDelayed(finish, CALL_ASK_MS);
     }
 
     private Win find(WebView view) {
@@ -189,6 +213,8 @@ final class MigWindows {
         boolean shown;
         boolean committed;
         boolean closed;
+        /** the page that opened this window (open: a tap there), null for a link from another app */
+        String openerUrl;
         ComponentDialog dialog;
         TextView title;
         TextView where;
@@ -249,7 +275,12 @@ final class MigWindows {
                 return false;
             }
             if (!MigLinks.isWeb(url)) {
-                MigOut.external(activity, url); // mail, phone, WhatsApp …
+                MigOut.external(activity, url); // mail, phone, WhatsApp … (this window came from a tap: open() refuses any other)
+                close();
+                return true;
+            }
+            if (MigLinks.isPayPage(openerUrl)) {
+                MigOut.browser(activity, url); // the payment gateway from /pay/: the phone's browser, call or not (pay-handoff)
                 close();
                 return true;
             }
@@ -258,7 +289,7 @@ final class MigWindows {
             if (started) view.stopLoading(); // (from shouldOverrideUrlLoading, returning true cancels it)
             callOpen(open -> {
                 if (closed) return;
-                if (open) {
+                if (MigLinks.asCall(open)) { // a call, or a page too busy to answer (likely with the call): keep the app in front
                     elsewhere();
                     show();
                     view.loadUrl(url);
@@ -270,21 +301,28 @@ final class MigWindows {
             return true;
         }
 
-        /** a later address of the window; true = handled here */
-        boolean later(String url) {
+        /** a later address of the window (gesture: the navigation came from a tap); true = handled here */
+        boolean later(String url, boolean gesture) {
             if (MigLinks.isOfflineOrBlank(url) || url.startsWith("blob:") || MigLinks.isSiteUrl(url)) {
                 if (mode == MigLinks.EXTERNAL_CHILD && MigLinks.isSiteUrl(url)) site();
                 return false;
             }
             if (!MigLinks.isWeb(url)) {
-                MigOut.external(activity, url);
+                // mail, phone, WhatsApp, market: … after a tap; an automatic jump (another site's redirect to an app) is cancelled
+                if (MigLinks.opensAnotherApp(url, gesture)) MigOut.external(activity, url);
+                return true;
+            }
+            if (mode == MigLinks.SITE_CHILD && MigLinks.isPayPage(view.getUrl())) {
+                // «ادفع الآن» on /pay/ in a window (no Capacitor bridge here): the gateway, its 3-D Secure pages and wallet links run in
+                // the phone's browser, call or not; the /pay/ page stays and confirms the payment when the member comes back (data/pay.js)
+                MigOut.browser(activity, url);
                 return true;
             }
             if (mode == MigLinks.EXTERNAL_CHILD) return false; // another site during a call: its pages stay here
             // a page of the site goes to another site: in the app while a call is open, else the browser
             callOpen(open -> {
                 if (closed) return;
-                if (open) {
+                if (MigLinks.asCall(open)) { // a call, or no answer in time (likely busy with the call): stay in the app
                     elsewhere();
                     view.loadUrl(url);
                 } else {
@@ -306,7 +344,7 @@ final class MigWindows {
 
         @SuppressWarnings("deprecation") // SOFT_INPUT_ADJUST_RESIZE: still what Android 7–10 read (11+: the insets listener below)
         void show() {
-            if (shown || closed || activity.isFinishing()) return;
+            if (shown || closed || gone()) return;
             shown = true;
             int red = ContextCompat.getColor(activity, R.color.mig_red_deep);
             LinearLayout root = new LinearLayout(activity);
@@ -455,14 +493,15 @@ final class MigWindows {
                 String url = u != null ? u.toString() : null;
                 if (url == null || closed) return closed;
                 if (!req.isForMainFrame()) {
-                    // a frame: web pages load; mail, phone, WhatsApp … go to their app (Capacitor does the same for the main page)
+                    // a frame: web pages load; mail, phone, WhatsApp … go to their app after a tap (Capacitor does the same for the main
+                    // page); an automatic jump (an ad frame's market: / intent: / app link) is cancelled, as Chrome refuses it
                     if (MigLinks.isWeb(url) || MigLinks.isOfflineOrBlank(url) || url.startsWith("blob:")) return false;
-                    MigOut.external(activity, url);
+                    if (MigLinks.opensAnotherApp(url, req.hasGesture())) MigOut.external(activity, url);
                     return true;
                 }
                 if (mode == UNDECIDED) return first(url, false, false);
                 if (mode == PENDING) return true;
-                return later(url);
+                return later(url, req.hasGesture());
             }
 
             @Override

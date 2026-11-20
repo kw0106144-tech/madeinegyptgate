@@ -392,6 +392,7 @@
     l.forEach(function (a) {
       var b = el("button", a[1], a[2]); b.type = "button"; b.setAttribute("data-act", a[0]);
       if (a[0] === "login") b.setAttribute("data-miglogin", "");
+      if (a[0] === "plans" || a[0] === "renew") b.setAttribute("data-mig-buy", ""); /* a plan purchase: hidden in a store app while its buying is off (data/flags.js) */
       b.onclick = function () { setTimeout(function () { act(a[0]); }, 0); };
       actsBox.appendChild(b);
     });

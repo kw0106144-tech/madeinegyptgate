@@ -115,6 +115,107 @@ describe("the owner's settings (/dev/review)", () => {
   });
 });
 
+describe("never a customer's account (review F5): the owner's code is no password for a real person's account", () => {
+  const save = (env, o, email, days = 5) => api(env, "PUT", D + "/review", { token: o.token, body: { email, code: CODE, days } });
+  test("an address with requests, memory, products, invoices or an old-site record is refused (422 not_review_account); a clean one is saved", async () => {
+    const env = env0(), o = await member(env, "u-owner", "owner@mig.test"), t = new Date().toISOString();
+    // a request sent from the address while signed out (anonymous): the mailbox's owner's own words
+    await env.DB.prepare("INSERT INTO inquiries (id, ref, kind, name, email, email_key, status, created_at, updated_at) VALUES ('q1', 'MIG-26-AAAAAA', 'rfq', 'Mona', 'mona@cust.test', 'mona@cust.test', 'received', ?, ?)").bind(t, t).run();
+    let r = await save(env, o, "mona@cust.test");
+    assert.deepEqual([r.status, r.data.errors[0].field, r.data.errors[0].code], [422, "email", "not_review_account"], r.text);
+    assert.match(r.data.errors[0].msg, /requests sent from this address/);
+    await member(env, "u-mem", "memory@cust.test");
+    await env.DB.prepare("INSERT INTO advisor_memory (member_id, kind, at, text, hash) VALUES ('u-mem', 'fact', ?, 'capacity 40 t', 'hm1')").bind(t).run();
+    r = await save(env, o, "memory@cust.test");
+    assert.deepEqual([r.status, r.data.errors[0].code], [422, "not_review_account"]); assert.match(r.data.errors[0].msg, /memory/);
+    await member(env, "u-prod", "prod@cust.test");
+    await env.DB.prepare("INSERT INTO cc_member_products (id, member_id, created_at, updated_at) VALUES ('p-1', 'u-prod', ?, ?)").bind(t, t).run();
+    assert.equal((await save(env, o, "prod@cust.test")).data.errors[0].code, "not_review_account");
+    await env.DB.prepare("INSERT INTO cc_legacy_companies (company, email, email_key, created_at, updated_at) VALUES ('Old Co', 'old@cust.test', 'old@cust.test', ?, ?)").bind(t, t).run();
+    assert.equal((await save(env, o, "old@cust.test")).data.errors[0].code, "not_review_account", "an old-site company record");
+    assert.equal(await env.DB.prepare("SELECT 1 AS x FROM cc_settings WHERE k = ?").bind(REVIEW_KEY).first(), null, "nothing saved");
+    // an account the owner prepared for the review (a plan, nothing else) is fine
+    await member(env, "u-review", REV, { plan: "partner" });
+    assert.equal((await save(env, o, REV)).status, 200);
+  });
+  test("the review account's own activity never locks it: the same address saves again after the review", async () => {
+    const env = env0(), o = await ready(env), t = new Date().toISOString();
+    const s = await verify(env, REV, CODE);
+    assert.equal(s.status, 200, s.text);
+    // what the reviewer did with it: a request, Bassem's memory
+    await env.DB.prepare("INSERT INTO inquiries (id, ref, kind, user_id, name, email, email_key, status, created_at, updated_at) VALUES ('q2', 'MIG-26-BBBBBB', 'rfq', 'u-review', 'Reviewer', ?, ?, 'received', ?, ?)").bind(REV, REV, t, t).run();
+    await env.DB.prepare("INSERT INTO advisor_memory (member_id, kind, at, text, hash) VALUES ('u-review', 'turn', ?, 'hello', 'hm2')").bind(t).run();
+    const r = await api(env, "PUT", D + "/review", { token: o.token, body: { email: REV, code: "602913", days: 20 } });
+    assert.equal(r.status, 200, r.text);
+  });
+  test("a review sign-in never adopts the mailbox's earlier anonymous requests (and their follows)", async () => {
+    const env = env0(); await ready(env);
+    const t = new Date().toISOString();
+    await env.DB.prepare("INSERT INTO inquiries (id, ref, kind, target_type, target_id, target_name, name, email, email_key, status, created_at, updated_at) VALUES ('q3', 'MIG-26-CCCCCC', 'opp_offer', 'tender', 't-1', 'A tender', 'Someone', ?, ?, 'recorded', ?, ?)").bind(REV, REV, t, t).run();
+    const r = await verify(env, REV, CODE);
+    assert.equal(r.status, 200, r.text);
+    assert.equal((await env.DB.prepare("SELECT user_id FROM inquiries WHERE id = 'q3'").first()).user_id, "", "not attached to the review account");
+    assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM follows WHERE user_id = 'u-review'").first()).n, 0);
+  });
+});
+
+describe("time-limited review sessions (review F4)", () => {
+  const sessionOf = async (env, token) => authUser(new Request(SITE + "/api/me", { headers: { Authorization: "Bearer " + token } }), env);
+  const revokes = async env => (await audits(env, "review.sessions_revoke")).length;
+  test("a review session ends with the owner's period at the latest (the token and its row)", async () => {
+    const env = env0(), o = await member(env, "u-owner", "owner@mig.test");
+    await member(env, "u-review", REV, { plan: "partner" });
+    assert.equal((await api(env, "PUT", D + "/review", { token: o.token, body: { email: REV, code: CODE, days: 3 } })).status, 200);
+    assert.equal((await api(env, "PUT", D + "/features", { token: o.token, body: { features: { store_review_signin: true } } })).status, 200);
+    const until = JSON.parse((await env.DB.prepare("SELECT v FROM cc_settings WHERE k = ?").bind(REVIEW_KEY).first()).v).until;
+    const r = await verify(env, REV, CODE);
+    assert.equal(r.status, 200, r.text);
+    assert.ok(Date.parse(r.data.expires_at) <= Date.parse(until), r.data.expires_at + " ≤ " + until);
+    assert.ok(Date.parse(r.data.expires_at) > Date.now() + 2.9 * 86400000, "about the 3 days left, not 30");
+    const exp = +r.data.token.split(".")[3]; assert.ok(exp * 1000 <= Date.parse(until));
+    const row = await env.DB.prepare("SELECT expires_at FROM auth_sessions WHERE member_id = 'u-review' ORDER BY created_at DESC LIMIT 1").first();
+    assert.ok(row.expires_at <= until);
+    // an e-mailed-code session keeps its 30 days
+    const plain = await member(env, "u-plain", "plain@mig.test");
+    const p = await env.DB.prepare("SELECT expires_at FROM auth_sessions WHERE member_id = 'u-plain'").first();
+    assert.ok(Date.parse(p.expires_at) > Date.now() + 29 * 86400000); assert.ok(plain.token);
+  });
+  test("switching store_review_signin off ends the reviewer's sessions at once (audited); the owner's own stay", async () => {
+    const env = env0(), o = await ready(env);
+    const r = await verify(env, REV, CODE);
+    assert.ok(await sessionOf(env, r.data.token), "signed in");
+    const s = await api(env, "PUT", D + "/features", { token: o.token, body: { features: { store_review_signin: false } } });
+    assert.equal(s.status, 200, s.text);
+    assert.equal(await sessionOf(env, r.data.token), null, "signed out with the switch");
+    assert.equal(await revokes(env), 1);
+    const a = (await audits(env, "review.sessions_revoke"))[0];
+    assert.deepEqual([a.target_type, a.target_id, a.actor_role], ["member", "u-review", "owner"]);
+    assert.ok(await sessionOf(env, o.token), "the owner's own session is untouched");
+    const audit = await api(env, "GET", D + "/audit", { token: o.token });
+    assert.ok(audit.data.items.some(x => x.action === "review.sessions_revoke"), "listed in the developer panel's log");
+  });
+  test("removing the address + code, or saving another address, ends the old review account's sessions; a shorter period shortens them", async () => {
+    let env = env0(), o = await ready(env);
+    let r = await verify(env, REV, CODE);
+    assert.equal((await api(env, "DELETE", D + "/review", { token: o.token })).status, 200);
+    assert.equal(await sessionOf(env, r.data.token), null, "removed → signed out");
+    assert.equal(await revokes(env), 1);
+    env = env0(); o = await ready(env);
+    r = await verify(env, REV, CODE);
+    await member(env, "u-review2", "review2@madeinegyptgate.com");
+    assert.equal((await api(env, "PUT", D + "/review", { token: o.token, body: { email: "review2@madeinegyptgate.com", code: CODE, days: 10 } })).status, 200);
+    assert.equal(await sessionOf(env, r.data.token), null, "another review address → the old account is signed out");
+    env = env0(); o = await ready(env); // 14 days
+    r = await verify(env, REV, CODE);
+    assert.equal((await api(env, "PUT", D + "/review", { token: o.token, body: { email: REV, code: CODE, days: 2 } })).status, 200);
+    const until = JSON.parse((await env.DB.prepare("SELECT v FROM cc_settings WHERE k = ?").bind(REVIEW_KEY).first()).v).until;
+    assert.ok(await sessionOf(env, r.data.token), "the same address: still signed in");
+    const rows = (await env.DB.prepare("SELECT expires_at FROM auth_sessions WHERE member_id = 'u-review' AND revoked_at = ''").all()).results;
+    assert.ok(rows.length && rows.every(x => x.expires_at <= until), "no session outlives the new period");
+    assert.equal((await audits(env, "review.sessions_shorten")).length, 1);
+  });
+});
+
 describe("the review sign-in itself (/api/auth/request + /verify)", () => {
   test("the review address + the owner's code → the NORMAL full session of that member, one audit row; no e-mail is sent for it", async () => {
     const env = env0(); await ready(env);

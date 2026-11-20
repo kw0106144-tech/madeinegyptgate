@@ -123,17 +123,30 @@ class MainViewController: CAPBridgeViewController {
 
     // MARK: presenting
 
-    /// the controller to present from: the top of the chain of presented controllers (a page's sheet, Quick Look, an alert …)
+    /// the controller to present from: the top of the chain of presented controllers (a page's sheet, Quick Look, an alert …) — never one
+    /// on its way out: a controller being dismissed, or the sheet of a page window already closed (dismissSheet removes it, with anything
+    /// presented on it: Quick Look of a file that window downloaded waits for it to go, then shows over the page)
     func topController() -> UIViewController {
         var top: UIViewController = self
-        while let next = top.presentedViewController, !next.isBeingDismissed {
+        while let next = top.presentedViewController, !next.isBeingDismissed, !MainViewController.isClosedWindow(next) {
             top = next
         }
         return top
     }
 
-    /// presents over everything on screen; waits (2 s at most) while UIKit is still presenting or dismissing something
-    func presentOnTop(_ controller: UIViewController, tries: Int = 0, failed: (() -> Void)? = nil) {
+    /// the sheet of a page window that was closed (MIGWindowController.closed) and is about to go
+    static func isClosedWindow(_ controller: UIViewController) -> Bool {
+        guard let sheet = controller as? UINavigationController, let window = sheet.viewControllers.first as? MIGWindowController else { return false }
+        return window.closed
+    }
+
+    /// presents over everything on screen; waits (2 s at most) while UIKit is still presenting or dismissing something. `gone` is
+    /// asked before every try: true (a page window closed while it waited) = never presented
+    func presentOnTop(_ controller: UIViewController, tries: Int = 0, unless gone: (() -> Bool)? = nil, failed: (() -> Void)? = nil) {
+        if let gone = gone, gone() {
+            failed?()
+            return
+        }
         let top = topController()
         if top.presentedViewController != nil || top.isBeingPresented || top.viewIfLoaded?.window == nil {
             guard tries < 10 else {
@@ -145,11 +158,46 @@ class MainViewController: CAPBridgeViewController {
                     failed?()
                     return
                 }
-                self.presentOnTop(controller, tries: tries + 1, failed: failed)
+                self.presentOnTop(controller, tries: tries + 1, unless: gone, failed: failed)
             }
             return
         }
         top.present(controller, animated: true, completion: nil)
+    }
+
+    /// A sheet goes with everything presented over it (a sheet above, Quick Look, Safari, the share sheet, an alert): its presenter
+    /// dismisses it — dismiss() on the sheet itself would remove only what is over it. A presentation still running in that chain is
+    /// waited for (UIKit drops a dismissal asked for meanwhile: «while a presentation or dismiss is in progress»), at the end of its
+    /// transition. A sheet that is not on screen (yet) has nothing to dismiss: presentOnTop never shows a page window closed meanwhile.
+    static func dismissSheet(_ sheet: UIViewController, tries: Int = 0) {
+        guard let presenter = sheet.presentingViewController, !sheet.isBeingDismissed else { return }
+        // a transition still running in the chain: the sheet's own presentation, or something over it coming or going
+        var running: UIViewController?
+        var next: UIViewController? = sheet
+        while let current = next {
+            if current.isBeingPresented || (current !== sheet && current.isBeingDismissed) {
+                running = current
+                break
+            }
+            next = current.presentedViewController
+        }
+        guard let busy = running else {
+            presenter.dismiss(animated: true, completion: nil)
+            return
+        }
+        guard tries < 15 else {
+            presenter.dismiss(animated: false, completion: nil) // 3 s of waiting: one last plain try
+            return
+        }
+        if let coordinator = busy.transitionCoordinator,
+           coordinator.animate(alongsideTransition: nil, completion: { _ in
+               DispatchQueue.main.async { MainViewController.dismissSheet(sheet, tries: tries + 1) } // once UIKit has finished the transition
+           }) {
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            MainViewController.dismissSheet(sheet, tries: tries + 1)
+        }
     }
 
     private var isForeground: Bool {
@@ -221,21 +269,28 @@ class MainViewController: CAPBridgeViewController {
         sheet.modalPresentationStyle = .pageSheet // never .fullScreen: that takes the page under it (a live call) out of the window
         sheet.presentationController?.delegate = window
         MIGWindowController.paint(sheet.navigationBar)
-        presentOnTop(sheet) { [weak self, weak window] in
+        // a window closed while presentOnTop still waits (a file that finished downloading, window.close()) is never shown
+        presentOnTop(sheet, unless: { [weak window] in window?.closed ?? true }, failed: { [weak self, weak window] in
             if let self = self, let window = window {
                 self.forget(window)
             }
-        }
+        })
     }
 
-    /// window.close() of a page in a sheet, or its «إغلاق» / Close: that sheet goes, with the ones over it
+    /// window.close() of a page in a sheet, or its «إغلاق» / Close: that sheet goes, with the ones over it (dismissSheet: whatever is
+    /// presented over it, and after a presentation still running)
     func closeWindow(_ web: WKWebView) {
         guard let index = windows.firstIndex(where: { $0.webView === web }) else { return }
         let sheet = windows[index].navigationController
         drop(from: index)
-        if let sheet = sheet, sheet.presentingViewController != nil, !sheet.isBeingDismissed {
-            sheet.dismiss(animated: true, completion: nil)
+        if let sheet = sheet {
+            MainViewController.dismissSheet(sheet)
         }
+    }
+
+    /// this page window is still one of the windows over the page (not closed, swiped away or dropped with a sheet under it)
+    func isOpen(_ window: MIGWindowController) -> Bool {
+        return windows.contains { $0 === window }
     }
 
     /// a sheet the member swiped away, or one that could not be shown
@@ -263,8 +318,8 @@ class MainViewController: CAPBridgeViewController {
         if !windows.isEmpty {
             drop(from: 0)
         }
-        if presentedViewController != nil {
-            dismiss(animated: true, completion: nil)
+        if let presented = presentedViewController {
+            MainViewController.dismissSheet(presented) // everything over the page, after a presentation still running
         }
     }
 
@@ -1008,6 +1063,8 @@ final class MIGWindowController: UIViewController, UIAdaptivePresentationControl
     static let most = 3
 
     let webView: WKWebView
+    /// torn down (closed, swiped away, dropped with a sheet under it): never presented after this (presentOnTop's `gone`)
+    private(set) var closed = false
     private let pages: MIGChildDelegate
     private weak var owner: MainViewController?
     private var titleWatch: NSKeyValueObservation?
@@ -1055,7 +1112,11 @@ final class MIGWindowController: UIViewController, UIAdaptivePresentationControl
     }
 
     @objc private func onClose() {
-        owner?.closeWindow(webView)
+        if let owner = owner, owner.isOpen(self) {
+            owner.closeWindow(webView)
+        } else if let sheet = navigationController {
+            MainViewController.dismissSheet(sheet) // let go already but still on screen: Close always closes it
+        }
     }
 
     @objc private func onBack() {
@@ -1064,10 +1125,11 @@ final class MIGWindowController: UIViewController, UIAdaptivePresentationControl
         }
     }
 
-    /// iPhone in landscape: over the full screen, never in place of it (the page under it, a live call, stays in the window)
+    /// iPhone in landscape (a compact height): over the full screen, never in place of it (the page under it, a live call, stays in
+    /// the window); everywhere else no adaptation (.none): a card that a swipe down closes
     @objc(adaptivePresentationStyleForPresentationController:traitCollection:)
     func adaptivePresentationStyle(for controller: UIPresentationController, traitCollection: UITraitCollection) -> UIModalPresentationStyle {
-        return .overFullScreen
+        return traitCollection.verticalSizeClass == .compact ? .overFullScreen : .none
     }
 
     /// swiped down
@@ -1077,6 +1139,7 @@ final class MIGWindowController: UIViewController, UIAdaptivePresentationControl
     }
 
     func tearDown() {
+        closed = true
         titleWatch?.invalidate()
         titleWatch = nil
         backWatch?.invalidate()
@@ -1103,9 +1166,10 @@ final class MIGWindowController: UIViewController, UIAdaptivePresentationControl
 /// in place of it, so that the page under them (a live call) stays in the window
 final class MIGSheetStyle: NSObject, UIAdaptivePresentationControllerDelegate {
 
+    /// a compact height (iPhone in landscape) only; elsewhere no adaptation: a card with its swipe down
     @objc(adaptivePresentationStyleForPresentationController:traitCollection:)
     func adaptivePresentationStyle(for controller: UIPresentationController, traitCollection: UITraitCollection) -> UIModalPresentationStyle {
-        return .overFullScreen
+        return traitCollection.verticalSizeClass == .compact ? .overFullScreen : .none
     }
 }
 

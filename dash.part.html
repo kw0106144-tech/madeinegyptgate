@@ -239,6 +239,12 @@
   }
   document.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest("[data-bsc]"); if (!b || !window.BASSEM) return; if (b.dataset.bsc === "video") BASSEM.video(); else BASSEM.welcome(true); });
   window.addEventListener("bassem:change", function () { if (S.me && S.tab === "overview") render(); });
+  /* the owner's switches answered after the plan tab was drawn (a slow /api/settings): «🗑 طلب حذف الحساب» (delCard) appears / goes */
+  window.addEventListener("mig:flags", function () {
+    if (!S.me || S.tab !== "plan" || !$("#panel")) return;
+    var F = window.MIGFLAGS, want = !!(F && F.on && F.on("account_delete") === true);
+    if (want !== !!$("#panel [data-delcard]")) render();
+  });
 
   /* ---------- data loaders (each tab asks the server; nothing is invented) ---------- */
   function load(k, fn) { if (S[k] && !S[k].err) return Promise.resolve(S[k]); return fn().then(function (j) { S[k] = j; return j; }, function (e) { S[k] = { err: e }; return S[k]; }); }
@@ -482,7 +488,7 @@
      the request itself, its second confirmation and its status are on /delete-account/ (data/delete-account.js) */
   function delCard() {
     var F = window.MIGFLAGS; if (!(F && F.on && F.on("account_delete") === true)) return "";
-    return '<div class="dcard"><h2>🗑 ' + T("طلب حذف الحساب", "Request account deletion") + '</h2><p class="note">' + T("تقدر تطلب حذف حسابك وبياناته؛ الحذف بيتنفّذ خلال 30 يوم، وبيفضل محفوظ اللي القانون بيطلبه بس (زي الفواتير الضريبية).", "You can ask for your account and its data to be deleted; the deletion is carried out within 30 days, and only what the law requires (such as tax invoices) is kept.")
+    return '<div class="dcard" data-delcard><h2>🗑 ' + T("طلب حذف الحساب", "Request account deletion") + '</h2><p class="note">' + T("تقدر تطلب حذف حسابك وبياناته؛ الحذف بيتنفّذ خلال 30 يوم، وبيفضل محفوظ اللي القانون بيطلبه بس (زي الفواتير الضريبية).", "You can ask for your account and its data to be deleted; the deletion is carried out within 30 days, and only what the law requires (such as tax invoices) is kept.")
       + '</p><div class="tools"><a class="btn btn-line" href="/delete-account/">🗑 ' + T("طلب حذف الحساب", "Request account deletion") + "</a></div></div>";
   }
 

@@ -2,8 +2,9 @@
 # («a web link where users can request the deletion of their account and data») and the dashboard's «🗑 طلب حذف الحساب» leads to. It only
 # ASKS (worker/src/delete-requests.js — migration 0010): the owner runs the audited deletion within 30 days. Behind the owner's switches
 # (data/flags.js; «🛠️ المطوّر» → «المزايا»):
-#   account_delete OFF (the default until the owner approves the texts of docs/app/OWNER-APPROVAL-AR.md): the page says what the privacy
-#     policy already says (/legal/#privacy: write to info@madeinegyptgate.com) — nothing new is promised;
+#   account_delete OFF (the default until the owner approves the texts of docs/app/OWNER-APPROVAL-AR.md): the page quotes the privacy
+#     policy's own sentence word for word (legal.part.py «الخصوصية» → 6. التواصل: write to info@madeinegyptgate.com, identity check,
+#     30 days), with the e-mail and the policy as buttons — nothing new is promised;
 #   account_delete ON: signed out → the e-mail-code sign-in (data/mig-api.js MIGAPI.open); signed in → «🗑 طلب حذف الحساب», a second
 #     confirmation, then POST /api/me/delete-request and its status (GET); an e-mailed link session is asked to sign in with a code;
 #   visitor_erase_request ON (the owner's exception to «Janna's memory is permanent»): «امسح كلامي مع جنة» for this device's random
@@ -27,11 +28,14 @@ PAGES['delete-account'] = ('حذف الحساب – صنع في مصر', '', glo
 .dabtn { font: inherit; font-weight: 800; border: 0; border-radius: 12px; padding: 12px 18px; min-height: 44px; cursor: pointer; background: #8E0B20; color: #fff; }
 .dabtn.l { background: var(--sunken, #f4f5f7); color: var(--fg); border: 1px solid var(--line); }
 .dabtn[disabled] { opacity: .6; cursor: not-allowed; }
+a.dabtn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.daq { margin: 0; padding: 12px 16px; border-inline-start: 4px solid #8E0B20; background: var(--sunken, #f4f5f7); color: var(--fg); border-radius: 10px; line-height: 1.9; font-weight: 700; text-align: start; }
+#daOff .daa { justify-content: center; }
 @media (max-width: 520px) { .dabtn { width: 100%; } }
 ''', '''
 <section class="dah"><div class="wrap"><nav class="crumb"><a href="home.html">الرئيسية</a> › حذف الحساب</nav><h1>حذف الحساب</h1><p>طلب حذف حسابك على منصة صنع في مصر وبياناته.</p></div></section>
 <main class="wrap daw" id="top">
-  <section class="dac" id="daOff" data-mig-off="account_delete" data-mig-own="1" hidden><h2>إزاي تطلب حذف حسابك</h2><p>لطلب حذف حسابك وبياناتك ابعتلنا من بريد الحساب على <a href="mailto:info@madeinegyptgate.com" dir="ltr">info@madeinegyptgate.com</a>، زي ما <a href="legal.html#privacy">سياسة الخصوصية</a> بتقول.</p></section>
+  <section class="dac" id="daOff" data-mig-off="account_delete" data-mig-own="1" hidden><h2>إزاي تطلب حذف حسابك</h2><p>سياسة الخصوصية بتقول:</p><blockquote class="daq">لممارسة حقوقك راسل: info@madeinegyptgate.com، وقد نطلب تحققاً معقولاً من الهوية قبل معالجة الطلب، وسنرد خلال 30 يوماً.</blockquote><div class="daa"><a class="dabtn" href="mailto:info@madeinegyptgate.com" dir="ltr">✉️ info@madeinegyptgate.com</a><a class="dabtn l" href="legal.html#privacy">📄 سياسة الخصوصية</a></div></section>
   <section class="dac" id="daMember" data-mig-feature="account_delete" hidden aria-live="polite"></section>
   <section class="dac" id="daVisitor" data-mig-feature="visitor_erase_request" hidden aria-live="polite"></section>
 </main>
@@ -41,6 +45,10 @@ PAGES['delete-account'] = ('حذف الحساب – صنع في مصر', '', glo
 en_add([('حذف الحساب – صنع في مصر', 'Delete your account – Made in Egypt Gate'), ('حذف الحساب', 'Delete your account'),
         ('طلب حذف حسابك على منصة صنع في مصر وبياناته.', 'Ask for the deletion of your Made in Egypt Gate account and its data.'),
         ('إزاي تطلب حذف حسابك', 'How to ask for the deletion of your account'),
-        ('لطلب حذف حسابك وبياناتك ابعتلنا من بريد الحساب على', 'To ask for the deletion of your account and its data, write to us from the account\'s e-mail at'),
-        ('، زي ما', ', as our'), ('سياسة الخصوصية', 'privacy policy'), ('بتقول.', 'says.')])
+        # while account_delete is off: the privacy policy's own sentence, word for word (legal.part.py «الخصوصية» → 6. التواصل), and
+        # its English as the dictionary has it — no new promise (CLAUDE.md 2.7; docs/app/OWNER-APPROVAL-AR.md 1-أ)
+        ('سياسة الخصوصية بتقول:', 'Our privacy policy says:'),
+        ('لممارسة حقوقك راسل: info@madeinegyptgate.com، وقد نطلب تحققاً معقولاً من الهوية قبل معالجة الطلب، وسنرد خلال 30 يوماً.',
+         'To exercise your rights, email info@madeinegyptgate.com. We may ask for reasonable verification of your identity before processing the request, and we will respond within 30 days.'),
+        ('📄 سياسة الخصوصية', '📄 Privacy policy')])
 SEO['delete-account'] = ('طلب حذف حساب العضو على منصة صنع في مصر وبياناته.', 'حذف الحساب, حذف البيانات, صنع في مصر', 'WebPage', [], 'yearly', '0.1')

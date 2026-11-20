@@ -273,9 +273,11 @@ export async function handleJannaSession(req, env) {
     tm.ctx = Date.now() - tc;
     /* review 2026-11-19 #7: the page's visitor id is another member's (or the signed-out member's) → the page starts a new one; nothing to add → plain */
     const rotateVisitor = !!(ctx && ctx.rotate_visitor); if (ctx && agent === "janna" && !ctx.block) ctx = null;
-    /* app_buy_<platform> off: the call from THAT app gets the fixed «no prices» rule (the website's and the other app's calls do not) */
+    /* app_buy_<platform> off: the call from THAT app gets the fixed «no prices» rule (the website's and the other app's calls do not). The
+       rule goes in front of the context block AS IT IS (already ≤ BLOCK_MAX): fitting the two again would cut the block's end — the last
+       memory lines and its closing marker (review F7); the persona's prompt has room for the rule's ~300 characters */
     const noPrices = !!app && !(await featureOn(env, "app_buy_" + app));
-    if (noPrices) ctx = { ...(ctx || {}), block: fitBlock(APP_NO_PRICES[agent] + (ctx && ctx.block ? "\n" + ctx.block : "")), app_rules: true, ...(ctx ? {} : { app_only: true }) };
+    if (noPrices) ctx = { ...(ctx || {}), block: APP_NO_PRICES[agent] + (ctx && ctx.block ? "\n" + ctx.block : ""), app_rules: true, ...(ctx ? {} : { app_only: true }) };
     if (!ctx) personaP = null; else if (!personaP) personaP = readPersona(); // read while the day is counted
     if ((await countDay(env, nowMs, 1)) > dailyCap(env)) { await countDay(env, nowMs, -1); return fail(429, "daily_cap", cors); } // refused ones are not counted
     const plain = { personaConfig: { personaId }, sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: "madeinegyptgate-" + agent + "-" + lang };

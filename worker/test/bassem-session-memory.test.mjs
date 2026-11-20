@@ -5,7 +5,8 @@
 import { test, describe, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import worker from "../src/index.js";
-import { ANAM_TOKEN_URL, ANAM_PERSONA_URL, CONTINUE_MAX_AGE_MS, continuation } from "../src/janna-session.js";
+import { ANAM_TOKEN_URL, ANAM_PERSONA_URL, CONTINUE_MAX_AGE_MS, continuation, APP_NO_PRICES } from "../src/janna-session.js";
+import { storeJson, forgetFeatures } from "../src/flags.js";
 import { todayLineAr, arDigits, BLOCK_MAX, GREETING_NEUTRAL, memberContext } from "../src/bassem-context.js";
 import { MEMORY_BLOCK } from "../src/memory.js";
 import { PROFILE_BLOCK } from "../src/profile.js";
@@ -123,6 +124,31 @@ describe("consolidation A: Bassem's next call knows the member — profile + mem
     const b = blockOf(posts()[0].body.personaConfig);
     assert.ok(b.length <= BLOCK_MAX + 2, String(b.length));
     assert.ok(b.includes(MEMORY_BLOCK[1]) || !b.includes(MEMORY_BLOCK[0]), "the memory block is whole or absent, never cut in half");
+  });
+  test("a call from a store app with buying off there: the «no prices» rule comes in front of a FULL block without cutting its end (review F7)", async () => {
+    const env = env0(), { token } = await member(env, DR);
+    await env.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES ('features', 'system', ?, ?)").bind(storeJson({ app_buy_android: false }, {}), NOW).run();
+    forgetFeatures(env);
+    await profile(env, DR.id, { products: Array.from({ length: 20 }, (_, i) => "منتج رقم " + i + " " + "مواصفات ".repeat(8)), specs: "س".repeat(900), export_experience: "ت".repeat(400), capacity: "2000 طن شهرياً" });
+    for (let i = 0; i < 30; i++) await mem(env, DR.id, "search", "c-" + i, Date.now() - i * 3600000, "بحث " + i, { tool: "janna_lookup", query: "بحث طويل عن منتج رقم " + i + " " + "كلمة ".repeat(8), count: 3, results: [{ title: "نتيجة طويلة جداً ".repeat(6) + i, entity: "جهة" }] }, "s" + i);
+    for (let i = 0; i < 3; i++) await mem(env, DR.id, "summary", "call-sum-000" + i, Date.now() - (i + 1) * 86400000, "ملخص " + i, { v: 3, topics: ["مناقصات حديد " + i, "تصدير"], products: ["حديد تسليح", "صاج"], markets: ["الصين", "الخليج"], searches: [], next: ["متابعة مناقصة حديد التسليح رقم " + i + " مع الجهة قبل آخر موعد"], failed: [], said: [] }, "summary|call-sum-000" + i);
+    for (let i = 0; i < 6; i++) await mem(env, DR.id, "fact", "", Date.now() - i * 60000, "العضو قال إن طاقة المصنع " + i + " " + "معلومة طويلة عن المصنع ".repeat(5), {}, "f" + i);
+    const UA_AND = "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP2A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/131.0 Mobile Safari/537.36 MIGApp/1.0 (android)";
+    const h = { "CF-Connecting-IP": "198.51.100.251", Origin: SITE, "Content-Type": "application/json", Authorization: "Bearer " + token, "User-Agent": UA_AND };
+    const res = await worker.fetch(new Request(SITE + "/api/janna/session", { method: "POST", headers: h, body: JSON.stringify({ agent: "bassem", lang: "ar" }) }), env, { waitUntil() {} });
+    const r = JSON.parse(await res.text());
+    assert.deepEqual([res.status, r.member_context, r.memory, r.app_rules], [200, true, true, true], JSON.stringify(r));
+    const b = blockOf(posts()[0].body.personaConfig);
+    assert.ok(b.startsWith("\n\n" + APP_NO_PRICES.bassem + "\n"), "the rule first");
+    const ctx = b.slice(2 + APP_NO_PRICES.bassem.length + 1);
+    assert.ok(ctx.length > BLOCK_MAX - APP_NO_PRICES.bassem.length, "a full block (the case that was cut): " + ctx.length);
+    assert.ok(ctx.length <= BLOCK_MAX, String(ctx.length));
+    assert.ok(ctx.includes(MEMORY_BLOCK[0]) && ctx.trimEnd().endsWith(MEMORY_BLOCK[1]), "the memory block is whole, its closing marker last");
+    // the website's call: the same block, no rule
+    calls.length = 0;
+    const w = await call(env, { agent: "bassem", lang: "ar" }, token);
+    assert.equal(w.status, 200); assert.ok(!w.data.app_rules);
+    assert.equal(blockOf(posts()[0].body.personaConfig), "\n\n" + ctx, "the same context as the website's call");
   });
   test("todayLineAr: the Cairo date with Arabic-Indic digits («النهارده: الأربعاء ١٨ نوفمبر ٢٠٢٦»); after Cairo midnight it is the next day", () => {
     assert.equal(todayLineAr(Date.parse("2026-11-18T10:00:00Z")), "النهارده: الأربعاء ١٨ نوفمبر ٢٠٢٦");

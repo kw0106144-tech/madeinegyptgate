@@ -34,9 +34,11 @@
 **قبل التشغيل:** (1) الموافقة على النصوص دي؛ (2) تشغيل ملف قاعدة البيانات `0010_delete_requests.sql` من GitHub ← Actions ←
 `d1-migrate` (المفتاح بيفضل مقفول لحد ما الملف يتشغّل).
 
-### 1-أ. صفحة `/delete-account/` — المفتاح مقفول (ده اللي ظاهر دلوقتي — نفس كلام سياسة الخصوصية الحالي)
-- AR: «إزاي تطلب حذف حسابك» — «لطلب حذف حسابك وبياناتك ابعتلنا من بريد الحساب على info@madeinegyptgate.com، زي ما سياسة الخصوصية بتقول.»
-- EN: "How to ask for the deletion of your account" — "To ask for the deletion of your account and its data, write to us from the account's e-mail at info@madeinegyptgate.com, as our privacy policy says."
+### 1-أ. صفحة `/delete-account/` — المفتاح مقفول (ده **الظاهر دلوقتي على الموقع**، ومستني موافقة حضرتك برضه)
+الصفحة بتنقل **بالحرف** جملة سياسة الخصوصية الحالية (`legal.part.py`، «الخصوصية» ← البند 6 «التواصل»)، من غير أي وعد جديد،
+ومعاها زرار الإيميل ورابط السياسة كاملة. الكلام الجديد هنا هو العنوان والسطر اللي قبل الاقتباس بس:
+- AR: «إزاي تطلب حذف حسابك» — «سياسة الخصوصية بتقول:» — (اقتباس) «لممارسة حقوقك راسل: info@madeinegyptgate.com، وقد نطلب تحققاً معقولاً من الهوية قبل معالجة الطلب، وسنرد خلال 30 يوماً.» — زراير «✉️ info@madeinegyptgate.com» و«📄 سياسة الخصوصية» (← `/legal/#privacy`)
+- EN: "How to ask for the deletion of your account" — "Our privacy policy says:" — (quote) "To exercise your rights, email info@madeinegyptgate.com. We may ask for reasonable verification of your identity before processing the request, and we will respond within 30 days." — buttons "✉️ info@madeinegyptgate.com" and "📄 Privacy policy"
 
 ### 1-ب. صفحة `/delete-account/` — المفتاح شغّال (`data/delete-account.js`)
 | فين | عربي | English |
@@ -49,7 +51,7 @@
 | الزرار | 🗑 طلب حذف الحساب | 🗑 Request account deletion |
 | التأكيد التاني | متأكد إنك عايز تحذف حسابك؟ — بعد ما الفريق ينفّذ الحذف مش هتقدر ترجّع الحساب ولا بياناته. لو عندك باقة سارية، الحذف بينهيها. — «أيوه، احذف حسابي» / «لا، رجوع» | Are you sure you want your account deleted? — Once the team runs the deletion, the account and its data cannot be restored. A plan in force ends with it. — "Yes, delete my account" / "No, go back" |
 | بعد الطلب | طلب حذف حسابك اتسجّل برقم ‹dr-…› يوم ‹التاريخ›، والحذف بيتنفّذ خلال 30 يوم. | Your account deletion request is recorded as ‹dr-…› on ‹date›; the deletion is carried out within 30 days. |
-| بعد التنفيذ | طلب حذف الحساب رقم ‹dr-…› اتنفّذ يوم ‹التاريخ›. | Deletion request ‹dr-…› was carried out on ‹date›. |
+| طلب اتقفل «تم» والعضو لسه شايفه | طلب حذف الحساب رقم ‹dr-…› اتقفل يوم ‹التاريخ› — لو عندك سؤال ابعتلنا على info@madeinegyptgate.com. — «🗑 اطلب تاني» (مش «اتنفّذ»: الحساب اللي اتحذف فعلاً مابيقدرش يدخل تاني، فاللي شايف الرسالة دي حسابه لسه موجود؛ ولوحة التحكم مابتقبلش «تم» قبل الحذف المسجّل — 2026-11-20) | Deletion request ‹dr-…› was closed on ‹date› — write to us at info@madeinegyptgate.com with any question. — "🗑 Ask again" (never "carried out": an account really deleted can no longer sign in, so whoever reads this still has the account; the Control Center accepts «done» only after the audited deletion) |
 | لو اترفض | طلب حذف الحساب رقم ‹dr-…› اتقفل من غير حذف — لو عندك سؤال ابعتلنا على info@madeinegyptgate.com. — «🗑 اطلب تاني» | Deletion request ‹dr-…› was closed without a deletion — write to us at info@madeinegyptgate.com with any question. — "🗑 Ask again" |
 | دخل برابط إيميل | دخلت برابط من الإيميل — ادخل بكود على الإيميل الأول علشان تطلب حذف الحساب. | You came in through an e-mail link — sign in with an e-mail code first to ask for the account's deletion. |
 
@@ -75,6 +77,11 @@
 (صندوق بريد بتاع الفريق، مثلاً `review@madeinegyptgate.com`) وكود ثابت من 6 أرقام حضرتك بتكتبه في «🛠️ المطوّر ← المزايا ← دخول مراجعي
 المتاجر — الإيميل والكود»، صالحين 30 يوم بالكتير. الكود بيتحفظ متشفّر (HMAC بـ CONFIG_SECRET) ومش بيظهر تاني. كل دخول بيتسجّل في
 السجل (`review.signin`). أي إيميل تاني أو كود غلط أو المفتاح مقفول أو المدة خلصت = الدخول العادي بالظبط.
+
+**حماية (اتضافت 2026-11-20 بعد المراجعة):** الإيميل لازم يكون لحساب مخصص للمراجعة بس: حساب عميل فيه طلبات أو منتجات أو ذاكرة باسم/جنة أو
+فواتير أو بيانات من الموقع القديم بيترفض وقت الحفظ (`not_review_account`)، زي حسابات فريق المنصة بالظبط — علشان الكود الثابت مايبقاش
+باسورد لحساب حد حقيقي. ودخول المراجع بيخلص مع آخر المدة على الأكثر، ولما تقفل المفتاح أو تضغط «🗑 شيلهم» أو تحفظ إيميل تاني بيخرج من
+الحساب على طول (`review.sessions_revoke` في السجل).
 
 **خطوات:** (1) اعمل عضو بالإيميل ده من «الأعضاء والاشتراكات» وفعّل عليه باقة حقيقية وقت المراجعة (مفيش بيانات تجريبية)؛ (2) احفظ
 الإيميل والكود والمدة؛ (3) شغّل المفتاح؛ (4) حط النص اللي تحت في App Store Connect ← App Review Information ← Notes، وفي Google
@@ -107,8 +114,11 @@ Play Console ← App content ← App access؛ (5) بعد الموافقة: اق�
 
 | فين | عربي | English |
 |---|---|---|
-| رسالة إذن الميكروفون في الآيفون (`app/tools/ios_project.py` PURPOSE ← `Info.plist` + `ar.lproj` / `en.lproj` `InfoPlist.strings`) | يُستخدم الميكروفون فقط عندما تبدأ مكالمة مباشرة مع جنة أو باسم، مساعدَي المنصة بالذكاء الاصطناعي؛ ويُرسَل صوتك أثناء المكالمة إلى مزوّد المحادثة المرئية (Anam) ليُعالَج ويُرَد عليك. | The microphone is used only when you start a live call with Janna or Bassem, the platform's AI assistants; during the call your voice is sent to the video-conversation provider (Anam) to be processed and answered. |
-| النص الحالي (لحد الموافقة) | يُستخدم الميكروفون فقط عندما تبدأ مكالمة مباشرة مع جنة أو باسم، مساعدَي المنصة، ليسمعا صوتك. | The microphone is used only when you start a live call with Janna or Bassem, the platform's assistants, so they can hear you. |
+| رسالة إذن الميكروفون في الآيفون (`app/tools/ios_project.py` PURPOSE ← `Info.plist` + `ar.lproj` / `en.lproj` `InfoPlist.strings`) | يُستخدم الميكروفون فقط عندما تبدأ مكالمة مباشرة مع جنة أو باسم، مساعدَي المنصة بالذكاء الاصطناعي، أو عندما تضغط على زر الميكروفون في محادثة جنة لتتحدث بدلًا من الكتابة؛ ويُرسَل صوتك أثناء المكالمة إلى مزوّد المحادثة المرئية (Anam) ليُعالَج ويُرَد عليك. | The microphone is used only when you start a live call with Janna or Bassem, the platform's AI assistants, or tap the microphone in Janna's chat to speak instead of typing; during a call your voice is sent to the video-conversation provider (Anam) to be processed and answered. |
+| النص الحالي (لحد الموافقة) | يُستخدم الميكروفون فقط عندما تبدأ مكالمة مباشرة مع جنة أو باسم، مساعدَي المنصة، أو عندما تضغط على زر الميكروفون في محادثة جنة لتتحدث بدلًا من الكتابة. | The microphone is used only when you start a live call with Janna or Bassem, the platform's assistants, or tap the microphone in Janna's chat to speak instead of typing. |
+
+(النص الحالي اتعدّل 2026-11-20 علشان يكون صح: زرار 🎤 في محادثة جنة بقى شغّال في الآيفون، وiOS بيطلب إذن الميكروفون ليه هو كمان — أبل 5.1.1
+بتشترط إن الرسالة توصف الاستخدام الحقيقي.)
 
 بعد الموافقة: يتعدّل نص `NSMicrophoneUsageDescription` في `PURPOSE` (العربي والإنجليزي) في `app/tools/ios_project.py`، ويتشغّل
 `python3 app/tools/ios_project.py`، وتتعمل commit للسكربت وللـ 3 ملفات اللي بيكتبها (`Info.plist` والـ `InfoPlist.strings` العربي والإنجليزي)، وبعدين نسخة جديدة من تطبيق الآيفون.

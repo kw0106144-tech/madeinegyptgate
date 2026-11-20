@@ -205,6 +205,75 @@ public class MigLogicTest {
     }
 
     @Test
+    public void aPinchOrASidewaysSwipeIsNeverAPull() {
+        // android-pull-to-reload: Chrome reloads only from a pull that goes down; pinch-zoom is on (zoomEnabled)
+        float slop = 21f; // ViewConfiguration's 8 dp on a 2.625x phone
+        assertFalse("not moved yet: undecided", MigPullLayout.pinchOrSideways(1, 3f, 4f, slop));
+        assertFalse("straight down", MigPullLayout.pinchOrSideways(1, 2f, 30f, slop));
+        assertFalse("mostly down", MigPullLayout.pinchOrSideways(1, 12f, 25f, slop));
+        assertTrue("a second finger, however little it moved (a pinch)", MigPullLayout.pinchOrSideways(2, 0f, 0f, slop));
+        assertTrue("a pinch whose first finger goes down", MigPullLayout.pinchOrSideways(2, 0f, 40f, slop));
+        assertTrue("sideways with a downward drift (the market's department bar)", MigPullLayout.pinchOrSideways(1, -40f, 21f, slop));
+        assertTrue("as much sideways as down", MigPullLayout.pinchOrSideways(1, 20f, 20f, slop));
+        assertTrue("sideways, the other way", MigPullLayout.pinchOrSideways(1, 30f, -5f, slop));
+        // SwipeRefreshLayout's canChildScrollUp (true = no pull now)
+        assertFalse("at the top, the page said yes, a straight pull", MigPullLayout.refusesPull(false, true, false, false, false));
+        assertTrue("the page said no (a scrolling box, the phone menu, a live call)", MigPullLayout.refusesPull(false, false, false, false, false));
+        assertTrue("a pinch or a sideways swipe, whatever the page said", MigPullLayout.refusesPull(false, true, true, false, false));
+        assertTrue("the page is not at its top", MigPullLayout.refusesPull(true, true, false, false, false));
+        assertFalse("the touch itself: where it began is noted at the top", MigPullLayout.refusesPull(false, false, false, true, false));
+        assertTrue(MigPullLayout.refusesPull(true, true, false, true, false));
+        assertFalse("a pull under way stays one (a later second finger never freezes the spinner)", MigPullLayout.refusesPull(false, false, true, false, true));
+    }
+
+    @Test
+    public void aPageTooBusyToAnswerCountsAsACall() {
+        // review AND-2: a late answer never ends the call (Back skipping the shared screen, an incoming link replacing the call's page)
+        assertTrue(MigLinks.asCall(Boolean.TRUE));
+        assertTrue("no answer in time (null): as a call", MigLinks.asCall(null));
+        assertFalse(MigLinks.asCall(Boolean.FALSE));
+        String page = SITE + "/tenders/", live = SITE + "/?live=1", meeting = SITE + "/meeting/#m=abc";
+        assertEquals(MigLinks.INCOMING_LOAD, MigLinks.incomingAction(Boolean.FALSE, page));
+        assertEquals(MigLinks.INCOMING_LOAD, MigLinks.incomingAction(Boolean.FALSE, live));
+        assertEquals(MigLinks.INCOMING_WINDOW, MigLinks.incomingAction(Boolean.TRUE, page));
+        assertEquals("no answer: a window of its own, never in place of the call's page", MigLinks.INCOMING_WINDOW, MigLinks.incomingAction(null, page));
+        assertEquals(MigLinks.INCOMING_ASK, MigLinks.incomingAction(Boolean.TRUE, live));
+        assertEquals(MigLinks.INCOMING_ASK, MigLinks.incomingAction(null, meeting));
+    }
+
+    @Test
+    public void thePaymentGatewayFromPayGoesToTheBrowser() {
+        // pay-handoff: /pay/ in a page window has no Capacitor bridge
+        assertTrue(MigLinks.isPayPage(SITE + "/pay/#inv=0123456789abcdef"));
+        assertTrue(MigLinks.isPayPage(SITE + "/en/pay/#inv=0123456789abcdef&r=1"));
+        assertTrue(MigLinks.isPayPage(SITE + "/pay.html#inv=x"));
+        assertTrue(MigLinks.isPayPage(SITE + "/pay"));
+        assertTrue(MigLinks.isPayPage("https://www.madeinegyptgate.com/PAY/"));
+        assertFalse(MigLinks.isPayPage(SITE + "/payments-guide/"));
+        assertFalse(MigLinks.isPayPage(SITE + "/register/#plans"));
+        assertFalse(MigLinks.isPayPage("https://accept.paymob.com/pay/x"));
+        assertFalse(MigLinks.isPayPage("http://madeinegyptgate.com/pay/"));
+        assertFalse(MigLinks.isPayPage(null));
+    }
+
+    @Test
+    public void onlyATapLeavesTheAppFromAWindow() {
+        // other-site-pages-during-call: an ad frame's or a redirect's jump to an app is cancelled, as Chrome does
+        assertTrue(MigLinks.opensAnotherApp("tel:+20238346757", true));
+        assertTrue(MigLinks.opensAnotherApp("mailto:info@madeinegyptgate.com", true));
+        assertTrue(MigLinks.opensAnotherApp("intent://scan/#Intent;scheme=zxing;end", true));
+        assertFalse(MigLinks.opensAnotherApp("market://details?id=com.example", false));
+        assertFalse(MigLinks.opensAnotherApp("whatsapp://send?text=x", false));
+        assertFalse(MigLinks.opensAnotherApp("intent://x#Intent;end", false));
+        // web pages, empty documents and page-made files stay with the WebView, tap or not
+        assertFalse(MigLinks.opensAnotherApp("https://example.org/", true));
+        assertFalse(MigLinks.opensAnotherApp("about:blank", true));
+        assertFalse(MigLinks.opensAnotherApp("data:text/html,x", true));
+        assertFalse(MigLinks.opensAnotherApp("blob:https://madeinegyptgate.com/1-2", true));
+        assertFalse(MigLinks.opensAnotherApp(null, true));
+    }
+
+    @Test
     public void oneMicrophoneDialogAnswersEveryWaitingRequest() {
         // mic-permission-race: a request while the dialog is open waits; one answer serves all
         MigAsk<String> ask = new MigAsk<>();

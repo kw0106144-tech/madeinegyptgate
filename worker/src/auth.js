@@ -21,7 +21,8 @@
    The same token is accepted by /api/advisor/* (Bassem) when the member's plan is partner / strategic (checked on the server).
    App-store reviewers (review-signin.js, «🛠️ المطوّر» store_review_signin, default OFF): while the owner's switch is on and his period runs,
    /request for the ONE review address sends nothing and /verify takes the owner's code for it (audited review.signin) — a normal full
-   session; every other address and code follows the rules above exactly. */
+   session that ends with the owner's review period at the latest, and that never adopts the mailbox's earlier anonymous requests; every
+   other address and code follows the rules above exactly. */
 import { json, err, preflight, readJson, bodyErr, line, now, iso, hex, sha256, hmac, safeEq, b64url, unb64url, enc, isEmail, emailKey, ipHash, rateOk, rateCount, isBlocked, human, mail, emailOn, secretOf, userOut, effPlan, membersByMailbox, isGmail, site, isAdmin } from "./common.js";
 import { respondioToken } from "./service-keys.js"; // the WhatsApp token: RESPONDIO_TOKEN or the Control Center slot (leaf module, no cycle)
 import { featureOn, offMessage } from "./flags.js";   // «🛠️ المطوّر»: registrations off → a NEW mailbox gets 503 feature_off (members sign in)
@@ -186,8 +187,9 @@ async function verify(req, env) {
   } else await env.DB.prepare("UPDATE members SET email_verified_at = CASE WHEN email_verified_at = '' THEN ? ELSE email_verified_at END, last_seen_at = ? WHERE id = ?").bind(t, t, m.id).run();
   m = await env.DB.prepare("SELECT * FROM members WHERE id = ?").bind(m.id).first();
   // requests this mailbox sent before signing in become theirs (tracking without last-4, bell notifications on replies), and
-  // the opportunities / projects they registered interest in are followed now — once, at attach time (what their receipt said)
-  const { results: loose } = isGmail(mailbox)
+  // the opportunities / projects they registered interest in are followed now — once, at attach time (what their receipt said).
+  // Never at a review sign-in: the owner's code proves nothing about who sent them (review-signin.js; review F5)
+  const { results: loose } = review ? { results: [] } : isGmail(mailbox)
     ? await env.DB.prepare("SELECT id, kind, target_type, target_id, target_name FROM inquiries WHERE user_id = '' AND email_key = ? AND (lower(email) LIKE '%@gmail.com' OR lower(email) LIKE '%@googlemail.com') LIMIT 200").bind(emailKey(mailbox)).all()
     : await env.DB.prepare("SELECT id, kind, target_type, target_id, target_name FROM inquiries WHERE user_id = '' AND lower(email) = ? LIMIT 200").bind(mailbox).all();
   const att = [];
@@ -198,11 +200,14 @@ async function verify(req, env) {
   }
   if (att.length) await env.DB.batch(att);
   if (review) await auditReviewSignin(env, req, m, rv); // «دخول مراجعي المتاجر»: every review sign-in is in the audit log
-  return json(await issueSession(env, m));
+  // a review session ends with the owner's review period at the latest (review F4); turning the sign-in off ends it at once (review-signin.js)
+  return json(await issueSession(env, m, review ? { expMs: Date.parse(rv.until) } : {}));
 }
-/* a normal 30-day session for a member (email-code sign-in or a login link) */
-export async function issueSession(env, m, { scope = "full" } = {}) {
-  const link = scope === "link", sid = link ? "lk" + hex(15) : hex(16), exp = Math.floor(Date.now() / 1000) + (link ? LINK_SESSION_HOURS * 3600 : TOKEN_DAYS * 86400);
+/* a normal 30-day session for a member (email-code sign-in or a login link); expMs: a session that must end earlier (the store reviewer's) */
+export async function issueSession(env, m, { scope = "full", expMs } = {}) {
+  const link = scope === "link", sid = link ? "lk" + hex(15) : hex(16);
+  let exp = Math.floor(Date.now() / 1000) + (link ? LINK_SESSION_HOURS * 3600 : TOKEN_DAYS * 86400);
+  if (Number.isFinite(expMs) && expMs > Date.now()) exp = Math.min(exp, Math.floor(expMs / 1000));
   await env.DB.prepare("INSERT INTO auth_sessions (sid_hash, member_id, created_at, expires_at) VALUES (?, ?, ?, ?)").bind(await sha256(sid), m.id, now(), iso(exp * 1000)).run();
   return { token: await signSession(secretOf(env), m.id, sid, exp), expires_at: iso(exp * 1000), user: userOut(env, m), scope: link ? "link" : "full" };
 }

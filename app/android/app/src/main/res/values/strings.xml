@@ -5,6 +5,8 @@
     <string name="title_activity_main">Made in Egypt Gate</string>
     <string name="package_name" translatable="false">com.madeinegyptgate.app</string>
     <string name="custom_url_scheme" translatable="false">com.madeinegyptgate.app</string>
+    <!-- AndroidManifest.xml asset_statements: the site's statements apply to this app (saved passwords shared with the site) -->
+    <string name="asset_statements" translatable="false">[{\"include\": \"https://madeinegyptgate.com/.well-known/assetlinks.json\"}]</string>
     <string name="mig_exit_title">Exit the app?</string>
     <string name="mig_exit_message">Leave Made in Egypt Gate? You can come back any time.</string>
     <string name="mig_exit_yes">Exit</string>

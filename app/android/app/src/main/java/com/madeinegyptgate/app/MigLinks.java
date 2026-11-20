@@ -39,6 +39,8 @@ final class MigLinks {
             "panel\\.html|login\\.html|api/index\\.php.*|data/auth\\.js|data/me\\.js|data/egadm\\.js)$"
     );
     private static final Pattern MEETING = Pattern.compile("^/(en/)?meeting(/.*|\\.html)?$");
+    /** the site's payment page (/pay/, /en/pay/, /pay.html: data/pay.js), the same paths as in NOT_APP_PAGE */
+    private static final Pattern PAY_PAGE = Pattern.compile("^/(en/)?pay(/.*|\\.html.*)?$");
     /** files and data, never a place to come back to (the same list as the iOS app's MIGLinks.restorable) */
     private static final Pattern NOT_A_PLACE = Pattern.compile("^/(api|media|data|img|assets|_seo|\\.well-known)(/.*)?$");
     /** one-time parts of an address: live=1 starts a call, lt= / login= are single-use sign-in codes (data/mig-api.js, advisor) */
@@ -49,6 +51,10 @@ final class MigLinks {
     static final int SITE_CHILD = 1; // a page of the site: a full-screen window over the page, like a new tab (the page under it keeps running)
     static final int EXTERNAL_CHILD = 2; // another site while a live call is open: stays in the app, so the call keeps the microphone
     static final int EXTERNAL_APP = 3; // another site without a call, mail, phone, WhatsApp …: the phone's browser or its app (as before)
+    /** an App Link arriving while the app runs (incomingAction) */
+    static final int INCOMING_LOAD = 0; // no call: in the page, as before
+    static final int INCOMING_WINDOW = 1; // a call: in a window over it, like a new tab (the call goes on)
+    static final int INCOMING_ASK = 2; // a call, and the link starts one itself: «تنهي المكالمة الحالية وتفتح الرابط؟» first
 
     /** The file chooser (MigChromeClient.onShowFileChooser) */
     static final int CHOOSER_CAPACITOR = 0; // Capacitor's own: inputs with capture (the camera at once), video / audio only
@@ -146,6 +152,42 @@ final class MigLinks {
         Parts p = parse(url);
         if (p == null || !"https".equals(p.scheme) || !isSiteHost(p.host)) return false;
         return !NOT_APP_PAGE.matcher(p.path.toLowerCase(Locale.ROOT)).matches();
+    }
+
+    /**
+     * the site's payment page in a page window (data/pay.js «ادفع الآن» there has no Capacitor bridge): the gateway it goes to — and the
+     * bank's 3-D Secure pages and wallet links after it — belongs in the phone's browser, call or not (pay-handoff)
+     */
+    static boolean isPayPage(String url) {
+        Parts p = parse(url);
+        return p != null && "https".equals(p.scheme) && isSiteHost(p.host) && PAY_PAGE.matcher(p.path.toLowerCase(Locale.ROOT)).matches();
+    }
+
+    /**
+     * A page window's navigation to an address that is not a web page (mail, phone, WhatsApp, market:, intent:, an app's own scheme):
+     * true = hand it to the app that owns it. Only after a tap (gesture), as Chrome: an automatic one (an ad frame's or a redirect's
+     * jump to market: / an app) is cancelled, so another site shown during a live call can never take the app — and the call's
+     * microphone — to the background by itself. Web pages, empty documents and blob: files are the WebView's (false).
+     */
+    static boolean opensAnotherApp(String url, boolean gesture) {
+        if (url == null || isWeb(url) || isOfflineOrBlank(url) || url.startsWith("blob:")) return false;
+        return gesture;
+    }
+
+    /**
+     * The pages' answer to «is a live call open?» (MigWindows.callOpen: TRUE, FALSE, or null = a page did not answer in time) as yes /
+     * no: only a clear «no» is no call. A page too busy to answer for 1.5 s is likely busy with the call itself (WebRTC on a slow phone)
+     * or still waking up after the app came back, and the side taken for it ends nothing: one step of Back (Chromium's own), another site
+     * in a window, an incoming link in a window of its own.
+     */
+    static boolean asCall(Boolean answer) {
+        return !Boolean.FALSE.equals(answer);
+    }
+
+    /** an App Link while the app runs (MainActivity.openIncoming) → INCOMING_LOAD / INCOMING_WINDOW / INCOMING_ASK */
+    static int incomingAction(Boolean callOpen, String link) {
+        if (!asCall(callOpen)) return INCOMING_LOAD;
+        return startsCall(link) ? INCOMING_ASK : INCOMING_WINDOW;
     }
 
     /**
