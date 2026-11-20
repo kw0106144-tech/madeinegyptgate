@@ -15,13 +15,16 @@
                                           — only after a passed token test, never while WA_DRY_RUN=1; 3/hour and 5/day per owner
      POST   /keys/wa-live {on, confirm_delivered}   the switch «تشغيل إرسال واتساب الحقيقي»: on → 409 until a passed token test, a sent test
                                           message and the owner's confirmation that it arrived; off is always allowed
-   «بحث الإنترنت» (Bassem's web search, src/websearch.js): websearch.provider (setting tavily|serper|brave) · websearch.key (secret, its
-                                          «اختبار» = ONE real search) · websearch.cap (setting 0–10000 calls per Cairo day, default 300, 0 = off)
-                                          · bassem.tool_secret (secret, the X-MIG-Tool header value in the Anam tool; no test) — GET /keys
-                                          returns them in `websearch`, the WhatsApp/Anam `slots` stay as they were
-     POST   /keys/websearch/connect       «🔗 وصّل البحث بباسم» (acc-wsconnect.js): creates / updates the Anam tool bassem_web_search with the
-                                          tool secret (generated + sealed when none exists) and attaches it to Bassem's persona — the secret
-                                          never leaves the Worker; GET /keys → websearch.connect = its state (connected, tool_id, secret_changed, last)
+   «بحث الإنترنت» (the web search + opportunity hunt of Janna and Bassem, src/websearch.js, src/web-hunt.js): websearch.provider (setting
+                                          tavily|serper|brave) · websearch.key (secret, its «اختبار» = ONE real search) · websearch.cap (setting
+                                          0–10000 calls per Cairo day, default 300, 0 = off) · websearch.cap_janna (setting: Janna's share of that
+                                          same cap, default 40 %, never above it, 0 = her web search off) · bassem.tool_secret / janna.tool_secret
+                                          (secrets, the X-MIG-Tool header values of their Anam tools; no test) — GET /keys returns them in
+                                          `websearch`, the WhatsApp/Anam `slots` stay as they were
+     POST   /keys/websearch/connect       «🔗 وصّل البحث بجنة وباسم» (acc-wsconnect.js): creates / updates the 4 Anam tools (bassem_web_search,
+                                          bassem_web_hunt, janna_web_search, janna_web_hunt) with their secrets (generated + sealed when missing)
+                                          and attaches them to Bassem and both Jannas — the secrets never leave the Worker; GET /keys →
+                                          websearch.connect = its state (the checklist per tool and persona, secret_changed, last)
    «Cloudflare — لوحة المطوّر» (the developer panel «🛠️ المطوّر», acc-dev.js / cf-api.js): cloudflare.dev_token (secret; the Worker
                                           secret CF_DEV_TOKEN wins) — NO tail is kept or shown, only «متسجّل ✓»; its «اختبار» = read-only
                                           calls (token verify, the Pages project, the janna-lookup deployments) — GET /keys returns it in
@@ -37,9 +40,9 @@ import { sendOwnerTest, waOn, waLive, waSwitch, waDryEnv, waDryReason, waFeature
 import { featureOn } from "./flags.js"; // «🛠️ المطوّر» whatsapp_send OFF: not even the owner's test message leaves
 import { SVC_SLOTS, loadServiceKeys, forgetServiceKeys, channelOk, respondioChannel, respondioChannelSource, DEFAULT_CHANNEL } from "./service-keys.js";
 // ---- Bassem web search («بحث الإنترنت») ----
-import { WS_SLOTS, WS_PROVIDERS, WS_DEFAULT_CAP, WS_MAX_CAP, wsProviderOk, wsCapOk, webSearchConfig } from "./service-keys.js";
-import { testWebSearch, usedToday, WS_HEADER } from "./websearch.js";
-import { connectView } from "./acc-wsconnect.js"; // «🔗 وصّل البحث بباسم» (POST /keys/websearch/connect): its state for the panel, never a value
+import { WS_SLOTS, WS_PROVIDERS, WS_DEFAULT_CAP, WS_MAX_CAP, WS_JANNA_SHARE, wsProviderOk, wsCapOk, webSearchConfig } from "./service-keys.js";
+import { testWebSearch, usedToday, usedTodayJanna, WS_HEADER } from "./websearch.js";
+import { connectView } from "./acc-wsconnect.js"; // «🔗 وصّل البحث بجنة وباسم» (POST /keys/websearch/connect): its state for the panel, never a value
 // ---- «Cloudflare — لوحة المطوّر» (the developer panel's token) ----
 import { CF_SLOT, devToken, testToken as testCfToken, accountOf, PAGES_PROJECT, WORKERS } from "./cf-api.js";
 
@@ -47,18 +50,20 @@ export const SLOTS = Object.freeze({
   "respondio.token": { kind: "secret", env: "RESPONDIO_TOKEN", test: "respondio", wa: true, label_ar: "توكن respond.io (إرسال واتساب)", label_en: "respond.io API token (WhatsApp sending)" },
   "anam.api_key": { kind: "secret", env: "ANAM_API_KEY", test: "anam", wa: false, label_ar: "مفتاح Anam (فيديو جنة وباسم)", label_en: "Anam API key (Janna & Bassem video)" },
   "respondio.channel": { kind: "setting", env: "RESPONDIO_CHANNEL_ID", wa: true, label_ar: "رقم قناة الواتساب على respond.io", label_en: "respond.io WhatsApp channel id" },
-  // ---- Bassem web search («بحث الإنترنت», src/websearch.js) ----
+  // ---- web search of Janna and Bassem («بحث الإنترنت», src/websearch.js + src/web-hunt.js) ----
   "websearch.key": { kind: "secret", env: "WEBSEARCH_KEY", test: "websearch", wa: false, ws: true, label_ar: "بحث الإنترنت — المفتاح", label_en: "Web search — API key" },
-  "bassem.tool_secret": { kind: "secret", env: "TOOL_SECRET", test: "", wa: false, ws: true, label_ar: "سر أدوات باسم (هيدر X-MIG-Tool في أداة Anam)", label_en: "Bassem's tool secret (the X-MIG-Tool header of the Anam tool)" },
+  "bassem.tool_secret": { kind: "secret", env: "TOOL_SECRET", test: "", wa: false, ws: true, label_ar: "سر أدوات باسم (هيدر X-MIG-Tool في أدوات باسم على Anam)", label_en: "Bassem's tool secret (the X-MIG-Tool header of Bassem's Anam tools)" },
+  "janna.tool_secret": { kind: "secret", env: "JANNA_TOOL_SECRET", test: "", wa: false, ws: true, label_ar: "سر أدوات جنة (هيدر X-MIG-Tool في أدوات جنة على Anam)", label_en: "Janna's tool secret (the X-MIG-Tool header of Janna's Anam tools)" },
   "websearch.provider": { kind: "setting", env: "WEBSEARCH_PROVIDER", wa: false, ws: true, label_ar: "بحث الإنترنت — مزود الخدمة: Tavily / Serper / Brave", label_en: "Web search — provider: Tavily / Serper / Brave" },
   "websearch.cap": { kind: "setting", env: "WEBSEARCH_CAP", wa: false, ws: true, label_ar: "بحث الإنترنت — الحد اليومي لعمليات البحث", label_en: "Web search — daily search cap" },
+  "websearch.cap_janna": { kind: "setting", env: "WEBSEARCH_CAP_JANNA", wa: false, ws: true, label_ar: "بحث الإنترنت — حد جنة اليومي (من نفس الحد)", label_en: "Web search — Janna's daily share (of the same cap)" },
   // ---- «🛠️ المطوّر» (acc-dev.js): the Cloudflare API token for the deploys list + rollback — write-only, no tail ----
   "cloudflare.dev_token": { kind: "secret", env: "CF_DEV_TOKEN", test: "cloudflare", wa: false, cf: true, notail: true, label_ar: "Cloudflare — لوحة المطوّر", label_en: "Cloudflare — developer panel" },
 });
 export const CF_PERMISSIONS = Object.freeze({ ar: "توكن من Cloudflare (My Profile ← API Tokens ← Create Token ← Custom) على الحساب ده بصلاحيتين: Account ← Cloudflare Pages: Edit و Account ← Workers Scripts: Edit (القراءة بتكفي لعرض النشرات، والـ Edit لازم للرجوع).",
   en: "A Cloudflare API token (My Profile → API Tokens → Create Token → Custom) on this account with two permissions: Account → Cloudflare Pages: Edit and Account → Workers Scripts: Edit (Read is enough to list the deploys; Edit is needed to roll back)." });
 /* the panel value / state of each sealed slot in the service-keys memo */
-const PANEL = { "respondio.token": ["respondio_token", "respondio_state"], "anam.api_key": ["anam_key", "anam_state"], "websearch.key": ["ws_key", "ws_state"], "bassem.tool_secret": ["tool_secret", "tool_state"] };
+const PANEL = { "respondio.token": ["respondio_token", "respondio_state"], "anam.api_key": ["anam_key", "anam_state"], "websearch.key": ["ws_key", "ws_state"], "bassem.tool_secret": ["tool_secret", "tool_state"], "janna.tool_secret": ["janna_secret", "janna_state"] };
 export const LIMITS = Object.freeze({ tests_per_hour: 10, wa_tests_per_hour: 3, wa_tests_per_day: 5, timeout_ms: 10000 });
 export const RESPONDIO_CHANNELS_URL = "https://api.respond.io/v2/space/channel"; // read-only (verified 2026-11-18, whatsapp.js header)
 export const ANAM_PERSONAS_URL = "https://api.anam.ai/v1/personas?perPage=1";      // read-only
@@ -171,22 +176,26 @@ async function wsView(env, store, sys) {
     return { kind: "secret", label_ar: d.label_ar, label_en: d.label_en, set: !!i.set, tail: i.set ? String(i.tail || "") : "", set_at: i.set ? String(i.set_at || "") : "", set_by: i.set ? String(i.set_by || "") : "",
       readable: !!(i.set && i.readable), env: envSet, env_name: d.env, effective: envSet ? "env" : i.set && i.readable ? "panel" : "none", testable: !!d.test, last_test: d.test ? lastTest(name) : null }; };
   const setting = name => { const r = sys.get(name), d = SLOTS[name]; return { kind: "setting", label_ar: d.label_ar, label_en: d.label_en, value: r ? String(r.v) : "", set_at: r ? String(r.updated_at || "") : "", set_by: r ? String(r.updated_by || "") : "", env_name: d.env }; };
-  const envCap = wsCapOk(env && env.WEBSEARCH_CAP);
-  return { ready: cfg.ready, reason: cfg.reason || "ready", endpoint: "/api/advisor/web", header: WS_HEADER,
+  const envCap = wsCapOk(env && env.WEBSEARCH_CAP), envCapJ = wsCapOk(env && env.WEBSEARCH_CAP_JANNA);
+  return { ready: cfg.ready, reason: cfg.reason || "ready", janna_ready: cfg.janna_ready, janna_reason: cfg.janna_reason || "ready",
+    endpoint: "/api/advisor/web", endpoints: ["/api/advisor/web", "/api/advisor/hunt", "/api/janna/web", "/api/janna/hunt"], header: WS_HEADER,
     provider: { ...setting("websearch.provider"), options: [...WS_PROVIDERS], env_value: wsProviderOk(env && env.WEBSEARCH_PROVIDER), effective: cfg.provider, source: cfg.provider_source },
-    key: sec("websearch.key"), tool_secret: sec("bassem.tool_secret"),
+    key: sec("websearch.key"), tool_secret: sec("bassem.tool_secret"), janna_secret: sec("janna.tool_secret"),
     cap: { ...setting("websearch.cap"), env_value: envCap >= 0 ? String(envCap) : "", "default": WS_DEFAULT_CAP, max: WS_MAX_CAP, effective: cfg.cap, source: cfg.cap_source },
-    used_today: store ? await usedToday(env) : 0, connect: await connectView(env, store) };
+    cap_janna: { ...setting("websearch.cap_janna"), env_value: envCapJ >= 0 ? String(envCapJ) : "", "default": Math.floor(cfg.cap * WS_JANNA_SHARE), share: WS_JANNA_SHARE, max: cfg.cap, effective: cfg.cap_janna, source: cfg.cap_janna_source },
+    used_today: store ? await usedToday(env) : 0, used_today_janna: store ? await usedTodayJanna(env) : 0, connect: await connectView(env, store) };
 }
-/* PUT / DELETE of the two web-search settings: provider (tavily|serper|brave) and the daily cap (0–10000, 0 = off); "" = back to the default */
+/* PUT / DELETE of the web-search settings: provider (tavily|serper|brave), the daily cap (0–10000, 0 = off) and Janna's share of it
+   (0–10000; used up to the cap, 0 = her web search off); "" = back to the default */
 async function putWsSetting(env, adm, slot, raw) {
   await needTables(env, "cc_settings", "cc_audit");
   const s = String(raw == null ? "" : raw).trim().replace(/[٠-٩]/g, d => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
   let val = "";
   if (s && slot === "websearch.provider") { val = wsProviderOk(s); if (!val) fail(422, "invalid", "اختار مزود من التلاتة: Tavily أو Serper أو Brave / choose one of tavily, serper, brave", { errors: [{ field: "value", msg: "tavily | serper | brave", code: "invalid_provider" }], options: [...WS_PROVIDERS] }); }
   if (s && slot === "websearch.cap") { const n = wsCapOk(s); if (n < 0) fail(422, "invalid", `الحد اليومي رقم من 0 لـ ${WS_MAX_CAP} (0 = البحث مقفول) / the daily cap is a number from 0 to ${WS_MAX_CAP} (0 = off)`, { errors: [{ field: "value", msg: "0–" + WS_MAX_CAP, code: "invalid_cap" }] }); val = String(n); }
+  if (s && slot === "websearch.cap_janna") { const n = wsCapOk(s); if (n < 0) fail(422, "invalid", `حد جنة رقم من 0 لـ ${WS_MAX_CAP} (0 = بحث جنة مقفول؛ بيتحسب من الحد اليومي نفسه ومايعدّيهوش) / Janna's share is a number from 0 to ${WS_MAX_CAP} (0 = her web search off; it is part of the same daily cap and never above it)`, { errors: [{ field: "value", msg: "0–" + WS_MAX_CAP, code: "invalid_cap" }] }); val = String(n); }
   const cur = await first(env, "SELECT v FROM cc_settings WHERE k = ?", slot), before = cur ? String(cur.v) : "";
-  const item = async () => { const c = await webSearchConfig(env); return slot === "websearch.provider" ? { value: val, effective: c.provider, source: c.provider_source } : { value: val, effective: c.cap, source: c.cap_source }; };
+  const item = async () => { const c = await webSearchConfig(env); return slot === "websearch.provider" ? { value: val, effective: c.provider, source: c.provider_source } : slot === "websearch.cap_janna" ? { value: val, effective: c.cap_janna, source: c.cap_janna_source } : { value: val, effective: c.cap, source: c.cap_source }; };
   if (before === val) return { body: { ok: true, unchanged: true, slot, item: await item() } };
   const t = now(), by = byOf(adm), stmts = [val ? setStmt(env, slot, val, by, t) : delStmt(env, slot)];
   if (slot === "websearch.provider") stmts.push(delStmt(env, "keys.test.websearch.key"));
@@ -254,7 +263,7 @@ export async function testKey(req, env, ctx, adm, slot) {
   const d = slotOf(slot); if (!d) unknownSlot(slot, adm);
   if (d.kind !== "secret" && d.ws) fail(400, "test_the_key", "الإعداد ده بيتجرّب مع اختبار مفتاح بحث الإنترنت / this setting is checked by the web-search key test", { slot: "websearch.key" });
   if (d.kind !== "secret") fail(400, "test_the_token", "القناة بتتجرّب مع توكن respond.io / the channel is checked by the respond.io token test", { slot: "respondio.token" });
-  if (!d.test) fail(400, "no_test", "السر ده مالوش اختبار: بيتأكد لما أداة باسم تتنادى بنفس القيمة / this secret has no test: it is checked when Bassem's tool calls with the same value");
+  if (!d.test) fail(400, "no_test", "السر ده مالوش اختبار: بيتأكد لما أداة باسم أو جنة تتنادى بنفس القيمة / this secret has no test: it is checked when Bassem's or Janna's tool calls with the same value");
   await needTables(env, "cc_settings", "cc_audit");
   const v = await fresh(env), envKey = env && env[d.env] ? String(env[d.env]) : "";
   let panelKey = "", state = "none";

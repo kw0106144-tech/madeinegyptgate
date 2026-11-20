@@ -20,8 +20,9 @@ owner's `mis-egypt` Worker in deploy 1. `test/integ-worker.test.mjs` fails if th
 | `TURNSTILE_SECRET` *(optional)* | Turnstile: once set, `/api/auth/request` and anonymous `/api/inquiries` REQUIRE a token (pages need `window.MIG_TURNSTILE_SITEKEY`) |
 | `BRAVE_SEARCH_KEY` *(optional)* or `GOOGLE_CSE_KEY` + `GOOGLE_CSE_CX` | web search for the admins' no-match candidate list (without a key: platform directory only; nothing is ever scraped) |
 | `JANNA_KEY` *(optional)* | header `X-Janna-Key` on `/api/janna/lookup` (and `/api/janna/item`) |
-| `TOOL_SECRET` *(for Bassem's web search)* | the `X-MIG-Tool` header value of the Anam tool `bassem_web_search` (`/api/advisor/web`); random, ≥ 16 characters (`openssl rand -hex 24`). The owner may save it in «مفاتيح الخدمات» → «سر أدوات باسم» instead (a Worker secret wins), or let «🔗 وصّل البحث بباسم» make one there (`POST /api/admin/cc/keys/websearch/connect`, below) — then nobody ever sees it. Without it the endpoint is off (fail-closed) |
-| `WEBSEARCH_KEY` *(optional)* | Bassem's web search provider key (Tavily / Serper / Brave) — or the panel slot «بحث الإنترنت — المفتاح» (a Worker secret wins). Optional vars: `WEBSEARCH_PROVIDER` (tavily \| serper \| brave), `WEBSEARCH_CAP` (calls per Cairo day, default 300, 0 = off) |
+| `TOOL_SECRET` *(for Bassem's web tools)* | the `X-MIG-Tool` header value of Bassem's Anam tools `bassem_web_search` + `bassem_web_hunt` (`/api/advisor/web`, `/api/advisor/hunt`); random, ≥ 16 characters (`openssl rand -hex 24`). The owner may save it in «مفاتيح الخدمات» → «سر أدوات باسم» instead (a Worker secret wins), or let «🔗 وصّل البحث بجنة وباسم» make one there (`POST /api/admin/cc/keys/websearch/connect`, below) — then nobody ever sees it. Without it these endpoints are off (fail-closed) |
+| `JANNA_TOOL_SECRET` *(for Janna's web tools)* | the same for Janna's `janna_web_search` + `janna_web_hunt` (`/api/janna/web`, `/api/janna/hunt`) — a SEPARATE value (review 2026-11-20 S17: Janna's tools sit on public personas; each path accepts only its own persona's secret). Panel slot «سر أدوات جنة»; normally made and sealed by the same press |
+| `WEBSEARCH_KEY` *(optional)* | the web search provider key of both personas (Tavily / Serper / Brave) — or the panel slot «بحث الإنترنت — المفتاح» (a Worker secret wins). Optional vars: `WEBSEARCH_PROVIDER` (tavily \| serper \| brave), `WEBSEARCH_CAP` (provider queries per Cairo day, default 300, 0 = off), `WEBSEARCH_CAP_JANNA` (Janna's share of that cap, default 40 %, never above it, 0 = her web search off) |
 
 **Vars** (in `wrangler.toml`): `SITE_URL="https://madeinegyptgate.com/"`, `MAIL_FROM="منصة صنع في مصر <noreply@madeinegyptgate.com>"` (the one
 sender for every e-mail; Janna / Bassem / deal mails only change the display name), `TEAM_EMAIL` and `ADMIN_EMAILS`
@@ -299,7 +300,9 @@ answer 503 `profile_store_off` / `memory_off` and the call simply starts without
 |---|---|---|
 | GET / POST | `/api/advisor/profile` | the member's factory profile Bassem records in the call (`src/profile.js`; staff read-only with `?member_id=`). Bassem's saves (`source:"bassem"`) only ADD — never `replace`, never clear |
 | GET / POST | `/api/advisor/memory` | Bassem's memory of the member (`src/memory.js`): POST `search` / `turns` / `summary` (tools with `outcome` ok \| refused \| failed) / `fact`; GET `?q=` recall (keywords + time words امبارح / النهارده / آخر مرة … + «جديد»), `?call_id=` = the call going on; GET `/context`. **No DELETE** (405 `memory_permanent`) |
-| POST | `/api/advisor/web` | Bassem's web search (`src/websearch.js`), header `X-MIG-Tool: <TOOL_SECRET>` |
+| POST | `/api/advisor/web` | Bassem's web search (`src/websearch.js`), header `X-MIG-Tool: <TOOL_SECRET>` — "Web search and the opportunity hunt" below |
+| POST | `/api/advisor/hunt` | Bassem's opportunity hunt (`src/web-hunt.js`), same header |
+| POST | `/api/janna/web`, `/api/janna/hunt` | Janna's web search and hunt, header `X-MIG-Tool: <JANNA_TOOL_SECRET>` |
 | GET / POST | `/api/janna/item` | one directory item in full + a spoken summary (`src/janna-item.js`, data `src/items.json` from `build-items.js`); POST not found = 200 `found:false` |
 | POST | `/api/janna/lookup` | now also `page`, `market` (tenders), each result with `id`, `open_url` and the amounts (`list_key` / `url` only on GET since 2026-11-20 — "Faster tool answers" below) |
 | POST | `/api/janna/session` | Bassem's ephemeral persona now carries «النهارده: <Cairo date>», the profile and the memory (each in data markers, ≤ 5,200 characters); `continue_call` (a chain part) = the call's last words from the memory + no second greeting |
@@ -393,6 +396,57 @@ Janna's memory 503 `memory_off`, the daily job `{skipped: "no 0009 tables"}`, th
   e-mails stripped); a persona only sees entries the TEAM answered / approved (review 2026-11-19 #4: no automatic approval); a reply with a
   payment instruction is never stored as an answer; every text through `forLLM` + `instructionLike` (folded: tatweel, diacritics,
   look-alike letters).
+
+## Web search and the opportunity hunt — Janna and Bassem (src/websearch.js, web-hunt.js, web-classify.js, web-leads.js; migration 0011)
+
+Owner 2026-11-20: «دول لازم يبقوا آلات سحب داتا، وهم يبقوا مركز البحث الرئيسي لاي حد بيدخل على المنصه». Janna (every visitor) and Bassem
+(plan members) look in the platform first; when it is not enough they search the open web, and for a seller (a factory, registered or not)
+they HUNT: tenders, RFQs, potential buyers, new projects and trade news for its product in the market it names. What they find is kept for
+the data team («🌐 فرص من الإنترنت», 0011) so it can become platform content — reviewed by a person, never automatically.
+
+| Method | Path | Tool (Anam SERVER webhook) | Header `X-MIG-Tool` |
+|---|---|---|---|
+| POST | `/api/advisor/web` | `bassem_web_search` `{query, market?, kind?, lang?, fresh?}` | `TOOL_SECRET` / slot `bassem.tool_secret` |
+| POST | `/api/advisor/hunt` | `bassem_web_hunt` `{product, product_en?, buyer_industries?, market?, governorate?, intents?, service?, lang?}` | same |
+| POST | `/api/janna/web` | `janna_web_search` (same body as Bassem's search) | `JANNA_TOOL_SECRET` / slot `janna.tool_secret` |
+| POST | `/api/janna/hunt` | `janna_web_hunt` (same body as Bassem's hunt) | same |
+
+All four skip `ccBoot` (index.js `BARE`), take Anam's `{bodyParams:{…}}` as well as a flat body, and answer the model in its persona's
+voice (Janna feminine Arabic «لقيت… محتاجة…», Bassem masculine, English with `lang:"en"`). Search: `{count, results:[{title, url, snippet,
+source, date, type}], text, kind, market, cached, origin:"web", note}`. Hunt: `{count, counts, results:[{type: tender|rfq|buyer|buyer_list|
+project|news, title, url, snippet ≤ 140, source, date, official?, aggregator?}] ≤ 6, text, query: "product · market", market, queries, sent,
+cached, partial, origin, note, hint?, ambiguous?}`. **Errors are HTTP 200** `{error, code, http, count:0, results:[], text}` (the spoken
+`text` says what to tell the caller) + one log line `tool-soft-error <path> <code>`: `websearch_off` (no secret / key / provider, cap 0),
+`feature_off`, `websearch_cap` (the day's cap or Janna's share), `websearch_busy` (`reason` hour | minute), `websearch_failed`,
+`query_required`, `url_not_allowed`, `pii_not_allowed`, `person_not_allowed` (a query that is only a person's name — review S9 / S15),
+`product_required`, `product_ambiguous` (ONE question first, costs nothing), `industries_required`, `too_large`, `bad_json`. Only a wrong or
+missing `X-MIG-Tool` (401) and a wrong method (405) keep their status.
+
+- **A hunt** (`runHunt`): the product's meaning from `lookup-terms.js` (`concepts`, `EQUIV`, `AMBIG`: its Arabic and English names),
+  3–6 provider queries from templates per intent (tenders, RFQs, buyers = the industries that use the product, new projects; Arabic and
+  English interleaved for an Arab market, English elsewhere), cached ones free, ONE reservation for the rest, sent in parallel (Brave one at a time) under one deadline `HUNT_MS` = 4.5 s (a late or 429 query =
+  `partial`, its unit given back). Each result is classified (`web-classify.js`: portal / entity / aggregator / B2B buy path / competitor /
+  job / reference / news), checked for relevance to the product and the buyers' industries, de-duplicated, rejected links skipped (the
+  team's «مرفوضة»), ≤ 2 per site, ≤ 6 kept. Personal pages (LinkedIn people, social profiles) and links with an e-mail or phone in the
+  path are dropped; a query string with one is cut; e-mails and phones in titles / snippets are masked.
+- **Cost**: 1 cap unit per provider query sent. A plain search = 1; a hunt ≤ 6; the same query within an hour (KV `SEO_KV` `acc:ws:*`)
+  = 0. Counters in D1 `rl`: `wsday|<day>` (the cap, default 300), `wsmin|<minute>` (30), and for Janna also `wsday|janna|<day>` (her
+  share, default 40 % = 120), `wsday|janna|h|<day>|<hour>` (max(6, share ÷ 8)) and `wsmin|janna|<minute>` (12) — all reserved in one round,
+  over-reservations given back at once.
+- **Leads** (`web-leads.js`, table `web_leads`, migration `0011_web_leads.sql`; owner switch `web_leads`): after a FRESH provider answer
+  (never a cached one, review S8) each tender / RFQ / buyer / buyer list / project (and a hunt's news) is upserted by its canonical link
+  (`url_hash`): a known link gains a sighting at most once an hour, a better type, the other persona, and keeps its status. Without the
+  table nothing is written and the answers do not change. Data desk: `GET /api/team/desk/leads`, `PUT /api/team/desk/leads/:id`
+  (roles data / admin / owner, one `cc_audit` row per decision: `leads.accept` / `leads.reject` / `leads.reopen` / `leads.convert`),
+  `POST /api/team/desk/content {…, lead_id}` (ACC-CONTRACT §12.5). A rejection with reason `old` / `duplicate` / `not_credible` / `advert`
+  hides the link from every later hunt; `off_topic` (or no reason) only for that product.
+- **Memory and knowledge**: the four tools are web rows in Bassem's / Janna's memory (sites, never a page title; «فرص من الإنترنت»), they
+  close the task they did (`tasks.js`), and the knowledge bank never keeps a web answer as its answer (review S16: «محتاجة إجابة», empty
+  answer, source «الإنترنت»).
+- **Switches** (src/flags.js): `bassem_web_search` (Bassem's two endpoints), `janna_web_search` (Janna's two), `web_leads` (the store) —
+  each LOCKED or showing what it needs (no key, no tool secret, no provider, cap 0 / Janna's share 0, not connected, migration 0011).
+- Tests: `test/websearch.test.mjs`, `test/web-hunt.test.mjs`, `test/web-leads.test.mjs`, `test/web-tools-memory.test.mjs`,
+  `test/websearch-connect.test.mjs`, `test/dev-panel.test.mjs` (no network: every provider and Anam call is a mocked `fetch`).
 
 # Platform API — accounts, automatic inquiry routing, follows, notifications, metrics, WhatsApp
 
@@ -620,7 +674,7 @@ Owner only (`keys.manage` ∈ OWNER_ONLY: admin / editor / support / X-Platform-
 | POST | `/api/admin/cc/keys/:slot/test` | — | `{ok, status, detail, source, at}` (+ respond.io: `channel, channel_found, token_ok, wa_test_ok_at`) · 409 `not_set` / `unreadable` · 429 (10/hour) |
 | POST | `/api/admin/cc/keys/wa-test` | `{mode?: "text"\|"template"}` | `{ok, sent, to:"01062531295", mode, provider_id\|error, next, hint?}` · 409 `not_set` / `dry_run_env` / `token_test_required` · 429 (3/hour, 5/day) |
 | POST | `/api/admin/cc/keys/wa-live` | `{on, confirm_delivered}` | `{ok, switch, live, dry_run, dry_run_env, reason}` · 409 `not_set` / `token_test_required` / `test_message_required` / `delivery_confirmation_required` with `need` |
-| POST | `/api/admin/cc/keys/websearch/connect` | `{}` | «🔗 وصّل البحث بباسم» (`src/acc-wsconnect.js`): `{ok, tool_id, tool_name, persona_id, created, updated, unchanged, attached, already_attached, header_source: env\|panel\|generated, duplicates, websearch_ready, websearch_missing:[key\|provider\|cap], websearch_reason, feature_on, at}` — never the secret, the Anam key or Anam's error body · 409 `anam_key_missing` / `tool_secret_invalid` / `persona_changed` / `tool_changed` / `connect_busy` · 502 `anam_refused` (`anam_status`, `step`) / `anam_unreachable` / `persona_not_found` / `anam_shape` · 503 `config_secret_missing` · 429 (10/hour); every error has `msg_ar`, `msg_en` (+ `tool_id`, `tool_done` when the tool was written but not attached) |
+| POST | `/api/admin/cc/keys/websearch/connect` | `{}` | «🔗 وصّل البحث بجنة وباسم» (`src/acc-wsconnect.js`): `{ok, tools:[{key, name, tool_id, done: created\|updated\|unchanged, duplicates, personas:[{key, id, attached, already}]}], personas:{bassem, janna_ar, janna_en: {id, added, already}}, header_source:{bassem, janna: env\|panel\|generated}, websearch_ready, websearch_missing:[key\|provider\|cap], websearch_reason, janna_ready, janna_reason, cap, cap_janna, feature_on:{bassem_web_search, janna_web_search}, warnings:[{code:"share_links", persona, count}], at}` + the v1 fields of `bassem_web_search` (`tool_id, tool_name, persona_id, created, updated, unchanged, attached, already_attached, duplicates`) — never a secret, the Anam key or Anam's error body · 409 `anam_key_missing` / `tool_secret_invalid` (`slot`) / `persona_changed` / `tool_changed` / `connect_busy` · 502 `anam_refused` (`anam_status`, `step`, `persona`) / `anam_unreachable` / `persona_not_found` / `anam_shape` · 503 `config_secret_missing` · 504 `connect_slow` (what was done is kept; the next press finishes) · 429 (10/hour); every error has `msg_ar`, `msg_en` and `tools_done` |
 Slots: `respondio.token`, `anam.api_key` (cc_secrets, AES-GCM with `CONFIG_SECRET`, AAD per slot) and `respondio.channel` (a plain setting).
 Settings (cc_settings scope `system`, reserved prefixes — never a custom setting): `respondio.channel`, `wa.live` (default off), `wa.test_ok_at`,
 `wa.test_sent_at`, `wa.test_msg_id`, `wa.live_at`, `wa.live_by`, `keys.test.<slot>` (last test: at, ok, status, detail, source, by), `websearch.connect`
@@ -634,7 +688,12 @@ one test message to the platform's own number (public setting `whatsapp_number`)
 deleted token, or a changed channel, switches it off again. `loadServiceKeys(env)` (ccBoot, memo per `env.DB`, 60 s) feeds the sync
 `svc(env)` view; decrypted values never leave that memo. Every real send re-reads the switch from D1 (`waSwitchNow`) right before the
 provider call, so «إيقاف» stops all isolates at once. Audit: `keys.set`, `keys.delete`, `keys.test`, `wa.test`, `wa.live` — no values.
-**«🔗 وصّل البحث بباسم»** (owner request 2026-11-19: the tool secret never passes through a chat or a person). With the Anam key the Worker
+**«🔗 وصّل البحث بجنة وباسم»** (since 2026-11-20 the same press for FOUR tools on three personas: `bassem_web_search` + `bassem_web_hunt` on
+Bassem with his secret, `janna_web_search` + `janna_web_hunt` on Janna AR `5f06d835-…` and Janna EN `e5101653-…` with Janna's own secret
+`janna.tool_secret`, made and sealed the same way; one write per persona with every id it is missing; state v2 in `websearch.connect`
+`{v:2, tools:{key:{tool_id, tool_updated_at, body_fp, secret_fp}}, personas, connected:{bassem, janna}}`, a v1 state is read as Bassem's
+search; a 100 s budget → 504 `connect_slow` with `tools_done`; then a best-effort read of Bassem's share links → warning `share_links`). The
+v1 description, for Bassem's search tool (owner request 2026-11-19: the tool secret never passes through a chat or a person). With the Anam key the Worker
 already uses (`ANAM_API_KEY`, else the slot `anam.api_key`): GET Bassem's persona `19ef9078-…` and `GET /v1/tools?search=bassem_web_search` first
 (nothing is written before both answer), then the effective tool secret (`TOOL_SECRET`, else the slot `bassem.tool_secret`; neither or unreadable →
 32 random bytes from `crypto.getRandomValues`, sealed into that slot WITHOUT a tail, audit `keys.set` `{generated:true}`), then `POST /v1/tools` with
@@ -677,7 +736,9 @@ one stores nothing. Reader `loadFeatures` (ccBoot, memo per `env.DB`, 30 s; no t
 | `bassem_morning` | on | server | bassemCron skips the morning message («كلّمني الساعة» still works) |
 | `daily_digest` | on | server | dailyJobs skips digests + deadline reminders (the item sync and housekeeping run) |
 | `whatsapp_send` | on | server | `waLive()` false (reason `feature_off`; `sendWA` re-reads it fresh before every provider call) — LOCKED (cannot be switched on) without a respond.io token / passed token test / with `WA_DRY_RUN=1`; going live stays in «مفاتيح الخدمات» |
-| `bassem_web_search` | on | server | `POST /api/advisor/web` → 503 `feature_off` (after the tool-secret check) — LOCKED without a web-search key / tool secret |
+| `bassem_web_search` | on | server | `POST /api/advisor/web` and `/api/advisor/hunt` → 200 `feature_off` with a spoken `text` (after the tool-secret check) — LOCKED without a web-search key / tool secret; «needs» no provider / cap 0 / not connected |
+| `janna_web_search` | on | server | `POST /api/janna/web` and `/api/janna/hunt` → 200 `feature_off` — LOCKED without a web-search key / Janna's tool secret; «needs» no provider / cap 0 / Janna's share 0 / not connected |
+| `web_leads` | on | server | no lead is stored (the answers do not change) — LOCKED until migration 0011 (`web_leads`) is applied |
 | `call_languages` | on | client | the 🌐 speaking-language button of Janna's and Bassem's calls (data/janna-live.js, `MIGFLAGS.on`): off → no button, no suggestions, every call hears as before (Arabic; English Janna: English); typed text in any language still gets an answer in it |
 Permanent policies (shown, never switches): `visitor_links_signed_in`, `knowledge_team_approved`. Public: `GET /api/settings` →
 `features` (scope client / both, effective values) + `features_v`; the overlay does not carry them. The public `feature_off` answer:

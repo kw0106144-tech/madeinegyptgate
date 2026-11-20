@@ -184,7 +184,7 @@ describe("features: the registry, PUT, audit, the public JSON", () => {
     const r = await api(env, "GET", D + "/features", { token: o.token });
     assert.equal(r.status, 200, r.text);
     assert.deepEqual(r.data.features.map(f => f.key), [...FEATURE_KEYS]);
-    for (const k of ["janna_live", "bassem_live", "janna_welcome", "standing_figures", "noise_mode_default", "intel_pages", "registrations", "rfq_autoroute", "bassem_morning", "daily_digest", "whatsapp_send", "bassem_web_search"]) assert.ok(FEATURE_KEYS.includes(k), k);
+    for (const k of ["janna_live", "bassem_live", "janna_welcome", "standing_figures", "noise_mode_default", "intel_pages", "registrations", "rfq_autoroute", "bassem_morning", "daily_digest", "whatsapp_send", "bassem_web_search", "janna_web_search", "web_leads"]) assert.ok(FEATURE_KEYS.includes(k), k);
     for (const f of r.data.features) {
       assert.ok(f.label_ar && f.label_en && f.desc_ar && f.desc_en, f.key);
       assert.ok(["server", "client", "both"].includes(f.scope), f.key);
@@ -256,12 +256,28 @@ describe("features: the registry, PUT, audit, the public JSON", () => {
     // WA_DRY_RUN = 1 locks it whatever the panel says
     const e2 = env0({ RESPONDIO_TOKEN: RIO, WA_DRY_RUN: "1" }), o2 = await owner(e2);
     assert.equal(rowOf((await api(e2, "GET", D + "/features", { token: o2.token })).data, "whatsapp_send").locked.code, "dry_run_env");
-    // web search: a key + the tool secret → unlocked and effective (Tavily from the key's shape)
+    // web search: a key + the tool secret → unlocked; it waits for «🔗 وصّل البحث بجنة وباسم» (the tools on the personas), then effective
     const e3 = env0({ TOOL_SECRET: TOOL, WEBSEARCH_KEY: TAVILY }), o3 = await owner(e3);
-    const ws = rowOf((await api(e3, "GET", D + "/features", { token: o3.token })).data, "bassem_web_search");
+    let ws = rowOf((await api(e3, "GET", D + "/features", { token: o3.token })).data, "bassem_web_search");
+    assert.deepEqual([ws.locked, ws.needs.code, ws.effective], [null, "not_connected", false]); assert.ok(ws.needs.ar.includes("وصّل البحث بجنة وباسم"));
+    let jw = rowOf((await api(e3, "GET", D + "/features", { token: o3.token })).data, "janna_web_search");
+    assert.deepEqual([jw.locked.code, jw.effective], ["no_tool_secret", false], "Janna needs her own secret (the press makes it)");
+    const t3 = NOW();
+    await e3.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES ('websearch.connect', 'system', ?, ?)").bind(JSON.stringify({ v: 2, connected: { bassem: true, janna: false } }), t3).run();
+    ws = rowOf((await api(e3, "GET", D + "/features", { token: o3.token })).data, "bassem_web_search");
     assert.deepEqual([ws.locked, ws.needs, ws.effective], [null, null, true]);
+    const e5 = env0({ TOOL_SECRET: TOOL, JANNA_TOOL_SECRET: TOOL + "-janna", WEBSEARCH_KEY: TAVILY }), o5 = await owner(e5);
+    jw = rowOf((await api(e5, "GET", D + "/features", { token: o5.token })).data, "janna_web_search");
+    assert.deepEqual([jw.locked, jw.needs.code], [null, "not_connected"]);
+    await e5.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES ('websearch.cap_janna', 'system', '0', ?)").bind(t3).run(); await loadServiceKeys(e5, { fresh: true });
+    assert.equal(rowOf((await api(e5, "GET", D + "/features", { token: o5.token })).data, "janna_web_search").needs.code, "cap_janna_zero");
     const e4 = env0({ WEBSEARCH_KEY: TAVILY }), o4 = await owner(e4);
     assert.equal(rowOf((await api(e4, "GET", D + "/features", { token: o4.token })).data, "bassem_web_search").locked.code, "no_tool_secret");
+    // web_leads: on by default, effective while migration 0011 exists; locked without the table
+    assert.deepEqual([rowOf((await api(e4, "GET", D + "/features", { token: o4.token })).data, "web_leads").effective, rowOf((await api(e4, "GET", D + "/features", { token: o4.token })).data, "web_leads").default], [true, true]);
+    const e6 = env0(), o6 = await owner(e6); e6.DB.db.exec("DROP TABLE web_leads");
+    const wl = rowOf((await api(e6, "GET", D + "/features", { token: o6.token })).data, "web_leads");
+    assert.deepEqual([wl.locked.code, wl.effective], ["migration_needed", false]); assert.ok(wl.locked.ar.includes("0011_web_leads.sql"));
   });
   test("public GET /api/settings → features: client / both rows only, effective values, features_v; no server row, no lock or key state", async () => {
     const env = env0(), o = await owner(env);
@@ -467,13 +483,13 @@ describe("features: enforced in the real handlers", () => {
     forgetFeatures(env); await loadFeatures(env);
     assert.equal((await sendWA(env, "01001234567", { text: "hello" })).sent, true);
   });
-  test("bassem_web_search off → POST /api/advisor/web answers 503 feature_off (after the tool secret check) without calling the provider", async () => {
+  test("bassem_web_search off → POST /api/advisor/web answers feature_off (soft 200, http 503; after the tool secret check) without calling the provider", async () => {
     const env = env0({ TOOL_SECRET: TOOL, WEBSEARCH_KEY: TAVILY }), o = await owner(env);
     const web = h => api(env, "POST", "/api/advisor/web", { body: { query: "مصانع بلاستيك في السعودية" }, headers: h });
     await setFeatures(env, { bassem_web_search: false }, o.token);
     assert.equal((await web({ "X-MIG-Tool": "wrong-secret-xxxxxxxxxxxxxxxx" })).status, 401, "no secret → no answer about the switch");
     const r = await web({ "X-MIG-Tool": TOOL });
-    assert.deepEqual([r.status, r.data.error, r.data.feature, r.data.count], [503, "feature_off", "bassem_web_search", 0]); assert.ok(r.data.text);
+    assert.deepEqual([r.status, r.data.error, r.data.http, r.data.feature, r.data.count], [200, "feature_off", 503, "bassem_web_search", 0]); assert.ok(r.data.text);
     assert.equal(calls.filter(c => c.url.includes("tavily")).length, 0);
     await setFeatures(env, { bassem_web_search: true }, o.token);
     assert.notEqual((await web({ "X-MIG-Tool": TOOL })).data.error, "feature_off");

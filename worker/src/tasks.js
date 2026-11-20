@@ -49,7 +49,7 @@ const TOOL_FAMILY = { bassem_draft_email: "email", bassem_send_email: "email", b
   bassem_start_deal: "deal", bassem_update_deal: "deal", bassem_set_work_time: "schedule", janna_schedule_meeting: "meeting", janna_book_meeting: "meeting",
   janna_start_meeting: "meeting", bassem_save_profile: "profile", janna_fill_registration: "register", janna_fill_rfq: "quote", janna_fill_contact: "contact",
   janna_submit_form: "quote" };
-const SEARCH_TOOL = /^(janna_lookup|janna_search|janna_navigate|bassem_intel|bassem_web_search|platform_item|janna_item|bassem_open_item|bassem_open_opportunity|bassem_screen|bassem_open_guide)$/;
+const SEARCH_TOOL = /^(janna_lookup|janna_search|janna_navigate|bassem_intel|bassem_web_search|bassem_web_hunt|janna_web_search|janna_web_hunt|platform_item|janna_item|bassem_open_item|bassem_open_opportunity|bassem_screen|bassem_open_guide)$/;
 const CLOSES = { bassem_send_email: ["email", "quote"], bassem_notify_member: ["whatsapp", "email", "remind"], janna_follow: ["follow"], bassem_follow: ["follow"],
   bassem_start_deal: ["deal"], bassem_update_deal: ["deal"], bassem_set_work_time: ["schedule"], janna_schedule_meeting: ["meeting", "schedule"],
   janna_book_meeting: ["meeting", "schedule"], janna_start_meeting: ["meeting"], bassem_save_profile: ["profile"] };
@@ -160,7 +160,7 @@ function failedTitle(name, a) {
   if (name === "janna_submit_form") return a.form === "contact" ? "إرسال رسالة التواصل" : "إرسال طلب عرض السعر";
   return name.replace(/_/g, " ");
 }
-const NO_FAILED_TASK = /^(janna_lookup|janna_search|janna_navigate|bassem_intel|bassem_web_search|platform_item|janna_item|bassem_open_item|bassem_open_opportunity|bassem_open_guide|bassem_screen|bassem_recall|janna_track|janna_start_meeting)$/;
+const NO_FAILED_TASK = /^(janna_lookup|janna_search|janna_navigate|bassem_intel|bassem_web_search|bassem_web_hunt|janna_web_search|janna_web_hunt|platform_item|janna_item|bassem_open_item|bassem_open_opportunity|bassem_open_guide|bassem_screen|bassem_recall|janna_track|janna_start_meeting)$/;
 /* {callId, turns:[{role, text, seq?}], tools:[{name, args, outcome, s?}], atMs} → {create: [task spec], closers: [{name, families, words, s}]} */
 export function deriveTasks({ callId = "", turns = [], tools = [], atMs = Date.now(), follows } = {}) {
   const create = [], seen = new Set(), add = t => { if (!t.title || seen.has(t.tkeyBase) || create.length >= TASK_LIM.perCall) return; seen.add(t.tkeyBase); create.push(t); };

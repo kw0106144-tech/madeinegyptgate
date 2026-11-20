@@ -14,7 +14,12 @@
      daily_digest              digest.js         dailyJobs: digests + deadline reminders skipped (the item sync and housekeeping still run)
      whatsapp_send             whatsapp.js       waLive() false → every send is a dry run: an extra OFF on top of «مفاتيح الخدمات»
                                acc-keys.js       POST /keys/wa-test (the owner's test message) → 409 feature_off; can_send_test false
-     bassem_web_search         websearch.js      POST /api/advisor/web → 503 feature_off
+     bassem_web_search         websearch.js      POST /api/advisor/web → feature_off (200, the model hears the text)
+                               web-hunt.js       POST /api/advisor/hunt → feature_off (200)
+     janna_web_search          websearch.js      POST /api/janna/web → feature_off (200)
+                               web-hunt.js       POST /api/janna/hunt → feature_off (200)
+     web_leads                 web-leads.js      the web results Janna / Bassem find are kept for the data desk (off → nothing stored;
+                                                 locked until migration 0011)
    The platform's own apps (user agent «MIGApp/<v> (ios|android)», app-ua.js; app parity plan 2026-11-20 — the defaults keep the apps
    exactly like the website, the texts of the OFF rows wait for the owner's approval: docs/app/OWNER-APPROVAL-AR.md):
      app_buy_ios / app_buy_android  payments.js + acc-me.js  POST /api/pay/checkout, POST /api/me/invoices from THAT app → 403 app_buy_off
@@ -25,13 +30,16 @@
                                                  until that address + code are saved and unexpired: acc-dev.js /dev/review)
      call_consent_app / _web   janna-session.js  POST /api/janna/session without consent: true from the app / a browser → 400 consent_required
      app_janna_autovoice       (site only)       data/janna-welcome.js: Janna's voice waits for a tap in the app unless this is on
-   Two rows are LOCKED (effective off, cannot be switched ON from here; OFF is always allowed) while what they need is missing, both in
-   «مفاتيح الخدمات»: whatsapp_send until the respond.io token test passed; bassem_web_search until a web-search key + tool secret exist.
+   Rows are LOCKED (effective off, cannot be switched ON from here; OFF is always allowed) while what they need is missing: whatsapp_send
+   until the respond.io token test passed; bassem_web_search / janna_web_search until a web-search key + their tool secret exist (both in
+   «مفاتيح الخدمات»); web_leads, account_delete, visitor_erase_request until their migration is applied.
    The two privacy rules are PERMANENT POLICY (POLICIES): shown, never switches.
    Reader: loadFeatures(env) — ≤ 1 D1 read per isolate per 30 s (memo per env.DB; acc.js ccBoot warms it at the start of every request /
    cron run), featureOn(env, key) async, featureSync(env, key) from the memo (the default before the first load). No 0006 tables → the
    defaults; any other read error → the last good view, else the defaults (a D1 hiccup never switches the platform off).
-   Leaf module: imports service-keys.js only (inquiries.js, whatsapp.js, auth.js, janna-session.js, websearch.js, digest.js, bassem-meetings.js import it). */
+   Leaf module: imports service-keys.js only (inquiries.js, whatsapp.js, auth.js, janna-session.js, websearch.js, web-hunt.js, web-leads.js,
+   digest.js, bassem-meetings.js import it). It reads the «🔗 وصّل البحث بجنة وباسم» state itself (cc_settings websearch.connect — nit 2:
+   never through acc-wsconnect.js, which imports this file). */
 import { loadServiceKeys, respondioToken, webSearchConfig } from "./service-keys.js";
 
 export const FEATURES_KEY = "features";
@@ -103,11 +111,23 @@ export const FEATURES = Object.freeze([
     lock_rule_ar: "مقفول لحد ما اختبار توكن respond.io ينجح في «مفاتيح الخدمات»", lock_rule_en: "Locked until the respond.io token test passes in «Service keys»",
     enforced_by: ["every WhatsApp send → dry run", "POST /api/admin/cc/keys/wa-test → 409 feature_off"] },
   { key: "bassem_web_search", default: true, scope: "server",
-    label_ar: "بحث باسم على الإنترنت", label_en: "Bassem's web search",
-    desc_ar: "باسم بيدوّر على الإنترنت (مش بس في بيانات المنصة) وبيقول إن النتيجة من الإنترنت. محتاج مفتاح بحث و«سر أدوات باسم» في «مفاتيح الخدمات».",
-    desc_en: "Bassem searches the web (not only the platform's data) and says the result comes from the web. Needs a web-search key and «Bassem's tool secret» in «Service keys».",
+    label_ar: "بحث باسم على الإنترنت والبحث عن فرص", label_en: "Bassem's web search and opportunity hunt",
+    desc_ar: "باسم بيدوّر على الإنترنت (مش بس في بيانات المنصة) — ولعضوه البايع على مناقصات وطلبات أسعار وعملاء ومشاريع جديدة لمنتجه — وبيقول دايماً إن النتيجة من الإنترنت ولازم نتأكد منها من المصدر. محتاج مفتاح بحث و«سر أدوات باسم» في «مفاتيح الخدمات» ودوسة «🔗 وصّل البحث بجنة وباسم».",
+    desc_en: "Bassem searches the web (not only the platform's data) — and, for a member who sells, hunts for tenders, RFQs, buyers and new projects for the product — and always says the result comes from the web and must be checked at the source. Needs a web-search key and «Bassem's tool secret» in «Service keys» and a press on «🔗 Connect web search to Janna and Bassem».",
     lock_rule_ar: "مقفول لحد ما يتحط مفتاح بحث الإنترنت في «مفاتيح الخدمات»", lock_rule_en: "Locked until a web-search key is saved in «Service keys»",
-    enforced_by: ["POST /api/advisor/web → 503 feature_off"] },
+    enforced_by: ["POST /api/advisor/web → feature_off (200)", "POST /api/advisor/hunt → feature_off (200)"] },
+  { key: "janna_web_search", default: true, scope: "server",
+    label_ar: "بحث جنة على الإنترنت والبحث عن فرص", label_en: "Janna's web search and opportunity hunt",
+    desc_ar: "جنة بتدوّر على الإنترنت لأي زائر (مسجّل أو لأ) على مناقصات وطلبات أسعار وعملاء ومشاريع جديدة لمنتجه لما بيانات المنصة مش كفاية، وبتقول دايماً إن النتيجة من الإنترنت ولازم نتأكد منها من المصدر. بتاخد من الحد اليومي لبحث الإنترنت لحد «حد جنة» بس، علشان أعضاء باسم مايتأثروش. محتاجة مفتاح بحث في «مفاتيح الخدمات» ودوسة «🔗 وصّل البحث بجنة وباسم» (بتعمل «سر أدوات جنة»).",
+    desc_en: "Janna searches the web for any visitor (registered or not) for tenders, RFQs, buyers and new projects for their product when the platform's data is not enough, and always says the result comes from the web and must be checked at the source. She uses the daily web-search cap only up to «Janna's share», so Bassem's members are never affected. Needs a search key in «Service keys» and a press on «🔗 Connect web search to Janna and Bassem» (it makes «Janna's tool secret»).",
+    lock_rule_ar: "مقفول لحد ما يتحط مفتاح بحث الإنترنت في «مفاتيح الخدمات»", lock_rule_en: "Locked until a web-search key is saved in «Service keys»",
+    enforced_by: ["POST /api/janna/web → feature_off (200)", "POST /api/janna/hunt → feature_off (200)"] },
+  { key: "web_leads", default: true, scope: "server",
+    label_ar: "حفظ نتايج الإنترنت لمكتب البيانات", label_en: "Keep web results for the data desk",
+    desc_ar: "الفرص اللي جنة وباسم بيلاقوها على الإنترنت (الرابط والعنوان والموقع ونبذة قصيرة، من غير تليفونات ولا إيميلات) بتتحفظ في «🌐 فرص من الإنترنت» على مكتب البيانات، علشان الفريق يراجعها ويحوّل الكويس منها لمحتوى على المنصة بمصدره. مابتظهرش للزوار. لو شروط مزود البحث بتاعك مابتسمحش بحفظ النتايج، اقفله: البحث نفسه بيفضل شغّال.",
+    desc_en: "The opportunities Janna and Bassem find on the web (link, title, site and a short snippet, without phone numbers or e-mails) are kept in «🌐 Web leads» on the data desk, so the team reviews them and turns the good ones into platform content with their source. Never shown to visitors. If your search provider's terms do not allow keeping results, switch it off: the search itself keeps working.",
+    lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0011_web_leads.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0011_web_leads.sql is applied (GitHub → Actions → d1-migrate)",
+    enforced_by: ["web results are stored for the data desk (web-leads.js)", "GET|PUT /api/team/desk/leads"] },
   /* ---- the platform's own apps (app/: Android + iPhone, user agent «MIGApp/<v> (ios|android)», app-ua.js) and the store rules (app parity
      plan 2026-11-20). The defaults keep the apps EXACTLY like the website; the texts behind the rows that ship OFF wait for the owner's
      word-for-word approval (docs/app/OWNER-APPROVAL-AR.md). ---- */
@@ -253,14 +273,18 @@ export async function stateOf(env, d) {
       if (!v.wa_live) return { locked: null, needs: T("switch_off", "مستني زرار «تشغيل إرسال واتساب الحقيقي» في «مفاتيح الخدمات» (بعد رسالة التجربة)", "Waiting for «switch real WhatsApp sending on» in «Service keys» (after the test message)"), ready: false };
       return NONE;
     }
-    if (d.key === "bassem_web_search") {
-      const c = await webSearchConfig(env);
-      if (!c.key) return { locked: c.reason === "key_unreadable" ? T("key_unreadable", "مقفول: مفتاح بحث الإنترنت المحفوظ مش مقروء — دخّله تاني في «مفاتيح الخدمات»", "Locked: the saved web-search key cannot be read — enter it again in «Service keys»") : T("no_key", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
-      if (!c.tool_secret) return { locked: T("no_tool_secret", "مقفول لحد ما يتحط «سر أدوات باسم» في «مفاتيح الخدمات»", "Locked until «Bassem's tool secret» is saved in «Service keys»"), needs: null, ready: false };
+    if (d.key === "bassem_web_search" || d.key === "janna_web_search") {
+      const c = await webSearchConfig(env), J = d.key === "janna_web_search";
+      if (!c.key) return { locked: c.reason === "key_unreadable" || c.janna_reason === "key_unreadable" ? T("key_unreadable", "مقفول: مفتاح بحث الإنترنت المحفوظ مش مقروء — دخّله تاني في «مفاتيح الخدمات»", "Locked: the saved web-search key cannot be read — enter it again in «Service keys»") : T("no_key", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
+      if (!(J ? c.janna_secret : c.tool_secret)) return { locked: J ? T("no_tool_secret", "مقفول لحد ما تدوس «🔗 وصّل البحث بجنة وباسم» في «مفاتيح الخدمات» (بيعمل «سر أدوات جنة»)", "Locked until «🔗 Connect web search to Janna and Bassem» is pressed in «Service keys» (it makes «Janna's tool secret»)")
+        : T("no_tool_secret", "مقفول لحد ما يتحط «سر أدوات باسم» في «مفاتيح الخدمات»", "Locked until «Bassem's tool secret» is saved in «Service keys»"), needs: null, ready: false };
       if (!c.provider) return { locked: null, needs: T("no_provider", "اختار مزود البحث (Tavily / Serper / Brave) في «مفاتيح الخدمات»", "Choose the search provider (Tavily / Serper / Brave) in «Service keys»"), ready: false };
       if (c.cap <= 0) return { locked: null, needs: T("cap_zero", "الحد اليومي للبحث = 0 في «مفاتيح الخدمات»", "The daily search cap is 0 in «Service keys»"), ready: false };
+      if (J && c.cap_janna <= 0) return { locked: null, needs: T("cap_janna_zero", "حد جنة اليومي = 0 في «مفاتيح الخدمات»", "Janna's daily share is 0 in «Service keys»"), ready: false };
+      if (!(await connectedOf(env))[J ? "janna" : "bassem"]) return { locked: null, needs: T("not_connected", "دوس «🔗 وصّل البحث بجنة وباسم» في «مفاتيح الخدمات»", "Press «🔗 Connect web search to Janna and Bassem» in «Service keys»"), ready: false };
       return NONE;
     }
+    if (d.key === "web_leads") return (await leadsStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
     // the app's store rows: the deletion requests need their table (migration 0010); the reviewer sign-in needs its address + code, unexpired
     if (d.key === "account_delete" || d.key === "visitor_erase_request") {
       return (await deleteStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
@@ -283,6 +307,25 @@ export async function deleteStoreOn(env) {
   const m = DEL_MEMO.get(db); if (m && (m.ok || Date.now() - m.at < 60000)) return m.ok;
   let ok = false; try { await db.prepare("SELECT 1 AS x FROM cc_delete_requests LIMIT 1").first(); ok = true; } catch (e) { ok = false; }
   DEL_MEMO.set(db, { ok, at: Date.now() }); return ok;
+}
+/* migration 0011 (web_leads, the data desk's «🌐 فرص من الإنترنت») applied? the same memo rule (web-leads.js reads it from here) */
+const LEADS_MEMO = new WeakMap(); // env.DB → {ok, at}
+export async function leadsStoreOn(env) {
+  const db = dbOf(env); if (!db) return false;
+  const m = LEADS_MEMO.get(db); if (m && (m.ok || Date.now() - m.at < 60000)) return m.ok;
+  let ok = false; try { await db.prepare("SELECT 1 AS x FROM web_leads LIMIT 1").first(); ok = true; } catch (e) { ok = false; }
+  LEADS_MEMO.set(db, { ok, at: Date.now() }); return ok;
+}
+export const forgetLeadsStore = env => { const db = dbOf(env); if (db) LEADS_MEMO.delete(db); };
+/* «🔗 وصّل البحث بجنة وباسم»: are the web tools on the personas? (cc_settings websearch.connect, written by acc-wsconnect.js: v2
+   {connected: {bassem, janna}}; a v1 state = Bassem's search alone, without the hunt → not connected) — display only (the needs) */
+export async function connectedOf(env) {
+  const db = dbOf(env); if (!db) return { bassem: false, janna: false };
+  try {
+    const r = await db.prepare("SELECT v FROM cc_settings WHERE k = 'websearch.connect' AND scope = 'system'").first();
+    const o = r ? JSON.parse(String(r.v || "")) : null, c = o && o.v === 2 && o.connected && typeof o.connected === "object" ? o.connected : {};
+    return { bassem: c.bassem === true, janna: c.janna === true };
+  } catch (e) { return { bassem: false, janna: false }; }
 }
 /* «دخول مراجعي المتاجر»: cc_settings k = REVIEW_KEY (scope 'system'; dev.* is reserved for the owner's /dev API, acc-plans.js RESERVED):
    {v:1, email, code_hash (HMAC of the code with CONFIG_SECRET — never the code), until (ISO, ≤ 30 days after it was set), by, at}.

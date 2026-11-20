@@ -2770,6 +2770,28 @@ Owner, verbatim: «عايزك تعمل داش بورد منفصله لتيم ا�
 - Unit tests for the role matrix: seo cannot reach /api/team/desk/*, /api/admin/cc/*; data cannot reach /api/seo/* writes, /api/admin/cc/* (except its own GET mine); both 401 when signed out.
 - Playwright tests for both pages, AR/EN, 1366x800 and 768x1024 (tablet at the desk) and 390x844, mocked API, zero console errors.
 
+### 12.5 «🌐 فرص من الإنترنت» — web leads on the data desk (2026-11-20, migration `0011_web_leads.sql`)
+What Janna's and Bassem's web search and opportunity hunt return from a provider (worker/README.md "Web search and the opportunity hunt")
+is kept in `web_leads` for the data team. NEVER public: no page, no overlay, no persona tool reads it. Roles data | admin | owner (as 12.3),
+300 reads + writes an hour; the owner switch `web_leads` (src/flags.js) stops the recording (the desk list stays readable).
+- **`GET /api/team/desk/leads?status=new|accepted|rejected|all&type=&market=&q=&sort=recent|seen&page=&limit≤100`** (default `new`, 50 a
+  page) → `{items:[{id, url, title, site, snippet, type, type_ar, type_en, official, aggregator, query, product, market, governorate,
+  persona, personas, via, lang, date, first_seen, last_seen, seen_count, status, status_ar, status_en, reason, reason_ar, reason_en,
+  reviewed_by, reviewed_at, note, content_id}], total, page, limit, counts:{new, accepted, rejected}, by_type, status, sort}`. Types:
+  `tender`, `rfq`, `buyer`, `buyer_list`, `project`, `news`, `other` (no CHECK in SQL: the classifier may grow a type without a table
+  rebuild). Without the table: `{items:[], total:0, …, off:true, hint}` (200).
+- **`PUT /api/team/desk/leads/:id`** `{status: accepted|rejected|new, reason?: off_topic|old|duplicate|not_credible|advert, note? ≤ 300}` →
+  `{ok, item}`. The UPDATE and its `cc_audit` row (`leads.accept` / `leads.reject` / `leads.reopen`; before/after = status and reason
+  only, never the snippet or the note's text) in ONE batch · 400 `invalid_status` / `invalid_reason` / `invalid_content` · 404 · 503
+  `leads_off`. A rejection with `old` / `duplicate` / `not_credible` / `advert` keeps the link out of every later hunt; `off_topic` (or no
+  reason) only for that product.
+- **`POST /api/team/desk/content`** accepts `lead_id`: after the content is created, the lead becomes `accepted` with `content_id`
+  (audit `leads.convert`), best effort — the answer adds `lead_linked: true|false`, and a failed link never undoes the content. The
+  desk page fills the form from an accepted tender / RFQ / project (title; the link as `source_url` only when it is an official portal, so
+  anything else is saved as a draft for the admins, as 12.3 says).
+- A lead is recorded only from a FRESH provider answer (a cached one is not counted again), one sighting at most per hour, and keeps the
+  team's decision when it is found again. Tests: `worker/test/web-leads.test.mjs`.
+
 ---
 
 ## 13. AMENDMENTS (dated; the deploy-2 integration, 2026-11-18 — these override the sections they name)

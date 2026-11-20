@@ -2259,7 +2259,7 @@
      read-only (managed in «بوابة الدفع»), and the switch «تشغيل إرسال واتساب الحقيقي» — OFF until the token test passed, ONE test
      message reached the platform's own number and the owner confirmed it. API: GET/PUT/DELETE /api/admin/cc/keys[/:slot],
      POST /keys/:slot/test, POST /keys/wa-test {mode}, POST /keys/wa-live {on, confirm_delivered} (worker/src/acc-keys.js),
-     POST /keys/websearch/connect «🔗 وصّل البحث بباسم» (worker/src/acc-wsconnect.js).
+     POST /keys/websearch/connect «🔗 وصّل البحث بجنة وباسم» (worker/src/acc-wsconnect.js: the four web tools on Janna AR / EN and Bassem).
      ===================================================================================================================== */
   SEC.keys = function () {
     var c = CUR;
@@ -2337,68 +2337,122 @@
         + (g ? '<p class="sm">' + (g.ready ? tag(T("بوابة الدفع جاهزة", "Gateway ready"), "ok") : tag(T("بوابة الدفع لسه مش جاهزة", "Gateway not ready yet"), "p")) + (g.provider ? ' <small dir="ltr">' + h(g.provider + (g.mode ? " · " + g.mode : "")) + "</small>" : "") + "</p>" : "")
         + rows + '<div class="acts2" style="margin-top:10px"><a class="btn l" href="#payments">' + h(T("افتح «بوابة الدفع» ←", "Open «Payment gateway» →")) + "</a></div>");
     };
-    /* «بحث الإنترنت» — Bassem's web search (worker/src/websearch.js, POST /api/advisor/web): the provider, the sealed key + its «اختبار»
-       (ONE real search), the daily cap (0 = off) and «سر أدوات باسم» (the X-MIG-Tool header value of the Anam tool). Never a value back. */
+    /* «بحث الإنترنت (جنة وباسم)» — the web search and the opportunity hunt of both personas (worker/src/websearch.js, web-hunt.js:
+       POST /api/advisor/web|hunt for Bassem, /api/janna/web|hunt for Janna): the provider, the sealed key + its «اختبار» (ONE real search),
+       the daily cap (0 = off), Janna's share of it, «سر أدوات باسم» and «سر أدوات جنة» (each the X-MIG-Tool header value of its own tools,
+       review S17). Never a value back. */
     var WSN = { tavily: "Tavily", serper: "Serper", brave: "Brave" };
-    var WSR = { ready: ["شغّال ✓ — باسم يقدر يدوّر على الإنترنت", "On ✓ — Bassem can search the web"],
+    var WSR = { ready: ["شغّال ✓", "On ✓"],
       no_tool_secret: ["لسه مفيش «سر أدوات باسم» (أو سر TOOL_SECRET على الـ Worker)", "No «Bassem tool secret» yet (or a TOOL_SECRET Worker secret)"],
       tool_secret_unreadable: ["«سر أدوات باسم» محفوظ بس مش مقروء — دخّله تاني", "The «Bassem tool secret» is saved but unreadable — enter it again"],
       no_key: ["لسه مفيش مفتاح بحث", "No search key yet"], key_unreadable: ["مفتاح البحث محفوظ بس مش مقروء — دخّله تاني", "The search key is saved but unreadable — enter it again"],
       no_provider: ["اختار مزود الخدمة", "Choose the provider"], cap_zero: ["الحد اليومي = 0 (البحث مقفول)", "Daily cap = 0 (search is off)"] };
+    /* Janna's own reasons (her secret is made by the connect press; her share 0 = her search off) */
+    var WSRJ = { no_tool_secret: ["لسه مفيش «سر أدوات جنة» — بيتعمل لوحده لما تدوس «🔗 وصّل البحث بجنة وباسم»", "No «Janna tool secret» yet — it is made by «🔗 Connect web search to Janna and Bassem»"],
+      tool_secret_unreadable: ["«سر أدوات جنة» محفوظ بس مش مقروء — دخّله تاني أو دوس «🔗 وصّل البحث بجنة وباسم»", "The «Janna tool secret» is saved but unreadable — enter it again or press «🔗 Connect web search to Janna and Bassem»"],
+      cap_janna_zero: ["نصيب جنة من الحد اليومي = 0 (بحثها مقفول)", "Janna's share of the daily cap = 0 (her search is off)"] };
+    var capField = function (id, cp, def, label) {
+      return '<label style="display:block;margin:8px 0"><span style="display:block;font-weight:700;margin-bottom:4px">' + h(label) + '</span><input id="' + id + '" type="text" inputmode="numeric" dir="ltr" maxlength="5" value="' + h(cp.value || "") + '" placeholder="' + h(String(def)) + '" style="width:140px;padding:9px;border:1px solid #cfd8d3;border-radius:8px"></label>';
+    };
     var wsCard = function (w, noSec) {
       if (!w) return "";
-      var pv = w.provider || {}, cp = w.cap || {}, opts = pv.options || ["tavily", "serper", "brave"], cur = pv.value || "";
+      var pv = w.provider || {}, cp = w.cap || {}, cj = w.cap_janna || {}, opts = pv.options || ["tavily", "serper", "brave"], cur = pv.value || "";
       var sel = '<select id="k_wsprov" aria-label="' + h(T("مزود الخدمة", "Provider")) + '"><option value="">' + h(T("— اختار —", "— choose —")) + "</option>"
         + opts.map(function (o) { return '<option value="' + h(o) + '"' + (o === cur ? " selected" : "") + ">" + h(WSN[o] || o) + "</option>"; }).join("") + "</select>";
-      var stateH = w.ready ? '<div class="okc">' + h(L2(WSR.ready)) + "</div>" : '<div class="alert">' + h(T("البحث على الإنترنت مقفول: ", "Web search is off: ") + L2(WSR[w.reason] || [w.reason || "", w.reason || ""])) + "</div>";
-      return cardH(T("بحث الإنترنت (باسم)", "Web search (Bassem)"), stateH
-        + '<p class="mut sm">' + h(T("باسم بيدوّر على الإنترنت لما بيانات المنصة مش كفاية، وبيقول دايماً إن المعلومة من مواقع على الإنترنت مش من بيانات المنصة. كل بحث بيتحسب من رصيد المزود؛ نفس البحث خلال ساعة مش بيتحسب تاني.", "Bassem searches the web when the platform's data is not enough, and always says the answer comes from websites, not from the platform's data. Every search uses the provider's credit; the same search within an hour is not counted again.")) + "</p>"
+      var stB = w.ready ? '<div class="okc">' + h(T("باسم: ", "Bassem: ") + L2(WSR.ready)) + "</div>" : '<div class="alert">' + h(T("باسم: البحث على الإنترنت مقفول — ", "Bassem: web search is off — ") + L2(WSR[w.reason] || [w.reason || "", w.reason || ""])) + "</div>";
+      var jr = w.janna_reason || (w.janna_ready ? "ready" : "");
+      var stJ = w.janna_ready ? '<div class="okc">' + h(T("جنة: ", "Janna: ") + L2(WSR.ready)) + "</div>" : jr ? '<div class="alert">' + h(T("جنة: البحث على الإنترنت مقفول — ", "Janna: web search is off — ") + L2(WSRJ[jr] || WSR[jr] || [jr, jr])) + "</div>" : "";
+      var defJ = cj["default"] != null ? cj["default"] : Math.floor((cp.effective || 300) * 0.4);
+      return cardH(T("بحث الإنترنت (جنة وباسم)", "Web search (Janna and Bassem)"), stB + stJ
+        + '<p class="mut sm">' + h(T("جنة (لكل الزوار) وباسم (لأعضاء الباقات) بيدوّروا في المنصة الأول، ولما بياناتها مش كفاية بيدوّروا على الإنترنت: بحث عادي، أو «صيد فرص» للمصنع اللي بيكلّمهم (مناقصات وطلبات أسعار وعملاء محتملين ومشاريع جديدة في السوق اللي يختاره). وبيقولوا دايماً إن المعلومة من مواقع على الإنترنت مش من بيانات المنصة. كل استعلام بيتبعت للمزود بيتحسب واحد من الحد اليومي: البحث العادي استعلام واحد، و«صيد الفرص» من 3 لـ 6 استعلامات مع بعض؛ نفس الاستعلام خلال ساعة مش بيتحسب تاني. اللي بيلاقوه من فرص بيروح لمكتب البيانات «🌐 فرص من الإنترنت» علشان الفريق يراجعه.", "Janna (for every visitor) and Bassem (for plan members) search the platform first and, when its data is not enough, the web: a plain search, or an «opportunity hunt» for the factory they are talking to (tenders, RFQs, potential buyers and new projects in the market it picks). They always say the answer comes from websites, not from the platform's data. Every query sent to the provider counts one against the daily cap: a plain search is one query, a hunt 3 to 6 queries at once; the same query within an hour is not counted again. The opportunities they find go to the data desk «🌐 Web leads» for the team to review.")) + "</p>"
         + '<label style="display:block;margin:8px 0"><span style="display:block;font-weight:700;margin-bottom:4px">' + h(T("مزود الخدمة: Tavily / Serper / Brave", "Provider: Tavily / Serper / Brave")) + "</span>" + sel + "</label>"
         + (pv.env_value ? '<div class="note">' + h(T("فيه متغيّر WEBSEARCH_PROVIDER على الـ Worker.", "A WEBSEARCH_PROVIDER Worker variable exists.")) + "</div>" : "")
         + '<p class="sm">' + h(T("المستخدم دلوقتي: ", "In use now: ")) + "<b>" + h(WSN[pv.effective] || T("مفيش", "none")) + "</b></p>"
         + '<div class="acts2">' + btn("wsprov", h(T("💾 حفظ المزود", "💾 Save the provider")), "r") + "</div>"
-        + '<label style="display:block;margin:8px 0"><span style="display:block;font-weight:700;margin-bottom:4px">' + h(T("الحد اليومي لعمليات البحث (0 = البحث مقفول)", "Daily search cap (0 = search off)")) + '</span><input id="k_wscap" type="text" inputmode="numeric" dir="ltr" maxlength="5" value="' + h(cp.value || "") + '" placeholder="' + h(String(cp["default"] || 300)) + '" style="width:140px;padding:9px;border:1px solid #cfd8d3;border-radius:8px"></label>'
+        + capField("k_wscap", cp, cp["default"] || 300, T("الحد اليومي لاستعلامات البحث (0 = البحث مقفول)", "Daily cap of search queries (0 = search off)"))
         + '<div class="acts2">' + btn("wscap", h(T("💾 حفظ الحد", "💾 Save the cap")), "r") + (cp.value ? btn("wscapdel", h(T("↺ الافتراضي", "↺ Default") + " (" + (cp["default"] || 300) + ")"), "l") : "") + "</div>"
-        + '<p class="sm">' + h(T("استخدام النهارده: ", "Used today: ")) + "<b>" + h(String(w.used_today || 0)) + "</b> " + h(T("من ", "of ")) + "<b>" + h(String(cp.effective == null ? "" : cp.effective)) + "</b></p>" + msgH("websearch"))
-        + secretCard("websearch.key", w.key, noSec) + secretCard("bassem.tool_secret", w.tool_secret, noSec, { extra: '<p class="mut sm">' + h(T("لو غيّرت السر ده أو مسحته، دوس «🔗 وصّل البحث بباسم» تاني علشان Anam ياخد الجديد.", "If you change or delete this secret, press «🔗 Connect web search to Bassem» again so Anam gets the new one.")) + "</p>" }) + connCard(w);
+        + capField("k_wscapj", cj, defJ, T("نصيب جنة من الحد اليومي (0 = بحث جنة مقفول)", "Janna's share of the daily cap (0 = her search off)"))
+        + '<p class="mut sm">' + h(T("جنة بتكلّم أي زائر، فليها نصيب لوحدها من نفس الحد (الافتراضي " + defJ + " = 40 %)، وماتقدرش تعدّيه ولا تعدّي الحد نفسه — والباقي لباسم. كمان جنة ليها حد في الساعة وفي الدقيقة، علشان ماحدش يخلّص رصيد اليوم في دقايق.", "Janna talks to any visitor, so she has her own share of the same cap (default " + defJ + " = 40 %), never above it or the cap itself — the rest is Bassem's. Janna also has an hourly and a per-minute limit, so nobody can use up the day's credit in minutes.")) + "</p>"
+        + '<div class="acts2">' + btn("wscapj", h(T("💾 حفظ نصيب جنة", "💾 Save Janna's share")), "r") + (cj.value ? btn("wscapjdel", h(T("↺ الافتراضي", "↺ Default") + " (" + defJ + ")"), "l") : "") + "</div>"
+        + '<p class="sm">' + h(T("استخدام النهارده: ", "Used today: ")) + "<b>" + h(String(w.used_today || 0)) + "</b> " + h(T("من ", "of ")) + "<b>" + h(String(cp.effective == null ? "" : cp.effective)) + "</b>"
+        + (cj.effective != null ? " · " + h(T("منهم جنة: ", "of which Janna: ")) + "<b>" + h(String(w.used_today_janna || 0)) + "</b> " + h(T("من ", "of ")) + "<b>" + h(String(cj.effective)) + "</b>" : "") + "</p>" + msgH("websearch"))
+        + secretCard("websearch.key", w.key, noSec)
+        + secretCard("bassem.tool_secret", w.tool_secret, noSec, { extra: '<p class="mut sm">' + h(T("ده سر أداتين باسم (البحث وصيد الفرص). لو غيّرته أو مسحته، دوس «🔗 وصّل البحث بجنة وباسم» تاني علشان Anam ياخد الجديد.", "This is the secret of Bassem's two tools (search and hunt). If you change or delete it, press «🔗 Connect web search to Janna and Bassem» again so Anam gets the new one.")) + "</p>" })
+        + (w.janna_secret ? secretCard("janna.tool_secret", w.janna_secret, noSec, { extra: '<p class="mut sm">' + h(T("ده سر أداتين جنة — منفصل عن سر باسم علشان جنة بتكلّم أي زائر. مش لازم تدخّله: زرار «🔗 وصّل البحث بجنة وباسم» بيعمله لوحده ويحفظه مشفّر. لو غيّرته أو مسحته، دوس الزرار تاني.", "This is the secret of Janna's two tools — separate from Bassem's because Janna talks to any visitor. You need not enter it: «🔗 Connect web search to Janna and Bassem» makes one and stores it encrypted. If you change or delete it, press the button again.")) + "</p>" }) : "")
+        + connCard(w);
     };
-    /* «🔗 وصّل البحث بباسم» (POST /api/admin/cc/keys/websearch/connect, worker/src/acc-wsconnect.js): the server creates / updates the Anam
-       tool bassem_web_search with the tool secret (made and sealed there when none exists) and adds it to Bassem's tools — the secret never
-       reaches this page or anyone; GET /keys → websearch.connect = {connected, tool_id, at, by, secret_changed, anam_key, last} */
+    /* «🔗 وصّل البحث بجنة وباسم» (POST /api/admin/cc/keys/websearch/connect, worker/src/acc-wsconnect.js): the server creates / updates the
+       four Anam tools (bassem_web_search, bassem_web_hunt with Bassem's secret; janna_web_search, janna_web_hunt with Janna's — each made
+       and sealed there when none exists) and adds them to Bassem and to Janna AR / EN — no secret ever reaches this page or anyone;
+       GET /keys → websearch.connect = {tools[{key, name, written, personas[{key, attached}], secret_changed}], connected_bassem,
+       connected_janna, connected_all, at, by, secret_changed, anam_key, last} */
     var WSMISS = { key: ["مفتاح البحث", "the search key"], provider: ["مزود الخدمة", "the provider"], cap: ["حد يومي أكبر من 0", "a daily cap above 0"] };
+    var WTOOL = { bassem_web_search: ["بحث باسم في الإنترنت", "Bassem's web search"], bassem_web_hunt: ["صيد الفرص عند باسم", "Bassem's opportunity hunt"], janna_web_search: ["بحث جنة في الإنترنت", "Janna's web search"], janna_web_hunt: ["صيد الفرص عند جنة", "Janna's opportunity hunt"] };
+    var WPER = { bassem: ["باسم", "Bassem"], janna_ar: ["جنة (عربي)", "Janna (Arabic)"], janna_en: ["جنة (إنجليزي)", "Janna (English)"] };
+    var WDONE = { created: ["اتعملت", "created"], updated: ["اتحدّثت", "updated"], unchanged: ["مظبوطة من قبل", "already set"] };
     var connCard = function (w) {
       var k = w && w.connect; if (!k) return "";
-      var noKey = k.anam_key === "none", last = k.last;
-      var st = k.connected ? '<div class="okc">' + h(T("✓ متوصّل: الأداة bassem_web_search على باسم في Anam", "✓ Connected: the tool bassem_web_search is on Bassem in Anam")) + (k.at ? ' <small dir="auto">(' + h(whoWhen(k.at, k.by)) + ")</small>" : "") + "</div>"
-        : '<div class="alert">' + h(k.tool_written ? T("الأداة bassem_web_search اتعملت في Anam بس لسه مش على باسم — صلّح السبب اللي تحت ودوس الزرار تاني.", "The tool bassem_web_search exists in Anam but is not on Bassem yet — fix the reason below and press the button again.")
-          : T("لسه مش متوصّل — باسم مش هيقدر يدوّر على الإنترنت في المكالمة لحد ما تدوس الزرار ده.", "Not connected yet — Bassem cannot search the web in a call until you press this button.")) + "</div>";
-      var changed = k.connected && k.secret_changed ? '<div class="alert">' + h(T("«سر أدوات باسم» اتغيّر بعد آخر توصيل — دوس «🔗 وصّل البحث بباسم» تاني علشان Anam ياخد الجديد.", "«Bassem's tool secret» changed after the last connection — press «🔗 Connect web search to Bassem» again so Anam gets the new one.")) + "</div>" : "";
-      var lastH = last && last.at && !last.ok ? '<p class="sm bad">' + h((last.finished ? T("آخر محاولة مانجحتش", "The last attempt failed") : T("آخر محاولة ماكملتش", "The last attempt did not finish")) + " — " + fd(last.at, true) + (last.code ? " (" + last.code + (last.anam_status ? " " + last.anam_status : "") + ")" : "")) + "</p>" : "";
-      return cardH(T("🔗 توصيل البحث بباسم (Anam)", "🔗 Connect web search to Bassem (Anam)"), st + changed
-        + '<p class="mut sm">' + h(T("الزرار ده بيعمل أداة البحث bassem_web_search في Anam (أو بيحدّثها لو موجودة) وبيضيفها لأدوات باسم من غير ما يشيل أي أداة تانية. سر الأداة بيتحط جوّاها من السيرفر على طول: محدش بيشوفه، ولا إنت، وماحدش يبعته لحد. ولو مفيش «سر أدوات باسم»، السيرفر بيعمل واحد عشوائي ويحفظه مشفّر. الضغط مرتين مابيغيّرش حاجة.", "This button creates the search tool bassem_web_search in Anam (or updates it if it exists) and adds it to Bassem's tools without removing any other tool. The server puts the tool secret into it directly: nobody sees it, not even you, and nobody sends it to anyone. If there is no «Bassem tool secret», the server makes a random one and stores it encrypted. Pressing twice changes nothing.")) + "</p>"
-        + '<div class="acts2">' + btn("wsconn", h(T("🔗 وصّل البحث بباسم", "🔗 Connect web search to Bassem")), "r", noKey ? " disabled" : "") + "</div>"
+      var noKey = k.anam_key === "none", last = k.last, tl = k.tools || [], all = k.connected_all === true || (!tl.length && k.connected);
+      var rows = tl.map(function (t) {
+        var ok = t.written && (t.personas || []).every(function (p) { return p.attached; });
+        return '<div class="row"><span><b>' + h(L2(WTOOL[t.key] || [t.key, t.key])) + '</b> <small class="mut" dir="ltr">' + h(t.name || t.key) + "</small></span><span>"
+          + (t.written ? (t.personas || []).map(function (p) { return tag((p.attached ? "✓ " : "✗ ") + L2(WPER[p.key] || [p.key, p.key]), p.attached ? "ok" : "x"); }).join(" ") : tag(T("لسه ماتعملتش", "not created yet"), "g"))
+          + (ok && t.secret_changed ? " " + tag(T("السر اتغيّر", "secret changed"), "p") : "") + "</span></div>";
+      }).join("");
+      var st = all ? '<div class="okc">' + h(T("✓ متوصّل: أدوات البحث وصيد الفرص على جنة (عربي وإنجليزي) وباسم في Anam", "✓ Connected: the search and hunt tools are on Janna (Arabic and English) and Bassem in Anam")) + (k.at ? ' <small dir="auto">(' + h(whoWhen(k.at, k.by)) + ")</small>" : "") + "</div>"
+        : '<div class="alert">' + h(tl.some(function (t) { return t.written; }) ? T("التوصيل لسه مش كامل — شوف اللي ناقص تحت ودوس الزرار تاني (اللي اتعمل قبل كده مش بيتكرر).", "The connection is not complete yet — see what is missing below and press the button again (what was done is not repeated).")
+          : T("لسه مش متوصّل — جنة وباسم مش هيقدروا يدوّروا على الإنترنت في المكالمة لحد ما تدوس الزرار ده.", "Not connected yet — Janna and Bassem cannot search the web in a call until you press this button.")) + "</div>";
+      var changed = k.secret_changed && tl.some(function (t) { return t.written; }) ? '<div class="alert">' + h(T("سر أدوات اتغيّر بعد آخر توصيل — دوس «🔗 وصّل البحث بجنة وباسم» تاني علشان Anam ياخد الجديد.", "A tool secret changed after the last connection — press «🔗 Connect web search to Janna and Bassem» again so Anam gets the new one.")) + "</div>" : "";
+      var lastH = last && last.at && !last.ok ? '<p class="sm bad">' + h((last.finished ? T("آخر محاولة مانجحتش", "The last attempt failed") : T("آخر محاولة ماكملتش", "The last attempt did not finish")) + " — " + fd(last.at, true)
+        + (last.code ? " (" + [last.code, last.anam_status || "", last.step || "", last.persona ? L2(WPER[last.persona] || [last.persona, last.persona]) : ""].filter(function (x) { return !!x; }).join(" · ") + ")" : "")) + "</p>" : "";
+      return cardH(T("🔗 توصيل البحث بجنة وباسم (Anam)", "🔗 Connect web search to Janna and Bassem (Anam)"), st + changed
+        + (rows ? '<div class="rows">' + rows + "</div>" : "")
+        + '<p class="mut sm">' + h(T("الزرار ده بيعمل 4 أدوات في Anam (أو بيحدّثها لو موجودة): بحث باسم وصيد الفرص عنده، وبحث جنة وصيد الفرص عندها، وبيضيف كل أداة لشخصيتها (جنة بالعربي والإنجليزي، وباسم) من غير ما يشيل أي أداة تانية. سر كل أداة بيتحط جوّاها من السيرفر على طول: محدش بيشوفه، ولا إنت، وماحدش يبعته لحد. ولو مفيش سر، السيرفر بيعمل واحد عشوائي ويحفظه مشفّر. الضغط مرتين مابيغيّرش حاجة.", "This button creates 4 tools in Anam (or updates them if they exist): Bassem's search and hunt, and Janna's search and hunt, and adds each tool to its persona (Janna in Arabic and English, and Bassem) without removing any other tool. The server puts each tool's secret into it directly: nobody sees it, not even you, and nobody sends it to anyone. If a secret is missing, the server makes a random one and stores it encrypted. Pressing twice changes nothing.")) + "</p>"
+        + '<div class="acts2">' + btn("wsconn", h(T("🔗 وصّل البحث بجنة وباسم", "🔗 Connect web search to Janna and Bassem")), "r", noKey ? " disabled" : "") + "</div>"
         + (noKey ? '<small class="why-off">' + h(T("مقفول لحد ما تضيف «مفتاح Anam» فوق.", "Disabled until you add the «Anam key» above.")) + "</small>" : "")
         + '<p class="mut sm">' + h(T("محتاج مفتاح Anam ليه صلاحية تعديل الأدوات والشخصيات (Write على Tools و Personas). لو صلاحيته أقل، الزرار هيقولك كده (403) وإزاي تصلّحها.", "Needs an Anam key allowed to change tools and personas (Write on Tools and Personas). If it has less, the button says so (403) and how to fix it.")) + "</p>"
+        + '<div class="note">' + h(T("خطوة عليك في Anam Lab: لو باسم ليه رابط مشاركة (Share link) أو مكان مسموح للـ widget، اقفلهم. أي حد معاه الرابط يقدر يكلّم باسم من برّه المنصة ويصرف من رصيد البحث ومن غير دخول العضو.", "A step for you in Anam Lab: if Bassem has a share link or allowed widget origins, close them. Anyone with the link could talk to Bassem outside the platform, without a member's sign-in, and use the search credit.")) + "</div>"
         + lastH + msgH("wsconnect"));
     };
     var connMsg = function (r) {
       r = r || {};
-      var a = r.created ? T("✓ اتعملت الأداة bassem_web_search في Anam", "✓ The tool bassem_web_search was created in Anam") : r.updated ? T("✓ اتحدّثت الأداة bassem_web_search في Anam", "✓ The tool bassem_web_search was updated in Anam") : T("✓ الأداة bassem_web_search موجودة ومظبوطة — مفيش تغيير", "✓ The tool bassem_web_search is already set — no change");
-      a += r.already_attached ? T("، ومربوطة بباسم من قبل.", ", and it was already on Bassem.") : T("، واتربطت بباسم.", ", and it is now on Bassem.");
-      if (r.header_source === "generated") a += T(" اتعمل «سر أدوات باسم» جديد واتحفظ مشفّر — محدش هيشوفه.", " A new «Bassem tool secret» was made and stored encrypted — nobody will see it.");
+      var tl = r.tools || [], a;
+      if (tl.length) {
+        a = "✓ " + tl.map(function (t) { return L2(WTOOL[t.key] || [t.key, t.key]) + ": " + L2(WDONE[t.done] || [t.done || "", t.done || ""]); }).join(T("، ", ", ")) + ".";
+        var per = r.personas || {}, added = [], same = [];
+        for (var pk in per) if (Object.prototype.hasOwnProperty.call(per, pk)) ((per[pk].added || []).length ? added : same).push(L2(WPER[pk] || [pk, pk]));
+        if (added.length) a += T(" اتضافت لـ: ", " Added to: ") + added.join(T("، ", ", ")) + ".";
+        if (same.length) a += T(" كانت على: ", " Already on: ") + same.join(T("، ", ", ")) + ".";
+      } else {
+        a = r.created ? T("✓ اتعملت الأداة bassem_web_search في Anam", "✓ The tool bassem_web_search was created in Anam") : r.updated ? T("✓ اتحدّثت الأداة bassem_web_search في Anam", "✓ The tool bassem_web_search was updated in Anam") : T("✓ الأداة bassem_web_search موجودة ومظبوطة — مفيش تغيير", "✓ The tool bassem_web_search is already set — no change");
+        a += r.already_attached ? T("، ومربوطة بباسم من قبل.", ", and it was already on Bassem.") : T("، واتربطت بباسم.", ", and it is now on Bassem.");
+      }
+      var hs = r.header_source || {};
+      if (hs === "generated" || hs.bassem === "generated") a += T(" اتعمل «سر أدوات باسم» جديد واتحفظ مشفّر — محدش هيشوفه.", " A new «Bassem tool secret» was made and stored encrypted — nobody will see it.");
+      if (hs.janna === "generated") a += T(" اتعمل «سر أدوات جنة» جديد واتحفظ مشفّر — محدش هيشوفه.", " A new «Janna tool secret» was made and stored encrypted — nobody will see it.");
       if (r.websearch_ready) a += T(" البحث جاهز ✓", " Web search is ready ✓");
       else if (r.websearch_missing && r.websearch_missing.length) a += T(" لسه ناقص: ", " Still missing: ") + r.websearch_missing.map(function (x) { return L2(WSMISS[x] || [x, x]); }).join(T("، ", ", ")) + ".";
-      if (r.feature_on === false) a += T(" بس «بحث باسم على الإنترنت» مقفول من «🛠️ المطوّر» ← «المزايا».", " But Bassem's web search is switched off in «🛠️ Developer» → «Features».");
-      if (r.duplicates) a += T(" تنبيه: فيه " + r.duplicates + " أداة تانية بنفس الاسم في Anam — امسحها من Anam Lab.", " Note: " + r.duplicates + " other tool(s) with the same name exist in Anam — delete them in Anam Lab.");
+      if (r.websearch_ready && r.janna_ready === false && r.janna_reason) a += T(" بحث جنة لسه مقفول: ", " Janna's search is still off: ") + L2(WSRJ[r.janna_reason] || WSR[r.janna_reason] || [r.janna_reason, r.janna_reason]) + ".";
+      var fo = r.feature_on;
+      if (fo === false || (fo && fo.bassem_web_search === false)) a += T(" بس «بحث باسم على الإنترنت» مقفول من «🛠️ المطوّر» ← «المزايا».", " But Bassem's web search is switched off in «🛠️ Developer» → «Features».");
+      if (fo && fo.janna_web_search === false) a += T(" بس «بحث جنة على الإنترنت» مقفول من «🛠️ المطوّر» ← «المزايا».", " But Janna's web search is switched off in «🛠️ Developer» → «Features».");
+      var dup = tl.filter(function (t) { return t.duplicates > 0; });
+      if (dup.length) a += T(" تنبيه: فيه أدوات تانية بنفس الاسم في Anam (", " Note: other tools with the same name exist in Anam (") + dup.map(function (t) { return (t.name || t.key) + " × " + t.duplicates; }).join(", ") + T(") — امسحها من Anam Lab.", ") — delete them in Anam Lab.");
+      else if (!tl.length && r.duplicates) a += T(" تنبيه: فيه " + r.duplicates + " أداة تانية بنفس الاسم في Anam — امسحها من Anam Lab.", " Note: " + r.duplicates + " other tool(s) with the same name exist in Anam — delete them in Anam Lab.");
+      (r.warnings || []).forEach(function (x) {
+        if (x && x.code === "share_links") a += T(" ⚠️ باسم ليه " + (x.count || 1) + " رابط مشاركة مفتوح في Anam — اقفله من Anam Lab (أي حد معاه الرابط يكلّم باسم ويصرف من رصيد البحث).", " ⚠️ Bassem has " + (x.count || 1) + " open share link(s) in Anam — close them in Anam Lab (anyone with the link can talk to Bassem and use the search credit).");
+      });
       return a;
     };
     var connErr = function (e) {
       var j = (e && e.j) || {};
       if (!j.msg_ar) return errText(e);
-      return T(j.msg_ar, j.msg_en || j.msg_ar) + (j.tool_id ? T(" (الأداة نفسها بقت في Anam — اللي فاضل ربطها بباسم.)", " (The tool itself is in Anam already — only putting it on Bassem is left.)") : "");
+      var done = j.tools_done || {}, dn = Object.keys(done).filter(function (k) { return !!done[k]; });
+      return T(j.msg_ar, j.msg_en || j.msg_ar) + (j.persona ? T(" (عند " + L2(WPER[j.persona] || [j.persona, j.persona]) + ")", " (on " + L2(WPER[j.persona] || [j.persona, j.persona]) + ")") : "")
+        + (dn.length ? T(" اللي خلص: ", " Done so far: ") + dn.map(function (k) { return L2(WTOOL[k] || [k, k]); }).join(T("، ", ", ")) + T(" — الضغطة الجاية بتكمّل الباقي.", " — the next press finishes the rest.") : j.tool_id ? T(" (الأداة نفسها بقت في Anam — اللي فاضل ربطها.)", " (The tool itself is in Anam already — only attaching it is left.)") : "");
     };
-    /* the small support line: the code, Anam's status and the step only (the words above already say the rest, in the page's language) */
-    var connSmall = function (e) { var j = (e && e.j) || {}; return j.msg_ar ? { code: [e.code, j.anam_status, j.step].filter(function (x) { return !!x; }).join(" "), error: "" } : e; };
+    /* the small support line: the code, Anam's status, the step and the persona only (the words above already say the rest, in the page's language) */
+    var connSmall = function (e) { var j = (e && e.j) || {}; return j.msg_ar ? { code: [e.code, j.anam_status, j.step, j.persona].filter(function (x) { return !!x; }).join(" "), error: "" } : e; };
     var paint = function () {
       var j = c.st.j || {}, sl = j.slots || {}, noSec = j.config_secret === false;
       setCt((j.store === false ? '<div class="alert">' + h(L2(ERRS.store_off)) + "</div>" : "")
@@ -2417,7 +2471,7 @@
         { ok: T("متسجّل ✓", "Registered ✓"), extra: (perm ? '<p class="mut sm" dir="auto">' + h(T("الصلاحيات المطلوبة: ", "Permissions needed: ") + perm) + "</p>" : "") + (cf.account_id ? '<p class="mut sm">' + h(T("الحساب: ", "Account: ")) + '<code dir="ltr">' + h(cf.account_id) + "</code></p>" : "") + '<p class="sm"><a href="#dev/deploys">' + h(T("🛠️ افتح «النشر» في لوحة المطوّر ←", "🛠️ Open «Deploys» in the developer panel →")) + "</a></p>" }) + "</div>";
     };
     /* every other secret slot the server lists (the developer panel's «Cloudflare — لوحة المطوّر» token …) gets the same card */
-    var KNOWN = { "respondio.token": 1, "respondio.channel": 1, "anam.api_key": 1, "websearch.key": 1, "bassem.tool_secret": 1, "websearch.provider": 1, "websearch.cap": 1, "cloudflare.dev_token": 1 };
+    var KNOWN = { "respondio.token": 1, "respondio.channel": 1, "anam.api_key": 1, "websearch.key": 1, "bassem.tool_secret": 1, "janna.tool_secret": 1, "websearch.provider": 1, "websearch.cap": 1, "websearch.cap_janna": 1, "cloudflare.dev_token": 1 };
     var moreSlots = function (sl, noSec) {
       var ks = Object.keys(sl || {}).filter(function (k) { return !KNOWN[k] && sl[k] && typeof sl[k] === "object" && sl[k].kind !== "setting"; });
       if (!ks.length) return "";
@@ -2465,10 +2519,17 @@
       b.disabled = true;
       PUT("/admin/cc/keys/websearch.cap", { value: v }).then(function (r) { say("websearch", true, r && r.unchanged ? T("مفيش تغيير.", "No change.") : T("اتحفظ ✓", "Saved ✓")); reload(); }, function (e) { b.disabled = false; say("websearch", false, errText(e), e); paint(); });
     };
+    c.on.wscapj = function (b) {
+      var inp = $("#k_wscapj"), v = inp ? trim(inp.value).replace(/[٠-٩]/g, function (d) { return "٠١٢٣٤٥٦٧٨٩".indexOf(d); }) : "";
+      if (!/^\d{1,5}$/.test(v) || +v > 10000) { toast(T("نصيب جنة رقم من 0 لـ 10000 (0 = بحث جنة مقفول؛ مابيعدّيش الحد اليومي).", "Janna's share is a number from 0 to 10000 (0 = her search off; never above the daily cap)."), 1); return; }
+      b.disabled = true;
+      PUT("/admin/cc/keys/websearch.cap_janna", { value: v }).then(function (r) { say("websearch", true, r && r.unchanged ? T("مفيش تغيير.", "No change.") : T("اتحفظ ✓", "Saved ✓") + (r && r.item && r.item.effective != null && String(r.item.effective) !== v ? T(" — الشغّال " + r.item.effective + " (مابيعدّيش الحد اليومي)", " — in use: " + r.item.effective + " (never above the daily cap)") : "")); reload(); }, function (e) { b.disabled = false; say("websearch", false, errText(e), e); paint(); });
+    };
+    c.on.wscapjdel = function (b) { b.disabled = true; DEL("/admin/cc/keys/websearch.cap_janna").then(function () { say("websearch", true, T("رجع للافتراضي ✓", "Back to the default ✓")); reload(); }, function (e) { b.disabled = false; say("websearch", false, errText(e), e); paint(); }); };
     c.on.wsconn = function (b) {
-      if (!sure(T("نوصّل البحث على الإنترنت بباسم في Anam؟ السيرفر هيعمل (أو يحدّث) الأداة bassem_web_search ويضيفها لأدوات باسم من غير ما يشيل أي أداة تانية.", "Connect web search to Bassem in Anam? The server creates (or updates) the tool bassem_web_search and adds it to Bassem's tools without removing any other tool."))) return;
-      b.disabled = true; b.textContent = T("جارٍ التوصيل…", "Connecting…");
-      POST("/admin/cc/keys/websearch/connect", {}, { timeout: 75000 }).then(function (r) { say("wsconnect", true, connMsg(r)); reload(); },
+      if (!sure(T("نوصّل البحث على الإنترنت بجنة وباسم في Anam؟ السيرفر هيعمل (أو يحدّث) 4 أدوات — البحث وصيد الفرص لكل واحد فيهم — ويضيفها لجنة (عربي وإنجليزي) ولباسم من غير ما يشيل أي أداة تانية.", "Connect web search to Janna and Bassem in Anam? The server creates (or updates) 4 tools — search and hunt for each of them — and adds them to Janna (Arabic and English) and to Bassem without removing any other tool."))) return;
+      b.disabled = true; b.textContent = T("جارٍ التوصيل… (ممكن ياخد دقيقة)", "Connecting… (this can take a minute)");
+      POST("/admin/cc/keys/websearch/connect", {}, { timeout: 120000 }).then(function (r) { say("wsconnect", true, connMsg(r)); reload(); },
         function (e) { say("wsconnect", false, connErr(e), connSmall(e)); reload(); });
     };
     c.on.wscapdel = function (b) { b.disabled = true; DEL("/admin/cc/keys/websearch.cap").then(function () { say("websearch", true, T("رجع للافتراضي ✓", "Back to the default ✓")); reload(); }, function (e) { b.disabled = false; say("websearch", false, errText(e), e); paint(); }); };
