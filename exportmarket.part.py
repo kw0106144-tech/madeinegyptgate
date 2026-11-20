@@ -53,7 +53,7 @@ function show() {
   if (!M[k]) { if (k && show.cur) { var t = document.getElementById(k); if (t) t.scrollIntoView({ behavior: "smooth" }); return; } k = "gulf"; }
   show.cur = k;
   var m = M[k];
-  $("#mhero").innerHTML = HERO(m[2] + ".jpg", '<a href="home.html#export-map">خريطة التصدير</a> › ' + m[1], m[1], m[3], '<a class="btn btn-gold" href="register.html#' + ({ local: "basic", gulf: "premium", africa: "partner" }[k] || "strategic") + '">ادخل هذا السوق</a><a class="btn" style="background:rgba(255,255,255,.14);color:#fff" href="#ops" onclick="event.preventDefault();document.getElementById(&quot;ops&quot;).scrollIntoView({behavior:&quot;smooth&quot;})">الفرص المفتوحة</a>');
+  $("#mhero").innerHTML = HERO(m[2] + ".jpg", '<a href="home.html#export-map">جسر التصدير الرقمي</a> › ' + m[1], m[1], m[3], '<a class="btn btn-gold" href="register.html#' + ({ local: "basic", gulf: "premium", africa: "partner" }[k] || "strategic") + '">ادخل هذا السوق</a><a class="btn" style="background:rgba(255,255,255,.14);color:#fff" href="#ops" onclick="event.preventDefault();document.getElementById(&quot;ops&quot;).scrollIntoView({behavior:&quot;smooth&quot;})">الفرص المفتوحة</a>');
   $("#mtabs").innerHTML = KEYS.map(function (x) { return '<a href="#' + x + '"' + (x === k ? ' class="on"' : '') + '>' + M[x][1] + '</a>'; }).join("");
   /* every number is counted from the published open opportunities of this market (no typed-in demand figures) */
   var ops = OPPS.filter(function (o) { return o[5] === m[11] && o[7] >= 0; }), sc = {}; ops.forEach(function (o) { if (o[6]) sc[o[6]] = (sc[o[6]] || 0) + 1; });
