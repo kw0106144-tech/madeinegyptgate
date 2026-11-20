@@ -34,7 +34,7 @@ import { WS_HEADER, WS_MAX_BODY, WS_NOTE, WS_MARKETS, voiceOf, isEn, soft, refus
 import { productNeed, industryNeed, classify, relevant, namedIn, canonUrl, bareHost, SERVICE_RX } from "./web-classify.js";
 import { recordLeads, rejectedOf, leadHash, productKey } from "./web-leads.js";
 
-export const HUNT_MS = 4500, HUNT_MAX = 6, HUNT_RESULTS = 6, HUNT_PER_SITE = 2, HUNT_SNIPPET = 140, HUNT_REJECT_MS = 4000;
+export const HUNT_MS = 4500, HUNT_MAX = 6, HUNT_RESULTS = 6, HUNT_PER_SITE = 2, HUNT_SNIPPET = 140, HUNT_REJECT_WAIT_MS = 400;
 export const INTENTS = Object.freeze(["tenders", "rfq", "buyers", "projects"]);
 const INTENT_ALIAS = { tender: "tenders", tenders: "tenders", rfq: "rfq", rfqs: "rfq", buyer: "buyers", buyers: "buyers", customer: "buyers", customers: "buyers", client: "buyers", clients: "buyers",
   project: "projects", projects: "projects", "مناقصات": "tenders", "مناقصة": "tenders", "مناقصه": "tenders", "طلبات أسعار": "rfq", "طلبات اسعار": "rfq", "طلب عرض سعر": "rfq", "عملاء": "buyers",
@@ -223,6 +223,10 @@ export async function runHunt(env, cfg, h, { who = "bassem", voice = "bassem", n
   });
   const back = res.back + skipped;
   if (back) wait(giveBack(env, { ...res, back }));
+  /* a query the provider refused (429 / out of credit — never billed) gives its unit back to the day's counters; the minute's keep it (the
+     burst counts every attempt), so a throttled provider never uses up the day's cap with nothing found */
+  const refusedN = send.filter(i => answers[i] && answers[i].error === "quota").length;
+  if (refusedN) wait(giveBack(env, { back: refusedN, keys: res.keys.filter(k => !/^wsmin\|/.test(k)) }));
   const freshIdx = plan.map((q, i) => i).filter(i => answers[i] && !answers[i].error && !answers[i].cached);
   const failed = send.filter(i => answers[i] && answers[i].error);
   if (!answers.some(a => a && !a.error)) { if (failed.length) console.error("web-hunt", cfg.provider, "all failed", failed.map(i => answers[i].error).join(",")); return { error: "websearch_failed", reason: failed.length ? answers[failed[0]].error : "skipped" }; }
@@ -239,12 +243,16 @@ export async function runHunt(env, cfg, h, { who = "bassem", voice = "bassem", n
       cands.push({ r, c, q, rank, fresh: !a.cached, score: scoreOf(r, c, q, need, inds, nowMs) });
     });
   });
-  /* the team's rejections (one read, only while there is time) */
+  /* the team's rejections: ONE read for EVERY candidate link (a rejected link never comes back — the desk says so; review 2026-11-20: only
+     the first 40 were read, and none after 4 s), bounded by HUNT_REJECT_WAIT_MS so a slow read never holds the answer */
   let list = cands;
-  if (cands.length && Date.now() - t0 < HUNT_REJECT_MS) {
+  if (cands.length) {
     const hs = await Promise.all(cands.map(x => leadHash(x.r.url)));
-    const rej = await rejectedOf(env, hs.slice(0, 40), productKey(h.product));
-    if (rej.size) list = cands.filter((x, i) => !rej.has(hs[i]));
+    let tm = null;
+    const late = new Promise(res => { tm = setTimeout(() => res(null), HUNT_REJECT_WAIT_MS); });
+    const rej = await Promise.race([rejectedOf(env, [...new Set(hs)], productKey(h.product)), late]);
+    clearTimeout(tm);
+    if (rej && rej.size) list = cands.filter((x, i) => !rej.has(hs[i]));
   }
   const picked = pickResults(list);
   const partial = misses.length > res.granted || skipped > 0 || failed.length > 0;

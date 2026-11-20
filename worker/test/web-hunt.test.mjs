@@ -150,6 +150,24 @@ describe("the hunt: classifier and relevance (review B1, S1–S3, nits 12 / 13 /
     for (const h of ["ungm.org", "www.ungm.org", "eg.etenders.gov.eg"]) assert.ok(onHost(h, PORTALS), h);
     for (const h of ["evilungm.org", "ungm.org.evil.com", "notetimad.sa"]) assert.ok(!onHost(h, PORTALS), h + " (nit 13: a dot boundary)");
   });
+  test("an OPEN notice that names its own award rule («وسيتم الترسية على أقل الأسعار», \"will be awarded to the lowest bidder\") next to its closing date is a tender; an award stays news", () => {
+    assert.deepEqual(cl("tenders", "مناقصة عامة لتوريد درافيل كاوتش لمصنع الورق", "https://www.egpc.com.eg/tenders/123", "آخر موعد لتقديم العطاءات 15/12/2026 وسيتم الترسية على أقل الأسعار المطابقة"), ["tender", true, true]);
+    assert.deepEqual(cl("tenders", "مناقصة توريد درافيل لشركة السكر", "https://www.sugar-co.example-eg.com/news/rollers", "وتتم الترسية على أقل سعر. كراسة الشروط من إدارة المشتريات"), ["tender", false, true]);
+    assert.deepEqual(cl("tenders", "Tender: supply of industrial rubber rollers for a paper mill", "https://tenders.example-mill.co.ke/itb/1", "The contract will be awarded to the lowest evaluated bidder. Closing date: 2026-12-20"), ["tender", false, true]);
+    assert.deepEqual(cl("tenders", "رست مناقصة توريد درافيل على شركة النيل", "https://www.egpc.com.eg/news/5", "بعد فض المظاريف"), ["news", true, true]);
+    assert.deepEqual(cl("tenders", "تمت ترسية مناقصة توريد درافيل", "https://www.almalnews.com/y", "كراسة الشروط كانت متاحة من قبل"), ["news", false, true], "a done award, whatever else the page says");
+    assert.deepEqual(cl("tenders", "ABC Rollers was awarded the contract for rubber rollers", "https://www.reuters.com/z", "closing date was in May"), ["news", false, true]);
+    assert.deepEqual(cl("tenders", "شركة النيل تفوز بعقد توريد درافيل", "https://www.almalnews.com/w", "آخر موعد لتقديم العروض كان الشهر الماضي"), ["news", false, true]);
+    assert.deepEqual(cl("tenders", "ترسية مناقصة توريد درافيل", "https://www.egpc.com.eg/n/1", "ترسية"), ["news", true, true], "«ترسية» alone, no open notice: an award");
+  });
+  test("the importers' query finds «<product> importers in <country>» pages: a list of possible buyers, not nothing", () => {
+    const n = productNeed("صمامات", "industrial valves"), r = { title: "Valve importers in Kenya - list", url: "https://kenya-importers.example.com/valves", snippet: "industrial valve importers and distributors in Kenya" };
+    const c = classify(r, { intent: "buyers", need: n, inds: [], importers: true });
+    assert.deepEqual([c.type, relevant(r, c, { need: n, inds: [], importers: true })], ["buyer_list", true]);
+    const c2 = classify({ ...r, title: "مستوردين صمامات في كينيا" }, { intent: "buyers", need: n, inds: [], importers: true });
+    assert.equal(c2.type, "buyer_list");
+    assert.equal(classify({ title: "ABC Trading - distributor of industrial valves", url: "https://abctrading.example.co.ke/", snippet: "ABC Trading Ltd, Nairobi" }, { intent: "buyers", need: n, inds: [], importers: true }).type, "buyer", "one company stays one buyer");
+  });
   test("S3: news articles are news, list pages are buyer_list, one company is a buyer; the industry decides", () => {
     assert.deepEqual(cl("buyers", "مصانع الورق في مصر", "https://www.youm7.com/story/2026/1/1/x", "أكبر مصانع الورق"), ["news", false, false]);
     assert.deepEqual(cl("buyers", "Paper manufacturers in Egypt - Kompass", "https://eg.kompass.com/z/eg/r/paper/"), ["buyer_list", false, true]);
@@ -229,6 +247,7 @@ describe("the hunt: running it (parallel, deadline, cap units, cache)", () => {
     assert.deepEqual([r.status, r.data.partial, r.data.sent], [200, true, 6]);
     assert.ok(!r.data.results.some(x => x.type === "project") && r.data.count >= 4);
     assert.match(r.data.hint, /did not run or answer in time/);
+    assert.deepEqual([await rl(env, capKey(Date.now())), await rl(env, capKeyJanna(Date.now()))], [5, 5], "the 429 (refused, never billed) gave its unit back; the late one was sent and counts");
     reply.status = () => 500; reply.slow = () => 0; forgetWebCache(); env.SEO_KV.m.clear();
     const x = await jHunt(env, { ...ATLAL, product: "درافيل" });
     assert.deepEqual([x.status, x.data.error, x.data.http], [200, "websearch_failed", 502]); assert.equal(x.data.text, WS_VOICES.janna_ar.failed);
@@ -291,6 +310,18 @@ describe("the hunt: running it (parallel, deadline, cap units, cache)", () => {
     await giveBack(env3, m); // as the handlers do: a refusal costs nothing
     assert.equal(await rl(env3, capKeyJanna(NOW)), 12);
     assert.equal((await reserveUnits(env3, c3, 6, "janna", NOW + 61000)).granted, 6, "the next minute");
+  });
+  test("a D1 failure on ONE counter refuses the hunt (websearch_off, no provider call) and the counters that did count give their units back", async () => {
+    const env = hEnv(); reply.by = ATLAL_WEB;
+    const prep = env.DB.prepare.bind(env.DB);
+    env.DB.prepare = sql => {
+      const s = prep(sql); if (!/INSERT INTO rl/.test(sql)) return s;
+      const b = s.bind.bind(s); s.bind = (...a) => { const st = b(...a); if (String(a[0]).startsWith("wsmin|janna|")) st.first = async () => { throw new Error("D1 hiccup"); }; return st; };
+      return s;
+    };
+    const r = await jHunt(env, ATLAL);
+    assert.deepEqual([r.status, r.data.error, pcalls().length], [200, "websearch_off", 0]);
+    assert.deepEqual([await rl(env, capKey(Date.now())), await rl(env, capKeyJanna(Date.now()))], [0, 0], "a hiccup never eats the day's cap");
   });
   test("an ambiguous product word: product_ambiguous with ONE question and no provider call; with buyer industries only the buyers / projects part runs and the question is added", async () => {
     const env = hEnv(); reply.by = ATLAL_WEB;
@@ -414,6 +445,26 @@ describe("the hunt: leads for the data desk (web-leads.js, migration 0011)", () 
     reply.by = q => (/^مناقصة توريد/.test(q) ? [R("مناقصة توريد اسطوانات اكسجين ودرافيل", "https://tenders.etimad.sa/T/7", "اسطوانات اكسجين"), R("مناقصة توريد اسطوانات اكسجين", "https://tenders.etimad.sa/T/8", "اسطوانات اكسجين")] : []);
     const other = await jHunt(env, { product: "اسطوانات اكسجين", intents: "tenders" });
     assert.deepEqual(other.data.results.map(x => x.url), ["https://tenders.etimad.sa/T/7"], "an off-topic rejection belongs to its product; «old» to every product");
+  });
+  test("a rejected link stays out however many candidates come before it (every candidate is read, not the first 40)", async () => {
+    const env = hEnv(), plan = planOf(ATLAL), REJ = "https://www.find-tender.service.gov.uk/Notice/REJECTED";
+    const ti = plan.findIndex(p => p.intent === "tenders" && p.lang === "en");
+    assert.ok(ti >= 4, "four queries of 10 relevant results each come first: " + ti);
+    const ten = (i, f) => Array.from({ length: 10 }, (x, j) => f(i + "x" + j));
+    reply.by = q => {
+      const i = plan.findIndex(p => p.q === q), it = i >= 0 ? plan[i].intent : "";
+      if (i === ti) return [R("Tender: supply of industrial rubber rollers", REJ, "Tender notice for rubber rollers supply")];
+      if (it === "tenders") return ten(i, k => R("مناقصة توريد درافيل " + k, `https://t${k}.example-eg.com/t`, "مناقصة توريد درافيل"));
+      if (it === "rfq") return ten(i, k => R("مطلوب توريد درافيل " + k, `https://r${k}.example-eg.com/r`, "مطلوب توريد درافيل"));
+      if (it === "buyers") return ten(i, k => R("شركة الورق " + k, `https://b${k}.example-eg.com/`, "مصنع ورق وكرتون"));
+      return ten(i, k => R("مصنع ورق جديد " + k, `https://p${k}.example-eg.com/n`, "إنشاء مصنع ورق جديد"));
+    };
+    const a = await jHunt(env, ATLAL);
+    assert.ok(a.data.results.some(x => x.url === REJ), "found and kept at first");
+    await env.DB.prepare("UPDATE web_leads SET status = 'rejected', reason = 'old' WHERE url = ?").bind(REJ).run();
+    forgetWebCache(); env.SEO_KV.m.clear();
+    const b = await jHunt(env, ATLAL);
+    assert.ok(b.data.count > 0 && !b.data.results.some(x => x.url === REJ), JSON.stringify(b.data.results.map(x => x.url)));
   });
   test("without migration 0011 or with the switch off: the answers are the same and nothing is written or thrown", async () => {
     const env = hEnv(); reply.by = ATLAL_WEB; env.DB.db.exec("DROP TABLE web_leads"); forgetLeadsStore(env);

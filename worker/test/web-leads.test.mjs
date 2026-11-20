@@ -60,6 +60,15 @@ describe("web leads: the store", () => {
     const c = await env.DB.prepare("SELECT title, snippet FROM web_leads WHERE url = 'https://contact.example.com/a'").first();
     assert.ok(!/01012345678|1234567|@a-example/.test(JSON.stringify(c)) && /محجوب/.test(c.title + c.snippet), JSON.stringify(c));
   });
+  test("a link seen every 40 minutes gains one sighting per clock hour, and last_seen follows every sighting", async () => {
+    const env = env0(), u = "https://tenders.etimad.sa/T/40";
+    for (const m of [0, 40, 80, 120, 130]) await recordLeads(env, [row("tender", u, "t")], { persona: "janna", via: "hunt", nowMs: NOW + m * 60000 });
+    const r = await env.DB.prepare("SELECT seen_count, last_seen FROM web_leads WHERE url = ?").bind(u).first();
+    assert.deepEqual([Number(r.seen_count), r.last_seen], [3, new Date(NOW + 130 * 60000).toISOString()], "10:00, 11:20 and 12:00 count; 10:40 and 12:10 do not");
+    await recordLeads(env, [row("tender", u, "t")], { persona: "bassem", via: "hunt", nowMs: NOW + 30 * 60000 }); // a late write of an older sighting
+    const r2 = await env.DB.prepare("SELECT seen_count, last_seen FROM web_leads WHERE url = ?").bind(u).first();
+    assert.deepEqual([Number(r2.seen_count), r2.last_seen], [3, r.last_seen]);
+  });
   test("fail-soft: without the table nothing is written and nothing throws; the switch web_leads off writes nothing", async () => {
     const env = env0(); env.DB.db.exec("DROP TABLE web_leads"); forgetLeadsStore(env);
     assert.equal(await recordLeads(env, [row("tender", "https://a.example/1", "t")], { persona: "janna", via: "hunt" }), 0);

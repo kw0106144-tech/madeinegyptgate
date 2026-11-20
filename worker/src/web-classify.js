@@ -7,7 +7,8 @@
      carries its AMBIG note — so the hunt and janna_lookup agree on what a product is (review S13: no second synonym list here).
    - Phrases are matched on norm() text with word boundaries (an Arabic word may carry one attached و/ف/ب/ل/ك and the article); the
      product's alternatives by their stored forms (altForms), phrases word by word in a row.
-   - Rules, in order (the first that fits wins): a job ad → other · an AWARD (ترسية / contract award) → news, official when it is on a
+   - Rules, in order (the first that fits wins): a job ad → other · an AWARD (رست / contract award notice; «ترسية» / "awarded" only
+     outside an OPEN notice, which says «سيتم الترسية» / "will be awarded" by its closing date) → news, official when it is on a
      portal or an entity site (review S2: before the portal rule) · an official procurement PORTAL → rfq or tender, official · an
      ENTITY site (a public body that also publishes news) with tender / buyer-RFQ words → official · a B2B marketplace: a buy-request
      path → rfq, any other page → other (a product listing) · a COMPETITOR (review B1: before the generic RFQ / tender words): the
@@ -113,9 +114,18 @@ function wordRx(list) {
 }
 const JOB = wordRx(["وظائف", "وظيفه", "وظيفه خاليه", "فرص عمل", "فرصه عمل", "توظيف", "راتب", "رواتب", "مطلوب مهندس*", "مطلوب فني*", "مطلوب عمال", "مطلوب عامل", "مطلوب موظف*",
   "مطلوب سائق*", "مطلوب محاسب*", "مطلوب مندوب*", "مطلوب مشرف*", "job", "jobs", "vacancy", "vacancies", "hiring", "careers", "career", "salary", "recruitment", "job opening*", "internship*"]);
-const AWARD = wordRx(["ترسيه", "ترسيات", "رست المناقصه", "رست الممارسه", "رسو المناقصه", "رسو العطاء", "رسي العطاء", "فاز بعقد", "فازت بعقد", "فوز بعقد", "تفوز بعقد", "يفوز بعقد",
-  "اسناد اعمال", "awarded", "award notice", "contract award*", "award of contract", "awards contract", "wins contract", "won the contract", "won a contract", "wins a contract",
+/* an AWARD: the strong words always; the weak ones («ترسية», "awarded", "contract award") only on a page that is not an OPEN notice — open
+   notices say them too: «وسيتم الترسية على أقل الأسعار» / "will be awarded to the lowest bidder", next to their closing date (review
+   2026-11-20: such open tenders were spoken and stored as news). The phrases are written without the article, which wordRx makes
+   optional («رست مناقصة» and «رست المناقصة» both match) */
+const AWARD = wordRx(["رست مناقصه", "رست ممارسه", "رسو مناقصه", "رسو عطاء", "رسي عطاء", "تمت ترسيه", "تم ترسيه", "فاز بعقد", "فازت بعقد", "فوز بعقد", "تفوز بعقد", "يفوز بعقد",
+  "award notice", "contract award notice", "awards contract", "wins contract", "won the contract", "won a contract", "wins a contract", "has been awarded", "was awarded", "were awarded",
   "secures contract", "secured a contract", "bags contract", "notice of award", "intention to award", "contract signed", "signs contract", "signed a contract"]);
+const AWARD_WEAK = wordRx(["ترسيه", "ترسيات", "اسناد اعمال", "awarded", "contract award*", "award of contract"]);
+const OPEN_NOTICE = wordRx(["سيتم ترسيه", "ستتم ترسيه", "يتم ترسيه", "تتم ترسيه", "تكون ترسيه", "اخر موعد لتقديم", "اخر ميعاد لتقديم", "اخر موعد للتقديم", "اخر ميعاد للتقديم",
+  "اخر موعد لاستلام", "موعد فض المظاريف", "كراسه الشروط", "كراسه شروط", "تامين ابتدائي", "will be awarded", "shall be awarded", "to be awarded", "closing date", "closing time",
+  "submission deadline", "deadline for submission", "bid due date", "bids due", "bid security", "bid bond", "bidding document*", "invitation to bid", "invitation for bid*", "sealed bids"]);
+const isAward = text => AWARD.test(text) || (AWARD_WEAK.test(text) && !OPEN_NOTICE.test(text));
 /* a buyer asking for offers (strong: never a seller's button) */
 const RFQ_BUY = wordRx(["استدراج عروض", "استدراج العروض", "دعوه لتقديم عروض", "دعوه لتقديم العروض", "مطلوب توريد", "مطلوب موردين", "مطلوب مورد", "نبحث عن موردين", "نبحث عن مورد",
   "نرغب في شراء", "مطلوب شراء", "buying request*", "buying lead*", "buy offer*", "buy lead*", "buy request*", "wanted to buy", "want to buy", "looking for supplier*",
@@ -149,6 +159,7 @@ const PROJECT = wordRx(["توسعات", "توسعه", "توسعة", "حجر ال
   "will build", "plans to build", "investment of", "inaugurat*", "commissioning"]);
 const NEWS_W = wordRx(["خبر", "اخبار", "عاجل", "breaking news"]);
 const LISTY = wordRx(["قائمه", "قايمه", "دليل", "اسماء", "عناوين", "list of", "lists of", "directory", "companies in", "manufacturers in", "suppliers in", "mills in", "plants in",
+  "importers in", "distributors in", "dealers in", "wholesalers in", "buyers in", // the titles the importers' query of planHunt finds
   "factories in", "companies list", "producers in"]);
 const TOP_N = /(?:^| )(?:top|best|largest|biggest|افضل|اكبر|اهم) \d+(?= |$)/u;
 const COMPANY_W = wordRx(["شركه", "مصنع", "مصانع", "مجموعه", "للصناعات", "للصناعه", "ش م م", "company", "co", "ltd", "limited", "inc", "group", "mill", "mills", "plant", "factory",
@@ -325,7 +336,7 @@ export function classify(r, o = {}) {
   const tenderW = TENDER.test(text), rfqBuy = RFQ_BUY.test(text), rfqWeak = RFQ_WEAK.test(text), buyMark = BUYER_MARK.test(text) || buyPath;
   if (onHost(host, REFERENCE)) return out("other");
   if (JOB.test(text) && !tenderW && !rfqBuy) return out("other");
-  if (AWARD.test(text)) return out("news", { official: kind === "portal" || kind === "entity" });
+  if (isAward(text)) return out("news", { official: kind === "portal" || kind === "entity" });
   if (kind === "portal") return out(rfqBuy || rfqWeak ? "rfq" : "tender", { official: true });
   if (kind === "entity" && (tenderW || rfqBuy || (rfqWeak && buyMark))) return out(tenderW && !rfqBuy ? "tender" : "rfq", { official: true });
   if (b2b) return out(buyPath || /^sourcing\./.test(host) ? "rfq" : "other", { competitor: !buyPath });
@@ -340,7 +351,7 @@ export function classify(r, o = {}) {
     if (ind || (o.importers && prod)) {
       const dirHost = onHost(host, DIRECTORIES), title = " " + norm(r.title) + " ";
       const dirOne = dirHost && /\/(c|company|companies|profile|business-directory\/company-profiles|firm|en\/profile)\/[^/]+/.test(path) && !/[?&](q|search|keyword)=/.test(u.search);
-      const list = (dirHost && !dirOne) || LISTY.test(title) || TOP_N.test(title) || /\/(search|category|categories|list|lists|directory|companies)(\/|$)/.test(path) || /(^| )(مصانع|شركات) \S+ (في|ف|بمصر|بمحافظه)( |$)/.test(title);
+      const list = (dirHost && !dirOne) || LISTY.test(title) || TOP_N.test(title) || /\/(search|category|categories|list|lists|directory|companies)(\/|$)/.test(path) || /(^| )(مصانع|شركات|مستوردين|مستوردي|موزعين|موزعي) \S+ (في|ف|بمصر|بمحافظه)( |$)/.test(title);
       if (list) return out("buyer_list");
       if (dirOne || COMPANY_W.test(title) || /^\/?(|en|ar|home|index\.html?|about[^/]*|about-us|who-we-are)\/?$/.test(path)) return out("buyer");
     }

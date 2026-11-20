@@ -168,6 +168,7 @@ describe("web search: provider adapters (mocked)", () => {
       softErr(r, "websearch_failed", 502); assert.equal(r.data.text, WS_TEXT.failed);
       assert.ok(!r.text.includes(TAVILY));
     }
+    assert.equal(Number(await env.DB.prepare("SELECT n FROM rl WHERE k = ?").bind(capKey()).first("n")), 2, "the 429 (refused, never billed) gave its unit back; 401 and 500 count");
     assert.ok(!logs.join("\n").includes(TAVILY));
     globalThis.fetch = (url, init) => new Promise((res, rej) => init.signal.addEventListener("abort", () => rej(Object.assign(new Error("aborted"), { name: "AbortError" }))));
     const t0 = Date.now(), t = await runProvider("tavily", TAVILY, parseArgs({ query: "x y" }), { timeoutMs: 60 });

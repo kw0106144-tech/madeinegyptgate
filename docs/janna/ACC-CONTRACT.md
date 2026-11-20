@@ -2789,8 +2789,9 @@ is kept in `web_leads` for the data team. NEVER public: no page, no overlay, no 
   (audit `leads.convert`), best effort — the answer adds `lead_linked: true|false`, and a failed link never undoes the content. The
   desk page fills the form from an accepted tender / RFQ / project (title; the link as `source_url` only when it is an official portal, so
   anything else is saved as a draft for the admins, as 12.3 says).
-- A lead is recorded only from a FRESH provider answer (a cached one is not counted again), one sighting at most per hour, and keeps the
-  team's decision when it is found again. Tests: `worker/test/web-leads.test.mjs`.
+- A lead is recorded only from a FRESH provider answer (a cached one is not counted again), one sighting at most per clock hour, and keeps
+  the team's decision when it is found again; a rejected link is read for every candidate of a hunt, however many there are. Tests:
+  `worker/test/web-leads.test.mjs`, `worker/test/web-hunt.test.mjs`.
 
 ---
 

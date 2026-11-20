@@ -425,17 +425,19 @@ missing `X-MIG-Tool` (401) and a wrong method (405) keep their status.
 - **A hunt** (`runHunt`): the product's meaning from `lookup-terms.js` (`concepts`, `EQUIV`, `AMBIG`: its Arabic and English names),
   3–6 provider queries from templates per intent (tenders, RFQs, buyers = the industries that use the product, new projects; Arabic and
   English interleaved for an Arab market, English elsewhere), cached ones free, ONE reservation for the rest, sent in parallel (Brave one at a time) under one deadline `HUNT_MS` = 4.5 s (a late or 429 query =
-  `partial`, its unit given back). Each result is classified (`web-classify.js`: portal / entity / aggregator / B2B buy path / competitor /
-  job / reference / news), checked for relevance to the product and the buyers' industries, de-duplicated, rejected links skipped (the
-  team's «مرفوضة»), ≤ 2 per site, ≤ 6 kept. Personal pages (LinkedIn people, social profiles) and links with an e-mail or phone in the
+  `partial`; a query that never started gives its unit back, one the provider refused — 429 / out of credit, never billed — gives it back
+  to the day's counters but not to the minute's; a late one was sent and counts). Each result is classified (`web-classify.js`: portal /
+  entity / aggregator / B2B buy path / competitor / job / reference / news; «ترسية» / "awarded" make an award only outside an open notice
+  with its closing date), checked for relevance to the product and the buyers' industries, de-duplicated, rejected links skipped (the
+  team's «مرفوضة»: ONE read for every candidate, ≤ 400 ms), ≤ 2 per site, ≤ 6 kept. Personal pages (LinkedIn people, social profiles) and links with an e-mail or phone in the
   path are dropped; a query string with one is cut; e-mails and phones in titles / snippets are masked.
 - **Cost**: 1 cap unit per provider query sent. A plain search = 1; a hunt ≤ 6; the same query within an hour (KV `SEO_KV` `acc:ws:*`)
   = 0. Counters in D1 `rl`: `wsday|<day>` (the cap, default 300), `wsmin|<minute>` (30), and for Janna also `wsday|janna|<day>` (her
   share, default 40 % = 120), `wsday|janna|h|<day>|<hour>` (max(6, share ÷ 8)) and `wsmin|janna|<minute>` (12) — all reserved in one round,
-  over-reservations given back at once.
+  over-reservations given back at once (and the counters that did count when another one failed: a D1 hiccup never eats the cap).
 - **Leads** (`web-leads.js`, table `web_leads`, migration `0011_web_leads.sql`; owner switch `web_leads`): after a FRESH provider answer
   (never a cached one, review S8) each tender / RFQ / buyer / buyer list / project (and a hunt's news) is upserted by its canonical link
-  (`url_hash`): a known link gains a sighting at most once an hour, a better type, the other persona, and keeps its status. Without the
+  (`url_hash`): a known link gains a sighting at most once per clock hour, a better type, the other persona, and keeps its status. Without the
   table nothing is written and the answers do not change. Data desk: `GET /api/team/desk/leads`, `PUT /api/team/desk/leads/:id`
   (roles data / admin / owner, one `cc_audit` row per decision: `leads.accept` / `leads.reject` / `leads.reopen` / `leads.convert`),
   `POST /api/team/desk/content {…, lead_id}` (ACC-CONTRACT §12.5). A rejection with reason `old` / `duplicate` / `not_credible` / `advert`

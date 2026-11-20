@@ -4,7 +4,8 @@
    existing desk forms with its source. NEVER public: no page, no overlay, no persona tool returns anything from it.
      recordLeads(env, rows, meta)   after an answer (ctx.waitUntil): one atomic upsert per opportunity (tender, rfq, buyer, buyer_list,
                                     project; news only from a hunt; never other); a known link keeps its title / snippet / status (a
-                                    rejected lead stays rejected), gains a sighting at most once an hour, a better type (tender > rfq >
+                                    rejected lead stays rejected), gains a sighting at most once per clock hour (also when it is seen
+                                    every few minutes: the hour of last_seen is compared), a better type (tender > rfq >
                                     project > buyer > buyer_list > news), the other persona. Cached answers are not recorded (review S8)
      rejectedOf(env, hashes, pk)    the links the team rejected — for every product when the reason is old / duplicate / not credible /
                                     an advert, for THIS product only when it was «مش عن المنتج» or had no reason (review S5)
@@ -26,7 +27,8 @@ export const STATUS_NAMES = Object.freeze({ new: ["جديدة", "New"], accepted
 export const REASONS = Object.freeze({ off_topic: ["مش عن المنتج", "Not about the product"], old: ["قديمة أو مقفولة", "Old or closed"], duplicate: ["مكررة", "Duplicate"],
   not_credible: ["مش موثوقة", "Not credible"], advert: ["إعلان", "Advert"] });
 const GLOBAL_REASONS = ["old", "duplicate", "not_credible", "advert"];
-export const LEADS_LIMITS = Object.freeze({ per_answer: 12, rejected_in: 40, note: 300 });
+/* rejected_in: the links one rejectedOf() read covers — a hunt has ≤ 60 candidates; D1 binds ≤ 100 values a statement (90 + 4 + 1) */
+export const LEADS_LIMITS = Object.freeze({ per_answer: 12, rejected_in: 90, note: 300 });
 const RANK = t => `CASE ${t} WHEN 'tender' THEN 6 WHEN 'rfq' THEN 5 WHEN 'project' THEN 4 WHEN 'buyer' THEN 3 WHEN 'buyer_list' THEN 2 WHEN 'news' THEN 1 ELSE 0 END`;
 
 export const leadsOn = env => leadsStoreOn(env);
@@ -38,8 +40,8 @@ const who = p => (p === "janna" ? "janna" : p === "bassem" ? "bassem" : "");
 const UPSERT = `INSERT INTO web_leads (url_hash, url, title, site, snippet, type, official, aggregator, query, product, product_key, market, governorate, persona, personas, via, lang, date, first_seen, last_seen)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ' ' || ? || ' ', ?, ?, ?, ?, ?)
 ON CONFLICT(url_hash) DO UPDATE SET
-  seen_count = web_leads.seen_count + (CASE WHEN web_leads.last_seen < ? THEN 1 ELSE 0 END),
-  last_seen = excluded.last_seen,
+  seen_count = web_leads.seen_count + (CASE WHEN substr(web_leads.last_seen, 1, 13) < substr(excluded.last_seen, 1, 13) THEN 1 ELSE 0 END),
+  last_seen = MAX(web_leads.last_seen, excluded.last_seen),
   personas = CASE WHEN instr(web_leads.personas, ' ' || excluded.persona || ' ') > 0 THEN web_leads.personas ELSE web_leads.personas || excluded.persona || ' ' END,
   date = CASE WHEN web_leads.date = '' THEN excluded.date ELSE web_leads.date END,
   type = CASE WHEN ${RANK("excluded.type")} > ${RANK("web_leads.type")} THEN excluded.type ELSE web_leads.type END,
@@ -50,7 +52,7 @@ export async function recordLeads(env, rows, { persona = "", via = "", product =
   try {
     if (!env || !env.DB || !Array.isArray(rows) || !rows.length) return 0;
     if (!(await leadsOn(env)) || !(await featureOn(env, "web_leads"))) return 0;
-    const t = iso(nowMs), hourAgo = iso(nowMs - 3600000), pk = productKey(product), p = who(persona), v = via === "hunt" ? "hunt" : "search";
+    const t = iso(nowMs), pk = productKey(product), p = who(persona), v = via === "hunt" ? "hunt" : "search";
     const stmts = [];
     for (const r of rows.slice(0, LEADS_LIMITS.per_answer)) {
       if (!r || !STORE.has(r.type) || (r.type === "news" && v !== "hunt")) continue;
@@ -58,14 +60,14 @@ export async function recordLeads(env, rows, { persona = "", via = "", product =
       if (!/^https?:\/\/[^\s]+$/i.test(url) || url.length > 600) continue;
       let host = ""; try { host = bareHost(new URL(url).hostname); } catch (e) { continue; }
       stmts.push(env.DB.prepare(UPSERT).bind(await leadHash(url), url, forLLM(r.title, 160), host.slice(0, 120), forLLM(r.snippet, 300), r.type, r.official ? 1 : 0, r.aggregator ? 1 : 0,
-        forLLM(r.query || "", 200), forLLM(product, 120), pk, line(market || "", 20), line(governorate || "", 40), p, p, v, r.lang === "en" ? "en" : r.lang === "ar" ? "ar" : "", forLLM(r.date || "", 40), t, t, hourAgo));
+        forLLM(r.query || "", 200), forLLM(product, 120), pk, line(market || "", 20), line(governorate || "", 40), p, p, v, r.lang === "en" ? "en" : r.lang === "ar" ? "ar" : "", forLLM(r.date || "", 40), t, t));
     }
     if (!stmts.length) return 0;
     await env.DB.batch(stmts);
     return stmts.length;
   } catch (e) { console.error("web-leads: record", (e && e.message) || "error"); return 0; }
 }
-/* the links the team rejected among these hashes (≤ 40): product-independent reasons for every hunt, «مش عن المنتج» / no reason only
+/* the links the team rejected among these hashes (≤ 90): product-independent reasons for every hunt, «مش عن المنتج» / no reason only
    for the same product (review S5) → Set of hashes (never throws: a failing read filters nothing) */
 export async function rejectedOf(env, hashes, pk) {
   try {

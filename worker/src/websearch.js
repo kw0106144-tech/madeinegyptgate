@@ -405,7 +405,8 @@ export async function cachePut(env, key, v, nowMs) {
    RETURNING rows, so each upsert is its own .first("n")): wsday|<Cairo day> (the global cap), wsmin|<minute> (WS_PER_MIN), and for Janna
    wsday|janna|<day> (her share), wsday|janna|h|<hour> (an eighth of it), wsmin|janna|<minute> (WS_PER_MIN_JANNA). Granted = n − the largest
    overshoot, ≥ 0 (correct when reservations interleave); what was not granted is given back to the SAME keys. A searches' and a hunts'
-   call count alike. Throws when D1 is unavailable → the caller refuses (fail-closed). */
+   call count alike. Throws when D1 is unavailable → the caller refuses (fail-closed); a counter that did count before another failed
+   gives its units back (a D1 hiccup never eats the day's cap). */
 export const capKey = (nowMs = Date.now()) => "wsday|" + cairoDay(nowMs);
 export const capKeyJanna = (nowMs = Date.now()) => "wsday|janna|" + cairoDay(nowMs);
 const UPSERT_N = "INSERT INTO rl (k, n, exp) VALUES (?, ?, ?) ON CONFLICT(k) DO UPDATE SET n = n + excluded.n RETURNING n";
@@ -416,7 +417,10 @@ export async function reserveUnits(env, cfg, n, persona = "bassem", nowMs = Date
   const C = [{ k: "wsday|" + day, lim: cfg.cap, exp: dayExp, why: "cap" }, { k: "wsmin|" + min, lim: WS_PER_MIN, exp: iso((min + 1) * 60000), why: "minute" }];
   if (persona === "janna") C.push({ k: "wsday|janna|" + day, lim: cfg.cap_janna, exp: dayExp, why: "cap" }, { k: "wsday|janna|h|" + day + "|" + hour, lim: jannaHourCap(cfg.cap_janna), exp: dayExp, why: "hour" },
     { k: "wsmin|janna|" + min, lim: WS_PER_MIN_JANNA, exp: iso((min + 1) * 60000), why: "minute" });
-  const after = await Promise.all(C.map(c => env.DB.prepare(UPSERT_N).bind(c.k, n, c.exp).first("n")));
+  const done = await Promise.allSettled(C.map(c => env.DB.prepare(UPSERT_N).bind(c.k, n, c.exp).first("n")));
+  const bad = done.find(s => s.status === "rejected");
+  if (bad) { await giveBack(env, { back: n, keys: C.filter((c, i) => done[i].status === "fulfilled").map(c => c.k) }); throw bad.reason; } // the counters that did count give it back
+  const after = done.map(s => s.value);
   let over = 0;
   C.forEach((c, i) => { over = Math.max(over, Number(after[i] || 0) - c.lim); });
   const granted = Math.max(0, n - Math.max(0, over));
@@ -458,12 +462,16 @@ export function refusal(path, voice, r, nowMs) {
 export async function webSearch(env, cfg, p, nowMs = Date.now(), { cache = true, count = true, persona = "bassem" } = {}) {
   const key = await cacheKey(cfg.provider, p);
   if (cache) { const hit = await cacheGet(env, key, nowMs); if (hit) return { count: hit.results.length, results: hit.results, cached: true }; }
+  let rv = null;
   if (count) {
-    let r; try { r = await reserveUnits(env, cfg, 1, persona, nowMs); } catch (e) { return { error: "websearch_off", reason: "no_counter" }; }
-    if (!r.granted) { await giveBack(env, r); return { error: r.why === "cap" ? "websearch_cap" : "websearch_busy", reason: r.why === "cap" ? "" : r.why }; }
+    try { rv = await reserveUnits(env, cfg, 1, persona, nowMs); } catch (e) { return { error: "websearch_off", reason: "no_counter" }; }
+    if (!rv.granted) { await giveBack(env, rv); return { error: rv.why === "cap" ? "websearch_cap" : "websearch_busy", reason: rv.why === "cap" ? "" : rv.why }; }
   }
   const r = await runProvider(cfg.provider, cfg.key, p);
-  if (r.error) return { error: "websearch_failed", reason: r.error, status: r.status };
+  if (r.error) {
+    if (rv && r.error === "quota") await giveBack(env, { back: 1, keys: rv.keys.filter(k => !/^wsmin\|/.test(k)) }); // refused, never billed (as a hunt's query)
+    return { error: "websearch_failed", reason: r.error, status: r.status };
+  }
   const results = cleanResults(r.raw, env);
   if (cache) await cachePut(env, key, { results }, nowMs);
   return { count: results.length, results, cached: false, status: r.status };
