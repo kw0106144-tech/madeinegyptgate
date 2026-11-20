@@ -611,7 +611,11 @@ export async function callsReportCron(env, nowMs = Date.now(), CC, { sleep } = {
   const st = await stateOf(env, featureDef("calls_report"));                            // no e-mail route / no recipient → locked
   if (st.locked) return { skipped: "locked", code: st.locked.code };
   if (!(await takeLock(benv, day, nowMs))) return { skipped: "locked_by_another_run", day };
-  try { return await runAndSend(benv, { day, nowMs, settings, mode: "cron", actor: SYSTEM, CC, sleep }); }
+  try {
+    const g2 = await gateOf(benv, day); // again under the lock: a manual send («-r<n>», never deduped against this id) may have closed the day since the first read
+    if (g2.sent || g2.failed) return { skipped: "done", day };
+    return await runAndSend(benv, { day, nowMs, settings, mode: "cron", actor: SYSTEM, CC, sleep });
+  }
   catch (e) { // a run that breaks counts as a failed try too: never 150 Anam reads every 15 minutes for the rest of the day
     const reason = line(maskPII(String((e && e.message) || e || "error")), 160);
     console.error("calls report: run failed", reason);

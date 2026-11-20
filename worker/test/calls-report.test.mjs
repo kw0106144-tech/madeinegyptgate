@@ -118,6 +118,21 @@ describe("calls report: the schedule and the gate", () => {
     assert.deepEqual(await gate(env), ["calls-report"]);
     assert.equal(JSON.parse((await audits(env, "calls_report.sent"))[0].after_json).dedup, true);
   });
+  test("a manual send that closes the day between the cron's gate read and its lock: the cron reads the gate again under the lock — no second e-mail", async () => {
+    const env = env0(); addAtlal();
+    const db = env.DB; // the owner's «ابعت تقرير يوم…» (id callrep-<D>-r1, not deduped against callrep-<D>) ends and drops its lock just as the cron takes it
+    env.DB = new Proxy(db, { get(t, p) {
+      if (p === "prepare") return sql => {
+        const s = t.prepare(sql);
+        if (!/exp = excluded\.exp WHERE rl\.exp </.test(sql)) return s; // takeLock's statement only
+        return { bind: (...a) => ({ run: async () => { await t.prepare("INSERT INTO cron_runs (job, day, at) VALUES ('calls-report', ?, ?)").bind(D, NOW()).run(); return s.bind(...a).run(); } }) };
+      }
+      const v = t[p]; return typeof v === "function" ? v.bind(t) : v;
+    } });
+    assert.deepEqual(await cron(env), { skipped: "done", day: D });
+    assert.deepEqual([st.mails.length, anamCalls().length], [0, 0], "no e-mail, no Anam read");
+    assert.equal((await rowsOf(env, "SELECT k FROM rl WHERE k = ?", "callrep-lock|" + D)).length, 0, "the lock is dropped");
+  });
   test("the switch OFF → nothing at all: no Anam GET, no e-mail, no gate", async () => {
     const env = env0(); addAtlal();
     await env.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES ('features', 'system', ?, ?)").bind(JSON.stringify({ v: 1, values: { calls_report: false } }), NOW()).run();
