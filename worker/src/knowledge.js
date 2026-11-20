@@ -51,7 +51,7 @@ const NOANS = /مش عارف|معرفش|ماعرفش|مش متاكد|المعل�
 const FILL_ANS = /^(ثواني|ثانيه|لحظه|حاضر|تمام|اكيد|طيب|ماشي|اوك|ok|okay|sure|one moment|just a second|ابشر|من عنيا|بدورلك|هدورلك|بفتحلك|هفتحلك|بشوفلك|هشوفلك|بص حضرتك على الشاشه)( |$)/;
 const Q_STOP = new Set(["ايه", "ازاي", "فين", "امتي", "امتى", "مين", "كام", "ليه", "هل", "ينفع", "اقدر", "نقدر", "ممكن", "عايز", "عاوز", "عايزه", "اعرف", "يعني", "انهي", "هو", "هي", "ده",
   "دي", "دا", "انا", "احنا", "انت", "انتي", "حضرتك", "يا", "فندم", "بقي", "بقى", "طيب", "بس", "كده", "لو", "سمحت", "عندكم", "عندك", "فيه", "في", "عن", "على", "علي", "من", "مع",
-  "what", "how", "where", "when", "who", "which", "why", "can", "could", "do", "does", "is", "are", "there", "i", "we", "you", "it", "much", "many", "would", "should"].map(w => norm(w)));
+  "what", "how", "where", "when", "who", "which", "why", "can", "could", "do", "does", "is", "are", "there", "i", "we", "you", "it", "much", "many", "would", "should"].flatMap(w => [norm(w), stem(w)])); // + the stem: qWords() compares stems
 export const qWords = s => [...new Set(tokens(String(s || ""), 40).filter(w => !Q_STOP.has(w) && !/^\d+$/.test(w)))].slice(0, 16);
 const INTENTS = [
   ["plans", /باقه|باقات|الباقه|اشتراك|الاشتراك|سعر الباقه|بكام|تكلفه|تكلف|plan|plans|subscription|price|cost|fee/],

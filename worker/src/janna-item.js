@@ -9,7 +9,7 @@
    Contacts: the platform never gives private phones / e-mails; contact goes through the platform (contact rules in `contact`). */
 import DATA from "./data.json";
 import ITEMS from "./items.json";
-import { norm } from "./text.js";
+import { norm, forLLM, instructionLike } from "./text.js";
 import { cairoDay, addDays, toolSoftError } from "./common.js";
 
 export const SITE = "https://madeinegyptgate.com/";
@@ -102,13 +102,27 @@ function rfqRecord(q, nowMs) {
   ]);
   return rec;
 }
+/* the description as one spoken sentence (lookup-index 2026-11-20: the text said name, place and activity only, so «what does it make?»
+   had no answer): its own words, the company name it starts with taken off, contacts masked and markers removed (text.js forLLM), at
+   most ~160 characters; nothing when it only repeats the products line or reads like an instruction */
+const endDot = s => String(s || "").replace(/[\s.،,;:…]+$/, "");
+function aboutLine(name, desc, products) {
+  let d = String(desc || "").trim(); if (!d) return "";
+  const n = String(name || "").trim(), cut = /…$/.test(d) || d.length > 160;
+  if (n && d.startsWith(n)) d = d.slice(n.length).replace(/^[\s\-–—:،,|]+/, "");
+  d = endDot(forLLM(d, 170));
+  if (d.length < 12 || instructionLike(d)) return "";
+  const nd = norm(d).slice(0, 40), np = norm(products || "");
+  if (np && nd && (np.includes(nd) || nd.includes(np.slice(0, 40)))) return "";
+  return "وحسب نبذته على المنصة: " + endDot(short(d, 160)) + (cut ? "…" : ".");
+}
 function factoryRecord(f) {
   const k = hashOf(f[5]), x = F[k] || [];
   const rec = { section: "factories", id: k, title: f[0], name: f[0], type: f[1] || undefined, activity: f[2] || undefined, location: f[3] || undefined, governorate: x[2] || undefined,
     products: f[4] || undefined, description: x[0] || undefined, verified: x[1] ? true : undefined, open_url: absUrl(x[3] || f[5]), contact: CONTACT.factories };
   rec.text = join([
     f[0] + (f[1] ? " — " + f[1] : "") + (f[3] ? " في " + f[3] : "") + (f[2] ? "، نشاطه " + f[2] : "") + ".",
-    f[4] ? "من منتجاته: " + first(f[4], 5) + "." : "", x[1] ? "المنشأة موثّقة من فريق المنصة." : "",
+    f[4] ? "من منتجاته: " + endDot(first(f[4], 5)) + "." : "", aboutLine(f[0], x[0], f[4]), x[1] ? "المنشأة موثّقة من فريق المنصة." : "",
     "التواصل من زر «اطلب عرض سعر» في صفحته على المنصة.",
   ]);
   return rec;
