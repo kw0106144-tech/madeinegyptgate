@@ -29,11 +29,20 @@ const NA_TRANSCRIPT = ["promise_no_tool", "nudge_after_promise", "slow_turn", "z
 const NA_D1 = ["promise_no_tool", "nudge_after_promise", "slow_turn", "long_turn", "last_user_unanswered", "bad_tag"];
 
 /* ---------- the patterns (run on norm()ed text unless they say «raw»: lower case, no diacritics, أإآ → ا, ة → ه, ى → ي, punctuation → space) ---------- */
-/* U9's promise to search (report spec R1) */
-export const PROMISE_RX = /(^| )(ثواني|بدور|هدور|هجرب|ببحث|هبحث|بشوفلك|هشوفلك|بفتحلك|هفتحلك)|let me (check|search|look)|one moment/;
-/* a seller: a factory / company / supplier looking for work, customers or tenders */
-export const SELL_RX = /(^| )(احنا|انا) (مصنع|شركه|مورد|موردين)|(^| )[وف]?(بنصنع|بننتج|بنورد|بنكسي|بنجلخ)|(^| )(عايز|عاوز|محتاج|عايزين|محتاجين|بدور علي) (فرص|فرصه|شغل|عملا|عميل|مشترين|مشتري|طلبات|مناقصات|زباين)/;
-export const BUY_RX = /(^| )(عايز|عاوز|محتاج|عايزين|محتاجين|بدور علي|بدور عن|ابغي|نفسي) (اشتري|نشتري|مورد|موردين|مصنع|مصانع|حد يوردلي|خامه|خامات)|(^| )(بشتري|هشتري|نشتري)( |$)|(^| )(looking for|need|want to buy)( a| an)? (supplier|manufacturer|factory|vendor)/;
+/* U9's promise to search (report spec R1): a search / look-up verb. A bare «ثواني» / "one moment" is only a stall when the turn says
+   little else (≤ 6 words): «ثواني أقولك: الباقة الأساسية …» answers at once — it is no promise without a tool (review 2026-11-20) */
+export const PROMISE_RX = /(^| )(بدور|هدور|هجرب|ببحث|هبحث|بشوفلك|هشوفلك|بفتحلك|هفتحلك)|let me (check|search|look)/;
+const STALL_RX = /(^| )ثواني|one moment/;
+export const promised = np => PROMISE_RX.test(np) || (STALL_RX.test(np) && np.split(" ").filter(Boolean).length <= 6); // np = norm()ed
+/* a seller: a factory / company / supplier looking for work, customers or tenders. «إحنا شركة …» alone says what he IS: with a firm wish
+   to BUY (a supplier, raw material) and no wish to sell, he is a buyer (review 2026-11-20: a contractor «… ومحتاجين مورد حديد» is no seller) */
+const SELF_RX = /(^| )(احنا|انا) (مصنع|شركه|مورد|موردين)/;
+const SELL_WANT_RX = /(^| )[وف]?(بنصنع|بننتج|بنورد|بنكسي|بنجلخ)|(^| )[وف]?(عايز|عاوز|محتاج|عايزين|محتاجين|بدور علي) (فرص|فرصه|شغل|عملا|عميل|مشترين|مشتري|طلبات|مناقصات|زباين)/;
+export const SELL_RX = new RegExp(SELF_RX.source + "|" + SELL_WANT_RX.source);
+export const BUY_RX = /(^| )[وف]?(عايز|عاوز|محتاج|عايزين|محتاجين|بدور علي|بدور عن|ابغي|نفسي) (اشتري|نشتري|مورد|موردين|مصنع|مصانع|حد يوردلي|خامه|خامات)|(^| )(بشتري|هشتري|نشتري)( |$)|(^| )(looking for|need|want to buy)( a| an)? (supplier|manufacturer|factory|vendor)/;
+const BUY_FIRM_RX = /(^| )[وف]?(عايز|عاوز|محتاج|عايزين|محتاجين|بدور علي|بدور عن|ابغي|نفسي) (اشتري|نشتري|مورد|موردين|حد يوردلي|خامه|خامات)|(^| )(بشتري|هشتري|نشتري)( |$)|(^| )(looking for|need|want to buy)( a| an)? (supplier|vendor)/;
+/* R5: a goodbye / thanks is no question left without an answer (the caller closes the call after it; Anam notices the closed tab later) */
+const BYE_RX = /^(?:(?:طيب|تمام|ماشي|اوك|اوكي|خلاص|حاضر|اه|ايوه|ok|okay)\s+)*(?:شكرا|متشكر|متشكره|متشكرين|مرسي|الف شكر|تسلمي|تسلم|مع السلامه|سلام|باي|thanks|thank you|bye|goodbye)(?:\s+(?:جدا|جزيلا|ليكي|ليك|يا جنه|يا باسم|يا فندم|كتير|خالص|مع السلامه|سلام|باي|you|so much|a lot|bye))*$/;
 const CONTACT_RX = /(^| )(رقم (تليفون|التليفون|موبايل|الموبايل|المصنع|الشركه|التواصل)|رقمهم|رقمه|تليفونهم|تليفون|تلفون|عنوانهم|عنوان|اتواصل مع|اكلمهم|اكلمه|phone number|contact them)( |$)/;
 const PLATFORM_RX = /(^| )(الباقات|باقه|الباقه|الاشتراك|اشتراك|بكام|التسجيل|اسجل|الدفع|ادفع|price of the plan|subscription|register)( |$)/;
 const PROCEDURE_RX = /(^| )(سجل تجاري|السجل التجاري|ضرايب|ضرائب|الضريبه|ترخيص|رخصه|شهاده|شهادات|جمارك|الجمارك|اجراءات|الاجراءات|customs|licen[cs]e|certificate)( |$)/;
@@ -113,6 +122,8 @@ const NOT_NAME = new Set(["عايز", "عاوز", "محتاج", "مش", "مست�
 const COMPANY_RX = /(?:^|\s)(?:من|بتاع|بتاعة|إحنا|احنا|أنا|انا|عندي|عندنا|اسمها|اسمه|اسم)\s+(?:في\s+)?((?:مصنع|شركة|شركه|مجموعة|مجموعه|مؤسسة|مؤسسه|مكتب)(?:\s+[^\s،,.؟?!]{2,20}){1,4})/u;
 const BRAND_RX = /\b([A-Z][\w&.-]{1,20}(?:\s+[A-Z][\w&.-]{1,20}){0,3}\s+(?:Group|Co|Company|Industries|Factory|Trading|Corp))\b/;
 const COMPANY_STOP = /^(في|بتاع|اللي|و|وانا|وعايز|عايز|عاوز|بس|علشان|عشان|لـ|ل)$/;
+/* a place said as a whole word, or with a joined و / ب / ف / لل before its «ال» («بالقاهرة»): «مطروحة» is no Matrouh, «بدري» no Badr */
+const saidPlace = (nu, p) => { const w = N(p); return !!w && (nu.includes(" " + w + " ") || (/^ال/.test(w) && (["و", "ب", "ف"].some(x => nu.includes(" " + x + w + " ")) || nu.includes(" لل" + w.slice(2) + " ")))); };
 export function selfDescription(turns, places = [], agent = "janna") {
   const o = { title: "", first: "", company: "", place: "", links: [], echo: "" };
   for (const t of turns) {
@@ -123,7 +134,7 @@ export function selfDescription(turns, places = [], agent = "janna") {
       if (m) { const w = m[1].split(/\s+/), out = [w[0]]; for (const x of w.slice(1)) { if (COMPANY_STOP.test(x)) break; out.push(x); } if (out.length > 1) o.company = out.slice(0, 5).join(" "); }
       if (!o.company) { const b = BRAND_RX.exec(u); if (b) o.company = b[1]; }
     }
-    if (!o.place) { const nu = N(u); for (const p of places) if (p && nu.includes(N(p))) { o.place = p; break; } }
+    if (!o.place) { const nu = " " + N(u) + " "; for (const p of places) if (p && saidPlace(nu, p)) { o.place = p; break; } }
     for (const d of domainsOf(u)) if (!o.links.includes(d) && o.links.length < 3) o.links.push(d);
   }
   for (const t of turns) { // the persona's own echo of what the caller does («فهمت إن …»)
@@ -175,8 +186,9 @@ export function reviewConversation(c) {
   const userTurns = turns.filter(t => t.user && !t.noise);
 
   /* the caller: seller / buyer, the ask label (one per call) */
-  out.seller = userTurns.some(t => SELL_RX.test(N(t.user)));
-  out.buyer = !out.seller && userTurns.some(t => BUY_RX.test(N(t.user)));
+  const anyUser = rx => userTurns.some(t => rx.test(N(t.user)));
+  out.seller = anyUser(SELL_WANT_RX) || (anyUser(SELF_RX) && !anyUser(BUY_FIRM_RX));
+  out.buyer = !out.seller && anyUser(BUY_RX);
   const tools = turns.flatMap(t => t.tools.map(x => ({ ...x, turn: t.i })));
   if (Array.isArray(c.searches)) for (const x of c.searches) tools.push({ name: s(x.tool).toLowerCase(), status: "completed", args: { query: x.query, section: x.section || "" }, parsed: { count: x.count, results: (x.titles || []).map(n => ({ name: n })) }, turn: null, fromMemory: true });
   out.tools = tools.length;
@@ -222,7 +234,7 @@ export function reviewConversation(c) {
   if (!na.has("promise_no_tool")) {
     for (let k = 0; k < turns.length; k++) {
       const t = turns[k];
-      if (!t.persona || !PROMISE_RX.test(N(t.persona)) || t.tools.length) continue;
+      if (!t.persona || !promised(N(t.persona)) || t.tools.length) continue;
       let late = false;
       for (let j = k + 1; j < turns.length && !turns[j].user; j++) if (turns[j].tools.length) { late = true; break; } // the next persona turn before the next user message
       if (late) continue;
@@ -258,7 +270,7 @@ export function reviewConversation(c) {
   if (!na.has("last_user_unanswered")) {
     let k = turns.length - 1; while (k >= 0 && !turns[k].user && !turns[k].persona) k--;
     const t = turns[k];
-    if (t && t.user && !t.noise && !t.persona && !turns.slice(k + 1).some(x => x.persona)) {
+    if (t && t.user && !t.noise && !t.persona && !BYE_RX.test(N(t.user)) && !turns.slice(k + 1).some(x => x.persona)) {
       const said = num(t.uEnd) != null ? t.uEnd : num(t.uStart), end = num(c.endMs);
       if (said != null && end != null && end - said >= LIM.silenceMs) flag("last_user_unanswered", { turns: [t.i], s: Math.round((end - said) / 1000), q: q("user", t.user) || undefined });
     }
@@ -268,11 +280,13 @@ export function reviewConversation(c) {
   /* R7 unverified_claim: «اتبعت / اتسجّل …» with no confirming tool result and no platform row (inquiry, meeting, task, follow, mail, WhatsApp) */
   const confirmed = !!c.d1Rows || tools.some(x => OUTCOME_TOOLS.test(x.name) && x.status === "completed" && !failedTool(x) && x.parsed && (x.parsed.ok === true || x.parsed.sent === true || !!x.parsed.ref || /اتبعت برقم|ref|MIG-/i.test(s(x.parsed._text || x.parsed.text))));
   if (!confirmed) for (const t of turns) {
-    const np = N(t.persona); if (!np) continue;
-    const m = CLAIM_RX.exec(np); if (!m) continue;
-    const before = np.slice(Math.max(0, m.index - 24), m.index);
-    if (COND_RX.test(before) || /[؟?]\s*$/.test(t.persona.trim())) continue;
-    flag("unverified_claim", { turns: [t.i], q: q("persona", t.persona) || undefined });
+    if (!N(t.persona)) continue;
+    /* sentence by sentence: a conditional («لو اتسجلت») or a question («هل حضرتك اتسجلت قبل كده؟ لو لأ …») is no claim */
+    const claim = t.persona.split(/(?<=[.!؟?\n])/).some(sen => {
+      const ns = N(sen), m = CLAIM_RX.exec(ns); if (!m) return false;
+      return !COND_RX.test(ns.slice(Math.max(0, m.index - 24), m.index)) && !/(^| )هل( |$)/.test(ns.slice(0, m.index)) && !/[؟?]\s*$/.test(sen.trim());
+    });
+    if (claim) flag("unverified_claim", { turns: [t.i], q: q("persona", t.persona) || undefined });
   }
   /* R8 long_turn · R16 slow_turn · R9 bad_tag · R10 foreign_script · R11 gulf_words · R12 link_read */
   const userScripts = { cyr: userTurns.some(t => CYRILLIC.test(t.user)), cjk: userTurns.some(t => CJK.test(t.user)) };

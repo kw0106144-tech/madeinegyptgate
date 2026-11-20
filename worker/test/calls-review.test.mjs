@@ -155,3 +155,43 @@ describe("calls-review: masking and the memory join", () => {
     assert.equal(b.first, "", "«أنا مستفدتش» is no name");
   });
 });
+
+/* review 2026-11-20: false alarms that rated a good call «مافادتش» or said «فيه غلط» (synthetic calls) */
+describe("calls-review: no false alarm on a good call", () => {
+  const lk = (query, section, names) => ({ name: "janna_lookup", args: { section, query }, result: { count: names.length, results: names.map(n => ({ name: n })) } });
+  test("R1: «ثواني» before an answer given at once is no promise without a tool; a bare short stall still is", () => {
+    const plan = [{ i: 0, persona: "أهلاً بيك! أنا جنة.", t: 1, engine: true },
+      { i: 1, user: "الباقات بتاعتكم بكام؟", persona: "ثواني أقولك: الباقة الأساسية بأربعة آلاف جنيه في السنة، والشريك الأساسي بعشرة آلاف، وكلها زائد الضريبة.", t: 10, speak: 9 },
+      { i: 2, user: "تمام متشكر", persona: "العفو، أي خدمة!", t: 30 }];
+    const r = reviewConversation(conv(plan));
+    assert.deepEqual([r.verdict, r.ask, flagOf(r, "promise_no_tool")], ["useful", "platform_question", undefined]);
+    const stall = [{ i: 0, persona: "أهلاً بيك!", t: 1, engine: true }, { i: 1, user: "عايز مصنع رخام", persona: "ثواني يا فندم.", t: 10 }, { i: 2, user: "لسه؟", persona: "معلش، مفيش نتايج دلوقتي.", t: 40 }];
+    assert.deepEqual(flagOf(reviewConversation(conv(stall)), "promise_no_tool").turns, [1]);
+  });
+  test("R5: a goodbye the caller closed the call after is no question left without an answer", () => {
+    const bye = [...BUYER_TURNS.slice(0, 4), { i: 4, user: "شكراً يا جنة، مع السلامة", t: 80 }];
+    const r = reviewConversation(conv(bye, { outcome: { inquiries: [{ kind: "rfq", ref: "MIG-26-TEST02", conf: "sure" }] }, d1Rows: true }));
+    assert.deepEqual([r.verdict, flagOf(r, "last_user_unanswered")], ["useful", undefined]);
+    const q = [...BUYER_TURNS.slice(0, 4), { i: 4, user: "طيب والأسعار بتاعتهم كام؟", t: 80 }];
+    assert.ok(flagOf(reviewConversation(conv(q, { outcome: { inquiries: [{ kind: "rfq", ref: "MIG-26-TEST03", conf: "sure" }] }, d1Rows: true })), "last_user_unanswered"), "a question still counts");
+  });
+  test("a company that says what it IS («إحنا شركة مقاولات») and wants to buy is a buyer: no «عرضت على البايع منافسينه»", () => {
+    const turns = [{ i: 0, persona: "أهلاً بيك! أنا جنة.", t: 1, engine: true },
+      { i: 1, user: "إحنا شركة مقاولات ومحتاجين مورد حديد تسليح", persona: "تمام، هدوّر لك على موردين.", t: 10, tools: [lk("حديد تسليح", "suppliers", ["مصنع التجربة لحديد التسليح"])] },
+      { i: 2, user: "ماشي", persona: "لقيت مصنع التجربة لحديد التسليح، تحب أفتحلك ملفه؟", t: 30 }];
+    const r = reviewConversation(conv(turns));
+    assert.deepEqual([r.seller, r.buyer, r.ask, r.correct, flagOf(r, "competitor_offered")], [false, true, "supplier_search", true, undefined]);
+    const seller = [{ i: 0, persona: "أهلاً!", t: 1, engine: true }, { i: 1, user: "إحنا مصنع حديد وعايزين عملاء جداد", persona: "تمام.", t: 10 }];
+    assert.deepEqual([reviewConversation(conv(seller)).seller, reviewConversation(conv(seller)).ask], [true, "demand_search"], "a wish to sell keeps him a seller");
+  });
+  test("R7: a question about registering («هل حضرتك اتسجلت قبل كده؟ لو لأ …») is no claim; a claim in the next sentence still is", () => {
+    const ask = [{ i: 0, persona: "أهلاً!", t: 1, engine: true }, { i: 1, user: "عايز أعرف التسجيل بيتعمل إزاي", persona: "هل حضرتك اتسجلت قبل كده؟ لو لأ أقدر أفتحلك صفحة التسجيل دلوقتي", t: 10, speak: 6 }];
+    assert.equal(flagOf(reviewConversation(conv(ask)), "unverified_claim"), undefined);
+    const both = [{ i: 0, persona: "أهلاً!", t: 1, engine: true }, { i: 1, user: "عايز أسجل", persona: "هل جربت قبل كده؟ تمام، طلبك اتبعت خلاص.", t: 10 }];
+    assert.deepEqual(flagOf(reviewConversation(conv(both)), "unverified_claim").turns, [1]);
+  });
+  test("the place is a whole word: «مطروحة» is no Matrouh, «بدري» no Badr; «بالقاهرة» is Cairo", () => {
+    const P = ["القاهرة", "مطروح", "بدر"], pl = u => selfDescription([{ i: 0, user: u }], P).place;
+    assert.deepEqual([pl("المناقصة مطروحة من أسبوع"), pl("وصلنا بدري"), pl("مصنعنا بالقاهرة"), pl("إحنا في مطروح")], ["", "", "القاهرة", "مطروح"]);
+  });
+});
