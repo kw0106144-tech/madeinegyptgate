@@ -338,12 +338,16 @@
     if (after === false) return;
     me(true).catch(function () {}); startPoll(); setTimeout(migrate, 400); loadFollows(true);
   }
-  /* a code asked for in this tab: {email, at} for its 10 minutes (sessionStorage, never the code itself) */
-  var PK = "mig-sgn", CODE_MS = 10 * 60000, RESEND_S = 60;
+  /* a code asked for in this tab: {email, at} for its 10 minutes (sessionStorage, never the code itself). Inside the platform's own app
+     (user agent «MIGApp», app/) the phone may close the app while the member copies the code from his mail app, and the app then starts
+     again without this tab's sessionStorage (a browser restores the tab with it): there the same {email, at} is kept in localStorage,
+     with the same 10-minute limit (signinForm drops an older one) — still never the code (app parity: restore-place-and-signin-step) */
+  var PK = "mig-sgn", CODE_MS = 10 * 60000, RESEND_S = 60, INAPP = /\bMIGApp\b/.test((window.navigator && navigator.userAgent) || "");
   function pend(v) {
     try {
-      if (v === undefined) { var j = JSON.parse(sessionStorage.getItem(PK) || "null"); return j && typeof j.email === "string" && typeof j.at === "number" ? j : null; }
-      if (v === null) sessionStorage.removeItem(PK); else sessionStorage.setItem(PK, JSON.stringify(v));
+      var st = INAPP ? localStorage : sessionStorage;
+      if (v === undefined) { var j = JSON.parse(st.getItem(PK) || "null"); return j && typeof j.email === "string" && typeof j.at === "number" ? j : null; }
+      if (v === null) st.removeItem(PK); else st.setItem(PK, JSON.stringify(v));
     } catch (e) {}
     return null;
   }
@@ -845,4 +849,19 @@
   window.addEventListener("mig:ctx", function () { attachFollow(); viewBeacon(); });
   /* another tab signed in / out */
   window.addEventListener("storage", function (e) { if (e.key === TK) { if (!e.newValue) dropSession(); else { MEP = null; me(true).catch(function () {}); } } });
+  /* the platform's own app (user agent «MIGApp»): no tabs and no address bar there, so a link from one staff / member board to another
+     (/admin/ → /seo-admin/ «SEO الإدارة», the requests console …) that a browser opens in a new tab opens in place — Back returns, as in
+     a browser tab. Only links between the boards and the sign-in page, in the app's top window (never the live call's shared screen);
+     every other new-tab link is left to the app (a page over the current one, like a tab). Browsers: nothing changes. */
+  if (INAPP) {
+    var BOARDS = /^\/(?:en\/)?(?:admin|seo-admin|seo-team|data-desk|inbox|dashboard|login)(?:\/|\.html|$)/i, topWin = false;
+    try { topWin = window.top === window; } catch (e0) { topWin = false; }
+    if (topWin) document.addEventListener("click", function (e) {
+      var a = e.target && e.target.closest ? e.target.closest("a[href][target]") : null; if (!a || e.defaultPrevented) return;
+      var tg = String(a.getAttribute("target") || "").toLowerCase(), u = null;
+      if (!tg || tg === "_self" || tg === "_top" || tg === "_parent") return;
+      try { u = new URL(a.href, location.href); } catch (x) { return; }
+      if (u.origin === location.origin && BOARDS.test(u.pathname)) a.setAttribute("target", "_self");
+    }, true);
+  }
 })();

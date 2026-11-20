@@ -367,6 +367,13 @@
     if (f && bubble) { var c = bubble.querySelector(".jw-call"); if (c) { try { c.focus(); } catch (e) {} } }   /* keyboard focus stays in her box */
   }
   function autoSoon(ms) { setTimeout(autoTalk, ms); }
+  /* the platform's own app (user agent «MIGApp», app/) lets any page play sound by itself, where a phone browser waits for the visitor's
+     first tap in the page: unless the owner switched «جنة بتتكلم لوحدها أول ما التطبيق يفتح» on (app_janna_autovoice, default OFF), she
+     behaves there exactly as in a phone browser — on the first page her box with «🔊» and her voice on the first tap; on later pages
+     nothing by herself — until the visitor has tapped in this page (app parity plan, item janna-autovoice-switch) */
+  var INAPP = /\bMIGApp\b/.test((W.navigator && W.navigator.userAgent) || ""), TAPPED = false;
+  if (INAPP) ["pointerdown", "keydown", "touchend"].forEach(function (x) { W.addEventListener(x, function () { TAPPED = true; }, true); });
+  function appQuiet() { var F = W.MIGFLAGS; return INAPP && !TAPPED && !(F && F.on && F.on("app_janna_autovoice") === true); }
   function autoTalk() {
     if (autoDone || !stand) return;
     if (flagOff("janna_welcome")) { autoDone = true; return; }   /* «🛠️ المطوّر»: her invitation box is switched off — nothing opens by itself */
@@ -380,9 +387,10 @@
       return;
     }
     autoDone = true;
-    if (!first) { tryVoice(); return; }
+    if (!first) { if (!appQuiet()) tryVoice(); return; }   /* the app: a later page stays silent until a tap, as a phone browser */
     openBubble();   /* the first page: her box at once */
-    if (fresh) startTalk();   /* her line with sound if the browser allows it, else «🔊» + her voice on the first tap anywhere */
+    if (fresh && appQuiet()) { sndShow(); armGesture(); }   /* the app: exactly as when a phone browser refuses the sound */
+    else if (fresh) startTalk();   /* her line with sound if the browser allows it, else «🔊» + her voice on the first tap anywhere */
     else sndShow();   /* she already said this line in this tab: «🔊» if the visitor wants to hear it */
   }
   /* a later page: her voice alone first; the box opens with her words only if it really plays (startTalk's "playing"), else nothing

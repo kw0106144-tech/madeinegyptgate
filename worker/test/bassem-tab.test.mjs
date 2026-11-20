@@ -110,12 +110,12 @@ function el(tag) {
     appendChild(c) { this.children.push(c); c.parentNode = this; return c; }, contains() { return false; } };
   return e;
 }
-function tabPage({ lang = "ar", opener = undefined, wb = true, name = "mig-bassem-1795120000000" } = {}) {
+function tabPage({ lang = "ar", opener = undefined, wb = true, name = "mig-bassem-1795120000000", ua = "Mozilla/5.0 (X11; Linux x86_64) Chrome/153.0" } = {}) {
   const store = { "mig-wb": "1795120000000" }, opened = [], timers = [];
   const body = el("body"), head = el("head"), html = el("html"); html.attrs.lang = lang;
   const doc = { body, head, documentElement: html, hidden: false, createElement: el, getElementById: () => null, querySelector: () => null, querySelectorAll: () => [],
     addEventListener() {}, hasFocus: () => true };
-  const win = { MIG_WB: wb, name, opener, document: doc, addEventListener() {}, getComputedStyle: () => ({}), localStorage: { getItem: () => null },
+  const win = { MIG_WB: wb, name, opener, document: doc, navigator: { userAgent: ua }, addEventListener() {}, getComputedStyle: () => ({}), localStorage: { getItem: () => null },
     sessionStorage: { getItem: (k) => (k in store ? store[k] : null), removeItem: (k) => { delete store[k]; }, setItem: (k, v) => { store[k] = String(v); } },
     open: (u, n) => { opened.push([u, n]); return win.__answer ? win.__answer(u, n) : null; }, close() { win.closed = true; } };
   win.top = win;
@@ -231,5 +231,44 @@ describe("the results card's «افتحها في صفحة جديدة» (data/bas
   test("goes through JANNA_LIVE.openTab (Bassem's tab) when the call page has it, else a plain new tab as before", () => {
     const btn = VIEW.slice(VIEW.indexOf("if (mb) mb.onclick"), VIEW.indexOf("return c;", VIEW.indexOf("if (mb) mb.onclick")));
     assert.match(btn, /if \(JL\.openTab\) JL\.openTab\(o\.more\); else \{ try \{ W\.open\(o\.more, "_blank", "noopener"\); \} catch \(e\) \{\} \}/);
+  });
+});
+
+/* ---------- the platform's own app (app parity plan, same-site-new-windows): the page sits OVER the call, no tabs ---------- */
+describe("inside the app (user agent «MIGApp»): the page is over the call", () => {
+  const APP = "Mozilla/5.0 (Linux; Android 14; wv) Chrome/131.0 Mobile Safari/537.36 MIGApp/1.0 (android)";
+  test("the bar says the call is behind this page; «ارجع للمكالمة» = his welcome back + this page closes (no tab switch, never the hint)", () => {
+    const o = callTab(), P = tabPage({ opener: o, ua: APP, name: "mig-bassem-" + Date.now() });
+    assert.equal(P.part("mwb-tx").textContent, "باسم معاك في المكالمة ورا الصفحة دي");
+    P.part("mwb-go").onclick();
+    assert.equal(o.welcomed, 1, "«أهلاً بيك تاني» on the call's page");
+    assert.equal(P.win.closed, true, "this page closed: the call shows again");
+    assert.deepEqual(P.opened, [], "no window.open(\"\", name) tab switch");
+    assert.equal(o.focused, 0);
+    P.timers.filter((t) => t.ms === 700).forEach((t) => t.fn());
+    assert.notEqual(P.part("mwb-tx").textContent, "المكالمة مفتوحة في التاب اللي جيت منها — ارجعلها من شريط التابات");
+    const E = tabPage({ lang: "en", opener: callTab(), ua: APP });
+    assert.equal(E.part("mwb-tx").textContent, "Bassem is with you on the call behind this page");
+  });
+  test("a page the app cannot close (an older app replaced the call's page) has no call under it: the bar says it is over", () => {
+    const P = tabPage({ opener: null, name: "", ua: APP });
+    P.win.close = function () {}; /* not closable */
+    P.part("mwb-go").onclick();
+    P.timers.filter((t) => t.ms === 700).forEach((t) => t.fn());
+    assert.equal(P.part("mwb-tx").textContent, "المكالمة مع باسم خلصت");
+    assert.equal(P.win.MIG_WB, false);
+  });
+  test("a browser keeps the tab flow exactly (front() + the hint)", () => {
+    const o = callTab(), P = tabPage({ opener: o });
+    P.win.__answer = () => o;
+    P.part("mwb-go").onclick();
+    assert.equal(P.opened.length, 1); assert.notEqual(P.win.closed, true);
+    assert.equal(P.part("mwb-tx").textContent, "باسم معاك في الصفحة التانية");
+  });
+  test("janna-live.js openTab: in the app the page opens over the call — its own words (and no «pop-ups» advice)", () => {
+    const f = LIVE.slice(LIVE.indexOf("function openTab(u) {"), LIVE.indexOf("function wbTell()"));
+    assert.match(f, /INAPP \? T\("فتحتلك الصفحة فوق المكالمة — وأنا معاك هنا", "I opened the page over the call — I'm right here with you"\)/);
+    assert.match(f, /INAPP \? T\("مقدرتش أفتح الصفحة — كمّل هنا على الشاشة"/);
+    assert.match(LIVE, /var INAPP = \(function \(\) \{ var u = navigator\.userAgent/);
   });
 });

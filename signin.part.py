@@ -20,6 +20,11 @@
 #   * staff routing after the code when there is no ?next=: GET /api/me → user.staff_role owner / admin / editor / support → /admin/
 #     («لوحة التحكم», the new Admin Control Center), seo → /seo-team/, data → /data-desk/, anyone else → /dashboard/. Without the key
 #     (before migration 0006) the old members.role "admin" flag decides. An old-password session is never staff → ?next= or /dashboard/.
+# The platform's own app (user agent «MIGApp», app/: no address bar there): «دخول فريق المنصة» (under the card here and in every page's
+#   footer, shown only in the app — [data-mig-app-only], seo_build.part.py pwa_head) opens /login/?team=1, the team mode: the card says
+#   «دخول فريق المنصة»; a signed-in staff member goes straight to the board of his role (the same staffDest: owner / admin / editor /
+#   support → /admin/, seo → /seo-team/, data → /data-desk/); a signed-in account that is not staff is told so, with its own dashboard;
+#   signed out, the code form, then the same staff routing. Browsers can use ?team=1 too; nothing else changes for them.
 # Registered like the other pages (PAGES key «signin»; seo/config.json static_paths «signin» → /login/, noindex_static) and written by
 # PAGE_WRITERS['signin'] from site.py's page loop: noindex,follow, canonical = itself, never in a sitemap (scan_static_pages keeps
 # noindex rows out). deploy 1: /login.html and /panel.html stay on the owner's old system (deploy/legacy-live.txt; login.part.py is not
@@ -40,6 +45,7 @@ _SG = {
     'nojs': ('الدخول محتاج تشغيل JavaScript في المتصفح.', 'Signing in needs JavaScript turned on in your browser.'),
     # one line under the card (the sign-in dialog keeps the longer privacy note inside its card)
     'fine': ('بتسجيل الدخول بتوافق على <a href="%s">سياسة الخصوصية</a>.', 'By signing in you accept the <a href="%s">privacy policy</a>.'),
+    'team': ('دخول فريق المنصة', 'Platform team sign-in'),
 }
 SEO['signin'] = (_SG['desc'][0], 'دخول المصانع, تسجيل الدخول, لوحة المصنع, صنع في مصر', 'WebPage', [], 'yearly', '0.1')
 PAGES['signin'] = (_SG['title'][0], '', '', '', '')
@@ -134,7 +140,7 @@ _SG_JS = r'''(function () {
     if (/^\/(?:en\/)?login(?:\/|\.html)?$/i.test(u.pathname) || /^\/(?:en\/?)?(?:index\.html|home\.html)?$/i.test(u.pathname)) return "";
     return r;
   }
-  var NEXT = safeNext(param("next")), DASH = U.dash || "/dashboard/";
+  var NEXT = safeNext(param("next")), DASH = U.dash || "/dashboard/", TEAM = param("team") === "1";
   /* from the English page an Arabic-only path keeps the visitor in English (the app pages switch from ?lang=en; /en/ pages are English) */
   function withLang(u) {
     if (!EN || /^\/en(?:[\/?#]|$)/.test(u)) return u;
@@ -182,13 +188,17 @@ _SG_JS = r'''(function () {
       + '<p class="lgp-back"><a href="' + esc(dest()) + '">' + esc(T("كمّل بالحساب ده (حساب مشتري)", "Continue with this account (buyer)")) + "</a></p>";
     focusBox();
   }
+  /* «دخول فريق المنصة» (?team=1, the app's way to the boards): a staff member goes to his board, anyone else hears it is a team entry */
+  function teamGo(u) { var d = TEAM && !NEXT ? staffDest(u) : ""; if (d) { app.innerHTML = '<p class="mig-ok lgp-done" role="status" tabindex="-1">✓ ' + esc(T("بنحوّلك للوحتك…", "Taking you to your board…")) + "</p>"; location.replace(withLang(d)); } return !!d; }
   function signedIn(u) {
     stop(); u = u || A.user() || {};
+    if (teamGo(u)) return;
     var em = String(u.email || ""), who = A.ui && A.ui.shortName ? A.ui.shortName(u) : "", link = !!(A.linkSession && A.linkSession());
     if (who === em.split("@")[0]) who = "";
     if (u.company && who && who !== u.company) who += " · " + u.company;
     app.innerHTML = '<div class="lgp-box" role="status"><b>' + esc(T("إنت داخل بالفعل", "You're already signed in")) + "</b>" + (who ? '<span dir="auto">' + esc(who) + "</span>" : "") + (em ? '<span class="lgp-em" dir="ltr">' + esc(em) + "</span>" : "") + "</div>"
       + (link ? '<p class="mig-hint">' + esc(A.legacySession && A.legacySession() ? T("دخلت بالباسورد القديم، وده بيفتح لوحتك للمتابعة ودفع الفواتير والرد على الطلبات بس. عشان تعدّل بياناتك أو منتجاتك ادخل بكود على بريدك.", "You signed in with your old password, which opens your dashboard for following up, paying invoices and answering requests only. To change your details or products, sign in with an e-mail code.") : T("دخلت برابط من الإيميل، وده بيسمح بالرد على الطلبات بس. عشان تغيّر بياناتك أو إعداداتك ادخل بكود على بريدك.", "You signed in with an e-mailed link, which only allows answering requests. To change your details or settings, sign in with an e-mail code.")) + "</p>" : "")
+      + (TEAM && !staffDest(u) && u.email ? '<p class="mig-hint">' + esc(T("الحساب ده مش من حسابات فريق المنصة. لو إنت من الفريق، ادخل بإيميل الفريق بتاعك.", "This account is not a platform team account. If you are on the team, sign in with your team e-mail.")) + "</p>" : "")
       + (staffDest(u) ? '<a class="mig-go" href="' + esc(withLang(staffDest(u))) + '">' + esc(staffName(u)) + "</a>" : "")
       + '<a class="' + (staffDest(u) ? "mig-alt" : "mig-go") + '" href="' + esc(withLang(DASH)) + '">' + esc(T("لوحة مصنعي", "My factory dashboard")) + "</a>"
       + (link ? '<button type="button" class="mig-alt" data-lg="code">' + esc(T("ادخل بكود على بريدك", "Sign in with an e-mail code")) + "</button>" : "")
@@ -266,6 +276,7 @@ _SG_JS = r'''(function () {
     A.logout().then(function () { if (A.token()) return; if (pend) { form(pend); pend = ""; } });
   });
   window.addEventListener("mig:logout", function () { form(pend); pend = ""; oldCard(); });
+  if (TEAM) { var sub = document.querySelector(".lgp-card .mig-sub"); if (sub) sub.textContent = T("دخول فريق المنصة", "Platform team sign-in"); }
   if (A.token()) {
     oldOff(); signedIn(A.user());
     /* the server confirms the session (an expired one ends with a 401 → mig:logout → the form) */
@@ -292,10 +303,10 @@ def _sg_page(L, path, sp):
             '<a class="lgp-logo" href="%s"><img src="/img/logo-site.png" alt="%s" width="67" height="64"></a>'
             '<h1 class="mig-t" id="lgpT">%s</h1><p class="mig-sub">%s</p>'
             '<div class="lgp-app" id="lgpApp"><noscript><p class="mig-er" style="color:#B00020;font-weight:700">%s</p></noscript></div><div class="lgp-old" id="lgpOld" hidden></div>'
-            '<p class="lgp-links">%s <a href="%s">%s</a> · <a href="%s">%s</a></p></div>'
+            '<p class="lgp-links">%s <a href="%s">%s</a> · <a href="%s">%s</a><span data-mig-app-only hidden> · <a href="%s" rel="nofollow">%s</a></span></p></div>'
             '<div class="lgp-foot"><p class="lgp-fine">%s</p>'
             '<p class="lgp-lang"><a id="lgpSw" href="%s" hreflang="%s" lang="%s" data-lang="%s" rel="nofollow">%s</a></p></div></main>'
-            % (urls['home'], X('logo'), X('h1'), X('sub'), X('nojs'), X('noacc'), reg, X('reg'), urls['home'], X('home'),
+            % (urls['home'], X('logo'), X('h1'), X('sub'), X('nojs'), X('noacc'), reg, X('reg'), urls['home'], X('home'), ('/en/login/' if en else '/login/') + '?team=1', X('team'),
                X('fine') % _sg_html.escape(legal, quote=True), sw[0], sw[1], sw[1], sw[1], sw[2]))
     boot = _SG_BOOT % {'en': 'true' if en else 'false', 'urls': _sg_json.dumps(urls).replace('<', '\\u003c')}
     html = ('<!doctype html>\n<html lang="%s" dir="%s"><head>%s<style>%s</style><script>%s</script><script src="data/mig-api.js"></script></head>'

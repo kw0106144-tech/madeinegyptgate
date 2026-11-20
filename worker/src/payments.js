@@ -22,6 +22,7 @@ import { readJson, line, now, iso, hex, sha256, safeEq, jparse, isEmail, emailKe
 import { findByEmail } from "./auth.js";
 import { configSecretOk, getSecret, putSecret, secretInfo } from "./crypto.js";
 import { cairoToUtc } from "./meetings.js";
+import { appBuyOff, APP_BUY_OFF_MSG } from "./app-ua.js"; // «🛠️ المطوّر» app_buy_ios / app_buy_android off: no checkout from that app
 
 /* ---------------------------------------------------------------- constants ---------------------------------------------------------------- */
 const PROVIDERS = {
@@ -994,6 +995,9 @@ async function publicInvoice(req, env, url) {
 async function checkout(req, env, CC) {
   const b = await body(req, 4096);
   await pubLimit(req, env);
+  // the store rules (app parity plan): while the owner keeps buying off inside that app, a checkout asked from it is refused (the page hides
+  // «ادفع الآن» there too — data/pay.js); the website and the other app pay as before
+  if (await appBuyOff(env, req)) throw new PayError(403, "app_buy_off", APP_BUY_OFF_MSG);
   const t = line(b.t, 64);
   let inv = null; try { inv = TOKEN_RX.test(t) ? await invByToken(env, t) : null; } catch (e) { if (!noTable(e)) throw e; }
   if (!inv) throw new PayError(404, "not_found", "this payment link is not valid");

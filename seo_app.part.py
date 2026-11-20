@@ -408,7 +408,9 @@ def appdl_module(H):
         pkg, fps, probs = app_conf()
         if probs or not fps:
             return None, probs
-        return [{'relation': ['delegate_permission/common.handle_all_urls'],
+        # handle_all_urls: the site's links open in the app (App Links); get_login_creds: Android shares the old-account form's saved
+        # passwords (/login/ «حساب قديم؟») between this site and the app (app parity plan, app-links-live)
+        return [{'relation': ['delegate_permission/common.handle_all_urls', 'delegate_permission/common.get_login_creds'],
                  'target': {'namespace': 'android_app', 'package_name': pkg, 'sha256_cert_fingerprints': fps}}], []
 
     def key():

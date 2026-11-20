@@ -12,6 +12,7 @@ import { planCanX, planLimitX, capsOf, setting, plansData } from "./acc-plans.js
 import { metaOf, setGcc, gccError } from "./acc-members.js";
 import { mediaUrls, listingOf } from "./acc-orders.js";
 import { GOV_CODES } from "./common.js";
+import { appBuyOff, APP_BUY_OFF_MSG } from "./app-ua.js"; // «🛠️ المطوّر» app_buy_<platform> off: no new invoice from that app
 
 const BASE_CATS = ["food", "build", "plastic", "elec", "glass", "metal", "petro", "med", "furn", "cosm", "other"];
 async function catKeys(env) {
@@ -297,6 +298,7 @@ export async function handleMeCC(req, env, ctx, CC) {
     }
     if (path === "/company") return M === "GET" ? ccJson(req, env, await getCompany(env, m)) : M === "POST" ? send(await postCompany(req, env, m)) : ccErr(req, env, 405, "method", "method not allowed");
     if ((x = path.match(/^\/company\/requests\/(cr-[a-z0-9]{10})$/))) return M === "DELETE" ? send(await withdrawRequest(env, m, x[1])) : ccErr(req, env, 405, "method", "method not allowed");
+    if (path === "/invoices" && M === "POST" && await appBuyOff(env, req)) return ccErr(req, env, 403, "app_buy_off", APP_BUY_OFF_MSG); // store rules: buying off inside that app
     if (path === "/invoices") return M === "GET" ? ccJson(req, env, await myInvoices(env, m, CC)) : M === "POST" ? send(await newInvoice(req, env, m, CC)) : ccErr(req, env, 405, "method", "method not allowed");
     if (path === "/gcc") return M === "GET" ? ccJson(req, env, gccView(m)) : M === "POST" ? send(await postMyGcc(req, env, m)) : ccErr(req, env, 405, "method", "method not allowed");
     if (path === "/invoices/quote") { // «باقتي»: the amount and the resulting end date before the invoice is issued (Terms §5, review PAY-H1)

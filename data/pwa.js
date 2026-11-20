@@ -21,6 +21,9 @@
         → never again ("mig-pwa-in"). Without localStorage the bar is not shown at all (a dismissal could not be remembered).
    3. On an app page in English (MIGLANG "en": the page's own head names the Arabic manifest) the manifest link is switched to
       /manifest.en.webmanifest, so an English visitor installs the English app.
+   4. Inside the platform's own app on Android (its WebView has no Web Share): navigator.share is the app's share sheet
+      (Capacitor.Plugins.Share), so the site's own «شارك» buttons (factory profiles, products, the market quick view, the generated
+      pages' «🔗 شارك الصفحة») open the phone's share sheet as in Chrome. Browsers and the iPhone app (Web Share is there) keep their own.
    window.MIGPWA: {off, app, apk, state()} — state() tells what happened on this page (for support and tests). */
 (function () {
   "use strict";
@@ -34,6 +37,16 @@
   var APP = /\bMIGApp\b/.test(UA);
   var ST = { sw: "", banner: "", why: "" };
   W.MIGPWA = { off: OFF, app: APP, apk: APK, state: function () { return { sw: ST.sw, banner: ST.banner, why: ST.why, installed: installed(), off: OFF, app: APP, apk: APK, top: TOP }; } };
+  /* ---------- 4. the app's share sheet where the WebView has no Web Share (app parity plan, share-and-copy-links) ---------- */
+  if (APP && !N.share) {
+    var CAP = W.Capacitor; if (!CAP) { try { CAP = W.top.Capacitor; } catch (e) { CAP = null; } }
+    var SH = CAP && CAP.Plugins && CAP.Plugins.Share;
+    if (SH && typeof SH.share === "function") {
+      try {
+        N.share = function (d) { d = d || {}; return SH.share({ title: String(d.title || ""), text: String(d.text || ""), url: String(d.url || ""), dialogTitle: String(d.title || "") }); };
+      } catch (e) {}
+    }
+  }
   if (!TOP) { ST.why = "frame"; return; }
 
   function en() { return W.MIGLANG === "en" || (DE.getAttribute("lang") || "").slice(0, 2) === "en"; }

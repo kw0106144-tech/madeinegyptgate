@@ -16,6 +16,7 @@ import { EN, STOP, norm, stem } from "./text.js"; // shared Arabic/English norma
 // Interactive platform (docs/janna/INTERACTIVE-PLAN.md, Phase A) — see README "Platform API"
 import { handleAuth } from "./auth.js";             // /api/auth/*        one email-code login for every plan
 import { handleMe } from "./me.js";                 // /api/me*           account, follows, notifications, prefs, stats, incoming
+import { handleMeDeleteRequest, handleVisitorEraseRequest } from "./delete-requests.js"; // 0010: «طلب حذف الحساب» (requests only; owner switches)
 import { handleInquiries, handleInquiryEmail, isInquiryAddress, inquiriesCron } from "./inquiries.js"; // /api/inquiries* + automatic routing
 import { handleAdmin } from "./admin.js";           // /api/admin/*       monitoring console (no human step in any flow)
 import { handleEv, handleUnsub } from "./ev.js";    // /api/ev, /api/unsub
@@ -164,6 +165,7 @@ const WORKER = {
     if (/^\/api\/index\.php$/.test(url.pathname)) return CC.acc.handleOldApi(req, env, ctx);
     if (/^\/api\/admin\/cc(\/|$)/.test(url.pathname)) return CC.acc.handleCC(req, env, ctx, CC);
     if (/^\/api\/me\/(account|products|company|media|invoices|recognize|gcc)(\/|$)/.test(url.pathname)) return CC.acc.handleMeCC(req, env, ctx, CC);
+    if (/^\/api\/me\/delete-request\/?$/.test(url.pathname)) return handleMeDeleteRequest(req, env, ctx); // before /api/me (handleMe would 404 it)
     if (/^\/api\/auth\/legacy(\/|$)/.test(url.pathname)) return CC.acc.handleLegacyAuth(req, env, ctx, CC);
     if (/^\/api\/team(\/|$)/.test(url.pathname)) return CC.acc.handleTeam(req, env, ctx, CC); // §12 team dashboards (front desk)
     if (/^\/api\/plans\/?$/.test(url.pathname) || /^\/api\/settings\/?$/.test(url.pathname) || /^\/api\/ev\/pv\/?$/.test(url.pathname)) return CC.acc.handlePublicCC(req, env, ctx, CC); // one regex per family: integ-worker.test.mjs and deploy.sh scan for /api/<family>
@@ -183,6 +185,7 @@ const WORKER = {
     if (/^\/api\/wa(\/|$)/.test(url.pathname)) return handleWA(req, env, ctx);
     if (/^\/api\/janna\/session\/?$/.test(url.pathname)) return handleJannaSession(req, env, ctx);
     if (/^\/api\/janna\/item\/?$/.test(url.pathname)) return handleItem(req, env, ctx); // holo5, janna-item.js
+    if (/^\/api\/janna\/memory\/erase-request\/?$/.test(url.pathname)) return handleVisitorEraseRequest(req, env, ctx); // 0010: a request only (visitor_erase_request)
     if (/^\/api\/janna\/memory(\/|$)/.test(url.pathname)) return handleVisitorMemory(req, env, ctx); // 0009, visitor.js
     if (/^\/api\/janna\/knowledge\/?$/.test(url.pathname)) return handleKnowledge(req, env, ctx); // 0009, knowledge.js
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });

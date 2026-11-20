@@ -98,6 +98,7 @@
   "data-desk": "/data-desk/",
   "signin": "/login/",
   "pay": "/pay/",
+  "delete-account": "/delete-account/",
   "factories": "/factories/",
   "tenders": "/tenders/",
   "rfqs": "/rfq/",
@@ -166,6 +167,7 @@
   "consultant-leads",
   "signin",
   "pay",
+  "delete-account",
   "seo-team",
   "data-desk"
  ],

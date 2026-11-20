@@ -465,7 +465,7 @@ describe("D1 launch order: schema.sql → 0004 → 0005", () => {
     for (let i = 0; i < 2; i++) for (const f of ["schema.sql", "migrations/0004_interactive_platform.sql", "migrations/0005_qa_fixes.sql", "migrations/0006_admin_center.sql"]) db.exec(read(f));
     for (const t of ["members", "logins", "inquiries", "inquiry_events", "inquiry_routes", "quotes", "follows", "notifications", "unsubscribes", "wa_messages", "meetings"]) assert.ok(cols(db, t).length > 2, t);
     assert.ok(!/^\s*ALTER TABLE/m.test(read("migrations/0004_interactive_platform.sql") + read("migrations/0005_qa_fixes.sql") + read("migrations/0006_admin_center.sql")));
-    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name LIKE 'cc_%'").get().n, 31);
+    assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name LIKE 'cc_%'").get().n, 32); // + cc_delete_requests (0010)
   });
   test("an old advisor-only database: tools/upgrade-pre-0004.sql → 0004 → 0005 gives the same tables as schema.sql", () => {
     const full = new DatabaseSync(":memory:"); full.exec(read("schema.sql"));

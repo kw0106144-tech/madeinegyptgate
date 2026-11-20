@@ -7,6 +7,7 @@
 --   npx wrangler d1 execute migate-db --remote --file=./migrations/0007_member_profile.sql   (Bassem: the member's factory profile; also appended below)
 --   npx wrangler d1 execute migate-db --remote --file=./migrations/0008_advisor_memory.sql   (Bassem's permanent memory; also appended below)
 --   npx wrangler d1 execute migate-db --remote --file=./migrations/0009_memory_upgrades.sql   (tasks, «ملخص العميل», Janna's visitors, «بنك المعلومات»; also appended below)
+--   npx wrangler d1 execute migate-db --remote --file=./migrations/0010_delete_requests.sql   (account deletion requests; also appended below)
 -- (0004 / 0005 only hold CREATE … IF NOT EXISTS + guarded back-fills; an OLD advisor-only database first runs tools/upgrade-pre-0004.sql.)
 
 -- Members on the partner / strategic plans (created/updated by POST /api/advisor/session)
@@ -1052,3 +1053,25 @@ CREATE TABLE IF NOT EXISTS knowledge_bank (
 CREATE INDEX IF NOT EXISTS knowledge_bank_status ON knowledge_bank(status, asked);
 CREATE INDEX IF NOT EXISTS knowledge_bank_intent ON knowledge_bank(intent, merged_into);
 CREATE INDEX IF NOT EXISTS knowledge_bank_last ON knowledge_bank(last_at);
+
+-- 0010 — account deletion requests (app parity plan 2026-11-20, item account-delete-request; switches account_delete /
+-- visitor_erase_request, both OFF). A request deletes nothing: the owner runs the audited deletion / erasure and marks it done
+-- (delete-requests.js, data/acc-delete.js). Applied to the live database ONLY by the manual d1-migrate workflow:
+--   Actions → d1-migrate → Run workflow: migration = 0010_delete_requests.sql, confirm = migate-db
+CREATE TABLE IF NOT EXISTS cc_delete_requests (
+  id          TEXT PRIMARY KEY,                         -- dr-<10 hex>
+  kind        TEXT NOT NULL CHECK (kind IN ('member', 'visitor')),
+  member_id   TEXT NOT NULL DEFAULT '',                 -- kind member: members.id (the account that asked, signed in)
+  visitor_id  TEXT NOT NULL DEFAULT '',                 -- kind visitor: Janna's random visitor id (32 hex) — never an e-mail or a phone
+  status      TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'done', 'rejected')),
+  lang        TEXT NOT NULL DEFAULT 'ar',               -- the language of the page it was asked from
+  source      TEXT NOT NULL DEFAULT 'web',              -- web | app-ios | app-android (the platform's own apps, MIGApp user agent)
+  created_at  TEXT NOT NULL,
+  decided_at  TEXT NOT NULL DEFAULT '',
+  decided_by  TEXT NOT NULL DEFAULT '',                 -- the owner who closed it
+  note        TEXT NOT NULL DEFAULT ''                  -- the owner's note (team only, never shown publicly)
+);
+CREATE INDEX IF NOT EXISTS cc_delete_requests_status ON cc_delete_requests(status, created_at);
+-- one open request per account and per visitor id (a repeat answers the same row)
+CREATE UNIQUE INDEX IF NOT EXISTS cc_delete_requests_member_open ON cc_delete_requests(member_id) WHERE kind = 'member' AND status = 'pending';
+CREATE UNIQUE INDEX IF NOT EXISTS cc_delete_requests_visitor_open ON cc_delete_requests(visitor_id) WHERE kind = 'visitor' AND status = 'pending';

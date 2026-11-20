@@ -52,6 +52,13 @@
    to the member. Nothing to add → today's plain request exactly. 200 then carries visitor_context: true (+ memory / knowledge). Off: the
    Worker variable JANNA_VISITOR_CONTEXT = 0 / off, or the body's visitor_context: false for one call. Janna never needs a sign-in: a bad
    or missing token is ignored.
+   The platform's own apps (app parity plan 2026-11-20, app-ua.js — a request whose User-Agent says «MIGApp/<v> (ios|android)»):
+     400 consent_required   «🛠️ المطوّر» call_consent_app (a request from the app) / call_consent_web (any other) is on and the body has no
+                            consent: true — the page shows the owner-approved card first (data/janna-live.js). A page that knows the card
+                            sends cs: 1; an older page gets the refusal it can show instead of falling back to Anam's widget (which talks to
+                            Anam directly): code feature_off (ff: 1) / daily_cap (no ff) — error stays "consent_required".
+     app_buy_<platform> off: the session from THAT app gets one fixed line (APP_NO_PRICES) at the end of the persona's prompt through the
+                            same ephemeral copy as the member / visitor context (no line when the persona cannot be copied: today's request).
    The key is never logged, echoed or sent to the browser; errors log the upstream HTTP status only (never the member's data). */
 import { readJson, ipHash, rateOk, isBlocked, planCan, isAdmin, site, cairoDay, jparse } from "./common.js";
 import { authUser, bearer, isV2, isLinkSession } from "./auth.js";
@@ -65,6 +72,7 @@ import { resumeContext, RESUME_BLOCK } from "./resume.js";
 import { forLLM, instructionLike } from "./text.js";
 import { jannaSessionContext, visitorContextOn } from "./visitor.js"; // 0009: Janna's memory of her visitors + «بنك المعلومات»
 import { featureOn, offMessage } from "./flags.js"; // «🛠️ المطوّر»: janna_live / bassem_live (owner switches, 503 feature_off)
+import { appOf } from "./app-ua.js";                // the platform's own apps (MIGApp user agent): the store-rule switches below
 
 export const ANAM_TOKEN_URL = "https://api.anam.ai/v1/auth/session-token";
 export const ANAM_PERSONA_URL = "https://api.anam.ai/v1/personas/"; // + a persona id from PERSONAS (read-only GET, Bassem's member context)
@@ -73,6 +81,13 @@ export const PERSONAS = Object.freeze({
   janna: Object.freeze({ ar: "5f06d835-22cc-4460-b412-84cefa9e565b", en: "e5101653-65b4-44a6-85e5-ec2e78f82685" }),
   bassem: Object.freeze({ ar: "19ef9078-5252-42a4-bbdf-9a3c4a38a4be", en: "19ef9078-5252-42a4-bbdf-9a3c4a38a4be" }),
 });
+/* app_buy_<platform> off (store rules): the fixed rule added to the persona's prompt for a call from THAT app — no prices, plans or payment.
+   A rule of the platform, never page text; the owner approves it with the other app texts (docs/app/OWNER-APPROVAL-AR.md) */
+export const APP_NO_PRICES = Object.freeze({
+  janna: "قاعدة تطبيق الموبايل: الزائر بيكلمك من تطبيق المنصة على الموبايل. ماتذكريش أي أسعار أو مبالغ أو باقات مدفوعة أو طريقة دفع أو روابط دفع، وماتطلبيش منه يدفع أو يشترك. لو سأل عن الأسعار أو الاشتراك أو الدفع، قوليله بلطف إن التفاصيل دي مش متاحة جوه التطبيق، وكمّلي معاه في أي حاجة تانية.",
+  bassem: "قاعدة تطبيق الموبايل: العضو بيكلمك من تطبيق المنصة على الموبايل. ماتذكرش أي أسعار أو مبالغ أو باقات مدفوعة أو تجديد أو ترقية أو طريقة دفع أو روابط دفع، وماتطلبش منه يدفع أو يجدّد. لو سأل عن الأسعار أو التجديد أو الدفع، قوله بلطف إن التفاصيل دي مش متاحة جوه التطبيق، وكمّل معاه في شغله.",
+});
+export const CONSENT_MSG = "وافق على رسالة المكالمة مع الذكاء الاصطناعي الأول / please agree to the AI-call notice first";
 export const MAX_SESSION_SEC = 7200, TOKEN_TTL_SEC = 600, ANAM_TIMEOUT_MS = 10000;   /* owner 2026-11-18: Anam Growth plan has no session cap — 2 h per call, the page continues past it */
 /* member context — the page gives up on the whole request after 15 s (data/janna-live.js sessToken), so ANAM_BUDGET_MS counts from the
    START of the request (the D1 checks included). The persona read (≤ PERSONA_TIMEOUT_MS) runs while the day is counted; the enriched
@@ -228,6 +243,12 @@ export async function handleJannaSession(req, env) {
   // code "daily_cap", the refusal it shows without that fallback («today's live calls are used up»); error stays "feature_off".
   const fk = agent === "bassem" ? "bassem_live" : "janna_live";
   if (!(await featureOn(env, fk))) return fail(503, "feature_off", cors, { feature: fk, message: offMessage(fk), ...(b.ff === 1 || b.ff === true || b.ff === "1" ? {} : { code: "daily_cap" }) });
+  // the store rules (app parity plan): consent before the AI call — the app's switch for a request from the app, the website's for any other
+  const app = appOf(req), ck = app ? "call_consent_app" : "call_consent_web";
+  if (b.consent !== true && (await featureOn(env, ck))) {
+    const knows = b.cs === 1 || b.cs === true || b.cs === "1", ff = b.ff === 1 || b.ff === true || b.ff === "1";
+    return fail(400, "consent_required", cors, { feature: ck, message: CONSENT_MSG, ...(knows ? {} : { code: ff ? "feature_off" : "daily_cap" }) });
+  }
   const key = await anamKey(env);
   if (!key) return fail(503, "anam_not_configured", cors);
   if (!env.DB) return fail(503, "store_off", cors);
@@ -252,6 +273,9 @@ export async function handleJannaSession(req, env) {
     tm.ctx = Date.now() - tc;
     /* review 2026-11-19 #7: the page's visitor id is another member's (or the signed-out member's) → the page starts a new one; nothing to add → plain */
     const rotateVisitor = !!(ctx && ctx.rotate_visitor); if (ctx && agent === "janna" && !ctx.block) ctx = null;
+    /* app_buy_<platform> off: the call from THAT app gets the fixed «no prices» rule (the website's and the other app's calls do not) */
+    const noPrices = !!app && !(await featureOn(env, "app_buy_" + app));
+    if (noPrices) ctx = { ...(ctx || {}), block: fitBlock(APP_NO_PRICES[agent] + (ctx && ctx.block ? "\n" + ctx.block : "")), app_rules: true, ...(ctx ? {} : { app_only: true }) };
     if (!ctx) personaP = null; else if (!personaP) personaP = readPersona(); // read while the day is counted
     if ((await countDay(env, nowMs, 1)) > dailyCap(env)) { await countDay(env, nowMs, -1); return fail(429, "daily_cap", cors); } // refused ones are not counted
     const plain = { personaConfig: { personaId }, sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: "madeinegyptgate-" + agent + "-" + lang };
@@ -297,8 +321,9 @@ export async function handleJannaSession(req, env) {
       return fail(502, "upstream", cors, { upstream_status: r.status }, th());
     }
     return out({ sessionToken, agent, lang, expires_in: TOKEN_TTL_SEC, max_session_sec: MAX_SESSION_SEC, ...(rotateVisitor ? { rotate_visitor: true } : {}),
-      ...(personal && agent === "bassem" ? { member_context: true, ...(ctx.memory ? { memory: true } : {}), ...(ctx.continued ? { continued: true } : {}) } : {}),
-      ...(personal && agent === "janna" ? { visitor_context: true, ...(ctx.memory ? { memory: true } : {}), ...(ctx.knowledge ? { knowledge: true } : {}) } : {}) }, 200, cors, th());
+      ...(personal && agent === "bassem" && !ctx.app_only ? { member_context: true, ...(ctx.memory ? { memory: true } : {}), ...(ctx.continued ? { continued: true } : {}) } : {}),
+      ...(personal && agent === "janna" && !ctx.app_only ? { visitor_context: true, ...(ctx.memory ? { memory: true } : {}), ...(ctx.knowledge ? { knowledge: true } : {}) } : {}),
+      ...(personal && ctx.app_rules ? { app_rules: true } : {}) }, 200, cors, th());
   } catch (e) {
     console.error("janna session error", (e && e.message) || "error");
     return fail(500, "server", cors);
