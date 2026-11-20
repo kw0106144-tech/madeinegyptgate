@@ -99,7 +99,8 @@ governorate when a city has few hits) and the 27 governorates.
 - The members' own approved records (`src/lookup-members.js`): approved products (`cc_member_products`, `live_json` only) and approved
   company create / edit requests (`cc_company_requests`) are read from D1 at most once per isolate per 10 minutes for the directory,
   product and customers sections, merged tagged «عضو على المنصة» (the bundled row they replace is left out), fail-soft without the
-  tables. They reach `data.json` itself at the next `deploy-worker` run.
+  tables. They reach `data.json` itself at the next `deploy-worker` run, so D1 is read only for the ones approved since the bundle was
+  built (`data.json` `v`), and for none while the owner's switch «إيقاف كل التعديلات المنشورة» (`overlay.enabled` = 0) is on.
 
 ## Deploy (once)
 ```bash

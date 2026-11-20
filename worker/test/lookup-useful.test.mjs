@@ -240,6 +240,23 @@ describe("U16 the members' own records, live from D1 (src/lookup-members.js)", (
     assert.deepEqual([c.kind, c.name, c.gov, c.description], ["create", "مصنع الخطوتين للكرتون", "القاهرة", "علب كرتون مضلع مطبوعة للأغذية"]);
     assert.ok(search("factories", "كرتون مضلع", "القاهرة", 10, undefined, undefined, { members: m }).results.some(x => x.name === "مصنع الخطوتين للكرتون" && x.member));
   });
+  test("review: only what was approved since the bundle was built (an older approval is in data.json already, as the team left it); the owner's «إيقاف كل التعديلات المنشورة» stops them too", async () => {
+    const env = env0(), old = Date.parse("2026-10-01T09:00:00Z"), fresh = Date.now();
+    await company(env, "cr-old0000001", "edit", "406", { description: "وصف قديم اتعدل بعدها من فريق المنصة نيتروجين" }, "approved", old);
+    await company(env, "cr-new0000002", "create", "c-fresh001", { name: "مصنع جديد للدرافيل", sector: "الصناعات البلاستيكية والمطاط", type: "مصنع", gov: "GIZ", products: ["درافيل"] }, "approved", fresh);
+    await env.DB.prepare("UPDATE cc_company_requests SET reviewed_at = ? WHERE id = 'cr-new0000002'").bind(new Date(fresh).toISOString()).run();
+    const m = await memberData(env, fresh, DATA.v);
+    assert.deepEqual(m.companies.map(c => c.ref), ["c-fresh001"], "the approval of 2026-10-01 is older than the bundle (" + DATA.v + ")");
+    const r = await post({ section: "factories", query: "نيتروجين", governorate: "القليوبية" }, env);
+    assert.ok(!r.results.some(x => x.member), "the bundled row of 406 answers: " + JSON.stringify(r.results.slice(0, 2)));
+    resetMembers();
+    await env.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES ('overlay.enabled', 'system', '0', ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(new Date(fresh).toISOString()).run();
+    const off = await memberData(env, fresh, DATA.v);
+    assert.deepEqual([off.products.length, off.companies.length], [0, 0], "the owner switched the published edits off");
+    resetMembers();
+    await env.DB.prepare("UPDATE cc_settings SET v = '1' WHERE k = 'overlay.enabled'").run();
+    assert.equal((await memberData(env, fresh, DATA.v)).companies.length, 1);
+  });
   test("no tables, no DB, a failing read: no error — the bundled data answers (and the memo waits 10 minutes before reading again)", async () => {
     const env = env0(); env.DB.db.exec("DROP TABLE cc_member_products; DROP TABLE cc_company_requests;");
     const m = await memberData(env, T0); assert.deepEqual([m.products.length, m.companies.length], [0, 0]);

@@ -618,8 +618,9 @@ const WORKER = {
     if (post) { try { a = Object.assign(a, await req.json()); } catch (e) { toolSoftError("/api/janna/lookup", "bad_json"); return json({ error: "bad json", count: 0, results: [], text: LOOKUP_TEXT.bad_json }, 200); } }
     const section = lookupSection(a.section); // LOOKUP_SECTIONS (+ customers, projects, events, news, awards — U2 / U15); unknown → factories, as before
     if (!a.query && !a.governorate) { if (post) toolSoftError("/api/janna/lookup", "query_required"); return json({ error: "query required", count: 0, results: [], text: LOOKUP_TEXT.no_query }, post ? 200 : 400); }
-    /* U16: the members' approved products / companies (D1, at most one read per isolate per 10 minutes; fail-soft) for the sections that list them */
-    const members = /^(factories|suppliers|products|market|customers)$/.test(section) ? await memberData(env) : null;
+    /* U16: the members' approved products / companies (D1, at most one read per isolate per 10 minutes; fail-soft) for the sections that list
+       them — only those approved since this bundle was built (data.json v): the older ones are in it already */
+    const members = /^(factories|suppliers|products|market|customers)$/.test(section) ? await memberData(env, Date.now(), DATA.v) : null;
     const r = search(section, String(a.query || "").slice(0, 200), String(a.governorate || "").slice(0, 60), a.limit, a.page, a.market, { members });
     return json(post ? leanLookup(r) : r);
   },

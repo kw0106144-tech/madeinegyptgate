@@ -31,13 +31,18 @@ const REF_RX = /^(\d{1,6}|x\d{1,5}|c-[A-Za-z0-9_-]{2,40})$/;
 let MEMO = { at: 0, v: 0, products: [], companies: [] }, LOADING = null, VER = 0;
 /* tests: start from an empty memo */
 export function resetMembers() { MEMO = { at: 0, v: 0, products: [], companies: [] }; LOADING = null; }
-async function rows(env, sql) {
-  try { return ((await env.DB.prepare(sql).all()) || {}).results || []; }
+async function rows(env, sql, ...args) {
+  try { return ((await env.DB.prepare(sql).bind(...args).all()) || {}).results || []; }
   catch (e) { if (!/no such table|no such column/i.test(String((e && e.message) || e))) console.error("lookup members", (e && e.message) || "error"); return []; }
 }
-async function load(env, nowMs) {
-  const P = await rows(env, `SELECT id, factory_ref, live_json, updated_at FROM cc_member_products WHERE state = 'approved' AND live_json != '' ORDER BY updated_at DESC, id LIMIT ${MAX_ROWS}`);
-  const R = await rows(env, `SELECT id, kind, factory_ref, fields_json, reviewed_at FROM cc_company_requests WHERE state = 'approved' AND kind IN ('create', 'edit') ORDER BY reviewed_at DESC, id DESC LIMIT ${MAX_ROWS}`);
+/* review: D1 only bridges the time since the bundle was built (since = data.json v, the build day, UTC; deploy-worker builds it from the
+   live overlay). An older approval is in data.json already, as the team left it after a later correction, a moderation hide or an
+   unlinked listing, and an old request must not override that. The owner's switch «إيقاف كل التعديلات المنشورة» (cc_settings
+   overlay.enabled = 0) stops these records too, as it stops the overlay on the site. */
+const LIVE = "NOT EXISTS (SELECT 1 FROM cc_settings WHERE k = 'overlay.enabled' AND v = '0')";
+async function load(env, nowMs, since = "") {
+  const P = await rows(env, `SELECT id, factory_ref, live_json, updated_at FROM cc_member_products WHERE state = 'approved' AND live_json != '' AND updated_at >= ? AND ${LIVE} ORDER BY updated_at DESC, id LIMIT ${MAX_ROWS}`, since);
+  const R = await rows(env, `SELECT id, kind, factory_ref, fields_json, reviewed_at FROM cc_company_requests WHERE state = 'approved' AND kind IN ('create', 'edit') AND reviewed_at >= ? AND ${LIVE} ORDER BY reviewed_at DESC, id DESC LIMIT ${MAX_ROWS}`, since);
   /* companies: the approved requests of one listing, oldest first — a later one changes only the fields it carries (an edit sends the
      fields it changes), so a company created and then edited before the next deploy keeps its name */
   const byRef = new Map();
@@ -64,11 +69,12 @@ async function load(env, nowMs) {
   }
   return { at: nowMs, v: ++VER, products, companies };
 }
-/* the members' approved records for this isolate: read again only when the memo is older than MEMBERS_TTL */
-export async function memberData(env, nowMs = Date.now()) {
+/* the members' approved records for this isolate: read again only when the memo is older than MEMBERS_TTL; since = the bundle's build day
+   (src/index.js passes data.json v; "" = every approved record, tests) */
+export async function memberData(env, nowMs = Date.now(), since = "") {
   if (!env || !env.DB) return null;
   if (MEMO.at && nowMs - MEMO.at < MEMBERS_TTL) return MEMO;
   if (LOADING) return LOADING;
-  LOADING = load(env, nowMs).then(m => (MEMO = m), () => (MEMO = { at: nowMs, v: ++VER, products: [], companies: [] })).finally(() => { LOADING = null; });
+  LOADING = load(env, nowMs, String(since || "")).then(m => (MEMO = m), () => (MEMO = { at: nowMs, v: ++VER, products: [], companies: [] })).finally(() => { LOADING = null; });
   return LOADING;
 }
