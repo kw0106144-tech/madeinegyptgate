@@ -149,10 +149,22 @@
   }
 
   /* ---------- send ---------- */
+  /* the live call's Anam session id while Janna submits this form (window.__migJannaSubmit, set by data/janna-live.js in the page on the
+     call screen; JANNA_LIVE lives in the window that runs the call: this one or a parent) — the daily calls report ties the request to that
+     call by it (worker/src/calls-report.js); the Worker keeps it in the payload, factories never see it (inquiries.js factoryView) */
+  function callSid() {
+    var w = window, i, s;
+    for (i = 0; i < 4 && w; i++) {
+      try { s = w.JANNA_LIVE && typeof w.JANNA_LIVE.live === "function" ? w.JANNA_LIVE.live() : null; if (s && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s.session_id || ""))) return String(s.session_id).toLowerCase(); } catch (e) {}
+      try { if (!w.parent || w.parent === w) break; w = w.parent; } catch (e2) { break; }
+    }
+    return "";
+  }
   function send(o, opt) {
     opt = opt || {}; o = o || {};
     var box = opt.box, btn = opt.btn, form = opt.form, old = btn ? btn.innerHTML : "";
     if (!o.source) o.source = window.__migJannaSubmit ? "janna" : "form";
+    if (window.__migJannaSubmit) { var sid = callSid(); if (sid) { if (!o.payload || typeof o.payload !== "object") o.payload = {}; if (!o.payload.call_sid) o.payload.call_sid = sid; } }
     if (!o.lang) o.lang = EN() ? "en" : "ar";
     if (!window.MIGAPI || !MIGAPI.inquiry) {
       var e0 = { code: "offline" };

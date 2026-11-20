@@ -70,10 +70,11 @@ import { memoryContext, MEMORY_BLOCK, CONTEXT_MAX, callIdOk } from "./memory.js"
 import { memberProfile } from "./profile.js";
 import { resumeContext, RESUME_BLOCK } from "./resume.js";
 import { forLLM, instructionLike } from "./text.js";
-import { jannaSessionContext, visitorContextOn } from "./visitor.js"; // 0009: Janna's memory of her visitors + «بنك المعلومات»
+import { jannaSessionContext, visitorContextOn, vidOk } from "./visitor.js"; // 0009: Janna's memory of her visitors + «بنك المعلومات»
 import { featureOn, offMessage } from "./flags.js"; // «🛠️ المطوّر»: janna_live / bassem_live (owner switches, 503 feature_off)
 import { svc } from "./service-keys.js";            // the panel's Anam key as ccBoot already read it for this request (memo ≤ 60 s)
 import { appOf } from "./app-ua.js";                // the platform's own apps (MIGApp user agent): the store-rule switches below
+import { hasTable } from "./acc-base.js";            // 0011: the calls report's call_sessions row (a missing table writes nothing)
 
 export const ANAM_TOKEN_URL = "https://api.anam.ai/v1/auth/session-token";
 export const ANAM_PERSONA_URL = "https://api.anam.ai/v1/personas/"; // + a persona id from PERSONAS (read-only GET, Bassem's member context)
@@ -219,6 +220,33 @@ export async function bassemContext(env, m, lang, b, nowMs = Date.now()) {
   return { ...base, block: fitBlock(parts.join("\n")), memory: !!mem, profile: !!(prof && prof.block) };
 }
 
+/* ---------- the daily calls report (calls-report.js, migration 0011) ----------
+   Every token's Anam clientLabel carries a random tag of 12 base32 characters: «madeinegyptgate-<agent>-<lang>.<tag>» (grouping by label in
+   Anam Lab stops being useful; the list's search by prefix still works). After Anam returns the token, execCtx.waitUntil writes ONE
+   call_sessions row {tag, agent, lang, subject, member_id, staff, app, ctx, created_at}: member_id ONLY when this request carried the member's
+   own full sign-in (Bearer v2, never an e-mailed link — the visitor.js linkVisitor rule), subject 'v:' + Janna's page visitor id, never an
+   e-mail, a phone, an IP or a user agent. A missing table (0011 not applied) or a failed insert writes nothing and never fails or delays
+   the token. Anam refusing a request with the tagged label (any 4xx) → the same request once more with the plain label; when that one
+   works, this isolate stops tagging for an hour. A call never fails because of the report. */
+const B32 = "abcdefghijklmnopqrstuvwxyz234567";
+export const callTag = () => { let t = ""; for (const b of crypto.getRandomValues(new Uint8Array(12))) t += B32[b & 31]; return t; };
+export const TAG_RX = /^[a-z2-7]{12}$/;
+let TAG_OFF_UNTIL = 0; // the isolate stopped tagging (Anam refused a tagged label and took the plain one)
+export const tagsOff = () => Date.now() < TAG_OFF_UNTIL;
+export const forgetTagsOff = () => { TAG_OFF_UNTIL = 0; }; // tests (like flags.js forgetFeatures)
+async function recordCall(env, req, row, bassemMember) {
+  try {
+    if (!(await hasTable(env, "call_sessions"))) return;
+    let memberId = bassemMember ? bassemMember.id : "", staff = bassemMember ? (bassemMember.staff ? 1 : 0) : 0;
+    if (!bassemMember) { // Janna: the member only from this request's own full sign-in (a bad or missing token is ignored, as for the call itself)
+      const t = bearer(req);
+      if (t && isV2(t)) { const m = await authUser(req, env, t).catch(() => null); if (m && !isLinkSession(m)) { memberId = m.id; staff = (await isStaff(env, m)) ? 1 : 0; } }
+    }
+    await env.DB.prepare("INSERT INTO call_sessions (tag, agent, lang, subject, member_id, staff, app, ctx, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(tag) DO NOTHING")
+      .bind(row.tag, row.agent, row.lang, row.subject, memberId, staff, row.app, row.ctx, new Date().toISOString()).run();
+  } catch (e) { console.error("janna session: call row", (e && e.message) || "error"); }
+}
+
 /* tokens issued today (Cairo day) for the whole site — the same rl table as the other limits, its own key per day. Counting is one statement
    (RETURNING: one D1 round trip, speed 2026-11-20); the refund (delta −1) is unchanged */
 async function countDay(env, nowMs, delta) {
@@ -271,9 +299,10 @@ export async function handleJannaSession(req, env, execCtx, opt) {
     const personaId = PERSONAS[agent][lang], tm = bootMs != null ? { boot: bootMs } : {};
     /* the saved persona's read, timed; never rejects (null on any failure) */
     const readPersona = () => { const t0 = Date.now(); return savedPersona(key, personaId).then(p => { tm.persona = Date.now() - t0; return p; }); };
-    let ctx = null, personaP = null, tc = 0; // Bassem's member context: only from the member's own D1 rows (profile, memory, this call's turns), never from the page
+    let ctx = null, personaP = null, tc = 0, who = null; // Bassem's member context: only from the member's own D1 rows (profile, memory, this call's turns), never from the page
     if (agent === "bassem") {
       const c = await callerP; if (c.error) throw c.error; if (c.no) return fail(c.no[0], c.no[1], cors);
+      who = { id: isV2(bearer(req)) ? c.m.id : "", staff: !!c.staff }; // the calls report: a full sign-in only (Bassem's own advisor token is an e-mailed link)
       tm.checks = (tc = Date.now()) - startMs;
       if (!c.staff && memberContextOn(env, b)) {
         /* a member Bassem greets by name always gets the enriched persona (bassemContext never returns null for him): its read starts NOW,
@@ -292,13 +321,26 @@ export async function handleJannaSession(req, env, execCtx, opt) {
     if (noPrices) ctx = { ...(ctx || {}), block: APP_NO_PRICES[agent] + (ctx && ctx.block ? "\n" + ctx.block : ""), app_rules: true, ...(ctx ? {} : { app_only: true }) };
     if (!ctx) personaP = null; else if (!personaP) personaP = readPersona(); // read while the day is counted
     if ((await countDay(env, nowMs, 1)) > dailyCap(env)) { await countDay(env, nowMs, -1); return fail(429, "daily_cap", cors); } // refused ones are not counted
-    const plain = { personaConfig: { personaId }, sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: "madeinegyptgate-" + agent + "-" + lang };
-    const send = async (body, ms) => {
+    const base = "madeinegyptgate-" + agent + "-" + lang, tag = tagsOff() ? "" : callTag();
+    let tagged = !!tag; // the calls report's tag in the label; dropped for the rest of this request after Anam refused it once
+    const plain = { personaConfig: { personaId }, sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: tagged ? base + "." + tag : base };
+    const send0 = async (body, ms) => {
       const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
       try {
         return await fetch(ANAM_TOKEN_URL, { method: "POST", signal: ctl.signal,
           headers: { Authorization: "Bearer " + key, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body) });
       } finally { clearTimeout(tm); }
+    };
+    /* a 4xx with the tagged label → the same request once with the plain label (retryMs(): the time it may take; under RETRY_MIN_MS no retry) */
+    const send = async (body, ms, retryMs) => {
+      const res = await send0(tagged ? body : { ...body, clientLabel: base }, ms);
+      if (!tagged || res.status < 400 || res.status >= 500) return res;
+      tagged = false; console.error("janna session: anam refused the tagged label", res.status);
+      const ms2 = retryMs ? retryMs() : ms;
+      if (!(ms2 >= RETRY_MIN_MS)) return res;
+      const res2 = await send0({ ...body, clientLabel: base }, ms2);
+      if (res2.ok) TAG_OFF_UNTIL = Date.now() + 3600000;
+      return res2;
     };
     const tokenOf = async r => { let j = null; try { j = await r.json(); } catch (e) { /* not JSON */ } return j && typeof j.sessionToken === "string" ? j.sessionToken : ""; };
     const left = () => ANAM_BUDGET_MS - (Date.now() - startMs);
@@ -316,12 +358,12 @@ export async function handleJannaSession(req, env, execCtx, opt) {
     const ts = Date.now();
     try {
       if (pc) { // the enriched request first; any HTTP refusal (or no token) → today's request, once
-        r = await send({ ...plain, personaConfig: pc }, Math.min(ANAM_TIMEOUT_MS, left() - RETRY_MIN_MS));
+        r = await send({ ...plain, personaConfig: pc }, Math.min(ANAM_TIMEOUT_MS, left() - RETRY_MIN_MS), () => Math.min(ANAM_TIMEOUT_MS, left() - RETRY_MIN_MS));
         sessionToken = await tokenOf(r);
         if (r.ok && sessionToken) personal = true;
         else { console.error("janna session: anam refused the member context", r.status); sessionToken = ""; }
       }
-      if (!personal) { r = await send(plain, ctx ? Math.min(ANAM_TIMEOUT_MS, Math.max(RETRY_MIN_MS, left())) : ANAM_TIMEOUT_MS); sessionToken = await tokenOf(r); }
+      if (!personal) { const pms = () => (ctx ? Math.min(ANAM_TIMEOUT_MS, Math.max(RETRY_MIN_MS, left())) : ANAM_TIMEOUT_MS); r = await send(plain, pms(), pms); sessionToken = await tokenOf(r); }
     } catch (e) {
       tm.token = Date.now() - ts;
       await countDay(env, nowMs, -1);
@@ -333,6 +375,13 @@ export async function handleJannaSession(req, env, execCtx, opt) {
       await countDay(env, nowMs, -1);
       console.error("janna session: anam refused", r.status);
       return fail(502, "upstream", cors, { upstream_status: r.status }, th());
+    }
+    /* the calls report's row (0011), after the token and outside the answer's path */
+    if (tagged && execCtx && typeof execCtx.waitUntil === "function") {
+      const ctxKind = !personal || !ctx || ctx.app_only ? "" : agent === "bassem" ? "member" : ctx.memory ? "visitor" : ctx.knowledge ? "knowledge" : "";
+      /* a visitor id the page must replace (rotate_visitor: another member's linked id) is not this caller's: no subject */
+      const subject = agent === "janna" && !rotateVisitor && vidOk(b.visitor_id) ? "v:" + b.visitor_id : "";
+      try { execCtx.waitUntil(recordCall(env, req, { tag, agent, lang, subject, app: app || "", ctx: ctxKind }, agent === "bassem" ? who || { id: "", staff: false } : null)); } catch (e) { /* never the token's problem */ }
     }
     return out({ sessionToken, agent, lang, expires_in: TOKEN_TTL_SEC, max_session_sec: MAX_SESSION_SEC, ...(rotateVisitor ? { rotate_visitor: true } : {}),
       ...(personal && agent === "bassem" && !ctx.app_only ? { member_context: true, ...(ctx.memory ? { memory: true } : {}), ...(ctx.continued ? { continued: true } : {}) } : {}),

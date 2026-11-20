@@ -364,6 +364,13 @@ describe("template registry", () => {
     assert.equal(EC.templateKeyOf({ id: "zzz" }), "other"); assert.equal(EC.templateKeyOf(null), "other");
     const all = EC.TEMPLATES.flatMap(t => t.prefixes); assert.equal(new Set(all).size, all.length, "prefixes are unique");
   });
+  test("team_calls_report (the daily calls report, 2026-11-20): a team e-mail sent as built (via send), ids callrep-<day>[-rN], bilingual texts", () => {
+    const t = EC.TEMPLATES.find(x => x.key === "team_calls_report");
+    assert.ok(t, "registered");
+    assert.deepEqual([t.group, t.to, t.via, [...t.prefixes]], ["team", "team", "send", ["callrep-"]]);
+    assert.ok(t.name_ar && t.name_en && t.about_ar && t.about_en && t.sample_ar && t.sample_en);
+    for (const id of ["callrep-2026-11-20", "callrep-2026-11-20-r3"]) assert.equal(EC.templateKeyOf({ id }), "team_calls_report", id);
+  });
   test("completeness: every e-mail id literal in worker/src/*.js has a registry row", () => {
     const dir = new URL("../src/", import.meta.url), found = [];
     for (const f of readdirSync(dir).filter(f => f.endsWith(".js"))) {
@@ -377,7 +384,7 @@ describe("template registry", () => {
     }
     // the scan really sees today's e-mails (so it cannot pass by finding nothing)
     const heads = new Set(found.map(x => x[1]));
-    for (const h of ["code-", "rcpt-", "route-", "upd-", "bmsg-", "remind-", "team-", "teamneed-", "teamreply-", "wa-on-", "digest-", "dl-", "wamood-", "bm-", "bc-", "mc-", "mx-", "ms-", "mr", "l-", "nt-", "n-"]) assert.ok(heads.has(h), "scan found " + h);
+    for (const h of ["code-", "rcpt-", "route-", "upd-", "bmsg-", "remind-", "team-", "teamneed-", "teamreply-", "wa-on-", "digest-", "dl-", "wamood-", "bm-", "bc-", "mc-", "mx-", "ms-", "mr", "l-", "nt-", "n-", "callrep-"]) assert.ok(heads.has(h), "scan found " + h);
     assert.ok(new Set(found.map(x => x[0])).size >= 7);
   });
   test("lists are exactly common.js EMAIL_LISTS; the generic sender name is BRAND.name", () => {

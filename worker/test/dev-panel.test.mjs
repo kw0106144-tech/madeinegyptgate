@@ -11,7 +11,7 @@ import { issueSession } from "../src/auth.js";
 import { sha256, emailKey, secretOf, cairoDay } from "../src/common.js";
 import { getSecret } from "../src/crypto.js";
 import { OWNER_ONLY, ROLE_PERMS, PERMS } from "../src/acc-base.js";
-import { FEATURES, FEATURE_KEYS, POLICIES, featureOn, featureSync, loadFeatures, forgetFeatures, parseStore, storeJson, valueOf } from "../src/flags.js";
+import { FEATURES, FEATURE_KEYS, POLICIES, featureOn, featureSync, loadFeatures, forgetFeatures, parseStore, storeJson, valueOf, featuresView } from "../src/flags.js";
 import { ACCOUNT_ID, CF_SLOT, PAGES_PROJECT, forgetPanel } from "../src/cf-api.js";
 import { readFileSync } from "node:fs";
 import { waLive, waDryReason, sendWA, bassemCron } from "../src/whatsapp.js";
@@ -80,7 +80,7 @@ function cfAnswer(u, init) {
 }
 const HTML = "<!doctype html><html lang=\"ar\"><head><title>x</title></head><body>ok</body></html>";
 function mock() {
-  calls = []; cf = cfState(); probe = { page: 200, intel: { ok: true } };
+  calls = []; cf = cfState(); probe = { page: 200, intel: { ok: true }, anam: 200 };
   globalThis.fetch = async (input, init = {}) => {
     const req = input instanceof Request ? input : null, u = String(req ? req.url : input), method = (init && init.method) || (req && req.method) || "GET";
     const h = req ? Object.fromEntries(req.headers) : init.headers || {};
@@ -98,6 +98,7 @@ function mock() {
     if (u === INTEL + "/intel/") return new Response(HTML, { status: 200, headers: { "Content-Type": "text/html" } });
     if (u === "https://api.anam.ai/v1/auth/session-token") return J({ sessionToken: "anam-tok-1" });
     if (u.startsWith("https://api.anam.ai/v1/personas/")) return J({}, 404);
+    if (u.startsWith("https://api.anam.ai/v1/sessions?") && method === "GET") return probe.anam === 200 ? J({ data: [], meta: { total: 0, lastPage: 1, currentPage: 1, perPage: 1, prev: null, next: null } }) : J({ error: "forbidden" }, probe.anam); // the calls report's read-only probe
     if (u.startsWith("https://api.respond.io/v2/contact/")) return J({ messageId: 9001 });
     if (u === "https://api.tavily.com/search") return J({ results: [] });
     throw new Error("unexpected fetch " + method + " " + u);
@@ -294,6 +295,23 @@ describe("features: the registry, PUT, audit, the public JSON", () => {
     /* the site's own default (data/flags.js, read before /api/settings answers) is on as well */
     const flags = readFileSync(new URL("../../data/flags.js", import.meta.url), "utf8");
     assert.match(flags, /DEF\.call_languages = true;/);
+  });
+  test("calls_report (the daily calls report, 2026-11-20): a server switch, on by default; locked without an e-mail route or a recipient; OFF always works", async () => {
+    const env = env0(), o = await owner(env);
+    const row = rowOf((await api(env, "GET", D + "/features", { token: o.token })).data, "calls_report");
+    assert.deepEqual([row.default, row.scope, row.value, row.effective, row.locked], [true, "server", true, true, null]);
+    assert.ok(row.lock_rule_ar && row.lock_rule_en && row.enforced_by.some(x => /calls-report\/send/.test(x)));
+    const noRoute = rowOf(await featuresView({ DB: new D1(), TEAM_EMAIL: "team@madeinegyptgate.com" }), "calls_report");
+    assert.deepEqual([noRoute.value, noRoute.effective, noRoute.locked.code], [true, false, "no_route"]);
+    const noTo = rowOf(await featuresView({ DB: new D1(), RESEND_API_KEY: "re_test" }), "calls_report");
+    assert.deepEqual([noTo.effective, noTo.locked.code], [false, "no_recipient"]);
+    assert.ok(noTo.locked.ar.includes("تقرير المكالمات") && noTo.locked.en.includes("Calls report"));
+    const e3 = { DB: new D1(), RESEND_API_KEY: "re_test" };
+    await e3.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES ('dev.calls_report', 'system', ?, ?)").bind(JSON.stringify({ v: 1, to: ["ops@madeinegyptgate.com"] }), NOW()).run();
+    assert.deepEqual([rowOf(await featuresView(e3), "calls_report").locked, rowOf(await featuresView(e3), "calls_report").effective], [null, true], "a saved recipient is enough");
+    const off = await setFeatures(env, { calls_report: false }, o.token);
+    assert.equal(off.status, 200, off.text);
+    assert.equal(await featureOn(env, "calls_report"), false);
   });
   test("the setting name is reserved: an admin cannot pre-create «features» / dev.* / cloudflare.* as custom settings; a stray custom row is taken over by the owner's write", async () => {
     const env = env0(), o = await owner(env);
@@ -800,6 +818,21 @@ describe("health: pages, APIs (in-process), intel, D1 counts, worker version", (
     assert.deepEqual([h2.data.worker.source, h2.data.checks.find(c => c.id === "worker:version").ok], ["none", true]);
     for (let i = 0; i < 11; i++) await api(e2, "GET", D + "/health", { token: o2.token });
     assert.deepEqual([(await api(e2, "GET", D + "/health", { token: o2.token })).status], [429]);
+  });
+  test("the calls report's Anam probe: green when the key reads sessions, red with the fix on 401 / 403, red «no key» without one — one read-only GET each", async () => {
+    const env = env0(), o = await owner(env);
+    let a = (await api(env, "GET", D + "/health", { token: o.token })).data.checks.find(c => c.id === "anam:sessions");
+    assert.deepEqual([a.ok, a.group, a.status, a.detail], [true, "anam", 200, ""]);
+    probe.anam = 403;
+    const r = await api(env, "GET", D + "/health", { token: o.token });
+    a = r.data.checks.find(c => c.id === "anam:sessions");
+    assert.deepEqual([a.ok, a.status, r.data.ok], [false, 403, false]);
+    assert.match(a.detail, /Sessions: Read/);
+    const reads = calls.filter(c => c.url.startsWith("https://api.anam.ai/v1/sessions"));
+    assert.ok(reads.length === 2 && reads.every(c => c.method === "GET" && /\?perPage=1&page=1$/.test(c.url)), JSON.stringify(reads.map(c => c.method + " " + c.url)));
+    const e2 = env0({ ANAM_API_KEY: "" }), o2 = await owner(e2);
+    a = (await api(e2, "GET", D + "/health", { token: o2.token })).data.checks.find(c => c.id === "anam:sessions");
+    assert.deepEqual([a.ok, a.status], [false, 0]); assert.match(a.detail, /No Anam key/);
   });
   test("with the service binding INTEL (worker/wrangler.toml [[services]]) the intel probe goes through it, never through the workers.dev URL", async () => {
     const seen = [], INTEL_B = { async fetch(req) { seen.push([req.method, new URL(req.url).pathname]); return new URL(req.url).pathname === "/api/intel/health" ? J({ ok: true }) : new Response(HTML, { status: 200, headers: { "Content-Type": "text/html" } }); } };

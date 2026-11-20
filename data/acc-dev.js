@@ -3,7 +3,7 @@
    data/acc.js; registers itself with MIGACC.use() and uses acc.js's own transport (the v2 session token), errors, cards, tabs, modal
    and typed confirm. API: worker/src/acc-dev.js + worker/src/flags.js (contract: «Developer panel — Worker API contract» v1).
    OWNER ONLY: the item shows for the role «owner» with whoami features.dev (perm dev.manage) — the Worker checks the owner again on
-   every call (admin / editor / support / the platform key → 403 owner_only; team roles → 403). Five tabs (#dev/<tab>):
+   every call (admin / editor / support / the platform key → 403 owner_only; team roles → 403). Six tabs (#dev/<tab>):
      features — المزايا: GET/PUT /api/admin/cc/dev/features — the registry's switches (value = the owner's choice, effective = what
                 runs now; locked {code, ar, en} = cannot be switched ON from here, OFF always works; needs = on but waiting for
                 something else); «↺ الافتراضي» = null; an optional reason goes to the audit; the permanent policies show as rules
@@ -12,7 +12,11 @@
                 «متسجّل ✓» ever comes back); POST /dev/deploys/rollback {target, id, confirm:"ارجع"} behind the typed «ارجع»
      code     — الكود: the GitHub repository, github.dev, the deploy runs (Actions), Claude Code, the owner guide, how a change goes live
      health   — صحة الموقع: GET /dev/health — the server's checks by group (pages, APIs, intel, database, worker), D1 row counts, version
-     audit    — السجل: GET /dev/audit?limit=50 — the developer-panel actions (dev.features, dev.rollback, the token's keys.*)
+     audit    — السجل: GET /dev/audit?limit=50 — the developer-panel actions (dev.features, dev.rollback, the token's keys.*, calls_report.*)
+     calls    — تقرير المكالمات: GET|PUT /dev/calls-report — «تقرير المكالمات اليومي» (worker/src/calls-report.js): recipients, time, detail
+                (masked / full: the owner's confirmed choice, only to madeinegyptgate.com), team tests, empty days, keep days; the last 7 runs;
+                the Anam probe; «معاينة يوم…» (GET /dev/calls-report/preview?day=, shown in a sandboxed frame) and «ابعت تقرير يوم…»
+                (POST /dev/calls-report/send {day}) — both audited on the server
    Health (12 / 10 min) and deploys (30 / 10 min) answers are kept for a minute in this page (a tab switch never spends the limit;
    «افحص تاني» / «↻» asks again). Nothing is invented: every list is the server's answer or the honest empty / error text. Arabic first
    with the English twin (X.T), RTL/LTR, desktop + phones. ES5, no dependencies. Every server string is escaped (X.h). */
@@ -25,7 +29,8 @@
     var REPO = /^[\w.-]+\/[\w.-]+$/.test(str(CFGD.repo)) ? str(CFGD.repo) : "kw0106144-tech/madeinegyptgate";
     var ACCOUNT = /^[0-9a-f]{32}$/.test(str(CFGD.account)) ? str(CFGD.account) : "88c77c2b7595dd0ce510270175f69143";
     var PAGES_PROJECT = "madeinegyptgate";
-    var API = { review: "/admin/cc/dev/review", features: "/admin/cc/dev/features", deploys: "/admin/cc/dev/deploys", rollback: "/admin/cc/dev/deploys/rollback", health: "/admin/cc/dev/health", audit: "/admin/cc/dev/audit", keys: "/admin/cc/keys" };
+    var API = { review: "/admin/cc/dev/review", features: "/admin/cc/dev/features", deploys: "/admin/cc/dev/deploys", rollback: "/admin/cc/dev/deploys/rollback", health: "/admin/cc/dev/health", audit: "/admin/cc/dev/audit", keys: "/admin/cc/keys",
+      calls: "/admin/cc/dev/calls-report", callsSend: "/admin/cc/dev/calls-report/send", callsPreview: "/admin/cc/dev/calls-report/preview" };
     var SLOT = "cloudflare.dev_token";       /* «مفاتيح الخدمات» slot «Cloudflare — لوحة المطوّر» */
     var CONFIRM = "ارجع";                    /* the typed confirmation of a rollback (sent as is; the Worker checks it again) */
     var OWNER = function () { var f = X.features(); return X.role() === "owner" && (X.can("dev.manage") || f.dev === true); };
@@ -44,7 +49,15 @@
       secrets_changed: ["أسرار الـ Worker اتغيّرت بعد النسخة دي.", "The Worker's secrets changed after this version."],
       pre_panel: ["النسخة دي أقدم من لوحة المطوّر — محتاجة تأكيد تاني.", "This version predates the developer panel — it needs a second confirmation."],
       confirm_expired: ["التأكيد التاني خلص وقته (10 دقايق) — اقفل الرسالة وابدأ الرجوع من الأول.", "The second confirmation expired (10 minutes) — close this and start the rollback again."],
-      ack_required: ["الرجوع رغم تغيير الأسرار محتاج تأكيدك التاني من الأول — ابدأ الرجوع من الأول.", "A rollback despite changed secrets needs your second confirmation first — start the rollback again."]
+      ack_required: ["الرجوع رغم تغيير الأسرار محتاج تأكيدك التاني من الأول — ابدأ الرجوع من الأول.", "A rollback despite changed secrets needs your second confirmation first — start the rollback again."],
+      invalid_recipients: ["اكتب من ١ لـ ٥ إيميلات صحيحة.", "Enter 1 to 5 valid e-mail addresses."],
+      external_confirm_required: ["فيه إيميل برّه madeinegyptgate.com — علّم على التأكيد اللي تحت المستلمين الأول.", "An address outside madeinegyptgate.com — tick the confirmation under the recipients first."],
+      full_internal_only: ["البيانات الكاملة بس لما كل المستلمين على madeinegyptgate.com.", "Full contacts only when every recipient is on madeinegyptgate.com."],
+      full_confirm_required: ["علّم على جملة الموافقة على البيانات الكاملة الأول.", "Tick the full-contacts confirmation first."],
+      invalid_time: ["الميعاد من ٠٥:٠٠ لـ ١٢:٠٠.", "The time must be between 05:00 and 12:00."],
+      invalid_keep_days: ["مدة الحفظ: ٠ (على طول) أو من ٣٠ لـ ٧٣٠ يوم.", "Keep days: 0 (keep) or 30–730."],
+      invalid_day: ["اختار يوم من آخر ٩٠ يوم.", "Pick a day within the last 90 days."],
+      busy: ["التقرير ده بيتعمل دلوقتي — جرّب بعد دقايق.", "This report is being built right now — try again in a few minutes."]
     };
     Object.keys(MORE).forEach(function (k) { if (!X.ERRS[k]) X.ERRS[k] = MORE[k]; });
     var CACHE = {};                          /* {deploys|health: {t, j}} — this page only, one minute */
@@ -76,7 +89,7 @@
     /* ======================================================================================================================
        the section
        ====================================================================================================================== */
-    var TABS = [["features", "المزايا", "Features"], ["deploys", "النشر", "Deploys"], ["code", "الكود", "Code"], ["health", "صحة الموقع", "Health"], ["audit", "السجل", "Log"]];
+    var TABS = [["features", "المزايا", "Features"], ["deploys", "النشر", "Deploys"], ["code", "الكود", "Code"], ["health", "صحة الموقع", "Health"], ["calls", "تقرير المكالمات", "Calls report"], ["audit", "السجل", "Log"]];
     var RUN = {};
     function run(arg) {
       var c = X.cur(), tab = arg && RUN[arg] ? arg : "features";
@@ -450,7 +463,93 @@
       load(false);
     };
 
-    /* ---------------------------------------------------------------- 5) audit ---------------------------------------------------------------- */
+    /* ---------------------------------------------------------------- 5) the daily calls report ---------------------------------------------------------------- */
+    var CR_RUN = { done: ["اتبعت ✓", "Sent ✓", "ok"], failed: ["ماتبعتش ✗", "Not sent ✗", "x"], open: ["لسه", "Not yet", "g"] };
+    var CR_MAIL = { sent: ["اتبعت", "sent"], failed: ["فشل", "failed"], skipped: ["اتعدّى (القالب مقفول)", "skipped (template off)"] };
+    var CR_OPT = {
+      detail: [["masked", "محجوبة (الإيميل a•••@… والموبايل آخر رقمين)", "Masked (e-mail a•••@…, mobile last 2 digits)"], ["full", "كاملة (للأعضاء واللي بعتوا طلب أو حجزوا اجتماع بس)", "Full (members and people who sent a request or booked a meeting only)"]],
+      tests: [["summary", "سطر واحد بس", "One line"], ["full", "كروت كاملة", "Full cards"], ["off", "مخفية", "Hidden"]],
+      empty: [["send", "ابعت تقرير قصير", "Send a short report"], ["skip", "ماتبعتش حاجة", "Send nothing"]]
+    };
+    function crSel(k, cur) { return '<select data-cr="' + k + '">' + CR_OPT[k].map(function (o) { return '<option value="' + h(o[0]) + '"' + (o[0] === cur ? " selected" : "") + ">" + h(T(o[1], o[2])) + "</option>"; }).join("") + "</select>"; }
+    RUN.calls = function (c) {
+      var val = function (k) { var e = $('#dvb [data-cr="' + k + '"]'); return e ? (e.type === "checkbox" ? !!e.checked : trim(e.value)) : ""; };
+      var paint = function (j, msg) {
+        if (!X.alive(c)) return; j = j || {}; c.st.cr = j;
+        var st = j.settings || {}, f = j.feature || {}, ap = j.anam || {}, rt = j.route || {}, lim = j.limits || {}, fc = j.full_confirm || {};
+        var fchip = f.effective ? chip(T("شغّال ✓", "On ✓"), "ok") : f.locked ? chip("🔒 " + T("مقفول", "Locked"), "p") : chip(T("مقفول من «المزايا»", "Off in «Features»"), "x");
+        var head1 = '<p class="sm">' + fchip + " " + h(T("بيوصل كل يوم الساعة ", "Every day at ")) + '<b dir="ltr">' + h(st.time || "08:30") + "</b>" + h(T(" بتوقيت القاهرة بتقرير اليوم اللي فات.", " Cairo time, with the day before.")) + "</p>"
+          + (f.locked ? '<p class="lkr" dir="auto">🔒 ' + h(why(f.locked)) + "</p>" : "")
+          + '<p class="sm">' + (ap.ok ? chip(T("Anam: قراءة الجلسات شغّالة ✓", "Anam: reading sessions works ✓"), "ok") : chip(T("Anam: مش قادر يقرا الجلسات", "Anam: cannot read sessions"), "x") + ' <span dir="auto">' + h(L(ap, "detail_ar", "detail_en")) + "</span>") + "</p>"
+          + (rt.attachments === false ? '<p class="mut sm">' + h(T("طريقة الإرسال الحالية مابتبعتش ملفات مرفقة: التقرير هيوصل من غير ملف calls-<اليوم>.csv.", "The current e-mail route sends no attachments: the report goes without calls-<day>.csv.")) + "</p>" : "");
+        var def = j.using_default ? '<div class="alert" dir="auto">' + h(T("المستلم الافتراضي دلوقتي: ", "The default recipient now: ")) + '<bdi dir="ltr">' + h(arr(j.recipients).join(", ")) + "</bdi>" + h(T(" — وده كمان إيميل خدمة العملاء العام. حط إيميلك هنا علشان التقرير (وفيه بيانات أشخاص) يوصلك إنت بس.", " — it is also the public customer-service mailbox. Put your own address here so the report (it holds personal data) reaches you only.")) + "</div>" : "";
+        var form = '<div class="fr"><label class="w">' + h(T("المستلمين (لحد " + (lim.to_max || 5) + " — إيميل في كل سطر)", "Recipients (up to " + (lim.to_max || 5) + " — one per line)")) + '<textarea data-cr="to" dir="ltr" rows="3" maxlength="1300" placeholder="you@madeinegyptgate.com">' + h(arr(st.to).join("\n")) + "</textarea></label></div>"
+          + '<label class="sm" dir="auto"><input type="checkbox" data-cr="confirm_external"> ' + h(T("أأكد إن التقرير (وفيه بيانات أشخاص) يروح كمان لإيميلات برّه madeinegyptgate.com اللي فوق", "I confirm the report (it holds personal data) may also go to the addresses above outside madeinegyptgate.com")) + "</label>"
+          + '<div class="fr"><label>' + h(T("الميعاد (بتوقيت القاهرة)", "Time (Cairo)")) + '<input type="time" data-cr="time" min="' + h(lim.time_min || "05:00") + '" max="' + h(lim.time_max || "12:00") + '" value="' + h(st.time || "08:30") + '" dir="ltr"></label>'
+          + "<label>" + h(T("بيانات التواصل", "Contact details")) + crSel("detail", st.detail || "masked") + "</label>"
+          + "<label>" + h(T("مكالمات الفريق", "Team test calls")) + crSel("tests", st.tests || "summary") + "</label>"
+          + "<label>" + h(T("يوم مفيهوش مكالمات", "A day without calls")) + crSel("empty", st.empty || "send") + "</label>"
+          + "<label>" + h(T("مدة حفظ التقييمات (يوم، ٠ = على طول)", "Keep the reviews (days, 0 = keep)")) + '<input type="number" data-cr="keep_days" min="0" max="' + h(String(lim.keep_max || 730)) + '" value="' + h(String(st.keep_days != null ? st.keep_days : 180)) + '" dir="ltr"></label></div>'
+          + '<label class="sm" dir="auto"><input type="checkbox" data-cr="confirm_full"' + (st.full_confirmed ? " checked" : "") + "> " + h(L(fc, "ar", "en") || T("أنا موافق على البيانات الكاملة.", "I agree to full contacts.")) + "</label>"
+          + '<p class="mut sm" dir="auto">' + h(T("«كاملة» بتضيف الإيميل والموبايل كاملين للأعضاء واللي بعتوا طلب أو حجزوا اجتماع بس، ولمستلمين على madeinegyptgate.com بس — وأي حاجة اتقالت في مكالمة عمرها ما بتظهر.", "«Full» adds the full e-mail and mobile of members and of people who sent a request or booked a meeting only, to recipients on madeinegyptgate.com only — nothing said in a call ever appears.")) + "</p>"
+          + '<div class="acts2">' + X.btn("dvCrSave", h(T("💾 حفظ", "💾 Save")), "s") + (j.using_default ? "" : X.btn("dvCrDef", h(T("↺ المستلم الافتراضي", "↺ The default recipient")), "l s")) + "</div>";
+        var day = c.st.crDay || str(j.yesterday);
+        var tools = '<div class="fr"><label>' + h(T("اليوم", "Day")) + '<input type="date" data-cr="day" value="' + h(day) + '" dir="ltr"></label></div>'
+          + '<div class="acts2">' + X.btn("dvCrPrev", h(T("👁 معاينة يوم…", "👁 Preview a day…")), "l") + X.btn("dvCrSend", h(T("📤 ابعت تقرير يوم…", "📤 Send a day's report…")), "r") + "</div>"
+          + '<p class="mut sm" dir="auto">' + h(T("المعاينة مابتبعتش حاجة (لحد " + (lim.previews_per_10min || 6) + " كل ١٠ دقايق)، والإرسال لحد " + (lim.sends_per_day || 3) + " مرات لكل يوم — والاتنين بيتسجّلوا في «السجل».", "A preview sends nothing (up to " + (lim.previews_per_10min || 6) + " per 10 minutes); a send is limited to " + (lim.sends_per_day || 3) + " per day — both are written to the «Log».")) + '</p><div id="dvCrOut"></div>';
+        var runs = arr(j.runs).map(function (r) {
+          var rs = CR_RUN[r.status] || CR_RUN.open;
+          return '<li><b dir="ltr">' + h(str(r.day)) + "</b> " + chip(T(rs[0], rs[1]), rs[2]) + arr(r.mails).map(function (m) { var ms = CR_MAIL[m.status] || [str(m.status), str(m.status)]; return ' <small class="mut" dir="auto">' + h(T(ms[0], ms[1]) + (m.resend ? T(" (يدوي)", " (by hand)") : "") + " → ") + '<bdi dir="ltr">' + h(str(m.to)) + "</bdi>" + (m.error ? " — " + h(X.cut(str(m.error), 80)) : "") + "</small>"; }).join("") + "</li>";
+        }).join("");
+        body(c, X.cardH(T("تقرير المكالمات اليومي", "Daily calls report"), head1 + def + '<div id="dvCrMsg">' + msgH(msg) + "</div>" + form)
+          + X.cardH(T("معاينة وإرسال", "Preview and send"), tools)
+          + X.cardH(T("آخر ٧ أيام", "The last 7 days"), runs ? '<ul class="dv-pol">' + runs + "</ul>" : '<p class="mut">' + h(T("لسه مفيش تقارير.", "No reports yet.")) + "</p>"));
+      };
+      var load = function (msg) { X.GET(API.calls).then(function (j) { paint(j, msg); }, function (e) { if (X.alive(c)) body(c, X.errH(e)); }); };
+      var bodyOf = function () {
+        var list = String(val("to") || "").split(/[\s,;]+/).filter(function (x) { return x; });
+        return { to: list, time: val("time"), detail: val("detail"), tests: val("tests"), empty: val("empty"), keep_days: parseInt(val("keep_days"), 10), confirm_external: !!val("confirm_external"), confirm_full: !!val("confirm_full") };
+      };
+      var dayOf = function () { var d = val("day"); c.st.crDay = d; return d; };
+      c.on.retry = function () { load(); };
+      c.on.dvCrSave = function (b) {
+        b.disabled = true;
+        X.PUT(API.calls, bodyOf()).then(function (j) { X.toast(j && j.unchanged ? T("مفيش تغيير", "Nothing changed") : T("اتحفظ ✓ — واتسجّل في السجل", "Saved ✓ — logged")); paint(j, { ok: true, t: T("اتحفظ.", "Saved.") }); },
+          function (e) { b.disabled = false; X.toast(errFull(e), 1); var mm = $("#dvCrMsg"); if (mm) mm.innerHTML = msgH({ ok: false, t: errFull(e), e: e }); }); /* the owner's edits stay in the form */
+      };
+      c.on.dvCrDef = function (b) {
+        ask(T("ترجع للمستلم الافتراضي؟", "Back to the default recipient?"), "<p>" + h(T("التقرير هيروح لإيميلات المنصة (ومنها إيميل خدمة العملاء العام)، والبيانات هترجع محجوبة.", "The report goes to the platform's own mailboxes (the public customer-service one included), with masked contacts.")) + "</p>", T("↺ رجّع", "↺ Go back"), false, false).then(function (a) {
+          if (!a.ok || !X.alive(c)) return; b.disabled = true;
+          X.PUT(API.calls, { use_default: true, detail: "masked" }).then(function (j) { X.toast(T("رجع للافتراضي ✓", "Back to the default ✓")); paint(j); }, function (e) { b.disabled = false; X.toast(errFull(e), 1); });
+        });
+      };
+      c.on.dvCrPrev = function (b) {
+        var d = dayOf(), out = $("#dvCrOut"); b.disabled = true;
+        if (out) out.innerHTML = '<p class="mut" role="status">' + h(T("بجهّز المعاينة… (ممكن تاخد دقيقة)", "Building the preview… (it can take a minute)")) + "</p>";
+        X.GET(API.callsPreview + X.qs({ day: d }), { timeout: 90000 }).then(function (j) {
+          b.disabled = false; if (!X.alive(c)) return; var o = $("#dvCrOut"); if (!o) return;
+          j = j || {}; var k = j.counts || {}, w = arr(j.warnings);
+          o.innerHTML = '<p class="sm"><b dir="auto">' + h(str(j.subject)) + "</b></p>"
+            + '<p class="mut sm">' + h(T("مكالمات: " + (k.conversations || 0) + " · عملاء: " + (k.customers || 0) + " · كروت: " + (j.cards || 0) + " · صفوف الملف: " + (j.csv_rows || 0), "Calls: " + (k.conversations || 0) + " · customers: " + (k.customers || 0) + " · cards: " + (j.cards || 0) + " · file rows: " + (j.csv_rows || 0))) + "</p>"
+            + (w.length ? '<ul class="sm">' + w.map(function (x) { return '<li dir="auto">' + h(str(x)) + "</li>"; }).join("") + "</ul>" : "")
+            + '<iframe sandbox="" title="' + h(T("معاينة التقرير", "Report preview")) + '" style="width:100%;height:560px;border:1px solid var(--line,#ddd);border-radius:10px;background:#fff" srcdoc="' + h('<!doctype html><meta charset="utf-8">' + str(j.html)) + '"></iframe>';
+        }, function (e) { b.disabled = false; var o = $("#dvCrOut"); if (o) o.innerHTML = X.errH(e, false); X.toast(errFull(e), 1); });
+      };
+      c.on.dvCrSend = function (b) {
+        var d = dayOf();
+        ask(T("تبعت تقرير يوم " + d + "؟", "Send the report of " + d + "?"), "<p>" + h(T("التقرير هيتبعت دلوقتي للمستلمين اللي فوق، وده بيتسجّل في السجل.", "The report goes now to the recipients above; this is logged.")) + "</p>", T("📤 ابعت", "📤 Send"), false, false).then(function (a) {
+          if (!a.ok || !X.alive(c)) return; b.disabled = true;
+          X.POST(API.callsSend, { day: d }, { timeout: 90000 }).then(function (j) {
+            b.disabled = false; var why2 = str(j && (j.reason || j.skipped));
+            X.toast(j && j.sent ? T("اتبعت ✓ — واتسجّل في السجل", "Sent ✓ — logged") : T("ماتبعتش: ", "Not sent: ") + why2, !(j && j.sent));
+            load(j && j.sent ? { ok: true, t: T("التقرير اتبعت.", "The report was sent.") } : { ok: false, t: T("ماتبعتش: ", "Not sent: ") + why2 });
+          }, function (e) { b.disabled = false; X.toast(errFull(e), 1); });
+        });
+      };
+      load();
+    };
+
+    /* ---------------------------------------------------------------- 6) audit ---------------------------------------------------------------- */
     RUN.audit = function (c) {
       var pj = function (s) { var v = s; try { v = typeof s === "string" ? JSON.parse(s) : s; } catch (e) {} return JSON.stringify(v, null, 1); };
       c.st.before = ""; c.st.stack = [];
