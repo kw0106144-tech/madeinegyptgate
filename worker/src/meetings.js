@@ -38,6 +38,7 @@ import { sendEmail, isEmail, esc, parseFrom, sender, fmtFrom } from "./advisor.j
 import { ipNet } from "./common.js";
 import { attachOk, mailReady } from "./email-center.js"; // e-mail center: real attachments only where the provider supports them
 import { anamKey, svc, waSwitchNow } from "./service-keys.js"; // Anam key (ANAM_API_KEY or the panel slot) + the WhatsApp switch (leaf module)
+import { stripCues } from "./text.js";                         // Janna's lines without a stray cue tag («[صاف]») in the transcript she e-mails
 
 export const TZ = "Africa/Cairo";
 export const AGENDA = ["intro", "platform", "tour", "plan", "questions", "register"];
@@ -463,7 +464,7 @@ async function fetchTranscript(env, sid) {
     if (!r.ok) return { error: "transcript " + r.status };
     const j = await r.json();
     if (j.transcriptsEnabled === false) return { msgs: [], disabled: true };
-    for (const x of Array.isArray(j.messages) ? j.messages : []) msgs.push({ r: x.role === "user" ? "user" : "persona", m: str(x.message, 4000), t: line(x.timestamp, 40) });
+    for (const x of Array.isArray(j.messages) ? j.messages : []) msgs.push({ r: x.role === "user" ? "user" : "persona", m: x.role === "user" ? str(x.message, 4000) : stripCues(str(x.message, 4000)), t: line(x.timestamp, 40) });
     if (j.nextOffset == null) break; offset = +j.nextOffset;
   }
   return { msgs };
