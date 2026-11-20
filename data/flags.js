@@ -17,6 +17,7 @@
   if (W.MIGFLAGS) return;
   var DEF = { janna_live: true, bassem_live: true, janna_welcome: true, standing_figures: true, noise_mode_default: false, intel_pages: true, registrations: true };
   var SK = "mig-flags", TTL = 180000, WAIT = 2500;
+  DEF.call_languages = true; /* the 🌐 speaking-language button of Janna's and Bassem's calls (data/janna-live.js reads MIGFLAGS.on) */
   var F = null, FROM = "", CBS = [], DONE = false, BUSY = false;
   var own = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
   function en() { return W.MIGLANG === "en" || (D.documentElement.getAttribute("lang") || "").slice(0, 2) === "en"; }

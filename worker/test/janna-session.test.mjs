@@ -12,6 +12,7 @@ import { putSecret } from "../src/crypto.js";
 import { ipHash, cairoDay } from "../src/common.js";
 import { D1 } from "./helpers.mjs";
 import { forgetPlans, resetPlans } from "../src/acc-plans.js";
+import { forgetServiceKeys } from "../src/service-keys.js";
 
 const SITE = "https://madeinegyptgate.com";
 const KEY = "anam-test-key-7c1e9d0b42"; // fake: never a real key
@@ -122,6 +123,9 @@ describe("janna session: configuration and request checks", () => {
     await putSecret(env, "anam.api_key", "anam-cc-slot-key-5521", "test");
     assert.equal((await call(env, { agent: "janna" })).status, 200);
     assert.equal(calls[0].headers.Authorization, "Bearer anam-cc-slot-key-5521");
+    /* the variants below share env.DB: a CONFIG_SECRET changes only with a deploy, i.e. in a NEW isolate, which starts without this
+       isolate's 60-s view of the keys (service-keys.js memo) — forget it, as that isolate would */
+    forgetServiceKeys(env);
     const noSecret = { ...env, CONFIG_SECRET: undefined }; // slot set, but CONFIG_SECRET missing → cannot be read
     assert.equal((await call(noSecret, { agent: "janna" })).data.error, "anam_not_configured");
     const noTable = env0({ ANAM_API_KEY: undefined, CONFIG_SECRET: "c".repeat(40) }); // a database without migration 0006
@@ -129,9 +133,26 @@ describe("janna session: configuration and request checks", () => {
     const empty = env0({ ANAM_API_KEY: undefined, CONFIG_SECRET: "c".repeat(40) }); // the table, but no key saved there
     await empty.DB.exec(CC_SQL);
     assert.equal((await call(empty, { agent: "janna" })).data.error, "anam_not_configured");
+    forgetServiceKeys(env);
     const other = { ...env, CONFIG_SECRET: "d".repeat(40) }; // sealed with another CONFIG_SECRET → unreadable
     assert.equal((await call(other, { agent: "janna" })).data.error, "anam_not_configured");
     assert.equal(calls.length, 1);
+  });
+  test("speed 2026-11-20: the panel key ccBoot already unsealed for this request is used — no second read of the slot; the Worker secret still wins", async () => {
+    const env = env0({ ANAM_API_KEY: undefined, CONFIG_SECRET: "c".repeat(40) });
+    await env.DB.exec(CC_SQL);
+    await putSecret(env, "anam.api_key", "anam-cc-slot-key-5521", "test");
+    forgetServiceKeys(env);
+    const prep = env.DB.prepare.bind(env.DB), slotReads = [];
+    env.DB.prepare = sql => { const st = prep(sql); if (!/^SELECT sealed FROM cc_secrets WHERE name = \?$/.test(sql)) return st; return { bind: (...a) => { if (a[0] === "anam.api_key") slotReads.push(a[0]); return st.bind(...a); } }; };
+    assert.equal((await call(env, { agent: "janna" })).status, 200);
+    assert.equal(calls[0].headers.Authorization, "Bearer anam-cc-slot-key-5521");
+    assert.equal(slotReads.length, 1, "one read of the slot (ccBoot's), not two");
+    assert.equal((await call(env, { agent: "janna" }, { ip: "198.51.100.8" })).status, 200);
+    assert.equal(slotReads.length, 1, "a warm isolate reads it no more");
+    const both = { ...env, ANAM_API_KEY: KEY };
+    assert.equal((await call(both, { agent: "janna" }, { ip: "198.51.100.9" })).status, 200);
+    assert.equal(calls[2].headers.Authorization, "Bearer " + KEY, "the Worker secret wins over the panel slot");
   });
   test("no env at all → 503 anam_not_configured", async () => {
     const r = await handleJannaSession(rq({ agent: "janna" }), undefined);

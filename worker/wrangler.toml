@@ -65,6 +65,15 @@ routes = [
 [triggers]
 crons = ["*/15 * * * *"]
 
+# Workers Logs: the Worker's own console lines (the «live-timing» start beacons of POST /api/janna/timing, «tool-soft-error», the existing
+# operational lines — the code logs no personal data). invocation_logs = false: no per-request invocation log (its request URL — login
+# links, member routes —, headers and client metadata) is kept; the platform keeps no raw IPs (README "Faster tool answers").
+[observability]
+enabled = true
+
+[observability.logs]
+invocation_logs = false
+
 # D1 (owner created "migate-db", EEUR — BACKLOG 23). Empty database, in this order: schema.sql → 0004 → 0005 → 0006.
 [[d1_databases]]
 binding = "DB"

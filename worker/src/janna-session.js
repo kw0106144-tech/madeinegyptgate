@@ -4,8 +4,8 @@
    token) — the page shows its OWN AI label on the video instead («جنة · مساعِدة بالذكاء الاصطناعي» / "Janna · AI assistant").
 
    POST /api/janna/session  {agent: "janna" | "bassem", lang: "ar" | "en"}
-     200 {sessionToken, agent, lang, expires_in, max_session_sec}  + header Server-Timing (checks / ctx / persona / wait / token / total, ms;
-                                          also on the 502s) — where the wait before «بنوصّلك…» went (serverTiming below)
+     200 {sessionToken, agent, lang, expires_in, max_session_sec}  + header Server-Timing (boot / checks / ctx / persona / wait / token /
+                                          total, ms; also on the 502s) — where the wait before «بنوصّلك…» went (serverTiming below)
      503 {error: "anam_not_configured"}   no ANAM_API_KEY secret (nor the Control Center's sealed "anam.api_key" slot) → the page keeps
                                           the widget, exactly as before
      403 origin_not_allowed               Origin (else Referer) is not https://madeinegyptgate.com / https://www.madeinegyptgate.com
@@ -65,6 +65,7 @@ import { resumeContext, RESUME_BLOCK } from "./resume.js";
 import { forLLM, instructionLike } from "./text.js";
 import { jannaSessionContext, visitorContextOn } from "./visitor.js"; // 0009: Janna's memory of her visitors + «بنك المعلومات»
 import { featureOn, offMessage } from "./flags.js"; // «🛠️ المطوّر»: janna_live / bassem_live (owner switches, 503 feature_off)
+import { svc } from "./service-keys.js";            // the panel's Anam key as ccBoot already read it for this request (memo ≤ 60 s)
 
 export const ANAM_TOKEN_URL = "https://api.anam.ai/v1/auth/session-token";
 export const ANAM_PERSONA_URL = "https://api.anam.ai/v1/personas/"; // + a persona id from PERSONAS (read-only GET, Bassem's member context)
@@ -98,10 +99,11 @@ const fail = (status, code, cors, extra, hdr) => out({ error: code, code, ...(ex
    header the page reads (data/janna-live.js JANNA_LIVE.timing()) and the browser's network panel shows — milliseconds only, never data:
    checks = origin / key / limits / sign-in, ctx = the member's (or visitor's) context from D1, persona = the saved persona's read (it runs
    beside ctx for a member Bassem greets by name), wait = how long the token request still waited for that read after ctx, token = the
-   Anam token request(s), total = the whole request */
+   Anam token request(s), total = the whole request. boot (speed 2026-11-20) = the Control Center boot before it (index.js: plans matrix,
+   mail config, service keys, feature switches — memo ≤ 60 s per isolate), which `total` does not include */
 export function serverTiming(t) {
   const ms = v => Math.max(0, Math.round(Number(v) || 0));
-  return ["checks", "ctx", "persona", "wait", "token", "total"].filter(k => t && t[k] != null).map(k => k + ";dur=" + ms(t[k])).join(", ");
+  return ["boot", "checks", "ctx", "persona", "wait", "token", "total"].filter(k => t && t[k] != null).map(k => k + ";dur=" + ms(t[k])).join(", ");
 }
 
 /* the page's origin: the Origin header, else the Referer's origin ("" when neither is usable) */
@@ -117,9 +119,11 @@ export function originOk(env, o) {
   let own = ""; try { own = new URL(site(env)).origin; } catch (e) { /* SITE_URL is checked by site() */ }
   return SITE_ORIGINS.includes(o) || o === own || (on(env && env.JANNA_DEV_ORIGINS) && DEV_ORIGIN.test(o));
 }
-/* ANAM_API_KEY (wrangler secret), else the key the owner saved in the Control Center (sealed slot, migrations/0006) */
+/* ANAM_API_KEY (wrangler secret), else the key the owner saved in the Control Center (sealed slot, migrations/0006): first as ccBoot already
+   unsealed it for this request (service-keys.js memo — no second D1 read + decrypt, speed 2026-11-20), else read now */
 async function anamKey(env) {
   if (env.ANAM_API_KEY) return String(env.ANAM_API_KEY);
+  const k = svc(env).anam_key; if (k) return k;
   if (!env.DB) return "";
   try { return (await getSecret(env, "anam.api_key")) || ""; } catch (e) { return ""; } // no cc_secrets table / no CONFIG_SECRET yet
 }
@@ -200,16 +204,19 @@ export async function bassemContext(env, m, lang, b, nowMs = Date.now()) {
   return { ...base, block: fitBlock(parts.join("\n")), memory: !!mem, profile: !!(prof && prof.block) };
 }
 
-/* tokens issued today (Cairo day) for the whole site — the same rl table as the other limits, its own key per day */
+/* tokens issued today (Cairo day) for the whole site — the same rl table as the other limits, its own key per day. Counting is one statement
+   (RETURNING: one D1 round trip, speed 2026-11-20); the refund (delta −1) is unchanged */
 async function countDay(env, nowMs, delta) {
   const day = cairoDay(nowMs), k = "jsessday|" + day;
-  if (delta > 0) await env.DB.prepare("INSERT INTO rl (k, n, exp) VALUES (?, 1, ?) ON CONFLICT(k) DO UPDATE SET n = n + 1").bind(k, new Date(Date.parse(day + "T00:00:00Z") + 2 * 86400000).toISOString()).run();
-  else await env.DB.prepare("UPDATE rl SET n = MAX(0, n - 1) WHERE k = ?").bind(k).run();
+  if (delta > 0) return (await env.DB.prepare("INSERT INTO rl (k, n, exp) VALUES (?, 1, ?) ON CONFLICT(k) DO UPDATE SET n = n + 1 RETURNING n").bind(k, new Date(Date.parse(day + "T00:00:00Z") + 2 * 86400000).toISOString()).first("n")) || 0;
+  await env.DB.prepare("UPDATE rl SET n = MAX(0, n - 1) WHERE k = ?").bind(k).run();
   return (await env.DB.prepare("SELECT n FROM rl WHERE k = ?").bind(k).first("n")) || 0;
 }
 
-export async function handleJannaSession(req, env) {
+/* opt.bootMs: how long index.js spent in ccBoot before this handler (the Server-Timing «boot»; not part of total / ANAM_BUDGET_MS) */
+export async function handleJannaSession(req, env, execCtx, opt) {
   const startMs = Date.now(); // the member-context budget (ANAM_BUDGET_MS) counts from here: key, D1 checks and Anam calls
+  const bootMs = opt && Number.isFinite(opt.bootMs) ? opt.bootMs : null;
   env = env || {};
   const o = originOf(req), allowed = originOk(env, o), cors = allowed && req.headers.get("Origin") ? o : "";
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: { Vary: "Origin", "Cache-Control": "no-store", ...(cors ? { "Access-Control-Allow-Origin": cors, "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, Authorization", "Access-Control-Max-Age": "600" } : {}) } });
@@ -233,14 +240,19 @@ export async function handleJannaSession(req, env) {
   if (!env.DB) return fail(503, "store_off", cors);
   try {
     const nowMs = Date.now(), ih = await ipHash(req, env);
-    if (await isBlocked(env, { ip_hash: ih })) return fail(403, "blocked", cors);
-    if (!(await rateOk(env, "jsess|" + ih, perHour(env), 3600, nowMs))) return fail(429, "rate_limited", cors, { retry_after: 3600 - Math.floor(nowMs / 1000) % 3600 });
-    const personaId = PERSONAS[agent][lang], tm = {};
+    /* speed 2026-11-20: the block check, the network's hourly limit and (Bassem) the sign-in + plan check are independent reads, so they
+       run together; their answers are still taken in today's order (blocked → limit → sign-in), so every refusal stays what it was. A blocked
+       network's request now also counts toward its hourly limit, which changes nothing for it. */
+    const callerP = agent === "bassem" ? bassemCaller(req, env).then(c => c, e => ({ error: e })) : null;
+    const [blocked, underLimit] = await Promise.all([isBlocked(env, { ip_hash: ih }), rateOk(env, "jsess|" + ih, perHour(env), 3600, nowMs)]);
+    if (blocked) return fail(403, "blocked", cors);
+    if (!underLimit) return fail(429, "rate_limited", cors, { retry_after: 3600 - Math.floor(nowMs / 1000) % 3600 });
+    const personaId = PERSONAS[agent][lang], tm = bootMs != null ? { boot: bootMs } : {};
     /* the saved persona's read, timed; never rejects (null on any failure) */
     const readPersona = () => { const t0 = Date.now(); return savedPersona(key, personaId).then(p => { tm.persona = Date.now() - t0; return p; }); };
     let ctx = null, personaP = null, tc = 0; // Bassem's member context: only from the member's own D1 rows (profile, memory, this call's turns), never from the page
     if (agent === "bassem") {
-      const c = await bassemCaller(req, env); if (c.no) return fail(c.no[0], c.no[1], cors);
+      const c = await callerP; if (c.error) throw c.error; if (c.no) return fail(c.no[0], c.no[1], cors);
       tm.checks = (tc = Date.now()) - startMs;
       if (!c.staff && memberContextOn(env, b)) {
         /* a member Bassem greets by name always gets the enriched persona (bassemContext never returns null for him): its read starts NOW,

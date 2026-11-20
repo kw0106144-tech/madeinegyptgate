@@ -301,14 +301,47 @@ answer 503 `profile_store_off` / `memory_off` and the call simply starts without
 | GET / POST | `/api/advisor/memory` | Bassem's memory of the member (`src/memory.js`): POST `search` / `turns` / `summary` (tools with `outcome` ok \| refused \| failed) / `fact`; GET `?q=` recall (keywords + time words امبارح / النهارده / آخر مرة … + «جديد»), `?call_id=` = the call going on; GET `/context`. **No DELETE** (405 `memory_permanent`) |
 | POST | `/api/advisor/web` | Bassem's web search (`src/websearch.js`), header `X-MIG-Tool: <TOOL_SECRET>` |
 | GET / POST | `/api/janna/item` | one directory item in full + a spoken summary (`src/janna-item.js`, data `src/items.json` from `build-items.js`); POST not found = 200 `found:false` |
-| POST | `/api/janna/lookup` | now also `page`, `market` (tenders), each result with `id`, `open_url`, `list_key` and the amounts |
+| POST | `/api/janna/lookup` | now also `page`, `market` (tenders), each result with `id`, `open_url` and the amounts (`list_key` / `url` only on GET since 2026-11-20 — "Faster tool answers" below) |
 | POST | `/api/janna/session` | Bassem's ephemeral persona now carries «النهارده: <Cairo date>», the profile and the memory (each in data markers, ≤ 5,200 characters); `continue_call` (a chain part) = the call's last words from the memory + no second greeting |
 
 **Start of a live call (owner 2026-11-19 «باسم بياخد وقت»).** For a member Bassem greets by name, `POST /api/janna/session` starts the
 saved persona's read (`GET /v1/personas/{id}`) beside his D1 context instead of after it; the continuation + factory profile are read
 together, and the memory block's seven reads (`memory.js memoryContext`) run together. Every 200 / 502 answer carries
-`Server-Timing: checks;dur=…, ctx;dur=…, persona;dur=…, wait;dur=…, token;dur=…, total;dur=…` (milliseconds only, exposed to the page with
-CORS); the page keeps it with its own marks in `JANNA_LIVE.timing()` (data/janna-live.js). Tests: `test/session-speed.test.mjs`.
+`Server-Timing: boot;dur=…, checks;dur=…, ctx;dur=…, persona;dur=…, wait;dur=…, token;dur=…, total;dur=…` (milliseconds only, exposed to the
+page with CORS; `boot` = the Control Center boot before the handler, not part of `total`); the page keeps it with its own marks in
+`JANNA_LIVE.timing()` (data/janna-live.js). Tests: `test/session-speed.test.mjs`, `test/calls-speed.test.mjs`.
+
+**Faster tool answers (owner 2026-11-20 «زود سرعه استجابه باسم وجنه»; tests `test/calls-speed.test.mjs`, `test/janna-item.test.mjs`).**
+- Anam's webhooks `POST /api/janna/lookup` (janna_lookup), `/api/janna/item` (platform_item), `/api/janna/knowledge` (knowledge_lookup),
+  `GET /api/janna/health` and `POST /api/janna/timing` skip `ccBoot` (index.js `BARE`): they read only `data.json` / `items.json` or their
+  own tables. The janna health check therefore no longer proves D1 (advisor / auth / inquiries / meetings still do).
+- `ccBoot`'s four loaders (plans, mail, service keys, features) run together, the four sealed slots too (`service-keys.js`); `rateOk`
+  is one statement (`INSERT … ON CONFLICT … RETURNING n`, SQLite ≥ 3.35), as is the session's day count.
+- A malformed POST to these webhooks answers **200** with a `text` the model can act on, never results (lookup: `{error, count:0,
+  results:[], text}`; item: `{found:false, error, text}`; knowledge: `{ok:false, error, code, text}`, also over its rate limit). GET keeps
+  400 / 429; `JANNA_KEY` keeps 401. Each one logs `tool-soft-error <path> <code>` (no body) — Anam counts them as successes now.
+- `POST /api/janna/lookup` is lean for the model (`leanLookup`): a result with its own page keeps only `open_url`, **decoded** (Arabic
+  slugs readable — the call page re-encodes links before they go into an e-mail), no `url` / `list_url` / `list_key` beside it, no `ref`
+  / `ref_no` equal to the `id`; no `per_page` / empty `place`, `widened_to`, `governorate`. `text` is unchanged. o200k tokens of real answers:
+  −36 … −52 %. `GET` keeps the full shape.
+- `POST /api/janna/session`: the block check, the hourly network limit and Bassem's sign-in / plan check run together (refusals and their
+  order unchanged: blocked → limit → sign-in); the panel's Anam key is taken from the keys `ccBoot` already unsealed (no second slot read).
+- `POST /api/janna/timing` (`src/live-timing.js`): the call page's start beacon, sent once per call at «voice» (sendBeacon, same origin;
+  another origin, an oversized body or no mark → dropped). Always 204. **Privacy guard**: ONE console line `live-timing {…}` rebuilt only
+  from `persona`, `lang`, the marks `token sdk mic stream connected ready video play voice` (whole ms, 0–600,000), `server` (the token
+  answer's Server-Timing parts), `relay` (1), `region` (a short code) and `reasoning` ([first, last] ms per turn, ≤ 20) — never a session
+  id, IP, user agent, URL or free text; ≤ 60 lines per isolate per minute. wrangler.toml `[observability]` turns Workers Logs on for the
+  console lines, with `[observability.logs] invocation_logs = false` (no per-request invocation log: its request URL — login links, member
+  routes —, headers and client data are not kept). After the first deploy, open one `live-timing` event in Workers Logs and check that it
+  carries no request URL.
+
+**Any-language calls (2026-11-20; data/janna-live.js «🌐», switch `call_languages`).** Server side: a 0-result lookup whose query has
+letters but no Arabic letter (acier, Stahl, сталь, 钢铁) adds «… ترجم(يـ)ها للعربي (acier = حديد) ودوّر(ي) تاني قبل ما تقول(ي) مفيش» (Arabic
+queries keep the text byte for byte); memory / knowledge masking also covers spoken addresses with arobase · arroba · chiocciola ·
+klammeraffe · собака · ایٹ (any dot word), the English "at" with punto · ponto · punkt · nokta · точка · ڈاٹ (never "point": «stop at this
+point» stays), Chinese 艾特 / 点, and the digit words of fr / es / pt / it / de / tr (7 in a row, 4 of them words); «بنك المعلومات» captures
+only Arabic and plain-ASCII client turns (English, Franco) and drops foreign self-introductions with the name after them («je m'appelle
+Jean Dupont», «me llamo Ana», «ich heiße …»). Tests: `test/memory.test.mjs`, `test/knowledge.test.mjs`, `test/janna-item.test.mjs`.
 
 **Memory policy (owner, 2026-11-18):** Bassem's memory is permanent and only grows — no member-facing deletion, no age-based retention, no
 row cap; the daily cron consolidates (a call whose final summary never arrived gets it rebuilt) and never deletes. The only erasure is
@@ -640,6 +673,7 @@ one stores nothing. Reader `loadFeatures` (ccBoot, memo per `env.DB`, 30 s; no t
 | `daily_digest` | on | server | dailyJobs skips digests + deadline reminders (the item sync and housekeeping run) |
 | `whatsapp_send` | on | server | `waLive()` false (reason `feature_off`; `sendWA` re-reads it fresh before every provider call) — LOCKED (cannot be switched on) without a respond.io token / passed token test / with `WA_DRY_RUN=1`; going live stays in «مفاتيح الخدمات» |
 | `bassem_web_search` | on | server | `POST /api/advisor/web` → 503 `feature_off` (after the tool-secret check) — LOCKED without a web-search key / tool secret |
+| `call_languages` | on | client | the 🌐 speaking-language button of Janna's and Bassem's calls (data/janna-live.js, `MIGFLAGS.on`): off → no button, no suggestions, every call hears as before (Arabic; English Janna: English); typed text in any language still gets an answer in it |
 Permanent policies (shown, never switches): `visitor_links_signed_in`, `knowledge_team_approved`. Public: `GET /api/settings` →
 `features` (scope client / both, effective values) + `features_v`; the overlay does not carry them. The public `feature_off` answer:
 `503 {error:"feature_off", code:"feature_off", feature, message}`.

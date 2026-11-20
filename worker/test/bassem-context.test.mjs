@@ -471,9 +471,9 @@ describe("bassem member context: the time budget (review 6, 7) — ANAM_BUDGET_M
       const tok = await tokenFor(env, m);
       const prep = env.DB.prepare.bind(env.DB);
       let slowed = false, readFirst = false;
-      env.DB.prepare = sql => { // the day counter's first read takes 11.5 s
+      env.DB.prepare = sql => { // the day counter's first count takes 11.5 s (one INSERT … RETURNING n since speed 2026-11-20)
         const st = prep(sql);
-        if (sql !== "SELECT n FROM rl WHERE k = ?") return st;
+        if (!/^INSERT INTO rl \(k, n, exp\) .* RETURNING n$/.test(sql)) return st;
         return { bind: (...a) => { const b = st.bind(...a); return { first: async col => { if (!slowed && String(a[0]).startsWith("jsessday|")) { slowed = true; readFirst = calls.some(c => c.method === "GET"); mock.timers.tick(11500); } return b.first(col); }, run: () => b.run(), all: () => b.all() }; } };
       };
       let abortedAt = 0, s1;

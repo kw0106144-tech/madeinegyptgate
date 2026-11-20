@@ -24,7 +24,7 @@
        the data desk: GET /api/team/desk/knowledge + PUT /api/team/desk/knowledge/:id.
    Every stored text that reaches an LLM goes through forLLM + instructionLike (an instruction-like question / answer is never stored,
    and is filtered again on the way out). */
-import { iso, sha256, hmac, jparse, secretOf, line, rateOk, ipHash } from "./common.js";
+import { iso, sha256, hmac, jparse, secretOf, line, rateOk, ipHash, toolSoftError } from "./common.js";
 import { norm, stem, tokens, clean, forLLM, instructionLike, asciiDigits, MASK_EMAIL, MASK_PHONE } from "./text.js";
 import { hasTable, auditStmt, fail } from "./acc-base.js";
 
@@ -88,7 +88,8 @@ const ID_RX = /\b(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
      «أحمد عبد العزيز من مصنع النور للبلاستيك، …», "i'm ahmed hassan from nour steel, …") is dropped whole;
    - «أنا / معاك» + up to 3 name words when a stop word or the question follows («أنا أحمد عايز أعرف …»);
    - honorifics with «ال» («الحاج سيد», «الأستاذ محمد») and the persona's vocative «يا أحمد» in the answer. */
-const INTRO = /(?:^| )(?:انا|اني|انى|معاك|معاكي|معاكم|معاكو|اسمي|اسمى|احنا|نحن|i am|i m|im|this is|my name|we are|we re)(?: |$)/;
+/* (any-language calls 2026-11-20: + the unambiguous «my name is» of other languages, as norm() writes them — «je m'appelle» → «je m appelle») */
+const INTRO = /(?:^| )(?:انا|اني|انى|معاك|معاكي|معاكم|معاكو|اسمي|اسمى|احنا|نحن|i am|i m|im|this is|my name|we are|we re|je m appelle|je mappelle|me llamo|mi nombre es|mi chiamo|ich heiße|ich heisse|mein name ist|meu nome é|meu nome e|benim adım|benim adim)(?: |$)/;
 const ROLE = /(?:^| )(?:صاحب|مدير|مديره|مسؤول|مسئول|مسؤوله|مسئوله|رئيس|مندوب|مؤسس|owner|manager|director|ceo|founder|procurement|purchasing)(?: |$)/;
 const CO_AT = /(?:^| )(?:(?:من|في|فى|مع|at|from|with) (?:شركه|مصنع|مجموعه|مؤسسه|company|factory|group)|بشركه|بمصنع|بمجموعه|بمؤسسه)(?: |$)/;
 /* …unless the clause also says what he wants («إحنا شركة الحسيني للحديد وعايزين نصدر للسعودية، ينفع؟»): then only the name goes */
@@ -110,10 +111,19 @@ function dropIntro(t) {
   }
   return out.join("").replace(/^[\s،,]+/, "");
 }
+/* any-language calls (2026-11-20): a self-introduction in another language inside the question's own clause, and up to 3 name words after
+   it (to the end of the clause, or before a joining word: «me llamo Ana y quiero saber…» → «y quiero saber…»). «je suis» also means "I am
+   interested…", so it takes only capitalised names («Je suis Jean Dupont»). */
+const NAME_STOP = "(?:y|e|et|und|and|ve|i|o|de|del|della|da|di|du|von|aus|from|of|que|qui|che|was|wie|quel|quelle|cual|cuanto|quanto|combien|how|what|para|pour|per|fur|für)";
+const NAME_W = "[^\\s,،.;:!?¿¡؟]+";
+const FOREIGN_INTRO = new RegExp("(^|[\\s,،.;:!?¿¡«\"(])(?:je\\s+m['’]?\\s?appelle|me\\s+llamo|mi\\s+nombre\\s+es|mi\\s+chiamo|ich\\s+hei(?:ß|ss)e|mein\\s+name\\s+ist|meu\\s+nome\\s+[ée]|benim\\s+ad[ıi]m)"
+  + "(?:\\s+(?!" + NAME_STOP + "(?![\\p{L}\\p{N}]))" + NAME_W + "){0,3}[,،.;:!]?", "giu");
+const JE_SUIS = new RegExp("(^|[\\s,،.;:!?¿¡«\"(])[Jj]e\\s+suis(?:\\s+[A-ZÀ-ÖØ-Þ]" + "[^\\s,،.;:!?¿¡؟]*){1,3}[,،.;:!]?", "gu");
+const dropForeignIntro = t => String(t).replace(FOREIGN_INTRO, (m, pre) => pre + " ").replace(JE_SUIS, (m, pre) => pre + " ");
 export function anonymize(s, known = new Set()) {
   let t = clean(String(s == null ? "" : s), 900).split(MASK_EMAIL).join(" ").split(MASK_PHONE).join(" ");
   t = t.replace(/(?:https?:\/\/|www\.)\S+/gi, " ").replace(ID_RX, " ").replace(/[0-9٠-٩]{6,}/g, " ");
-  t = dropIntro(t);
+  t = dropForeignIntro(dropIntro(t));
   const words = t.split(/\s+/).filter(Boolean), keep = [];
   for (let i = 0; i < words.length; i++) {
     const w = words[i], n = norm(w), nx = i + 1 < words.length ? norm(words[i + 1]) : "", nx2 = i + 2 < words.length ? norm(words[i + 2]) : "";
@@ -143,11 +153,16 @@ export function anonymize(s, known = new Set()) {
 
 /* ---------- one call → its questions (pure) ---------- */
 const sentencesQ = s => { const out = [], rx = /[^.!?؟\n]+[.!?؟]?/g; let m; while ((m = rx.exec(String(s || "")))) { const x = m[0].trim(); if (x) out.push(x); } return out; };
+/* any-language calls (2026-11-20): the bank stays Arabic + English. A client turn with letters outside ASCII and the Arabic block (accented
+   Latin, Cyrillic, Greek, Hebrew, CJK, Devanagari …) is not captured — it stays in the call's own memory, masked. Arabic turns (Persian /
+   Urdu letters are in the Arabic block too) and plain-ASCII turns (English, Egyptian Franco «ana 3ayez …») are captured exactly as before. */
+const OTHER_LETTER = /[^\P{L}A-Za-z\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/u;
+export const otherScript = s => OTHER_LETTER.test(String(s == null ? "" : s).normalize("NFKC"));
 /* turns: [{role, text, seq?}] in order; tools: [{name, outcome, s?}] → [{question, answer, source, rank, status, intent, words}] */
 export function questionsOf({ turns = [], tools = [], known = new Set() } = {}) {
   const out = [], seen = new Set(), list = turns.filter(t => t && t.text && (t.role === "user" || t.role === "persona"));
   for (let i = 0; i < list.length && out.length < KB.perCall; i++) {
-    const t = list[i]; if (t.role !== "user") continue;
+    const t = list[i]; if (t.role !== "user" || otherScript(t.text)) continue;
     for (const raw of sentencesQ(t.text)) {
       const n = norm(raw);
       if (!(/[?؟]\s*$/.test(raw) || Q_WORD.test(n)) || RECALL_Q.test(n) || SMALLTALK.test(n) || instructionLike(raw, { money: false })) continue;
@@ -279,6 +294,10 @@ export async function knowledgeLookup(env, query, { limit = KB.lookup, lang = "a
 /* ---------- /api/janna/knowledge — the personas' SERVER_WEBHOOK tool "knowledge_lookup" ---------- */
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Janna-Key" };
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", ...CORS } });
+const KB_SOFT = {
+  bad: "سؤال بنك المعلومات وصل ناقص: لازم query فيها السؤال أو كلماته. ابعته تاني مرة واحدة بس؛ ولو فشل تاني قول إنك هتتأكد — ماتخترعش إجابة.",
+  busy: "طلبات كتير ورا بعض على بنك المعلومات؛ جرّب بعد دقيقة.",
+};
 export async function handleKnowledge(req, env) {
   env = env || {};
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
@@ -286,11 +305,14 @@ export async function handleKnowledge(req, env) {
   if (env.JANNA_KEY && req.headers.get("X-Janna-Key") !== env.JANNA_KEY) return json({ error: "unauthorized", code: "unauthorized" }, 401);
   if (!env.DB) return json({ error: "store_off", code: "store_off" }, 503);
   try {
+    /* speed 2026-11-20: a malformed or limited POST (Anam's knowledge_lookup) answers 200 ok:false with a text the model can act on — a 400 /
+       429 reached it as a bare "HTTP error" and it retried blind; GET keeps the status codes. One log line each, never the body. */
+    const post = req.method === "POST", soft = (status, code, o) => { if (post) toolSoftError("/api/janna/knowledge", code); return json({ ok: false, count: 0, results: [], ...o }, post ? 200 : status); };
     const url = new URL(req.url); let a = Object.fromEntries(url.searchParams);
-    if (req.method === "POST") { try { const b = await req.json(); if (b && typeof b === "object" && !Array.isArray(b)) a = { ...a, ...b }; } catch (e) { return json({ error: "bad_json", code: "bad_json" }, 400); } }
+    if (post) { try { const b = await req.json(); if (b && typeof b === "object" && !Array.isArray(b)) a = { ...a, ...b }; } catch (e) { return soft(400, "bad_json", { error: "bad_json", code: "bad_json", text: KB_SOFT.bad }); } }
     const q = line(a.query || a.q || a.question || "", 200);
-    if (!q) return json({ error: "query required", code: "invalid", field: "query" }, 400);
-    if (!(await rateOk(env, "kbl|" + (await ipHash(req, env)), 240, 60))) return json({ error: "rate_limited", code: "rate_limited", text: "طلبات كتير ورا بعض على بنك المعلومات؛ جرّب بعد دقيقة." }, 429);
+    if (!q) return soft(400, "query_required", { error: "query required", code: "invalid", field: "query", text: KB_SOFT.bad });
+    if (!(await rateOk(env, "kbl|" + (await ipHash(req, env)), 240, 60))) return soft(429, "rate_limited", { error: "rate_limited", code: "rate_limited", text: KB_SOFT.busy });
     return json(await knowledgeLookup(env, q, { limit: a.limit, lang: a.lang === "en" ? "en" : "ar" }));
   } catch (e) { console.error("knowledge error", (e && e.message) || "error"); return json({ error: "server", code: "server" }, 500); }
 }

@@ -281,6 +281,20 @@ describe("features: the registry, PUT, audit, the public JSON", () => {
     assert.ok(!p.text.includes("rfq_autoroute") && !p.text.includes("owner@mig.test"), "server rows and who changed it stay private");
     assert.equal(p.headers.get("Cache-Control"), "public, max-age=60");
   });
+  test("call_languages (the 🌐 speaking-language button, any-language calls 2026-11-20): a client switch, on by default, public, the owner can switch it off", async () => {
+    assert.ok(FEATURE_KEYS.includes("call_languages"));
+    assert.equal(FEATURE_KEYS.indexOf("call_languages"), FEATURE_KEYS.indexOf("noise_mode_default") + 1, "next to the other call switch");
+    const env = env0(), o = await owner(env);
+    const row = rowOf((await api(env, "GET", D + "/features", { token: o.token })).data, "call_languages");
+    assert.deepEqual([row.default, row.scope, row.value, row.effective, row.locked], [true, "client", true, true, null]);
+    assert.ok(row.label_ar.includes("🌐") && row.label_en.includes("🌐") && row.desc_ar && row.desc_en); assert.deepEqual(row.enforced_by, ["site"]);
+    assert.equal((await api(env, "GET", "/api/settings")).data.features.call_languages, true);
+    assert.equal((await setFeatures(env, { call_languages: false }, o.token)).status, 200);
+    assert.equal((await api(env, "GET", "/api/settings")).data.features.call_languages, false, "the site hides the button and calls hear as before");
+    /* the site's own default (data/flags.js, read before /api/settings answers) is on as well */
+    const flags = readFileSync(new URL("../../data/flags.js", import.meta.url), "utf8");
+    assert.match(flags, /DEF\.call_languages = true;/);
+  });
   test("the setting name is reserved: an admin cannot pre-create «features» / dev.* / cloudflare.* as custom settings; a stray custom row is taken over by the owner's write", async () => {
     const env = env0(), o = await owner(env);
     for (const k of ["features", "dev.flags", "cloudflare.dev_token"]) {

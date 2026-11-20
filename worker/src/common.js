@@ -202,13 +202,18 @@ export async function readJson(req, max = LIM_REQ) {
 }
 export const bodyErr = b => (b.tooLarge ? err(413, "too_large", "request too large") : b.bad ? err(400, "bad_json", "bad json") : null);
 
-/* fixed-window rate limiter in D1 (table rl). Returns true when the call is allowed. */
+/* fixed-window rate limiter in D1 (table rl). Returns true when the call is allowed. One statement (count + read back with RETURNING,
+   SQLite ≥ 3.35 — D1 and node:sqlite): one D1 round trip instead of two on every limited call (speed 2026-11-20: knowledge_lookup,
+   bassem_recall's memory GET and the session token all wait for it) */
 export async function rateOk(env, key, limit, windowSec, nowMs = Date.now()) {
   const win = Math.floor(nowMs / 1000 / windowSec), k = key + "|" + win;
-  await env.DB.prepare("INSERT INTO rl (k, n, exp) VALUES (?, 1, ?) ON CONFLICT(k) DO UPDATE SET n = n + 1").bind(k, iso((win + 1) * windowSec * 1000)).run();
-  const n = await env.DB.prepare("SELECT n FROM rl WHERE k = ?").bind(k).first("n");
+  const n = await env.DB.prepare("INSERT INTO rl (k, n, exp) VALUES (?, 1, ?) ON CONFLICT(k) DO UPDATE SET n = n + 1 RETURNING n").bind(k, iso((win + 1) * windowSec * 1000)).first("n");
   return (n || 0) <= limit;
 }
+/* Anam's webhooks (janna_lookup, platform_item, knowledge_lookup) answer a malformed / limited POST with 200 + a text the model can act on
+   (speed 2026-11-20: a 400 reached the model as a bare "HTTP error 400" and it retried blind). Anam then counts the call as a success, so
+   each one leaves this log line instead — the path and a code, never the request body */
+export const toolSoftError = (path, code) => console.warn("tool-soft-error", path, code);
 export async function rateCount(env, key, windowSec, nowMs = Date.now()) {
   const win = Math.floor(nowMs / 1000 / windowSec);
   return (await env.DB.prepare("SELECT n FROM rl WHERE k = ?").bind(key + "|" + win).first("n")) || 0;
