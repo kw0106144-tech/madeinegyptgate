@@ -811,10 +811,10 @@
      non-letters and the digit / punctuation / symbol / surrogate ranges of CUE_NL (the way nzNorm keeps every script's letters) */
   var CUE_NL = "\\x7b-\\xbf\\xd7\\xf7\\u0600-\\u060f\\u061b-\\u061f\\u0660-\\u066d\\u06d4\\u06f0-\\u06f9\\u0964-\\u096f\\u2000-\\u2bff\\u3000-\\u303f\\ud800-\\udfff\\ufe00-\\ufe0f\\ufeff\\uff00-\\uff20\\uff3b-\\uff40\\uff5b-\\uff65";
   var CUE_RUN = new RegExp("(?:[ \\t]{0,8}\\[(?=[ _-]{0,23}[^\\x00-\\x40\\x5b-\\x60" + CUE_NL + "])[^\\x00-\\x1f\\x21-\\x2c\\x2e-\\x40\\x5b-\\x5e\\x60" + CUE_NL + "]{1,24}\\](?!\\())+[ \\t]*", "g");
-  var CUE_GLUED = /[\/=?&#@:\[\]]\S*$/, CUE_OPEN = /^$|[\n(\[{«"'“‘]$/, CUE_CLOSE = /^$|^[\n.,;:!?،؛؟…)\]}»"'”’]/;
+  var CUE_LOOSE = /(?:^|\s)[^\s\/=?&#@:\[\]]*$/, CUE_ROLE = /\[(?:INST|SYS|SYSTEM)\]/i, CUE_OPEN = /^$|[\n(\[{«"'“‘]$/, CUE_CLOSE = /^$|^[\n.,;:!?،؛؟…)\]}»"'”’]/;
   function cueStrip(v) {
     var s = String(v == null ? "" : v), out = s.replace(CUE_RUN, function (m, i) {
-      if (m.charAt(0) === "[" && CUE_GLUED.test(s.slice(Math.max(0, i - 300), i))) return m; /* part of a link / an address / a bigger bracket */
+      if ((m.charAt(0) === "[" && !CUE_LOOSE.test(s.slice(Math.max(0, i - 300), i))) || CUE_ROLE.test(m)) return m; /* part of a link / an address / a bigger bracket; a role marker */
       return CUE_OPEN.test(s.slice(Math.max(0, i - 1), i)) || CUE_CLOSE.test(s.slice(i + m.length, i + m.length + 1)) ? "" : " ";
     });
     return out === s ? s : out.trim();

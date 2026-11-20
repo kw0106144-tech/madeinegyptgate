@@ -111,13 +111,15 @@ export function forLLM(v, max = 400) {
    («…/path[x]», «?q[name]=…»). An all-caps token («[PDF]», «[WARM]») goes too: in the persona's text a bracket token is a direction for
    the tag-capable voice, not words the visitor heard, and the model's wrong tags come in any case. Text without such a token comes back
    unchanged (the same string). The persona's text only — the member's / visitor's words are never passed through it. Browser twin:
-   data/janna-live.js cueStrip (worker/test/cue-tags.test.mjs compares the two). */
+   data/janna-live.js cueStrip (worker/test/cue-tags.test.mjs compares the two). Review 2026-11-20: a run holding a role marker
+   «[INST]» / «[SYS]» / «[SYSTEM]» stays (instructionLike's first rule drops the text on it), and "glued" is CUE_LOOSE's complement
+   ("the last word before the token has no / = ? & # @ : [ ]"), which is linear (the old /[…]\S*$/ backtracked: ~1.6 ms a 600-character turn). */
 const CUE_RUN = /(?:[ \t]{0,8}\[(?=[ _-]{0,23}\p{L})[\p{L}\p{M} _-]{1,24}\](?!\())+[ \t]*/gu;
-const CUE_GLUED = /[\/=?&#@:\[\]]\S*$/, CUE_OPEN = /^$|[\n(\[{«"'“‘]$/, CUE_CLOSE = /^$|^[\n.,;:!?،؛؟…)\]}»"'”’]/;
+const CUE_LOOSE = /(?:^|\s)[^\s\/=?&#@:\[\]]*$/, CUE_ROLE = /\[(?:INST|SYS|SYSTEM)\]/i, CUE_OPEN = /^$|[\n(\[{«"'“‘]$/, CUE_CLOSE = /^$|^[\n.,;:!?،؛؟…)\]}»"'”’]/;
 export function stripCues(v) {
   const s = String(v == null ? "" : v);
   const out = s.replace(CUE_RUN, (m, i) => {
-    if (m[0] === "[" && CUE_GLUED.test(s.slice(Math.max(0, i - 300), i))) return m; // part of a link / an address / a bigger bracket
+    if ((m[0] === "[" && !CUE_LOOSE.test(s.slice(Math.max(0, i - 300), i))) || CUE_ROLE.test(m)) return m; // part of a link / an address / a bigger bracket; a role marker
     return CUE_OPEN.test(s.slice(Math.max(0, i - 1), i)) || CUE_CLOSE.test(s.slice(i + m.length, i + m.length + 1)) ? "" : " ";
   });
   return out === s ? s : out.trim();
