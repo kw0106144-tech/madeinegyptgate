@@ -21,9 +21,13 @@
    2) bassem_recall {query} — CLIENT tool, awaitResult:true (anam/tools.json): GET /api/advisor/memory?q=&limit=5 → the Worker's short
       text goes back to the LLM (≤ 1,000 characters, ≤ 6.5 s; any failure is said as it is, never a guess); the hits fly out on the
       hologram («من الذاكرة»).
-   3) bassem_web_search (SERVER webhook) — its answer {count, results[{title, url, snippet, source, date}], text} | {error, text} arrives in
-      TOOL_CALL_COMPLETED: the hologram shows the titles with their source domain («من الإنترنت»: MIGHOLO.result), and a clickable list
-      sits on the shared screen — links open in a NEW TAB (other sites cannot be shown inside the shared-screen iframe).
+   3) the web tools (SERVER webhooks, worker/src/websearch.js + web-hunt.js): bassem_web_search / bassem_web_hunt in Bassem's calls,
+      janna_web_search / janna_web_hunt in Janna's — their answer {count, results[{title, url, snippet, source, date, type?}], text} |
+      {error, text} arrives in TOOL_CALL_COMPLETED: the hologram shows the titles with their source domain («من الإنترنت»: MIGHOLO.result;
+      skipped when data/call-holo.js MIG_CALL_HOLO.owns(tool) says its cards show it), and a clickable list sits on the shared screen
+      (a hunt's results with their type: مناقصة / طلب عرض سعر / عميل محتمل / مشروع جديد / خبر) — links open in a NEW TAB (other sites
+      cannot be shown inside the shared-screen iframe). A hunt is remembered as query «product · market», its entities = the sites.
+      Webhook arguments arrive nested in TOOL_CALL_STARTED ({bodyParams:{…}}, review 2026-11-20 S12): args() unwraps them.
    4) the OUTCOME of each action (consolidation 2026-11-18, critic D): data/janna-live.js reports it on window "mig:tool-outcome"
       {tool, outcome: ok|refused|failed} (its done() sends a success there too); server tools report it in
       TOOL_CALL_COMPLETED / TOOL_CALL_FAILED. Each tool record of the call summary carries {n, name, args, outcome?} — the Worker leaves
@@ -56,11 +60,14 @@
   var VAPI = String(W.MIG_API_BASE || "/api").replace(/\/+$/, "") + "/janna/memory"; /* Janna's visitors (worker/src/visitor.js) */
   var TURN_MS = Math.max(1000, +W.MIG_BMM_TURN_MS || 300000);   /* turns + summary every 5 minutes (tests may shorten it) */
   var RECALL_MS = 6500, FETCH_MS = 12000, MAX_TURNS = 30, MAX_BODY = 26000, MAX_REQ = 30000, CHAIN_MS = 25000; /* the Worker refuses > 32,768 characters (413) */
-  var RECALL = "bassem_recall", WEB = "bassem_web_search", TASKS_TOOL = { bassem: "bassem_tasks", janna: "janna_tasks" };
+  var RECALL = "bassem_recall", TASKS_TOOL = { bassem: "bassem_tasks", janna: "janna_tasks" };
+  /* the web tools: plain searches and opportunity hunts of both personas */
+  var WEB = { bassem_web_search: 1, bassem_web_hunt: 1, janna_web_search: 1, janna_web_hunt: 1 }, HUNT = { bassem_web_hunt: 1, janna_web_hunt: 1 };
+  var TYPE_L = { tender: ["مناقصة", "Tender"], rfq: ["طلب عرض سعر", "RFQ"], buyer: ["عميل محتمل", "Potential buyer"], buyer_list: ["قائمة عملاء محتملين", "List of potential buyers"], project: ["مشروع جديد", "New project"], news: ["خبر", "News"] };
   /* the contact a visitor gives Janna's tools (only to the Worker, which keeps a keyed hash): the account owner's first */
   var CONTACT = { janna_fill_registration: ["owner_email", "email", "owner_mobile", "phone"], janna_start_meeting: ["email", "phone"], janna_schedule_meeting: ["email", "phone"], janna_book_meeting: ["email", "phone"], janna_fill_contact: ["phone"] };
   /* the tools whose answer is a search (or one item) worth remembering */
-  var STORE = { bassem_intel: 1, janna_lookup: 1, janna_search: 1, bassem_web_search: 1, janna_item: 1, platform_item: 1, bassem_open_item: 1, bassem_open_opportunity: 1 };
+  var STORE = { bassem_intel: 1, janna_lookup: 1, janna_search: 1, bassem_web_search: 1, bassem_web_hunt: 1, janna_web_search: 1, janna_web_hunt: 1, janna_item: 1, platform_item: 1, bassem_open_item: 1, bassem_open_opportunity: 1 };
   var ITEM = { janna_item: 1, platform_item: 1, bassem_open_item: 1 };
   var SEC = { tenders: ["المناقصات", "tenders"], rfqs: ["طلبات الأسعار", "RFQs"], factories: ["المصانع", "factories"], suppliers: ["الموردين", "suppliers"], market: ["المنتجات", "products"], products: ["المنتجات", "products"], offers: ["العروض", "offers"], projects: ["المشروعات", "projects"], winners: ["الترسيات", "awards"] };
   /* the only tool arguments the Worker's call summary reads (worker/src/memory.js buildSummary) — nothing else leaves the page */
@@ -72,7 +79,20 @@
   function now() { return new Date().getTime(); }
   function clip(s, n) { s = String(s == null ? "" : s).replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, " ").replace(/\s+/g, " ").trim(); return n && s.length > n ? s.slice(0, n - 1) + "…" : s; }
   function num(s) { s = String(s == null ? "" : s).replace(/[٠-٩]/g, function (c) { return c.charCodeAt(0) - 0x660; }).replace(/[۰-۹]/g, function (c) { return c.charCodeAt(0) - 0x6f0; }).replace(/[,،٬]/g, ""); var m = /\d+/.exec(s); return m ? +m[0] : null; }
-  function args(a) { if (typeof a === "string") { try { a = JSON.parse(a); } catch (e) { a = {}; } } return a && typeof a === "object" && !(a instanceof Array) ? a : {}; }
+  /* a tool's arguments: an object, its JSON text, or a webhook's nested {bodyParams | parameters | arguments | args | input: {…}} (S12) */
+  var NEST = { bodyParams: 1, queryParams: 1, parameters: 1, arguments: 1, args: 1, input: 1 };
+  function args(a) {
+    if (typeof a === "string") { try { a = JSON.parse(a); } catch (e) { a = {}; } }
+    if (!a || typeof a !== "object" || a instanceof Array) return {};
+    var o = {}, k, j, b;
+    for (k in a) if (own(a, k) && !own(NEST, k) && k !== "headers") o[k] = a[k]; /* a webhook's headers never leave the event */
+    for (k in NEST) if (own(NEST, k) && own(a, k)) {
+      b = a[k]; if (typeof b === "string" && /^\s*\{/.test(b)) { try { b = JSON.parse(b); } catch (e) { b = null; } }
+      if (b && typeof b === "object" && !(b instanceof Array)) { for (j in b) if (own(b, j)) o[j] = b[j]; } /* the body is what the tool was sent */
+      else if (b != null && typeof b !== "object") o[k] = b;
+    }
+    return o;
+  }
   function rnd(n) { var s = ""; try { var b = new Uint8Array(n); (W.crypto || W.msCrypto).getRandomValues(b); for (var i = 0; i < n; i++) s += ("0" + b[i].toString(16)).slice(-2); } catch (e) { s = Math.random().toString(16).slice(2, 2 + 2 * n); } return s; }
   function json(v) { try { return JSON.stringify(v); } catch (e) { return ""; } }
   function own(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
@@ -270,7 +290,7 @@
       C.wait.push({ rec: rec, t: now() }); if (C.wait.length > 40) C.wait.shift();
     }
     if (C.agent === "janna" && CONTACT[name]) contact(C, name, a);
-    if (name === WEB) webCard({ state: "loading", query: clip(a.query, 120) });
+    if (WEB[name]) webCard({ state: "loading", hunt: !!HUNT[name], who: C.agent, query: clip(HUNT[name] ? huntQuery(a) : a.query, 120) });
   }
   function completed(part, p, via) {
     var C = part.call; if (!C || !p) return;
@@ -286,7 +306,7 @@
     var C = part.call; if (!C || !p) return;
     var id = String(p.toolCallId || ""), name = String(p.toolName || (C.pend[id] && C.pend[id].name) || "");
     if (id) { C.done[id] = "fail"; setOutcome(C, C.recs[id], "failed"); }
-    if (name === WEB) { var t = T("البحث على الإنترنت مش متاح دلوقتي.", "Web search is not available right now."); webCard({ state: "error", query: clip((C.pend[id] && C.pend[id].args.query) || "", 120), text: t }); holoFail(t); }
+    if (WEB[name]) { var t = T("البحث على الإنترنت مش متاح دلوقتي.", "Web search is not available right now."), pa = (C.pend[id] && C.pend[id].args) || {}; webCard({ state: "error", query: clip(HUNT[name] ? huntQuery(pa) : pa.query || "", 120), text: t }); holoFail(t); }
   }
   /* a visitor's e-mail / mobile from Janna's tool arguments → once per call to the Worker, which keeps only a keyed hash */
   function contact(C, name, a) {
@@ -340,7 +360,7 @@
     if (!r || typeof r !== "object") return null;
     var title = clip(r.title || r.title_ar || r.name || r.title_en || r.product || r.label || "", 200);
     if (!title) return null;
-    var u = abs(r.open_url || r.url || r.link || r.href || ""), web = tool === WEB; /* open_url = the item's own page (janna_lookup): unique, unlike a list link */
+    var u = abs(r.open_url || r.url || r.link || r.href || ""), web = !!WEB[tool]; /* open_url = the item's own page (janna_lookup): unique, unlike a list link */
     var ent = web ? clip(host(u) || r.source || r.site, 80) : clip(r.entity || r.maker || r.company || r.buyer || r.market_name || r.governorate || r.location || "", 120);
     var dl = web ? "" : clip(r.deadline || r.closing_date || r.valid_to || "", 25);
     var ref = typeof r.ref === "string" ? r.ref : typeof r.id === "string" ? r.id : "";
@@ -358,7 +378,14 @@
     if (o.count == null && (m = /(?:لقيت|Found)\s+([0-9٠-٩][0-9٠-٩,]*)/.exec(s))) o.count = num(m[1]);
     return o;
   }
+  /* a hunt's query as it is shown and remembered: «product · market» (the market codes of worker/src/websearch.js; none = Egypt) */
+  var MKN = { eg: ["مصر", "Egypt"], sa: ["السعودية", "Saudi Arabia"], ae: ["الإمارات", "UAE"], kw: ["الكويت", "Kuwait"], qa: ["قطر", "Qatar"], om: ["عمان", "Oman"], bh: ["البحرين", "Bahrain"], jo: ["الأردن", "Jordan"], iq: ["العراق", "Iraq"], ly: ["ليبيا", "Libya"], sd: ["السودان", "Sudan"], ma: ["المغرب", "Morocco"], dz: ["الجزائر", "Algeria"], tn: ["تونس", "Tunisia"], ke: ["كينيا", "Kenya"], ng: ["نيجيريا", "Nigeria"], et: ["إثيوبيا", "Ethiopia"], za: ["جنوب أفريقيا", "South Africa"], cn: ["الصين", "China"], "in": ["الهند", "India"], tr: ["تركيا", "Turkey"], de: ["ألمانيا", "Germany"], it: ["إيطاليا", "Italy"], fr: ["فرنسا", "France"], es: ["إسبانيا", "Spain"], gb: ["بريطانيا", "UK"], us: ["أمريكا", "USA"], ru: ["روسيا", "Russia"], gulf: ["الخليج", "GCC"], arab: ["الدول العربية", "Arab countries"], africa: ["أفريقيا", "Africa"], asia: ["آسيا", "Asia"], europe: ["أوروبا", "Europe"], world: ["العالم", "the world"] };
+  function huntQuery(a) {
+    var p = clip(a.product || a.query || a.q || "", 120), k = clip(a.market || "", 30), c = k.toLowerCase(), m = own(MKN, c) ? T(MKN[c][0], MKN[c][1]) : k;
+    return p ? p + " · " + (m || T("مصر", "Egypt")) : "";
+  }
   function queryOf(name, a) {
+    if (HUNT[name]) return huntQuery(a);
     var q = clip(a.query || a.q || a.keyword || a.keywords || a.search || a.product || a.title || a.ref || a.label || "", 200);
     if (!q && name === "bassem_intel" && a.action === "brief") q = T("ملخص الجديد النهارده", "today's brief") + (a.sector ? " · " + clip(a.sector, 60) : "");
     if (!q && SEC[a.section]) q = T(SEC[a.section][0], SEC[a.section][1]);
@@ -368,13 +395,13 @@
   function result(C, id, name, a, raw) {
     var x = parse(raw), list = [], count = null;
     if (x && x.o) {
-      if (name === WEB) { web(C, a, x.o); return; }
+      if (WEB[name]) { web(C, a, x.o, name); return; }
       if (x.o.error && !rowsOf(x.o).length) return; /* a refusal / failure is not a search result */
       var rows = rowsOf(x.o);
       for (var i = 0; i < rows.length && list.length < 5; i++) { var it = item(rows[i], name); if (it) list.push(it); }
       count = typeof x.o.count === "number" ? x.o.count : typeof x.o.total === "number" ? x.o.total : rows.length;
     } else if (x && x.s) {
-      if (name === WEB) { web(C, a, { error: "websearch_failed", text: clip(x.s, 300) }); return; }
+      if (WEB[name]) { web(C, a, { error: "websearch_failed", text: clip(x.s, 300) }, name); return; }
       if (now() - ((C.scr && C.scr[name]) || 0) < 30000) return; /* already stored from the screen's structured answer (screenResult) */
       var t = textItems(x.s); list = t.items; count = t.count != null ? t.count : list.length ? list.length : null;
       if (count == null) return; /* the answer does not say what was found: nothing is stored */
@@ -408,30 +435,33 @@
   W.addEventListener("mig:screen-result", function (e) { try { screenResult((e && e.detail) || {}); } catch (x) {} });
 
   /* ---------- web search: the hologram + the clickable list on the shared screen ---------- */
-  function web(C, a, o) {
-    var q = clip(a.query || o.query || "", 120);
+  function web(C, a, o, name) {
+    name = name || "bassem_web_search";
+    var hunt = !!HUNT[name], q = clip(hunt ? huntQuery(a) || o.query || "" : a.query || o.query || "", 120);
     if (o.error || !(o.results instanceof Array)) {
       var t = clip(o.text, 300) || T("البحث على الإنترنت مش متاح دلوقتي.", "Web search is not available right now.");
       webCard({ state: "error", query: q, text: t }); holoFail(t); return;
     }
-    var items = [];
-    for (var i = 0; i < o.results.length && items.length < 5; i++) {
+    var items = [], max = hunt ? 6 : 5;
+    for (var i = 0; i < o.results.length && items.length < max; i++) {
       var r = o.results[i] || {}, u = abs(r.url), title = clip(r.title, 160);
       if (!u || !title) continue;
-      items.push({ title: title, url: u, domain: host(u), source: clip(r.source, 60), snippet: clip(r.snippet, 220), date: clip(r.date, 30) });
+      items.push({ title: title, url: u, domain: host(u), source: clip(r.source, 60), snippet: clip(r.snippet, 220), date: clip(r.date, 30), type: TYPE_L[r.type] ? r.type : "", official: r.official === true });
     }
     var count = typeof o.count === "number" ? o.count : items.length;
-    webCard({ state: "ok", query: q, count: count, items: items, text: clip(o.text, 300) });
-    holoWeb(q, count, items);
-    if (q) store(C, WEB, q, clip(a.market || o.market || "", 30), count, items.map(function (x) { return { title: x.title, entity: x.domain, deadline: "", url: x.url, ref: "" }; }));
+    webCard({ state: "ok", hunt: hunt, query: q, count: count, items: items, text: clip(o.text, 300) });
+    holoWeb(name, C.agent, q, count, items);
+    if (q) store(C, name, q, clip(a.market || o.market || "", 30), count, items.map(function (x) { return { title: x.title, entity: x.domain, deadline: "", url: x.url, ref: "" }; }));
   }
   function holoOn() { return !!(W.MIGHOLO && MIGHOLO.result); }
-  function holoWeb(q, count, items) {
-    if (!holoOn()) return;
-    var badge = !!MIGHOLO.badges; /* holo.js with result badges shows «من الإنترنت» in the panel's header */
+  /* the call's cards (data/call-holo.js) show this tool already: no second scene of it */
+  function cardsOwn(tool) { try { return !!(W.MIG_CALL_HOLO && typeof MIG_CALL_HOLO.owns === "function" && MIG_CALL_HOLO.owns(tool)); } catch (e) { return false; } }
+  function holoWeb(tool, who, q, count, items) {
+    if (!holoOn() || cardsOwn(tool)) return;
+    var badge = !!MIGHOLO.badges, J = who === "janna"; /* holo.js with result badges shows «من الإنترنت» in the panel's header */
     try {
-      MIGHOLO.result({ who: "bassem", tool: WEB, count: count, badge: T("من الإنترنت", "From the web"), title: T("باسم دوّر في الإنترنت: ", "Bassem searched the web: ") + q,
-        items: items.map(function (x) { return { title: x.title, sub: x.domain + (x.date ? " · " + x.date : "") + (badge ? "" : T(" · من الإنترنت", " · from the web")), href: x.url }; }) });
+      MIGHOLO.result({ who: J ? "janna" : "bassem", tool: tool, count: count, badge: T("من الإنترنت", "From the web"), title: (J ? T("جنة دوّرت في الإنترنت: ", "Janna searched the web: ") : T("باسم دوّر في الإنترنت: ", "Bassem searched the web: ")) + q,
+        items: items.map(function (x) { return { title: x.title, sub: (x.type ? T(TYPE_L[x.type][0], TYPE_L[x.type][1]) + " · " : "") + x.domain + (x.date ? " · " + x.date : "") + (badge ? "" : T(" · من الإنترنت", " · from the web")), href: x.url }; }) });
     } catch (e) {}
   }
   function holoFail(t) { try { if (W.MIGHOLO && MIGHOLO.step) MIGHOLO.step(clip(t, 120), "fail"); } catch (e) {} }
@@ -447,11 +477,12 @@
     + '.bmm-x{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:#eef3f5;color:#04121a;font:inherit;font-weight:800;cursor:pointer}.bmm-x:focus-visible,.bmm-web a:focus-visible{outline:3px solid #e9c46a;outline-offset:2px}'
     + '.bmm-note{margin:0;padding:6px 12px;background:#fff8e6;color:#6b4e00;font-size:.76rem;line-height:1.6;border-bottom:1px solid #f3e3b5}'
     + '.bmm-web ol{list-style:none;margin:0;padding:6px;overflow-y:auto;overscroll-behavior:contain}.bmm-web li{margin:0}'
-    + '.bmm-web li a{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"av dm" "av t" "av s";column-gap:10px;padding:8px 8px 9px;border-radius:12px;text-decoration:none;color:inherit}'
+    + '.bmm-web li a{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"av dm" "av ty" "av t" "av s";column-gap:10px;padding:8px 8px 9px;border-radius:12px;text-decoration:none;color:inherit}'
     + '.bmm-web li a:hover{background:#f1f7f9}.bmm-av{grid-area:av;width:30px;height:30px;border-radius:9px;background:#04121a;color:#bff3ff;display:flex;align-items:center;justify-content:center;font:800 .8rem/1 system-ui,sans-serif;text-transform:uppercase;margin-top:3px}'
     + '.bmm-dm{grid-area:dm;font-size:.74rem;color:#0b5d47;font-weight:700;direction:ltr;unicode-bidi:isolate;text-align:start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
     + '.bmm-dm em{font-style:normal;color:#5b6b72;font-weight:400}.bmm-t{grid-area:t;font-weight:800;color:#0a3d8f;line-height:1.45;overflow-wrap:anywhere}.bmm-web li a:hover .bmm-t{text-decoration:underline}'
     + '.bmm-s{grid-area:s;color:#4a5a61;font-size:.8rem;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}'
+    + '.bmm-ty{grid-area:ty;justify-self:start;margin:2px 0;padding:0 8px;border-radius:999px;background:#eaf6f0;color:#0b5d47;font-size:.72rem;font-weight:800;line-height:1.7}'
     + '.bmm-st{padding:14px 14px 16px;color:#33444b}.bmm-st.wait::before{content:"";display:inline-block;width:12px;height:12px;margin-inline-end:8px;vertical-align:-1px;border-radius:50%;border:2px solid #cfe6ee;border-top-color:#0b5d47;animation:bmmSpin .9s linear infinite}'
     + '@keyframes bmmSpin{to{transform:rotate(360deg)}}'
     + '@media (max-width:820px),(max-aspect-ratio:3/2){.jnl .bmm-web{inset:50px 8px auto 8px;max-height:calc(100% - 64px)}}'
@@ -472,7 +503,7 @@
     card.setAttribute("aria-label", T("نتايج من الإنترنت", "Results from the web"));
     var hd = el("div", "bmm-hd"), bd = el("span", "bmm-badge"); bd.appendChild(el("i")); bd.appendChild(D.createTextNode(T("من الإنترنت", "From the web")));
     hd.appendChild(bd);
-    var ttl = el("b", null, o.query ? T("بحث: ", "Search: ") : T("بحث الإنترنت", "Web search"));
+    var ttl = el("b", null, o.query ? (o.hunt ? T("فرص: ", "Opportunities: ") : T("بحث: ", "Search: ")) : T("بحث الإنترنت", "Web search"));
     if (o.query) { var qb = el("bdi", null, o.query); qb.setAttribute("dir", "auto"); ttl.appendChild(qb); } /* an English query stays whole inside the Arabic line */
     hd.appendChild(ttl);
     if (o.state === "ok") {
@@ -482,7 +513,12 @@
     var x = el("button", "bmm-x", "✕"); x.type = "button"; x.title = T("اقفل النتايج", "Close the results"); x.setAttribute("aria-label", x.title);
     x.onclick = function () { card.hidden = true; };
     hd.appendChild(x); card.appendChild(hd);
-    if (o.state === "loading") { card.appendChild(el("div", "bmm-st wait", T("باسم بيدوّر في مواقع على الإنترنت…", "Bassem is searching websites…"))); ping(); return; }
+    if (o.state === "loading") {
+      var J = o.who === "janna";
+      card.appendChild(el("div", "bmm-st wait", o.hunt ? (J ? T("جنة بتدوّر على فرص في مواقع على الإنترنت…", "Janna is looking for opportunities on websites…") : T("باسم بيدوّر على فرص في مواقع على الإنترنت…", "Bassem is looking for opportunities on websites…"))
+        : J ? T("جنة بتدوّر في مواقع على الإنترنت…", "Janna is searching websites…") : T("باسم بيدوّر في مواقع على الإنترنت…", "Bassem is searching websites…")));
+      ping(); return;
+    }
     if (o.state === "error") { card.appendChild(el("div", "bmm-st", o.text || T("البحث على الإنترنت مش متاح دلوقتي.", "Web search is not available right now."))); return; }
     if (!o.items.length) { card.appendChild(el("div", "bmm-st", o.text || T("مالقيتش نتايج على الإنترنت للبحث ده.", "No web results for this search."))); return; }
     card.appendChild(el("p", "bmm-note", T("دي مواقع على الإنترنت، مش من بيانات المنصة — لازم نتأكد من المصدر. كل رابط بيفتح في تاب جديد.", "These are websites, not the platform's data — check each source. Every link opens in a new tab.")));
@@ -493,6 +529,7 @@
       a.setAttribute("aria-label", it.title + " — " + it.domain + T(" (يفتح في تاب جديد)", " (opens in a new tab)"));
       a.appendChild(el("span", "bmm-av", (it.domain || "?").charAt(0)));
       var dm = el("span", "bmm-dm", it.domain); if (it.date) { dm.appendChild(D.createTextNode(" ")); dm.appendChild(el("em", null, "· " + it.date)); } a.appendChild(dm);
+      if (it.type) { var ty = el("span", "bmm-ty", T(TYPE_L[it.type][0], TYPE_L[it.type][1]) + (it.official ? T(" · بوابة رسمية", " · official portal") : "")); a.appendChild(ty); } /* a hunt: what kind of opportunity */
       var tt = el("span", "bmm-t", it.title); tt.setAttribute("dir", "auto"); a.appendChild(tt);
       if (it.snippet) { var sn = el("span", "bmm-s", it.snippet); sn.setAttribute("dir", "auto"); a.appendChild(sn); }
       li.appendChild(a); ol.appendChild(li);
@@ -631,6 +668,6 @@
     flush: function (final) { return final ? endCall(false) : flush(false); },
     /* no forget(): the owner's memory policy keeps Bassem's memory (see the header) */
     outcome: function (tool, st) { return outcome(String(tool || ""), String(st || "")); },
-    _t: { parse: parse, item: item, textItems: textItems, abs: abs, queryOf: queryOf, scal: scal, chunks: function () { return CALL ? chunks(CALL).map(function (ch) { return ch.length; }) : []; }, mem: MEM, vmem: VMEM, vid: vid }
+    _t: { parse: parse, item: item, textItems: textItems, abs: abs, queryOf: queryOf, scal: scal, args: args, huntQuery: huntQuery, chunks: function () { return CALL ? chunks(CALL).map(function (ch) { return ch.length; }) : []; }, mem: MEM, vmem: VMEM, vid: vid }
   };
 })();

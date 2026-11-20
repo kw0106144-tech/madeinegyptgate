@@ -214,6 +214,7 @@ const BIZ_W = new Set(["مصنع", "مصانع", "مصنعي", "مصنعنا", "
   "استيراد", "تصدير", "مصدر", "عميل", "عملاء", "عملائي", "زباين", "عايز", "عاوز", "محتاج", "بدور", "بندور", "مطلوب"].map(w => norm(w)));
 const bizTurn = text => norm(String(text || "")).split(" ").some(w => BIZ_W.has(w) || (/^[وفبل]/.test(w) && BIZ_W.has(w.slice(1))) || BIZ_W.has(w.replace(/^[وفبل]?ال/, "")));
 const TOOL_AR = { janna_lookup: "دليل المنصة", janna_search: "بحث المنصة", bassem_intel: "مركز المعلومات", bassem_web_search: "بحث الإنترنت", web_search: "بحث الإنترنت",
+  janna_web_search: "بحث الإنترنت", bassem_web_hunt: "فرص من الإنترنت", janna_web_hunt: "فرص من الإنترنت",
   janna_item: "تفاصيل من المنصة", platform_item: "تفاصيل من المنصة", bassem_open_item: "اتفتح على الشاشة", bassem_open_opportunity: "اتفتح على الشاشة" };
 const toolAr = t => TOOL_AR[t] || (/web/.test(t) ? "بحث الإنترنت" : /intel/.test(t) ? "مركز المعلومات" : isItemTool(t) ? "اتفتح على الشاشة" : "بحث");
 const STAGE_AR = { discover: "استكشاف", contact: "تواصل", offer: "عرض سعر", negotiation: "تفاوض", contract: "تعاقد", delivery: "توريد" };

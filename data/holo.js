@@ -1339,12 +1339,17 @@
         sp.plan = [P(T("بفتح مركز المعلومات اليومي", "Opening the daily information center"), 900), P(T("بدوّر في المناقصات وطلبات الأسعار والمشاريع", "Scanning tenders, RFQs and projects"), 1300), P(T("بفلتر على نطاق باقتك", "Filtering to your plan's markets"), 1000), P(T("النتيجة معايا — بقولهالك دلوقتي", "Got it — telling you now"), 600)];
         break;
       }
-      case "bassem_web_search": {
-        var WM = { eg: ["مصر", "Egypt"], sa: ["السعودية", "Saudi Arabia"], ae: ["الإمارات", "UAE"], kw: ["الكويت", "Kuwait"], qa: ["قطر", "Qatar"], om: ["عمان", "Oman"], bh: ["البحرين", "Bahrain"], jo: ["الأردن", "Jordan"], iq: ["العراق", "Iraq"], ly: ["ليبيا", "Libya"], sd: ["السودان", "Sudan"], ma: ["المغرب", "Morocco"], dz: ["الجزائر", "Algeria"], tn: ["تونس", "Tunisia"], ke: ["كينيا", "Kenya"], ng: ["نيجيريا", "Nigeria"], et: ["إثيوبيا", "Ethiopia"], za: ["جنوب أفريقيا", "South Africa"], cn: ["الصين", "China"], "in": ["الهند", "India"], tr: ["تركيا", "Turkey"], de: ["ألمانيا", "Germany"], it: ["إيطاليا", "Italy"], fr: ["فرنسا", "France"], es: ["إسبانيا", "Spain"], gb: ["بريطانيا", "UK"], us: ["أمريكا", "USA"], ru: ["روسيا", "Russia"], arab: ["الدول العربية", "Arab markets"] };
-        var wq = str(a.query, 50), wk = str(a.market, 24).toLowerCase(), wm = WM[wk] ? T(WM[wk][0], WM[wk][1]) : codeName(a.market, "markets", MK); /* bassem_web_search market codes (worker/src/websearch.js) */
-        sp.kind = "search"; sp.title = T(N + " بيدوّر في الإنترنت: " + (wq || "…") + (wm ? " · " + wm : ""), N + " is searching the web: " + (wq || "…") + (wm ? " · " + wm : ""));
+      case "bassem_web_search": case "bassem_web_hunt": case "janna_web_search": case "janna_web_hunt": {
+        var WM = { eg: ["مصر", "Egypt"], sa: ["السعودية", "Saudi Arabia"], ae: ["الإمارات", "UAE"], kw: ["الكويت", "Kuwait"], qa: ["قطر", "Qatar"], om: ["عمان", "Oman"], bh: ["البحرين", "Bahrain"], jo: ["الأردن", "Jordan"], iq: ["العراق", "Iraq"], ly: ["ليبيا", "Libya"], sd: ["السودان", "Sudan"], ma: ["المغرب", "Morocco"], dz: ["الجزائر", "Algeria"], tn: ["تونس", "Tunisia"], ke: ["كينيا", "Kenya"], ng: ["نيجيريا", "Nigeria"], et: ["إثيوبيا", "Ethiopia"], za: ["جنوب أفريقيا", "South Africa"], cn: ["الصين", "China"], "in": ["الهند", "India"], tr: ["تركيا", "Turkey"], de: ["ألمانيا", "Germany"], it: ["إيطاليا", "Italy"], fr: ["فرنسا", "France"], es: ["إسبانيا", "Spain"], gb: ["بريطانيا", "UK"], us: ["أمريكا", "USA"], ru: ["روسيا", "Russia"], arab: ["الدول العربية", "Arab markets"], gulf: ["الخليج", "GCC"], world: ["العالم", "the world"] };
+        /* the web tools are webhooks: their arguments may arrive nested in {bodyParams} (review 2026-11-20 S12); a hunt names a product */
+        var wa = a.bodyParams && typeof a.bodyParams === "object" ? a.bodyParams : a, wh = /_web_hunt$/.test(tool);
+        var wq = str(wh ? wa.product || wa.query : wa.query, 50), wk = str(wa.market, 24).toLowerCase(), wm = WM[wk] ? T(WM[wk][0], WM[wk][1]) : codeName(wa.market, "markets", MK); /* market codes of worker/src/websearch.js */
+        if (wh && !wm) wm = T("مصر", "Egypt");
+        sp.kind = "search"; sp.title = wh ? T(N + " " + V(w, "بيدوّر", "بتدوّر") + " على فرص في الإنترنت: " + (wq || "…") + (wm ? " · " + wm : ""), N + " is looking for opportunities on the web: " + (wq || "…") + (wm ? " · " + wm : ""))
+          : T(N + " " + V(w, "بيدوّر", "بتدوّر") + " في الإنترنت: " + (wq || "…") + (wm ? " · " + wm : ""), N + " is searching the web: " + (wq || "…") + (wm ? " · " + wm : ""));
         sp.main = { type: "results", hd: T("من الإنترنت", "From the web") };
-        sp.plan = [P(T("بدوّر في مواقع على الإنترنت", "Searching websites"), 900), P(T("بشيل المكرر والمواقع اللي مش مناسبة", "Dropping duplicates and unsuitable sites"), 1100), P(T("دي نتايج من الإنترنت — لازم نتأكد من المصدر", "Web results — check each source"), 700)];
+        sp.plan = wh ? [P(T("بدوّر على مناقصات وطلبات أسعار ومشترين على الإنترنت", "Searching the web for tenders, RFQs and buyers"), 1300), P(T("بشيل المكرر والمنافسين والمواقع اللي مش مناسبة", "Dropping duplicates, competitors and unsuitable sites"), 1100), P(T("دي فرص من الإنترنت — لازم نتأكد من المصدر", "Opportunities from the web — check each source"), 700)]
+          : [P(T("بدوّر في مواقع على الإنترنت", "Searching websites"), 900), P(T("بشيل المكرر والمواقع اللي مش مناسبة", "Dropping duplicates and unsuitable sites"), 1100), P(T("دي نتايج من الإنترنت — لازم نتأكد من المصدر", "Web results — check each source"), 700)];
         break;
       }
       case "bassem_recall": {

@@ -13,6 +13,11 @@
      POST /api/team/desk/content {collection:"tenders"|"projects"|"rfqs", item:{…overlay fields…}, private?, source_url?}
                                                                                           → {ok, id, state:"published"|"draft"}
      GET  /api/team/desk/mine?kind=&page=&limit=                                          → {items, total, page, limit}
+     GET  /api/team/desk/leads?status=new|accepted|rejected|all&type=&q=&page=&limit=     → {items, total, page, limit, counts, by_type}
+                                                                                            (off:true until migration 0012 is applied)
+     PUT  /api/team/desk/leads/:id {status: accepted|rejected|new, reason?}               → {ok, item} (one audit row; 503 leads_off)
+     «🌐 فرص من الإنترنت» (0012): what Janna's and Bassem's web searches found — reviewed here (✓ مقبولة / ✗ مرفوضة with a reason), an
+     accepted tender / RFQ / project becomes platform content only through its form above, with {lead_id} (the lead is then linked).
    Governorates come from data/regions.js (window.MIGREG, the 27 codes), sectors from window.MIGSECTORS, plans from window.MIGPLAN. */
 (function () {
   "use strict";
@@ -34,7 +39,9 @@
   /* a staff tool: Janna's full-screen welcome stage must not cover the desk (her small corner figure stays) */
   try { if (!window.sessionStorage.getItem("janna-stage")) window.sessionStorage.setItem("janna-stage", "1"); } catch (e) {}
   var OK_ROLES = { data: 1, admin: 1, owner: 1 };
-  var S = { mode: "boot", user: null, role: "", teamPage: "", view: "home", off: null, mine: null, mq: { kind: "", page: 0 }, forms: {}, res: {}, busy: {} };
+  var S = { mode: "boot", user: null, role: "", teamPage: "", view: "home", off: null, mine: null, mq: { kind: "", page: 0 }, forms: {}, res: {}, busy: {},
+    /* «🌐 فرص من الإنترنت»: the filter, the last answer, the new count (tile), the leads being saved, the open «ارفض» reasons, the lead a form is turning into content */
+    lq: { status: "new", type: "", q: "", page: 0 }, leads: null, leadsNew: null, lbusy: {}, lrej: "", leadFor: null };
 
   /* ---------- helpers ---------- */
   function esc(x) { return String(x == null ? "" : x).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
@@ -223,7 +230,9 @@
           { k: "source_url", ar: "رابط مستند رسمي", en: "Official document link", t: "url", max: 500, wide: 1, ltr: 1, hint_ar: "اختياري. من غيره الطلب بيتحفظ مسودة لحد ما الإدارة توافق.", hint_en: "Optional. Without it the request is saved as a draft until the admins approve it." }]]],
       submit_ar: "📝 احفظ الطلب", submit_en: "📝 Save the request" }
   };
-  var VIEWS = ["order", "member", "project", "tender", "rfq", "mine"];
+  var VIEWS = ["order", "member", "project", "tender", "rfq", "leads", "mine"];
+  /* the two lists (not forms): their tab / tile */
+  var XV = { leads: { icon: "🌐", ar: "فرص من الإنترنت", en: "Web leads" }, mine: { icon: "📂", ar: "إدخالاتي", en: "My entries" } };
 
   /* ---------- rendering ---------- */
   /* the GCC states of the requested plan (Premium = Egypt + 3): how many, from the plans matrix (data/plan.js + data/plans-live.js) */
@@ -254,7 +263,7 @@
   function formHtml(fid) {
     var F = FORMS[fid];
     return '<form class="tm-card" data-form="' + fid + '" novalidate><div class="tm-h"><h2>' + F.icon + " " + esc(EN ? F.en : F.ar) + '</h2><button type="button" class="btn btn-line btn-sm" data-act="home">' + esc(T("← كل الأقسام", "← All sections")) + "</button></div>"
-      + '<p class="tm-lead">' + esc(EN ? F.lead_en : F.lead_ar) + "</p>"
+      + '<p class="tm-lead">' + esc(EN ? F.lead_en : F.lead_ar) + "</p>" + leadBanner(fid)
       + F.secs.map(function (s) { return '<div class="tm-sec"><h3>' + esc(s[0]) + '</h3><div class="tm-grid">' + s[1].map(function (f) { return fieldHtml(fid, f); }).join("") + "</div></div>"; }).join("")
       + '<p class="hint" style="color:var(--muted);font-size:.85rem">' + esc(T("الخانات اللي عليها * لازم تتملا.", "Fields marked * are required.")) + "</p>"
       + '<div class="tm-msgbox" id="tmMsg-' + fid + '" aria-live="polite"></div>'
@@ -264,11 +273,12 @@
   function tilesHtml() {
     var mineN = S.mine && typeof S.mine.total === "number" ? S.mine.total : null;
     return '<div class="tm-tiles" role="list">' + ["order", "member", "project", "tender", "rfq"].map(function (k) { var F = FORMS[k]; return '<button type="button" class="tm-tile" role="listitem" data-go="' + k + '"><span class="ic" aria-hidden="true">' + F.icon + "</span><b>" + esc(EN ? F.en : F.ar) + "</b><small>" + esc(EN ? F.lead_en : F.lead_ar).split(/[.:]|\s—\s/)[0] + "</small></button>"; }).join("")
+      + '<button type="button" class="tm-tile" role="listitem" data-go="leads"><span class="ic" aria-hidden="true">🌐</span><b>' + esc(T("فرص من الإنترنت", "Web leads")) + (S.leadsNew ? ' <span class="tm-c a">' + esc(T(nf(S.leadsNew) + " جديدة", nf(S.leadsNew) + " new")) + "</span>" : "") + "</b><small>" + esc(T("اللي جنة وباسم لقوه على الإنترنت: راجعه واقبله أو ارفضه", "What Janna and Bassem found on the web: review, accept or reject it")) + "</small></button>"
       + '<button type="button" class="tm-tile" role="listitem" data-go="mine"><span class="ic" aria-hidden="true">📂</span><b>' + esc(T("إدخالاتي", "My entries")) + (mineN != null ? ' <span class="tm-c b">' + nf(mineN) + "</span>" : "") + "</b><small>" + esc(T("كل اللي سجّلته بحالته ورقمه ورابطه", "Everything you entered, with its status, number and link")) + "</small></button></div>";
   }
   function tabsHtml() {
     return '<nav class="tm-tabs" role="tablist" aria-label="' + esc(T("أقسام مكتب الاستقبال", "Front-desk sections")) + '"><button type="button" class="tm-tab" role="tab" data-go="home" aria-selected="' + (S.view === "home") + '">🏠 ' + esc(T("الرئيسية", "Home")) + "</button>"
-      + VIEWS.map(function (k) { var F = FORMS[k], lb = F ? (EN ? F.tab_en : F.tab_ar) : T("إدخالاتي", "My entries"), ic = F ? F.icon : "📂"; return '<button type="button" class="tm-tab" role="tab" data-go="' + k + '" aria-selected="' + (S.view === k) + '"><span aria-hidden="true">' + ic + "</span>" + esc(lb) + "</button>"; }).join("") + "</nav>";
+      + VIEWS.map(function (k) { var F = FORMS[k], X = XV[k] || XV.mine, lb = F ? (EN ? F.tab_en : F.tab_ar) : (EN ? X.en : X.ar), ic = F ? F.icon : X.icon; return '<button type="button" class="tm-tab" role="tab" data-go="' + k + '" aria-selected="' + (S.view === k) + '"><span aria-hidden="true">' + ic + "</span>" + esc(lb) + "</button>"; }).join("") + "</nav>";
   }
   function shell() {
     app.innerHTML = '<div class="tm-ban" id="tmBan" aria-live="polite"></div>' + tabsHtml() + '<datalist id="tmUnits">' + UNITS.map(function (u) { return '<option value="' + esc(EN ? u[1] : u[0]) + '"></option>'; }).join("") + '</datalist><div id="tmView"></div>';
@@ -286,6 +296,7 @@
     var el = document.getElementById("tmView"); if (!el) return;
     if (v === "home") el.innerHTML = '<div class="tm-card"><h2>' + esc(T("أهلاً بيك في مكتب الاستقبال", "Welcome to the front desk")) + '</h2><p class="tm-lead">' + esc(T("اختار اللي عايز تعمله. كل نتيجة بتشوفها هي رد السيرفر الحقيقي (رقم الطلب، عدد المصانع اللي اتبعتلها، منشور ولا مسودة).", "Choose what you want to do. Every result you see is the server's real answer (the reference, how many factories it was sent to, published or draft).")) + "</p></div>" + tilesHtml();
     else if (v === "mine") { el.innerHTML = mineShell(); loadMine(); }
+    else if (v === "leads") { el.innerHTML = leadsShell(); loadLeads(); }
     else { el.innerHTML = formHtml(v); restoreDraft(v); gccToggle(formEl(v)); if (S.res[v]) document.getElementById("tmRes-" + v).innerHTML = S.res[v]; }
     var a = el.querySelector("h2"); if (a && push !== false) { try { el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} }
   }
@@ -371,12 +382,14 @@
       var first = f.querySelector('[aria-invalid="true"]'); if (first) { try { first.focus(); } catch (e) {} }
       return;
     }
-    var btn = f.querySelector('button[type="submit"]'), body = bodyOf(fid, c.vals);
+    var btn = f.querySelector('button[type="submit"]'), body = bodyOf(fid, c.vals), lf = S.leadFor && S.leadFor.form === fid ? S.leadFor : null;
+    if (lf) body.lead_id = lf.id; /* the web lead this entry comes from: the server links it (accepted + this content, audited) */
     S.busy[fid] = true; btn.disabled = true;
     box.innerHTML = '<div class="tm-msg info" role="status">⏳ ' + esc(T("بنبعت للسيرفر… استنى رده.", "Sending to the server… waiting for its answer.")) + "</div>";
     call("POST", PATHS[fid], body).then(function (j) {
       var html = resultHtml(fid, j, c.vals);
       if (!html) throw { code: "bad_response", status: 200, error: T("السيرفر مارجّعش تأكيد واضح", "the server did not return a clear confirmation") };
+      if (lf) { S.leadFor = null; S.leads = null; html = html.replace('</h3>', "</h3>" + '<p class="tm-lead">' + (j.lead_linked === true ? "🔗 " + esc(T("الفرصة #" + lf.id + " اتربطت بالإدخال ده واتعلّمت «مقبولة».", "Web lead #" + lf.id + " is now linked to this entry and marked «Accepted».")) : "⚠️ " + esc(T("الإدخال اتحفظ، بس الفرصة #" + lf.id + " ماتربطتش بيه — علّمها «مقبولة» من «فرص من الإنترنت».", "The entry was saved, but web lead #" + lf.id + " was not linked to it — mark it «Accepted» under «Web leads».")) ) + "</p>"); var bn = document.getElementById("tmLead-" + fid); if (bn) bn.parentNode.removeChild(bn); }
       box.innerHTML = ""; S.res[fid] = html; S.forms[fid] = null;
       f.reset(); fieldsOf(fid).forEach(function (d) { setErr(f, d.k, ""); });
       if (res) { res.innerHTML = html; try { res.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (e) {} }
@@ -445,6 +458,127 @@
       + "<p>" + esc(pub ? T("بيظهر في الموقع خلال دقيقتين تقريباً.", "It shows on the site within about two minutes.") : dr ? (j.publish_error ? T("اتحفظ، بس النشر ماتمّش (", "Saved, but publishing did not go through (") + j.publish_error + T(") — هيظهر للإدارة في الموافقات.", ") — it shows to the admins under approvals.") : T("مستني موافقة الإدارة في لوحة الإدارة قبل ما يتنشر.", "It waits for the admins' approval in the admin panel before it is published.")) : T("حالته: ", "Its state: ") + (j.state || "—")) + "</p>"
       + ((j.warnings || []).length ? '<p class="tm-lead">⚠️ ' + j.warnings.map(function (w) { return esc(w && (w.msg || w.code) || w); }).join(" · ") + "</p>" : "")
       + (lk ? '<p><a href="' + esc(lk) + '" target="_blank" rel="noopener">' + esc(T("افتحه على الموقع ↗", "Open it on the site ↗")) + "</a></p>" : "") + again + "</div>";
+  }
+
+  /* ---------- «🌐 فرص من الإنترنت»: what the personas' web searches found (0012) ---------- */
+  var LTYPE = { tender: ["مناقصة", "Tender"], rfq: ["طلب عرض سعر", "RFQ"], buyer: ["عميل محتمل", "Potential buyer"], buyer_list: ["قائمة عملاء محتملين", "List of potential buyers"], project: ["مشروع جديد", "New project"], news: ["خبر", "News"], other: ["تاني", "Other"] };
+  var LTYPES = ["tender", "rfq", "buyer", "buyer_list", "project", "news"];
+  var LSTAT = { "new": ["جديدة", "New"], accepted: ["مقبولة", "Accepted"], rejected: ["مرفوضة", "Rejected"], all: ["الكل", "All"] };
+  var LREASON = [["off_topic", "مش عن المنتج", "Not about the product"], ["old", "قديمة أو مقفولة", "Old or closed"], ["duplicate", "مكررة", "Duplicate"], ["not_credible", "مش موثوقة", "Not credible"], ["advert", "إعلان", "Advert"]];
+  var LFORM = { tender: "tender", rfq: "rfq", project: "project" }; /* the desk form an accepted lead of that type becomes */
+  var LMKT = { eg: ["مصر", "Egypt"], sa: ["السعودية", "Saudi Arabia"], ae: ["الإمارات", "UAE"], kw: ["الكويت", "Kuwait"], qa: ["قطر", "Qatar"], om: ["عمان", "Oman"], bh: ["البحرين", "Bahrain"], jo: ["الأردن", "Jordan"], iq: ["العراق", "Iraq"], ly: ["ليبيا", "Libya"], sd: ["السودان", "Sudan"], ma: ["المغرب", "Morocco"], dz: ["الجزائر", "Algeria"], tn: ["تونس", "Tunisia"], ke: ["كينيا", "Kenya"], ng: ["نيجيريا", "Nigeria"], et: ["إثيوبيا", "Ethiopia"], za: ["جنوب أفريقيا", "South Africa"], cn: ["الصين", "China"], "in": ["الهند", "India"], tr: ["تركيا", "Turkey"], de: ["ألمانيا", "Germany"], it: ["إيطاليا", "Italy"], fr: ["فرنسا", "France"], es: ["إسبانيا", "Spain"], gb: ["بريطانيا", "UK"], us: ["أمريكا", "USA"], ru: ["روسيا", "Russia"], gulf: ["الخليج", "GCC"], arab: ["الدول العربية", "Arab countries"], africa: ["أفريقيا", "Africa"], asia: ["آسيا", "Asia"], europe: ["أوروبا", "Europe"] };
+  function L2(m, k) { var x = own(m, k) ? m[k] : null; return x ? (EN ? x[1] : x[0]) : ""; }
+  function leadsShell() {
+    var q = S.lq;
+    return '<section class="tm-card"><div class="tm-h"><h2>🌐 ' + esc(T("فرص من الإنترنت", "Web leads")) + '</h2><button type="button" class="btn btn-line btn-sm" data-act="leads-reload">↻ ' + esc(T("تحديث", "Refresh")) + "</button></div>"
+      + '<p class="tm-lead">' + esc(T("دي المناقصات وطلبات الأسعار والعملاء المحتملين والمشاريع اللي جنة وباسم لقوها على الإنترنت وهما بيدوّروا للعملاء. دي مواقع برّه المنصة: راجع المصدر بنفسك، علّم الكويس «مقبولة» والوحش «مرفوضة» بسببه — المرفوض مابيرجعش في البحث تاني. المقبول من المناقصات والطلبات والمشاريع بيتضاف للمنصة من فورمه بالمصدر بتاعه بس.", "These are the tenders, RFQs, potential buyers and projects Janna and Bassem found on the web while searching for clients. They are sites outside the platform: check the source yourself, mark the good ones «Accepted» and the bad ones «Rejected» with a reason — a rejected link does not come back in later searches. An accepted tender, RFQ or project is added to the platform only through its form, with its source.")) + "</p>"
+      + '<form class="tm-tools" data-leads-q="1" role="search"><input class="tm-in" type="search" name="q" maxlength="80" dir="auto" value="' + esc(q.q) + '" placeholder="' + esc(T("دوّر في العنوان أو الموقع أو المنتج", "Search the title, site or product")) + '" aria-label="' + esc(T("دوّر في الفرص", "Search the leads")) + '"><button class="btn btn-green" type="submit">🔎 ' + esc(T("دوّر", "Search")) + "</button></form>"
+      + '<div class="tm-seg" role="group" data-seg="status" aria-label="' + esc(T("الحالة", "Status")) + '"></div>'
+      + '<div class="tm-seg" role="group" data-seg="type" aria-label="' + esc(T("النوع", "Type")) + '"></div>'
+      + '<div id="tmLeads" aria-live="polite"><p class="tm-load">⏳ ' + esc(T("جارٍ التحميل…", "Loading…")) + "</p></div></section>";
+  }
+  function loadLeads() {
+    var el = document.getElementById("tmLeads"); if (!el) return;
+    el.innerHTML = '<p class="tm-load">⏳ ' + esc(T("جارٍ التحميل…", "Loading…")) + "</p>";
+    var q = S.lq, qs = "?status=" + encodeURIComponent(q.status) + "&page=" + q.page + "&limit=50" + (q.type ? "&type=" + encodeURIComponent(q.type) : "") + (q.q ? "&q=" + encodeURIComponent(q.q) : "");
+    call("GET", "/team/desk/leads" + qs).then(function (j) {
+      S.leads = j; S.off = false; paintBanner();
+      if (j && j.counts && typeof j.counts["new"] === "number") S.leadsNew = j.counts["new"];
+      if (S.view === "leads") paintLeads(j);
+    }, function (e) {
+      if (e.code === "offline") { S.off = true; paintBanner(); }
+      var x = document.getElementById("tmLeads"); if (x) x.innerHTML = '<div class="tm-msg bad" role="alert">' + esc(e.code === "offline" ? T("ماقدرناش نجيب الفرص من السيرفر دلوقتي. جرّب تاني بعد شوية.", "We couldn't get the leads from the server right now. Try again shortly.") : errText(e)) + "</div>";
+    });
+  }
+  /* the tile's count of new leads (quiet: no table yet or no answer = no count) */
+  function leadsCount() {
+    return call("GET", "/team/desk/leads?status=new&limit=1", undefined, { quiet: true }).then(function (j) {
+      S.leadsNew = j && !j.off && j.counts && typeof j.counts["new"] === "number" ? j.counts["new"] : null;
+      if (S.mode === "ready" && S.view === "home") go("home", false);
+    }, function () {});
+  }
+  function segHtml(kind, keys, cur, counts) {
+    return keys.map(function (k) {
+      var lb = kind === "status" ? L2(LSTAT, k) : k ? L2(LTYPE, k) : T("كل الأنواع", "All types"), n = counts && typeof counts[k] === "number" ? counts[k] : null;
+      return '<button type="button" data-act="leads-' + kind + '" data-k="' + esc(k) + '" aria-pressed="' + (cur === k) + '">' + esc(lb) + (n != null ? ' <span class="tm-cnt">' + nf(n) + "</span>" : "") + "</button>";
+    }).join("");
+  }
+  function paintLeads(j) {
+    var el = document.getElementById("tmLeads"); if (!el) return;
+    var sv = app.querySelector('[data-seg="status"]'), tv = app.querySelector('[data-seg="type"]');
+    if (j && j.off) {
+      if (sv) sv.innerHTML = ""; if (tv) tv.innerHTML = "";
+      el.innerHTML = '<div class="tm-msg warn" role="status">' + esc(T("مكان «فرص من الإنترنت» لسه مش متفعّل على السيرفر: محتاج الإدارة تشغّل ملف قاعدة البيانات 0012_web_leads.sql (Actions ← d1-migrate). لحد كده جنة وباسم بيدوّروا عادي، بس اللي بيلاقوه مش بيتحفظ هنا.", "«Web leads» is not switched on on the server yet: the admins need to apply the database file 0012_web_leads.sql (Actions → d1-migrate). Until then Janna and Bassem search as usual, but what they find is not kept here.")) + "</div>";
+      return;
+    }
+    var c = (j && j.counts) || {}, all = (+c["new"] || 0) + (+c.accepted || 0) + (+c.rejected || 0), cs = { "new": c["new"], accepted: c.accepted, rejected: c.rejected, all: all };
+    var bt = (j && j.by_type) || {}, tsum = 0, tc = {}; for (var t in bt) if (own(bt, t)) { tc[t] = +bt[t] || 0; tsum += tc[t]; } tc[""] = tsum;
+    if (sv) sv.innerHTML = segHtml("status", ["new", "accepted", "rejected", "all"], S.lq.status, cs);
+    if (tv) tv.innerHTML = segHtml("type", [""].concat(LTYPES.filter(function (k) { return tc[k] || S.lq.type === k; })), S.lq.type, tc);
+    var items = (j && Array.isArray(j.items)) ? j.items : [], total = j && typeof j.total === "number" ? j.total : items.length, lim = (j && +j.limit) || 50, pg = (j && +j.page) || 0;
+    if (!items.length) {
+      el.innerHTML = '<div class="tm-empty">' + esc(S.lq.q || S.lq.type || pg ? T("مفيش فرص بالشروط دي.", "No leads match these filters.") : S.lq.status === "new" ? T("مفيش فرص جديدة محتاجة مراجعة دلوقتي. أول ما جنة أو باسم يلاقوا مناقصة أو طلب أو عميل محتمل على الإنترنت هيظهر هنا.", "No new leads to review right now. As soon as Janna or Bassem find a tender, an RFQ or a potential buyer on the web it shows here.") : T("مفيش فرص هنا.", "No leads here.")) + "</div>";
+      return;
+    }
+    el.innerHTML = '<p class="tm-lead">' + esc(T("العدد: ", "Total: ")) + "<b>" + nf(total) + "</b></p>" + '<div class="tm-list">' + items.map(leadRow).join("") + "</div>"
+      + (total > lim ? '<div class="tm-pager"><button type="button" class="btn btn-line" data-act="leads-page" data-d="-1"' + (pg <= 0 ? " disabled" : "") + ">‹ " + esc(T("السابق", "Previous")) + "</button><span>" + nf(pg * lim + 1) + "–" + nf(Math.min(total, pg * lim + items.length)) + esc(T(" من ", " of ")) + nf(total) + '</span><button type="button" class="btn btn-line" data-act="leads-page" data-d="1"' + ((pg + 1) * lim >= total ? " disabled" : "") + ">" + esc(T("التالي", "Next")) + " ›</button></div>" : "");
+  }
+  function whoNames(ps) {
+    var o = []; (ps || []).forEach(function (p) { if (p === "janna") o.push(T("جنة", "Janna")); else if (p === "bassem") o.push(T("باسم", "Bassem")); });
+    return o.join(EN ? " & " : " و");
+  }
+  function leadRow(it) {
+    var id = +it.id || 0, st = String(it.status || "new"), ty = own(LTYPE, it.type) ? it.type : "other", u = safeLink(it.url), busy = !!S.lbusy[id];
+    var tl = (EN ? it.type_en : it.type_ar) || L2(LTYPE, ty), sl = (EN ? it.status_en : it.status_ar) || L2(LSTAT, st), mk = L2(LMKT, String(it.market || "")) || (it.market ? String(it.market).toUpperCase() : T("كل الدنيا", "Worldwide"));
+    var who = whoNames(it.personas && it.personas.length ? it.personas : [it.persona]), dis = busy ? " disabled" : "", sn = +it.seen_count || 0;
+    var h = '<article class="tm-row" data-lead="' + id + '"><div class="top"><span class="t" dir="auto">' + esc(it.title || "—") + "</span><span>" + chip(tl, ty === "tender" || ty === "rfq" ? "b" : "") + (it.official ? " " + chip(T("بوابة رسمية", "Official portal"), "g") : "") + (it.aggregator ? " " + chip(T("موقع تجميع مناقصات", "Tender aggregator"), "a") : "") + " " + chip(sl, st === "accepted" ? "g" : st === "rejected" ? "r" : "a") + "</span></div>"
+      + '<div class="meta"><span dir="ltr">' + esc(it.site || "") + "</span><span>" + esc(mk) + "</span>" + (it.product ? '<span dir="auto">' + esc(T("المنتج: ", "Product: ") + it.product) + "</span>" : "") + (who ? "<span>" + esc(T("لقاها: ", "Found by: ") + who) + "</span>" : "")
+      + (sn > 1 ? "<span>" + esc(T(sn === 2 ? "ظهرت مرتين" : "ظهرت " + nf(sn) + (sn <= 10 ? " مرات" : " مرة"), "Seen " + nf(sn) + " times")) + "</span>" : "") + (it.date ? '<span dir="auto">' + esc(T("تاريخها: ", "Dated: ") + it.date) + "</span>" : "") + "<span>" + esc(T("آخر ظهور: ", "Last seen: ")) + fdate(it.last_seen) + "</span></div>"
+      + (it.snippet ? '<div class="v" dir="auto">' + esc(it.snippet) + "</div>" : "")
+      + (ty === "buyer" || ty === "buyer_list" ? '<p class="tm-def">ℹ️ ' + esc(T("ده من موقع على الإنترنت، مش عضو في المنصة. لو اتضاف للدليل بيتعلّم «بيانات من مصادر عامة – غير مسجّل في المنصة».", "This is from a website, not a platform member. If it is added to the directory it carries «Public-source data – not registered on the platform».")) + "</p>" : "")
+      + (st === "rejected" && (it.reason_ar || it.reason) ? '<div class="v"><b>' + esc(T("سبب الرفض: ", "Reason: ")) + "</b>" + esc((EN ? it.reason_en : it.reason_ar) || it.reason) + "</div>" : "")
+      + (it.content_id ? '<div class="v"><b>' + esc(T("اتضاف للمنصة: ", "Added to the platform: ")) + '</b><span dir="ltr">' + esc(it.content_id) + "</span></div>" : "")
+      + '<div class="tm-acts">' + (u ? '<a class="btn btn-line btn-sm" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">🔗 ' + esc(T("افتح المصدر", "Open the source")) + "</a>" : "");
+    if (st !== "accepted") h += '<button type="button" class="btn btn-green btn-sm" data-act="lead-set" data-id="' + id + '" data-st="accepted"' + dis + ">✓ " + esc(T("مقبولة", "Accept")) + "</button>";
+    if (st !== "rejected") h += '<button type="button" class="btn btn-line btn-sm" data-act="lead-rej" data-id="' + id + '" aria-expanded="' + (S.lrej === String(id)) + '"' + dis + ">✗ " + esc(T("ارفض", "Reject")) + "</button>";
+    if (st !== "new") h += '<button type="button" class="btn btn-line btn-sm" data-act="lead-set" data-id="' + id + '" data-st="new"' + dis + ">↺ " + esc(T("رجّعها جديدة", "Back to new")) + "</button>";
+    if (st === "accepted" && LFORM[ty] && !it.content_id) h += '<button type="button" class="btn btn-line btn-sm" data-act="lead-convert" data-id="' + id + '"' + dis + ">➕ " + esc(T("ضيفها للمنصة كـ ", "Add it to the platform as ") + L2(LTYPE, ty)) + "</button>";
+    h += "</div>";
+    if (S.lrej === String(id) && st !== "rejected") h += '<div class="tm-seg" role="group" aria-label="' + esc(T("سبب الرفض", "Reason for rejecting")) + '">' + LREASON.map(function (r) { return '<button type="button" data-act="lead-set" data-id="' + id + '" data-st="rejected" data-reason="' + r[0] + '"' + dis + ">" + esc(EN ? r[2] : r[1]) + "</button>"; }).join("") + "</div>";
+    return h + '<div class="tm-msgbox" id="tmLeadMsg-' + id + '" aria-live="polite"></div></article>';
+  }
+  function leadById(id) { var it = S.leads && Array.isArray(S.leads.items) ? S.leads.items : []; for (var i = 0; i < it.length; i++) if (+it[i].id === +id) return it[i]; return null; }
+  /* ✓ / ✗ (with its reason) / ↺: only the server's answer counts; the list is then read again (its counts too) */
+  function leadSet(id, st, reason) {
+    if (!id || S.lbusy[id]) return;
+    var b = { status: st }; if (st === "rejected" && reason) b.reason = reason;
+    S.lbusy[id] = true; S.lrej = ""; if (S.leads) paintLeads(S.leads);
+    call("PUT", "/team/desk/leads/" + id, b).then(function (j) {
+      S.lbusy[id] = false;
+      if (!j || j.ok !== true || !j.item) throw { code: "bad_response", status: 200 };
+      toast(st === "accepted" ? T("✓ اتعلّمت مقبولة.", "✓ Marked accepted.") : st === "rejected" ? T("✗ اترفضت — مش هترجع في البحث تاني.", "✗ Rejected — it will not come back in searches.") : T("↺ رجعت جديدة.", "↺ Back to new."));
+      loadLeads();
+    }, function (e) {
+      S.lbusy[id] = false; if (S.leads) paintLeads(S.leads);
+      if (e.code === "offline") { S.off = true; paintBanner(); }
+      var m = document.getElementById("tmLeadMsg-" + id);
+      if (m) m.innerHTML = '<div class="tm-msg bad" role="alert">' + esc(e.code === "bad_response" ? T("السيرفر مأكّدش التغيير، فمحصلش حاجة. جرّب تاني.", "The server did not confirm the change, so nothing happened. Try again.") : e.code === "leads_off" ? T("مكان «فرص من الإنترنت» لسه مش متفعّل على السيرفر (ملف 0012_web_leads.sql).", "«Web leads» is not switched on on the server yet (file 0012_web_leads.sql).") : errText(e)) + "</div>";
+    });
+  }
+  /* an accepted tender / RFQ / project → its desk form, filled with the title (and the link when it is an official portal) */
+  function leadConvert(id) {
+    var it = leadById(id), fid = it && LFORM[it.type]; if (!fid) return;
+    var o = {}; o[fid === "project" ? "name" : "title"] = String(it.title || "").slice(0, 300);
+    if (it.official && safeLink(it.url)) o.source_url = it.url;
+    S.forms[fid] = o; S.leadFor = { form: fid, id: +it.id, title: String(it.title || "").slice(0, 160), official: !!it.official, url: safeLink(it.url) };
+    go(fid);
+  }
+  function leadBanner(fid) {
+    var lf = S.leadFor; if (!lf || lf.form !== fid) return "";
+    return '<div class="tm-msg info" id="tmLead-' + fid + '" role="status">🌐 ' + esc(T("بتضيف فرصة من الإنترنت #" + lf.id + ": ", "Adding web lead #" + lf.id + ": ")) + '<b dir="auto">' + esc(lf.title) + "</b>"
+      + (lf.url ? ' · <a href="' + esc(lf.url) + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">' + esc(T("المصدر ↗", "Source ↗")) + "</a>" : "")
+      + "<small>" + esc(lf.official ? T("رابط البوابة الرسمية اتحط في «المصدر». راجع باقي البيانات من الإعلان نفسه قبل الحفظ.", "The official portal link is in «source». Check the other details against the notice itself before saving.") : T("الموقع ده مش بوابة رسمية، فرابطه ماتحطش كمصدر: حط رابط الإعلان الرسمي لو لقيته، ومن غيره بيتحفظ مسودة لحد ما الإدارة توافق.", "This site is not an official portal, so its link was not put in as the source: add the official notice link if you find it; without one it is saved as a draft until the admins approve it.")) + "</small>"
+      + ' <button type="button" class="tm-lnk" data-act="lead-cancel" data-f="' + fid + '">' + esc(T("مش دلوقتي", "Not now")) + "</button></div>";
   }
 
   /* ---------- «إدخالاتي»: the caller's own entries ---------- */
@@ -565,10 +699,10 @@
   }
   function start() {
     /* drafts typed under another account on this tablet are never shown to the next person */
-    if (S.draftOwner && S.user && S.user.id !== S.draftOwner) { S.forms = {}; S.res = {}; S.draftOwner = ""; }
+    if (S.draftOwner && S.user && S.user.id !== S.draftOwner) { S.forms = {}; S.res = {}; S.draftOwner = ""; S.leadFor = null; }
     S.mode = "ready"; paintWho(); shell();
     var h = String(location.hash || "").replace(/^#/, ""); go(VIEWS.indexOf(h) >= 0 ? h : "home", false);
-    probe();
+    probe(); leadsCount();
   }
   /* «إدخالاتي» count (and a second check that the desk API answers) */
   function probe(manual) {
@@ -601,19 +735,31 @@
     else if (act === "mine-reload") loadMine();
     else if (act === "mine-kind") { S.mq.kind = b.getAttribute("data-k") || ""; S.mq.page = 0; [].forEach.call(app.querySelectorAll('[data-act="mine-kind"]'), function (x) { x.setAttribute("aria-pressed", x === b ? "true" : "false"); }); loadMine(); }
     else if (act === "mine-page") { S.mq.page = Math.max(0, S.mq.page + (+b.getAttribute("data-d") || 0)); loadMine(); }
+    else if (act === "leads-reload") loadLeads();
+    else if (act === "leads-status") { S.lq.status = b.getAttribute("data-k") || "new"; S.lq.page = 0; S.lrej = ""; loadLeads(); }
+    else if (act === "leads-type") { S.lq.type = b.getAttribute("data-k") || ""; S.lq.page = 0; S.lrej = ""; loadLeads(); }
+    else if (act === "leads-page") { S.lq.page = Math.max(0, S.lq.page + (+b.getAttribute("data-d") || 0)); S.lrej = ""; loadLeads(); }
+    else if (act === "lead-set") leadSet(+b.getAttribute("data-id"), b.getAttribute("data-st"), b.getAttribute("data-reason") || "");
+    else if (act === "lead-rej") { var rid = b.getAttribute("data-id"); S.lrej = S.lrej === rid ? "" : rid; if (S.leads) paintLeads(S.leads); var rb = app.querySelector('[data-lead="' + rid + '"] [data-reason]'); if (rb) { try { rb.focus(); } catch (x) {} } }
+    else if (act === "lead-convert") leadConvert(+b.getAttribute("data-id"));
+    else if (act === "lead-cancel") { var cf = b.getAttribute("data-f"); S.leadFor = null; var bn = document.getElementById("tmLead-" + cf); if (bn) bn.parentNode.removeChild(bn); }
   });
   if (whoEl) whoEl.addEventListener("click", function (e) {
     var b = e.target.closest('[data-act="logout"]'); if (!b) return;
     b.disabled = true; var p = A && A.logout ? A.logout() : Promise.resolve();
-    Promise.resolve(p).then(null, function () {}).then(function () { S.user = null; S.forms = {}; S.res = {}; signIn(false); });
+    Promise.resolve(p).then(null, function () {}).then(function () { S.user = null; S.forms = {}; S.res = {}; S.leadFor = null; S.leads = null; S.leadsNew = null; signIn(false); });
   });
-  app.addEventListener("submit", function (e) { var f = e.target.closest("form[data-form]"); if (!f) return; e.preventDefault(); submit(f.getAttribute("data-form")); });
+  app.addEventListener("submit", function (e) {
+    var lq = e.target.closest && e.target.closest("form[data-leads-q]");
+    if (lq) { e.preventDefault(); S.lq.q = line(lq.elements.q ? lq.elements.q.value : "").slice(0, 80); S.lq.page = 0; S.lrej = ""; loadLeads(); return; }
+    var f = e.target.closest("form[data-form]"); if (!f) return; e.preventDefault(); submit(f.getAttribute("data-form"));
+  });
   app.addEventListener("change", function (e) { if (e.target && e.target.getAttribute && e.target.getAttribute("data-k") === "requested_plan") gccToggle(e.target.closest("form[data-form]")); });
   app.addEventListener("reset", function (e) { var f = e.target; setTimeout(function () { gccToggle(f); }, 0); }, true);
   app.addEventListener("input", function (e) { var lab = e.target.closest && e.target.closest(".tm-f.bad"); if (lab) { lab.classList.remove("bad"); var er = lab.querySelector(".er"); if (er) er.textContent = ""; e.target.removeAttribute("aria-invalid"); } });
   window.addEventListener("hashchange", function () { if (S.mode !== "ready") return; var h = String(location.hash || "").replace(/^#/, ""); if ((VIEWS.indexOf(h) >= 0 ? h : "home") !== S.view) go(VIEWS.indexOf(h) >= 0 ? h : "home", false); });
   window.addEventListener("mig:login", function () { if (S.mode !== "ready" && S.mode !== "boot") boot(); });
-  window.addEventListener("mig:logout", function () { if (S.mode === "ready" || S.mode === "denied") { S.user = null; S.forms = {}; S.res = {}; signIn(false); } });
+  window.addEventListener("mig:logout", function () { if (S.mode === "ready" || S.mode === "denied") { S.user = null; S.forms = {}; S.res = {}; S.leadFor = null; S.leads = null; S.leadsNew = null; signIn(false); } });
   window.addEventListener("beforeunload", function (e) { if (S.mode !== "ready") return; saveDraft(); var dirty = false; for (var k in S.forms) if (S.forms[k]) for (var x in S.forms[k]) if (S.forms[k][x]) dirty = true; if (dirty) { e.preventDefault(); e.returnValue = ""; } });
   boot();
 })();

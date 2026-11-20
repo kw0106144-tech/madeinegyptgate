@@ -37,10 +37,13 @@ const short = (s, n) => { const c = Array.from(String(s || "").trim()); return c
 
 /* ---------- sources ---------- */
 export const RANK = Object.freeze({ janna_lookup: 3, janna_search: 3, janna_item: 3, platform_item: 3, bassem_intel: 3, bassem_open_item: 3, bassem_open_opportunity: 3,
-  janna_navigate: 2, bassem_screen: 2, bassem_open_guide: 2, bassem_web_search: 1 });
+  janna_navigate: 2, bassem_screen: 2, bassem_open_guide: 2, bassem_web_search: 1, bassem_web_hunt: 1, janna_web_search: 1, janna_web_hunt: 1 });
+/* an answer from the open web is never kept as the bank's answer (review 2026-11-20 S16: once the team approved it, every visitor would hear
+   web data as the platform's own — and it goes stale): the question is kept «محتاجة إجابة», source «الإنترنت», for the team to answer */
+export const isWebTool = n => /^(bassem_web_search|bassem_web_hunt|janna_web_search|janna_web_hunt)$/.test(String(n || ""));
 const SOURCE_AR = { janna_lookup: "دليل المنصة", janna_search: "بحث المنصة", janna_item: "بيانات المنصة", platform_item: "بيانات المنصة", bassem_intel: "مركز المعلومات",
   bassem_open_item: "بيانات المنصة", bassem_open_opportunity: "فرص المنصة", janna_navigate: "صفحات المنصة", bassem_screen: "صفحات المنصة", bassem_open_guide: "دليل التعاقد",
-  bassem_web_search: "الإنترنت", conversation: "من الكلام", team: "فريق المنصة" };
+  bassem_web_search: "الإنترنت", bassem_web_hunt: "الإنترنت", janna_web_search: "الإنترنت", janna_web_hunt: "الإنترنت", conversation: "من الكلام", team: "فريق المنصة" };
 const sourceAr = s => SOURCE_AR[s] || "من الكلام";
 
 /* ---------- questions ---------- */
@@ -211,9 +214,9 @@ export function questionsOf({ turns = [], tools = [], known = new Set() } = {}) 
       const qs = Number.isInteger(t.seq) ? t.seq : null;
       const used = qs == null ? [] : tools.filter(x => x && x.name && Number.isInteger(x.s) && x.s > qs && x.s <= nextSeq && RANK[x.name]);
       used.sort((a, b) => (RANK[b.name] || 0) - (RANK[a.name] || 0));
-      const best = used[0] || null, failed = best && (best.outcome === "failed" || best.outcome === "refused");
-      const status = !ans || NOANS.test(norm(ans)) || failed ? "needs_answer" : "answered";
-      out.push({ question: q, answer: status === "answered" ? ans : (ans && !failed ? ans : ""), source: best ? best.name : "conversation", rank: best && !failed ? RANK[best.name] : 0, status, intent, words });
+      const best = used[0] || null, failed = best && (best.outcome === "failed" || best.outcome === "refused"), web = !!(best && isWebTool(best.name));
+      const status = !ans || NOANS.test(norm(ans)) || failed || web ? "needs_answer" : "answered";
+      out.push({ question: q, answer: web ? "" : status === "answered" ? ans : (ans && !failed ? ans : ""), source: best ? best.name : "conversation", rank: best && !failed && !web ? RANK[best.name] : 0, status, intent, words });
     }
   }
   return out;

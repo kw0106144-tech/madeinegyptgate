@@ -44,8 +44,9 @@ import { handleKnowledge } from "./knowledge.js";     // /api/janna/knowledge  t
 import { dailyMemory } from "./daily.js";              // day digests + «ملخص العميل» + tasks / knowledge merge / caps report (once per Cairo day)
 import { dailyJobs, newCountFor } from "./digest.js";
 import { cairoDay, addDays, toolSoftError } from "./common.js";
-// ---- Bassem web search (src/websearch.js): POST /api/advisor/web — Anam SERVER_WEBHOOK bassem_web_search (X-MIG-Tool header) ----
-import { handleWebSearch } from "./websearch.js";
+// ---- web search (src/websearch.js) + the opportunity hunt (src/web-hunt.js): Bassem POST /api/advisor/web|hunt, Janna POST /api/janna/web|hunt ----
+import { handleWebSearch, handleJannaWebSearch } from "./websearch.js";
+import { handleJannaHunt, handleBassemHunt } from "./web-hunt.js";
 // ---- 📎 photos in Janna's and Bassem's chats (src/chat-media.js, switch chat_photos): read once by Workers AI, never stored ----
 import * as CHATMEDIA from "./chat-media.js";
 // Admin Control Center (docs/janna/ACC-CONTRACT.md §0.2): one CC object handed to every new handler (no cross-area imports)
@@ -580,7 +581,8 @@ const LOOKUP_TEXT = {
 };
 /* speed 2026-11-20: these read only the bundled data (data.json / items.json) or their own tables, never what ccBoot loads (plans matrix,
    mail config, service keys, feature switches) — a cold isolate saved 1.2–1.4 s of nine D1 reads on every Anam webhook */
-const BARE = new Set(["/api/janna/lookup", "/api/janna/item", "/api/janna/knowledge", "/api/janna/health", "/api/janna/timing"]);
+const BARE = new Set(["/api/janna/lookup", "/api/janna/item", "/api/janna/knowledge", "/api/janna/health", "/api/janna/timing",
+  "/api/janna/web", "/api/janna/hunt", "/api/advisor/web", "/api/advisor/hunt"]); // the web tools load their service keys and switches through their own memos
 
 const WORKER = {
   async fetch(req, env, ctx) {
@@ -603,6 +605,7 @@ const WORKER = {
     if (/^\/api\/advisor\/profile\/?$/.test(url.pathname)) return handleProfile(req, env, ctx); // before the /api/advisor catch-all (holo4, profile.js)
     // ---- Bassem web search (src/websearch.js) — before the /api/advisor family, which would swallow it ----
     if (/^\/api\/advisor\/web\/?$/.test(url.pathname)) return handleWebSearch(req, env, ctx);
+    if (/^\/api\/advisor\/hunt\/?$/.test(url.pathname)) return handleBassemHunt(req, env, ctx); // web-hunt.js, before the advisor family
     if (/^\/api\/advisor\/memory(\/|$)/.test(url.pathname)) return handleMemory(req, env, ctx); // before the advisor family (memory.js)
     if (/^\/api\/advisor\/media(\/|$)/.test(url.pathname)) return CHATMEDIA.handleAdvisorMedia(req, env, ctx); // 📎 Bassem's call photos — before the advisor family
     if (/^\/api\/advisor(\/|$)/.test(url.pathname)) return handleAdvisor(req, env, ctx);
@@ -621,6 +624,8 @@ const WORKER = {
     if (/^\/api\/janna\/knowledge\/?$/.test(url.pathname)) return handleKnowledge(req, env, ctx); // 0009, knowledge.js
     if (/^\/api\/janna\/timing\/?$/.test(url.pathname)) return handleTiming(req, env, ctx); // live-timing.js (same-origin beacon: no CORS)
     if (/^\/api\/janna\/media(\/|$)/.test(url.pathname)) return CHATMEDIA.handleJannaMedia(req, env, ctx); // 📎 photos of Janna's call + the «اكتبلي» bubble (chat-media.js)
+    if (/^\/api\/janna\/web\/?$/.test(url.pathname)) return handleJannaWebSearch(req, env, ctx); // websearch.js (X-MIG-Tool: Janna's secret)
+    if (/^\/api\/janna\/hunt\/?$/.test(url.pathname)) return handleJannaHunt(req, env, ctx);      // web-hunt.js
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
     if (/^\/api\/janna\/health\/?$/.test(url.pathname)) return json({ ok: true, data: DATA.v, factories: DATA.f.length, products: DATA.p.length, tenders: DATA.t.length, rfqs: DATA.q.length, offers: DATA.o.length, zones: DATA.z.length, items: (DATA.i || []).length });
     if (!/^\/api\/janna\/lookup\/?$/.test(url.pathname)) return json({ error: "not found" }, 404);
