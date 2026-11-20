@@ -164,6 +164,47 @@ describe("the live call: the WhatsApp line reaches Bassem's prompt from the requ
     assert.deepEqual(waLines(out.block), [WA_LINE.live]);
     assert.ok(seen.length > 0 && !seen.some(s => /cc_settings|wa_messages|cc_secrets/.test(s)), seen.join("\n"));
   });
+  /* review 2026-11-20: every reason nothing leaves, end to end in the prompt Anam receives (not only waMemberState on its own) */
+  test("every reason WhatsApp does not go out reaches the prompt as the owner's sentence: no token, the switch never on or stored off, WA_DRY_RUN = 1, «🛠️ المطوّر» whatsapp_send off", async () => {
+    const cases = [
+      ["no token at all", async () => env0()],
+      ["a token, the switch never turned on", async () => env0({ RESPONDIO_TOKEN: RIO })],
+      ["the switch stored off", async () => waSwitchOn(env0({ RESPONDIO_TOKEN: RIO }), false)],
+      ["WA_DRY_RUN = 1 over a switch that is on", async () => waSwitchOn(env0({ RESPONDIO_TOKEN: RIO, WA_DRY_RUN: "1" }))],
+      ["«🛠️ المطوّر» whatsapp_send off over a switch that is on", async () => { const e = await waSwitchOn(env0({ RESPONDIO_TOKEN: RIO })); await features(e, { whatsapp_send: false }); return e; }],
+    ];
+    for (const [why, mk] of cases) {
+      calls = [];
+      const env = await mk();
+      const { token } = await member(env, { prefs: { wa_optin: true } });
+      const r = await session(env, token);
+      assert.equal(r.status, 200, why + ": " + r.text);
+      assert.equal(r.data.member_context, true, why);
+      assert.deepEqual(waLines(r.prompt), [OWNER_SENTENCE], why + " ← " + r.prompt);
+    }
+    const live = await waSwitchOn(env0({ RESPONDIO_TOKEN: RIO, WA_DRY_RUN: "0" })); // "0" = the panel decides (wrangler.toml today)
+    calls = [];
+    const { token } = await member(live, { prefs: { wa_optin: true } });
+    assert.deepEqual(waLines((await session(live, token)).prompt), [WA_LINE.live], "WA_DRY_RUN = 0 is not the kill switch");
+    assert.equal(wa.length, 0, "nothing was sent to respond.io");
+  });
+  /* review 2026-11-20: the whole call start, not only bassemContext — after the isolate's first request (ccBoot loaded the memos) a call
+     prepares exactly the same D1 statements whatever the WhatsApp state, and never the switch, a sealed key or a WhatsApp table */
+  test("the call start reads nothing more for the line: a warm request prepares the same D1 statements with WhatsApp off or live, none of them the switch, a key or a WhatsApp table", async () => {
+    const run = async live => {
+      const env = live ? await waSwitchOn(env0({ RESPONDIO_TOKEN: RIO })) : env0({ RESPONDIO_TOKEN: RIO });
+      const { token } = await member(env, { prefs: { wa_optin: true, session_time: "10:00" } });
+      await session(env, token); // the isolate's first request: ccBoot loads the plans, the mail config, the service keys and the switches
+      calls = [];
+      const { out, seen } = await prepared(env, () => session(env, token));
+      assert.equal(out.status, 200, out.text);
+      assert.deepEqual(waLines(out.prompt), [WA_LINE[live ? "live" : "off"]], out.prompt);
+      return seen;
+    };
+    const off = await run(false), on = await run(true);
+    assert.ok(off.length > 0 && !off.some(s => /cc_settings|cc_secrets|wa_messages/.test(s)), off.join("\n"));
+    assert.deepEqual([...on].sort(), [...off].sort(), "the WhatsApp state adds no read and removes none");
+  });
 });
 
 describe("the morning message (whatsapp.js bassemCron → morningEmail): no WhatsApp promise the platform cannot keep", () => {
