@@ -43,6 +43,7 @@ exec(open(B + 'inbox.part.py', encoding='utf-8').read())  # inbox.html → /inbo
 exec(open(B + 'seo-admin.part.py', encoding='utf-8').read())  # seo-admin.html → /seo-admin/: SEO workspace (admin/seo role; noindex)
 exec(open(B + 'signin.part.py', encoding='utf-8').read())  # key «signin» → /login/ + /en/login/: «دخول المصانع» (e-mail code + «حساب قديم؟» old-password card; standalone, noindex) — not the legacy /login.html
 exec(open(B + 'pay.part.py', encoding='utf-8').read())  # pay.html → /pay/: invoice payment page (public, noindex; ACC-CONTRACT §1.8)
+exec(open(B + 'delete-account.part.py', encoding='utf-8').read())  # delete-account.html → /delete-account/: «حذف الحساب» requests (app parity; noindex; switch account_delete)
 exec(open(B + 'team-seo.part.py', encoding='utf-8').read())  # seo-team.html → /seo-team/: «لوحة فريق الـ SEO» (roles seo/editor/admin/owner; noindex, not in sitemaps)
 exec(open(B + 'team-data.part.py', encoding='utf-8').read())  # data-desk.html → /data-desk/: «لوحة فريق الداتا — مكتب الاستقبال» (roles data/admin/owner; noindex)
 exec(open(B + 'panel.part.py', encoding='utf-8').read())  # key «admin» → /admin/: «لوحة التحكم» Admin Control Center (ACC-CONTRACT §1; standalone PAGE_WRITERS page, noindex,nofollow)

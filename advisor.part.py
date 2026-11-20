@@ -519,7 +519,7 @@ function loginFail(msg, askMail) { LOGINERR = { m: msg, a: askMail }; renderWarn
 function lockBox() {
   return '<div class="lockbox advlock" role="region" aria-label="' + esc(T("المستشار الذكي للصفقات", "AI Deal Advisor")) + '"><div class="lk-ic">🔒</div><h2>' + T("المستشار الذكي للصفقات متاح لأعضاء الشريك", "The AI Deal Advisor is for partner members") + "</h2><p>"
     + T("متاح لمشتركي <b>باقة الشريك الأساسي</b> أو <b>باقة الشريك الاستراتيجي</b> لمدة 365 يوم من التفعيل، مع باسم مستشار أعمالك الشخصي.", "Available to <b>Core Partner</b> and <b>Strategic Partner</b> members for 365 days from activation, with Bassem as your personal business advisor.")
-    + '</p><div class="lk-acts"><a class="btn btn-gold" href="register.html#partner">' + T("اشترك في باقة الشريك", "Join a partner plan") + '</a><a class="btn btn-line" href="contact.html">' + T("تواصل معنا", "Contact us") + "</a></div></div>";
+    + '</p><div class="lk-acts"><a class="btn btn-gold" data-mig-buy href="register.html#partner">' + T("اشترك في باقة الشريك", "Join a partner plan") + '</a><a class="btn btn-line" href="contact.html">' + T("تواصل معنا", "Contact us") + "</a></div></div>";
 }
 function mailForm() { return (window.MIGAPI ? '<button class="btn btn-gold btn-sm" type="button" data-miglogin>🔑 ' + T("ادخل بكود على بريدك", "Sign in with an e-mail code") + "</button> " : "") + '<form class="advlog" id="advLog" novalidate><input type="email" name="email" dir="ltr" autocomplete="email" required placeholder="' + esc(T("بريد الشركة المسجّل", "Your registered company email")) + '" aria-label="' + esc(T("البريد الإلكتروني", "Email")) + '"><button class="btn btn-green btn-sm" type="submit">✉️ ' + T("ابعتلي رابط دخول", "Email me a sign-in link") + "</button></form>"; }
 function activationLogin(code) {
@@ -638,7 +638,7 @@ function renderHero() {
     + '<p class="say" id="advSay"></p>'
     + '<div class="bdg"><span class="pl">⭐ ' + esc(pl) + "</span>" + mk + "</div>"
     + '<div class="bdg">' + mode + svcChip() + whoChip() + "</div>"
-    + '<div class="acts">' + (EXP ? '<a class="btn btn-gold btn-sm" href="register.html#' + esc(PLN[PK] ? PK : "partner") + '">🔄 ' + T("جدّد الاشتراك", "Renew") + "</a>" : '<a class="btn btn-gold btn-sm" href="#brief">📰 ' + T("ملخص النهارده", "Today's brief") + "</a>") + '<a class="btn btn-sm btn-gh" href="#pipeline">📋 ' + T("صفقاتي", "My deals") + '</a><button class="btn btn-sm btn-gh" type="button" id="advSetB">⚙️ ' + T("بيانات شركتي", "My company profile") + "</button>"
+    + '<div class="acts">' + (EXP ? '<a class="btn btn-gold btn-sm" data-mig-buy href="register.html#' + esc(PLN[PK] ? PK : "partner") + '">🔄 ' + T("جدّد الاشتراك", "Renew") + "</a>" : '<a class="btn btn-gold btn-sm" href="#brief">📰 ' + T("ملخص النهارده", "Today's brief") + "</a>") + '<a class="btn btn-sm btn-gh" href="#pipeline">📋 ' + T("صفقاتي", "My deals") + '</a><button class="btn btn-sm btn-gh" type="button" id="advSetB">⚙️ ' + T("بيانات شركتي", "My company profile") + "</button>"
     + (EXP || !callOK() ? "" : '<button class="btn btn-sm btn-gh advlv" type="button" id="advLive">🎥 ' + T("كلّم باسم فيديو", "Video call with Bassem") + "</button>")
     + ("Notification" in window && Notification.permission !== "granted" && Notification.permission !== "denied" ? '<button class="btn btn-sm btn-gh" type="button" id="advNot">🔔 ' + T("فعّل تنبيهات المتصفح", "Enable browser alerts") + "</button>" : "") + "</div>"
     /* owner 2026-11-18 23:50: Bassem's memory with the member stays and grows day after day (no «امسح ذاكرتي») — said plainly here,
@@ -661,7 +661,7 @@ function svcInfo() {
 }
 function svcChip() {
   var i = svcInfo(); if (!i) return "";
-  if (i.expired) return '<span class="svc end">⏳ ' + T("مدة الخدمة انتهت — جدّد اشتراكك", "Service period ended — please renew") + "</span>";
+  if (i.expired) return '<span class="svc end">⏳ ' + T("مدة الخدمة انتهت", "Service period ended") + '<span data-mig-buy>' + T(" — جدّد اشتراكك", " — please renew") + "</span></span>";
   return '<span class="svc" title="' + esc(T("من ", "From ") + fD(i.start) + T(" لحد ", " to ") + fD(i.end)) + '">⏳ ' + (EN ? "Service period: " + i.left + " of 365 days left" : "مدة الخدمة: " + i.left + " يوم متبقي من 365") + "</span>";
 }
 function advMember() { var m = LG("mig-adv-member", null); return m && m.id ? m : null; }
@@ -669,7 +669,9 @@ function whoChip() { var m = advMember(); return m && m.id === PROF.id && LIVE ?
 function openList() { return OPPS.filter(function (o) { return o.open && inPlan(o.market); }); }
 function renderSay() {
   var el = $("#advSay"); if (!el) return;
-  if (svcEnded()) { el.textContent = T("مدة خدمتي السنوية معاك خلصت، فملخص الفرص اليومي والمكالمات وقفوا. جدّد اشتراكك في باقة الشريك عشان نكمّل شغلنا سوا — وصفقاتك القديمة لسه موجودة هنا.", "My one-year service period with you has ended, so the daily brief and video calls have stopped. Renew your partner plan so we can keep working together — your earlier deals are still here."); return; }
+  /* the platform's own app with buying off there (data/flags.js MIGFLAGS.buyOff, the store rules): the same words without «جدّد» */
+  if (svcEnded()) { el.textContent = window.MIGFLAGS && MIGFLAGS.buyOff && MIGFLAGS.buyOff() ? T("مدة خدمتي السنوية معاك خلصت، فملخص الفرص اليومي والمكالمات وقفوا — وصفقاتك القديمة لسه موجودة هنا.", "My one-year service period with you has ended, so the daily brief and video calls have stopped — your earlier deals are still here.")
+    : T("مدة خدمتي السنوية معاك خلصت، فملخص الفرص اليومي والمكالمات وقفوا. جدّد اشتراكك في باقة الشريك عشان نكمّل شغلنا سوا — وصفقاتك القديمة لسه موجودة هنا.", "My one-year service period with you has ended, so the daily brief and video calls have stopped. Renew your partner plan so we can keep working together — your earlier deals are still here."); return; }
   var L = openList(), nw = L.filter(function (o) { return o.isNew; }), mine = nw.filter(function (o) { return o.match || o.kwm; }).length, soon = L.filter(function (o) { var n = daysTo(o.closing_date); return n != null && n >= 0 && n <= 7; }).length, act = DEALS.filter(active).length, aw = DEALS.filter(awaiting).length;
   el.textContent = EN ? "Since your last visit I found " + nw.length + " new opportunities in your markets" + (mine ? " (" + mine + " match your sectors)" : "") + ", and " + soon + " close within a week. You have " + act + " active deals" + (aw ? " and " + aw + " awaiting a reply." : ".")
     : "من آخر زيارة لقيتلك " + nw.length + " فرصة جديدة في أسواقك" + (mine ? " (منهم " + mine + " في قطاعك)" : "") + "، و" + soon + " فرصة بتقفل خلال أسبوع. عندك " + act + " صفقة شغالة" + (aw ? " و" + aw + " مستنية رد." : ".");

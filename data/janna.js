@@ -127,6 +127,7 @@
     "fallback.1": { m: "empathetic", ar: "ممم، دي ملقيتلهاش إجابة عندي 🙈 بس جرّب تسألني عن الباقات، أو قولّي: دوّريلي على مصنع أو منتج، وأنا أعملهولك.", en: "Hmm, I don't have an answer for that one 🙈 Try asking me about plans, or say: find me a factory or a product, and I'll do it." },
     "listening": { m: "calm", ar: "سامعاك… اتكلم دلوقتي 🎙️", en: "I'm listening… go ahead 🎙️" },
     "nomic": { m: "empathetic", ar: "الميكروفون مش متاح في المتصفح ده 🙈 اكتبلي هنا وأنا أرد عليك على طول.", en: "The microphone isn't available in this browser 🙈 Type here and I'll answer right away." },
+    "nomic.app": { m: "empathetic", ar: "الميكروفون مش متاح للتطبيق 🙈 اكتبلي هنا وأنا أرد عليك على طول.", en: "The microphone isn't available to the app 🙈 Type here and I'll answer right away." },
     "nohear": { m: "empathetic", ar: "معلش ما سمعتش كويس، ممكن تقولها تاني؟", en: "Sorry, I didn't catch that. Could you say it again?" },
     "attract.0": { m: "excited", ar: "أهلاً بيك 👋 قرّب وكلّمني! أنا جنة، وأقدر أساعدك تلاقي مصانع ومنتجات وتسجّل مصنعك.", en: "Hello 👋 Come closer and talk to me! I'm Janna, I can help you find factories and products and register your factory." },
     "attract.1": { m: "happy", ar: "إزيك 😊 عندك سؤال عن المنصة؟ دوس على الشاشة وكلّمني.", en: "Hi there 😊 Got a question about the platform? Tap the screen and talk to me." },
@@ -296,8 +297,13 @@
   var PMK = { local: ["مصر", "Egypt"], gulf: ["كل دول الخليج الست", "all 6 Gulf states"], africa: ["أفريقيا", "Africa"], asia: ["آسيا", "Asia"], europe: ["أوروبا", "Europe"] };
   function MP() { return window.MIGPLAN && window.MIGPLAN.PL ? window.MIGPLAN : null; }
   function planName(k) { var P = MP(), o = P && P.PL[k]; return o ? (L === "ar" ? o.n : o.en) : k; }
+  /* the platform's own app (user agent «MIGApp», app/): its own «nomic» words; and while the owner keeps buying off inside it
+     (data/flags.js MIGFLAGS.buyOff — «🛠️ المطوّر» app_buy_ios / app_buy_android, ON by default = exactly like the website) Janna names
+     no price and no payment there (store rules, app parity plan item app-buy-switch) */
+  var NOMIC = /\bMIGApp\b/.test(navigator.userAgent || "") ? "nomic.app" : "nomic";
+  function noBuy() { var F = window.MIGFLAGS; return !!(F && F.buyOff && F.buyOff()); }
   function planPrice(k) {
-    var P = MP(), o = P && P.PL[k], v = null; if (!o) return null;
+    var P = MP(), o = P && P.PL[k], v = null; if (!o || noBuy()) return null;
     try { if (typeof P.price === "function") v = P.price(k); } catch (e) {}
     if (v == null) v = o.price != null ? o.price : o.egp;
     v = Number(v); return v > 0 && isFinite(v) ? v : null;
@@ -331,12 +337,14 @@
     return out.join(" · ");
   }
   function planPriceTxt(k) {
+    if (noBuy()) return "";
     var p = planPrice(k), r = vatRate(); if (p == null) return L === "ar" ? "السعر الحالي مكتوب في صفحة الباقات." : "The current price is on the plans page.";
     var v = Math.round(p * r), pc = Math.round(r * 100) + "%";
     return L === "ar" ? "السعر " + money(p) + " جنيه في السنة + ضريبة القيمة المضافة " + pc + " (" + money(v) + ") يعني " + money(p + v) + " جنيه." : "Price: EGP " + money(p) + " a year + " + pc + " VAT (" + money(v) + ") = EGP " + money(p + v) + ".";
   }
   function plansList() {
     var ar = L === "ar", ks = PKEYS.filter(function (k) { return MP() && MP().PL[k]; }), priced = ks.filter(function (k) { return planPrice(k) != null; }).length === ks.length && ks.length;
+    if (noBuy()) return ks.length ? (ar ? "عندنا " + ks.length + " باقات سنوية: " : "We have " + ks.length + " yearly plans: ") + ks.map(planName).join(ar ? "، " : ", ") + "." : "";
     if (!ks.length) return ar ? "الباقات وأسعارها في صفحة الباقات." : "The plans and their prices are on the plans page.";
     if (!priced) return (ar ? "عندنا " + ks.length + " باقات سنوية: " : "We have " + ks.length + " yearly plans: ") + ks.map(planName).join(ar ? "، " : ", ") + (ar ? ". الأسعار الحالية في صفحة الباقات." : ". The current prices are on the plans page.");
     return (ar ? "باقاتنا سنوية: " : "Our plans are yearly: ") + ks.map(function (k) { return planName(k) + " " + (ar ? money(planPrice(k)) + " جنيه" : "EGP " + money(planPrice(k))); }).join(ar ? "، و" : ", ") + (ar ? "، وكلها عليها ضريبة القيمة المضافة " + Math.round(vatRate() * 100) + "%." : ", all plus " + Math.round(vatRate() * 100) + "% VAT.");
@@ -1528,6 +1536,7 @@
     }
     if (step === 3) {
       W.plan = val;
+      if (noBuy()) { show({ segs: [ln("wiz.plan", { plan: planName(val), feat: planFeat(val), price: "", pay: "" })], acts: [btn("regfill", "✍️ " + t("regfill"), val, "pri"), linkBtn(t("openPage"), "register.html#form"), btn("qr", "📱 " + t("phone"))] }); return; }
       show({ segs: [ln("wiz.plan", { plan: planName(val), feat: planFeat(val), price: planPriceTxt(val), pay: PAYTXT[L] })], acts: [btn("regfill", "✍️ " + t("regfill"), val, "pri"), linkBtn(t("openPage"), "register.html#" + val), btn("qr", "📱 " + t("phone")), linkBtn(t("compare"), "register.html#plans")] });
     }
   }
@@ -1543,6 +1552,8 @@
   function setLang(l, quiet) { L = l; ss("janna-lang", l); ss("janna-lsite", SITEL); chrome(); if (!quiet) intro(true, true); }
   function qa(q, n) {
     var a = window.MIGBOT && MIGBOT.answer ? MIGBOT.answer(q, L) : null;
+    /* the app with buying off there: a stored answer that names a price or a payment is not said (the plans line instead) */
+    if (a && a[0] && noBuy() && /\d[\d,.]*\s*(جنيه|ج\.م)|EGP\s*\d|ادفع|الدفع|دفع الاشتراك|pay(ment)?\b/i.test(String(a[0]))) { show({ segs: [seg(L === "ar" ? "تفاصيل أسعار الباقات مش متاحة جوه التطبيق. " + plansList() : "Plan prices are not available inside the app. " + plansList(), "calm")], q: q, acts: [chip(["reg"])] }); return true; }
     if (a && a[0]) {
       var segs = []; if (Math.random() < .3) segs.push(ln("think")); segs.push(seg(a[0], "calm"));
       var la = (a[1] || []).slice(0, 4).map(function (l) { return linkBtn(l[0], l[1]); }); if (la.length < 2) la.push(chip(["can"]));
@@ -1590,7 +1601,7 @@
     var regW = /(^|\s)(سجل|سجلي|سجليني|اسجل|نسجل|تسجيل|التسجيل|اشترك|اشتراك|انضم|register|registration|sign ?up|subscribe|join)(\s|$)/.test(n);
     var plan = planOf(n), openT = has(n, "وديني|ودني|خديني|خدني|روحي|روح|افتح|افتحي|افتحيلي|افتحلي|اعرض|اعرضي|اعرضيلي|انقليني|صفحه", "go to|open|take me|navigate|bring me|page");
     var priceQ = /(^|\s)(اسعار|الاسعار|سعر|بكام|كام|تكلفه|التكلفه|رسوم|الرسوم|price|prices|pricing|cost|costs|how much|fee|fees)(\s|$)/.test(n) && /(باق|اشتراك|تسجيل|عضوي|plan|package|subscri|membership|regist)/.test(n);
-    if (priceQ && !openT && !CMPW.test(n)) { if (plan) return wiz(3, plan); return show({ segs: [ln("plans", { list: plansList() })], q: q, acts: [chip(["reg"]), linkBtn(t("compare"), "register.html#plans")] }); }
+    if (priceQ && !openT && !CMPW.test(n)) { if (noBuy()) return show({ segs: [seg(L === "ar" ? "تفاصيل أسعار الباقات مش متاحة جوه التطبيق. " + plansList() : "Plan prices are not available inside the app. " + plansList(), "calm")], q: q, acts: [chip(["reg"])] }); if (plan) return wiz(3, plan); return show({ segs: [ln("plans", { list: plansList() })], q: q, acts: [chip(["reg"]), linkBtn(t("compare"), "register.html#plans")] }); }
     if (regW && openT) return goTo("register.html" + (plan ? "#" + plan : ""));
     if (regW) {
       if (question && qa(q, n)) return;
@@ -1618,15 +1629,15 @@
   var SR = window.SpeechRecognition || window.webkitSpeechRecognition, rec = null, micBtn = bub.querySelector(".mic");
   if (!SR) micBtn.style.display = "none";
   function listen() {
-    if (!SR) { show({ segs: [ln("nomic")], acts: pageActs() }); return; }
+    if (!SR) { show({ segs: [ln(NOMIC)], acts: pageActs() }); return; }
     if (rec) { try { rec.stop(); } catch (e) {} return; }
     stop(); if (fig.hidden && !KIOSK) dock(false); bub.hidden = false; bub.classList.remove("teaser"); fig.classList.add("jn-open"); bodyEl.textContent = LINES.listening[L]; setMood("calm"); layout();
     rec = new SR(); rec.lang = L === "ar" ? "ar-EG" : "en-US"; rec.interimResults = true; rec.maxAlternatives = 1;
     micBtn.classList.add("rec"); var got = "";
     rec.onresult = function (e) { var s = ""; for (var i = e.resultIndex; i < e.results.length; i++) s += e.results[i][0].transcript; got = s; bodyEl.textContent = "🎙️ " + s; if (e.results[e.results.length - 1].isFinal) { try { rec.stop(); } catch (x) {} } };
-    rec.onerror = function (e) { micBtn.classList.remove("rec"); rec = null; got = ""; show({ segs: [ln(e && (e.error === "not-allowed" || e.error === "service-not-allowed") ? "nomic" : "nohear")], acts: pageActs() }); };
+    rec.onerror = function (e) { micBtn.classList.remove("rec"); rec = null; got = ""; show({ segs: [ln(e && (e.error === "not-allowed" || e.error === "service-not-allowed") ? NOMIC : "nohear")], acts: pageActs() }); };
     rec.onend = function () { micBtn.classList.remove("rec"); rec = null; if (got) handle(got, true); };
-    try { rec.start(); } catch (e) { rec = null; micBtn.classList.remove("rec"); show({ segs: [ln("nomic")], acts: pageActs() }); }
+    try { rec.start(); } catch (e) { rec = null; micBtn.classList.remove("rec"); show({ segs: [ln(NOMIC)], acts: pageActs() }); }
   }
 
   /* ---------- events ---------- */
@@ -2518,9 +2529,9 @@
     ks.sort(function (a, b) { return PKEYS.indexOf(a) - PKEYS.indexOf(b); });
     var priced = ks.every(function (k) { return planPrice(k) != null; });
     var lines = ks.map(function (k) { return "• " + planName(k) + (planPrice(k) != null ? ": " + money(planPrice(k)) + (L === "ar" ? " جنيه في السنة" : " EGP a year") : "") + " — " + planFeat(k) + "."; });
-    var segs = [seg(priced ? (L === "ar" ? "دي مقارنة الباقات (الأسعار سنوية + ضريبة القيمة المضافة " + Math.round(vatRate() * 100) + "%):" : "Here's the plan comparison (yearly prices + " + Math.round(vatRate() * 100) + "% VAT):") : (L === "ar" ? "دي مقارنة الباقات، والأسعار الحالية في صفحة الباقات:" : "Here's the plan comparison; the current prices are on the plans page:"), "calm"), seg(lines.join("\n"), "calm")];
+    var segs = [seg(priced ? (L === "ar" ? "دي مقارنة الباقات (الأسعار سنوية + ضريبة القيمة المضافة " + Math.round(vatRate() * 100) + "%):" : "Here's the plan comparison (yearly prices + " + Math.round(vatRate() * 100) + "% VAT):") : noBuy() ? (L === "ar" ? "دي مقارنة الباقات:" : "Here's the plan comparison:") : (L === "ar" ? "دي مقارنة الباقات، والأسعار الحالية في صفحة الباقات:" : "Here's the plan comparison; the current prices are on the plans page:"), "calm"), seg(lines.join("\n"), "calm")];
     if (ks.length === 2 && priced) { var d = planPrice(ks[1]) - planPrice(ks[0]); segs.push(seg(L === "ar" ? "الفرق بينهم " + money(Math.abs(d)) + " جنيه في السنة قبل الضريبة." : "The difference is EGP " + money(Math.abs(d)) + " a year before VAT.", "calm")); }
-    show({ segs: segs, q: q, acts: [btn("reg", t("reg"), null, "pri"), linkBtn(t("compare"), "register.html#plans")] });
+    show({ segs: segs, q: q, acts: noBuy() ? [btn("reg", t("reg"), null, "pri")] : [btn("reg", t("reg"), null, "pri"), linkBtn(t("compare"), "register.html#plans")] });
   }
   /* the visitor's sentence → an item to open (returns true when handled) */
   var OPENW = "افتح|افتحي|افتحيلي|افتحلي|افتحيلنا|وريني|وريلي|ورينا|اعرضي|اعرضيلي|اعرضلي|هاتي|هاتيلي|خديني علي|خديني على|خدني علي|خدني على|وديني علي|وديني على|عايز اشوف|عاوز اشوف|عايزه اشوف|عاوزه اشوف|ادخل علي|ادخل على|open|show me|show|take me to|bring up|pull up|go to";

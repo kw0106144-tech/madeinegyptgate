@@ -10,12 +10,29 @@
    Applied to the page: <html class="mig-off-<key>"> for every key that is off (CSS below hides the call buttons / intel links);
    [data-mig-feature~="key"] is hidden while the key is off; [data-mig-off~="key"] is shown only while it is off (an empty one gets the
    built-in message, e.g. the register page's «التسجيل الجديد موقوف مؤقتاً»). Event "mig:flags" {features, from} on window.
-   ES5, no dependencies, ~3 KB. */
+   The platform's own apps (user agent «MIGApp/<v> (ios|android)», app/capacitor.config.json; the head script of seo_build.part.py
+   pwa_head marks <html class="mig-app mig-app-ios|android"> before the first paint): MIGFLAGS.app() → "ios" | "android" | "";
+   MIGFLAGS.buyOff() → true while the owner keeps buying off inside THIS app (app_buy_ios / app_buy_android off): every element marked
+   [data-mig-buy] (prices, plan picker, «ادفع الآن», renew / upgrade) is hidden there by the CSS below — never on the website or in the
+   other app. In the app the last answer of the app's own switches is kept (localStorage "mig-flags-app") and used as their default, so a
+   cold start of the app hides that UI from the first paint too.
+   ES5, no dependencies, ~4 KB. */
 (function () {
   "use strict";
   var W = window, D = document;
   if (W.MIGFLAGS) return;
-  var DEF = { janna_live: true, bassem_live: true, janna_welcome: true, standing_figures: true, noise_mode_default: false, intel_pages: true, registrations: true };
+  var DEF = { janna_live: true, bassem_live: true, janna_welcome: true, standing_figures: true, noise_mode_default: false, intel_pages: true, registrations: true,
+    /* the app parity plan's switches (worker/src/flags.js): their defaults keep the apps exactly like the website */
+    app_buy_ios: true, app_buy_android: true, account_delete: false, visitor_erase_request: false, store_review_signin: false,
+    call_consent_app: false, call_consent_web: false, app_janna_autovoice: false };
+  /* the platform's own app: "ios" | "android" | "" (the same rule as worker/src/app-ua.js and the head script of pwa_head) */
+  var APP = (function () {
+    var u = String((W.navigator && W.navigator.userAgent) || ""), m = /\bMIGApp\/[^\s()]*\s*\((ios|android)\)/i.exec(u);
+    if (m) return m[1].toLowerCase();
+    return /\bMIGApp\b/.test(u) ? (/iPhone|iPad|iPod/.test(u) ? "ios" : /Android/i.test(u) ? "android" : "") : "";
+  })();
+  var AK = "mig-flags-app", AKEYS = ["app_buy_ios", "app_buy_android", "call_consent_app", "app_janna_autovoice"];
+  if (APP) { try { var am = JSON.parse(W.localStorage.getItem(AK) || "null"); if (am && typeof am === "object") for (var ai = 0; ai < AKEYS.length; ai++) if (typeof am[AKEYS[ai]] === "boolean") DEF[AKEYS[ai]] = am[AKEYS[ai]]; } catch (e0) {} }
   var SK = "mig-flags", TTL = 180000, WAIT = 2500;
   var F = null, FROM = "", CBS = [], DONE = false, BUSY = false;
   var own = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
@@ -23,7 +40,8 @@
   var MSG = {
     registrations: ["التسجيل الجديد موقوف مؤقتاً — جرّب تاني بعد شوية. لو عندك حساب على المنصة، ادخل بالإيميل بتاعه عادي.", "New registrations are paused for now — please try again later. If you already have an account, sign in with its e-mail as usual."],
     janna_live: ["مكالمات جنة المباشرة موقوفة مؤقتاً — تقدر تكلّمها كتابة من «اسأل جنة».", "Live calls with Janna are paused for now — you can still write to her via «Ask Janna»."],
-    bassem_live: ["مكالمات باسم المباشرة موقوفة مؤقتاً — جرّب تاني بعد شوية.", "Live calls with Bassem are paused for now — please try again later."]
+    bassem_live: ["مكالمات باسم المباشرة موقوفة مؤقتاً — جرّب تاني بعد شوية.", "Live calls with Bassem are paused for now — please try again later."],
+    app_buy: ["الدفع مش متاح جوه التطبيق.", "Payment is not available inside the app."]
   };
   function on(k) { if (F && own(F, k)) return F[k]; return own(DEF, k) ? DEF[k] : true; }
   function all() { var o = {}, k; for (k in DEF) if (own(DEF, k)) o[k] = DEF[k]; if (F) for (k in F) if (own(F, k)) o[k] = F[k]; return o; }
@@ -37,6 +55,8 @@
   var CSS = "html.mig-off-janna_live .jnl-btn,html.mig-off-janna_live .jw-sb .jw-acts .jw-call,html.mig-off-janna_live #meetB,html.mig-off-janna_live #mtgNow,html.mig-off-janna_live #mtgGo,html.mig-off-janna_live [data-mgq-meet]"
     + ",html.mig-off-bassem_live #advLive,html.mig-off-bassem_live .advlv,html.mig-off-bassem_live [data-bs=video],html.mig-off-bassem_live .bst-call"
     + ",html.mig-off-intel_pages a[href='/intel'],html.mig-off-intel_pages a[href^='/intel/'],html.mig-off-intel_pages a[href^='https://madeinegyptgate.com/intel/'],html.mig-off-intel_pages a[href^='https://www.madeinegyptgate.com/intel/'],html.mig-off-intel_pages [data-intel]{display:none!important}"
+    /* the store rules (app_buy_ios / app_buy_android off): buying UI hidden inside THAT app only */
+    + "html.mig-app-ios.mig-off-app_buy_ios [data-mig-buy],html.mig-app-android.mig-off-app_buy_android [data-mig-buy]{display:none!important}"
     + "[data-mig-off]{display:block;grid-column:1/-1;box-sizing:border-box;width:100%;max-width:880px;margin:0 auto 16px;padding:16px 18px;border-radius:14px;background:#FFF7E6;border:1px solid #F5DFA6;color:#7A5B00;font-weight:700;line-height:1.8;text-align:center}[data-mig-off][hidden]{display:none!important}";
   function style() {
     if (D.getElementById("mig-flags-css")) return;
@@ -51,6 +71,13 @@
     if (onIntel()) m.intel_pages = true;
     for (var k in m) if (own(m, k)) { var c = "mig-off-" + k; if (m[k] === false) { if ((" " + de.className + " ").indexOf(" " + c + " ") < 0) de.className = (de.className ? de.className + " " : "") + c; } else de.className = (" " + de.className + " ").replace(" " + c + " ", " ").replace(/^\s+|\s+$/g, ""); }
     if (!D.body) return;
+    /* the store rules (buying off inside this app): the main menu's «الباقات والتسجيل» (/register/#plans) becomes «التسجيل» (the form) */
+    var bo = !!APP && m["app_buy_" + APP] === false;
+    each("nav a[href*='register'][href*='#plans'],header a[href*='register'][href*='#plans']", function (a) {
+      var was = a.getAttribute("data-mig-buy-was");
+      if (bo && was == null) { a.setAttribute("data-mig-buy-was", a.textContent + "\u0001" + a.getAttribute("href")); a.textContent = en() ? "Registration" : "التسجيل"; a.setAttribute("href", a.getAttribute("href").replace(/#plans$/, "#form")); }
+      else if (!bo && was != null) { var w = was.split("\u0001"); a.textContent = w[0]; a.setAttribute("href", w[1] || a.getAttribute("href")); a.removeAttribute("data-mig-buy-was"); }
+    });
     each("[data-mig-feature]", function (el) { var off = keysOf(el, "data-mig-feature").some(function (x) { return x && on(x) === false; }); if (off) { if (!el.hasAttribute("data-mig-was")) el.setAttribute("data-mig-was", el.hidden ? "1" : "0"); el.hidden = true; } else if (el.hasAttribute("data-mig-was")) { el.hidden = el.getAttribute("data-mig-was") === "1"; el.removeAttribute("data-mig-was"); } });
     each("[data-mig-off]", function (el) {
       var ks = keysOf(el, "data-mig-off"), off = ks.filter(function (x) { return x && on(x) === false; });
@@ -58,9 +85,15 @@
       if (off.length && !el.getAttribute("data-mig-own") && MSG[off[0]]) { if (!el.textContent.replace(/\s+/g, "")) el.setAttribute("data-mig-filled", "1"); if (el.getAttribute("data-mig-filled")) { el.textContent = MSG[off[0]][en() ? 1 : 0]; el.setAttribute("role", "status"); el.setAttribute("translate", "no"); } }
     });
   }
+  /* the app's own switches as the server last answered them: the defaults of the next cold start of the app (see the top) */
+  function keepApp(map) {
+    if (!APP || !map) return;
+    var o = {}, n = 0; for (var i = 0; i < AKEYS.length; i++) if (typeof map[AKEYS[i]] === "boolean") { o[AKEYS[i]] = map[AKEYS[i]]; n++; }
+    if (n) { try { W.localStorage.setItem(AK, JSON.stringify(o)); } catch (e) {} }
+  }
   function settle(map, from) {
     var was = F ? JSON.stringify(F) : "";
-    if (map) { F = map; FROM = from; }
+    if (map) { F = map; FROM = from; if (from === "api") keepApp(map); }
     style(); apply();
     if (!DONE || (map && JSON.stringify(F) !== was)) {
       DONE = true;
@@ -99,7 +132,10 @@
     refresh: function () { try { W.sessionStorage.removeItem(SK); } catch (e) {} fetchNow(); },
     /* a page that renders [data-mig-feature] / [data-mig-off] after the answer (e.g. the meeting page) applies them again */
     apply: function () { try { apply(); } catch (e) {} },
-    msg: function (k) { return MSG[k] ? MSG[k][en() ? 1 : 0] : ""; }
+    msg: function (k) { return MSG[k] ? MSG[k][en() ? 1 : 0] : ""; },
+    /* the platform's own app: "ios" | "android" | "" — and whether buying is off inside it (app_buy_<platform>) */
+    app: function () { return APP; },
+    buyOff: function () { return !!APP && on("app_buy_" + APP) === false; }
   };
   var c = cached();
   if (c) settle(c, "cache"); else { style(); apply(); fetchNow(); }

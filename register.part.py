@@ -109,7 +109,7 @@ html[lang=en] .bi-ar { display: none; }
 ''', '''
 %HERO%
 <main class="wrap pbody2" id="top">
-  <section id="plans" style="scroll-margin-top:90px">
+  <section id="plans" style="scroll-margin-top:90px" data-mig-buy>
     <div class="sh" style="margin-bottom:20px;display:flex;flex-direction:column;gap:6px"><span style="color:var(--gold-deep);font-weight:700;font-size:.85rem"><span class="bi-ar">باقات التسجيل السنوي · </span>Annual Registration Packages</span><h2 style="font-size:clamp(1.5rem,3vw,2rem);font-weight:800">اختر الباقة المناسبة لحجم منشأتك وأسواقك</h2><p class="muted" data-mig-gcc-intro>مدة التسجيل عام واحد من تاريخ التفعيل. «تسجيل بيانات الشركة فقط» بيعمل لشركتك بروفايل في الدليل وفي نتائج البحث بس. من الباقة الأساسية وطالع بتشوف المناقصات وطلبات الأسعار والشركات الفائزة وأخبار المشاريع: في مصر للأساسية، ومعاها 3 دول خليجية تختارها وأخبار المشتريات للمميزة، وكل دول الخليج وأفريقيا والمستشار «باسم» للشريك الأساسي، وكل أسواق العالم و«باسم» وكل الخدمات الاستشارية للشريك الاستراتيجي. دليل الموردين والمقاولين والشركات مفتوح للكل.</p></div>
     <div class="plans" id="plansGrid"></div>
     <div class="profileonly"><div><span class="no" style="color:var(--gold-deep);font-weight:800;font-size:.8rem">05</span><h3 style="font-size:1.1rem;font-weight:800"><span class="bi-ar">تسجيل بيانات الشركة فقط · </span>Company Profile Only</h3><p class="muted" style="font-size:.88rem">بروفايل للشركة بس: ظهور الشركة في الدليل وفي نتائج البحث (الاسم والشعار ونبذة تعريفية وبيانات التواصل الرسمية). الباقة دي مابتفتحش المناقصات ولا طلبات الأسعار ولا الترسيات ولا أخبار المشاريع ولا أي فرص، ومن غير منتجات ولا استقبال طلبات — للفرص: الباقة الأساسية فأعلى.</p></div><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap"><b class="p num"><span data-mig-price="profile">4,000</span> <small style="font-size:.85rem" class="muted">جنيه سنوياً</small></b><button class="btn btn-line" type="button" data-plan="profile">✍️ سجّل الآن</button></div></div>
@@ -122,7 +122,7 @@ html[lang=en] .bi-ar { display: none; }
       <div class="pbar3"><b id="pb3"></b></div>
       <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center"><h2 id="stTitle"><span class="bi-ar">استمارة التسجيل · </span>Registration Form</h2><span class="chip chip-gray num" id="today"></span></div>
 
-      <div class="stp" data-s="0"></div><div class="chosen" id="chosen"></div>
+      <div class="stp" data-s="0"></div><div class="chosen" id="chosen" data-mig-buy></div>
 
       <div class="stp" data-s="1">
         <fieldset class="gccf" id="gccF" hidden aria-describedby="gccH gccN"><legend id="gccL"><span class="bi-ar">اختار 3 دول خليجية لباقتك المميزة · </span>Choose 3 Gulf states for your Premium plan *</legend>
@@ -163,7 +163,7 @@ html[lang=en] .bi-ar { display: none; }
 
       <div class="stp" data-s="5">
         <dl class="sumbox" id="sum"></dl>
-        <div class="note2" style="line-height:1.9" data-mig-vat id="payNote2">🔒 الدفع الإلكتروني بيتم في صفحة بوابة الدفع الآمنة نفسها (البطاقات البنكية والمحافظ الإلكترونية)، ومنصتنا <b>مش بتطلب ولا بتحفظ بيانات أي كارت</b>. بوابة الدفع لسه بتتجهّز — أول ما تشتغل، رابط الدفع الآمن بيوصلك تلقائياً على بريد الشركة، والحساب بيتفعّل تلقائياً بعد الدفع، والفاتورة الإلكترونية (شاملة ضريبة القيمة المضافة 14%) بتوصلك على نفس البريد.</div>
+        <div class="note2" style="line-height:1.9" data-mig-vat data-mig-buy id="payNote2">🔒 الدفع الإلكتروني بيتم في صفحة بوابة الدفع الآمنة نفسها (البطاقات البنكية والمحافظ الإلكترونية)، ومنصتنا <b>مش بتطلب ولا بتحفظ بيانات أي كارت</b>. بوابة الدفع لسه بتتجهّز — أول ما تشتغل، رابط الدفع الآمن بيوصلك تلقائياً على بريد الشركة، والحساب بيتفعّل تلقائياً بعد الدفع، والفاتورة الإلكترونية (شاملة ضريبة القيمة المضافة 14%) بتوصلك على نفس البريد.</div>
       </div>
 
       <div class="stp" data-s="6" id="doneStep"></div>
@@ -175,6 +175,12 @@ html[lang=en] .bi-ar { display: none; }
 </main>
 ''', PLANS_JS + r'''
 $("#plansGrid").innerHTML = plansHTML(true);
+/* the platform's own app with buying off there (data/flags.js MIGFLAGS.buyOff: «🛠️ المطوّر» app_buy_ios / app_buy_android, ON by default =
+   exactly like the website): the plan cards, prices and payment lines are hidden ([data-mig-buy]), the company form stays and goes to the
+   team without a plan (the server then issues no invoice) — app parity plan, item app-buy-switch */
+function buyOff() { return !!(window.MIGFLAGS && MIGFLAGS.buyOff && MIGFLAGS.buyOff()); }
+[].forEach.call(document.querySelectorAll('.phero p, .phero a[href="#plans"]'), function (x) { x.setAttribute("data-mig-buy", ""); });
+window.addEventListener("mig:flags", function () { if (buyOff()) { drawGcc(); prodHint(); } });
 /* deploy 2: the gateway is live (Control Center) → the step-5 note no longer says it is being set up */
 if (window.MIGPAYREADY && $("#payNote2")) $("#payNote2").innerHTML = (window.MIGLANG === "en" ? "🔒 Online payment happens on the secure payment gateway's own page (bank cards and e-wallets); our platform <b>never asks for or stores card details</b>. After you send the application, the secure payment link reaches the company e-mail within minutes, the account is activated automatically after payment, and the e-invoice (including VAT) reaches the same e-mail." : "🔒 الدفع الإلكتروني بيتم في صفحة بوابة الدفع الآمنة نفسها (البطاقات البنكية والمحافظ الإلكترونية)، ومنصتنا <b>مش بتطلب ولا بتحفظ بيانات أي كارت</b>. بعد ما تبعت الطلب، رابط الدفع الآمن بيوصلك على بريد الشركة خلال دقايق، والحساب بيتفعّل تلقائياً بعد الدفع، والفاتورة الإلكترونية (شاملة ضريبة القيمة المضافة) بتوصلك على نفس البريد.");
 try { var gt = sessionStorage.getItem("mig-gate"); if (gt) { sessionStorage.removeItem("mig-gate"); /* fixed text and the gated item («label: item») go in separate spans so each part is translated in English */ var EN = window.MIGLANG === "en", gi = gt.indexOf(": "), gw = document.createElement("div"); gw.className = "warn2"; gw.setAttribute("style", "background:var(--gold-soft);border:1px dashed var(--gold);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-weight:700"); [EN ? "🔒 To view" : "🔒 لعرض", " "].concat(gi > 0 ? [gt.slice(0, gi), ": ", gt.slice(gi + 2)] : [gt], [EN ? ". " : " ", "سجّل منشأتك واختر الباقة المناسبة. القوائم متاحة للتصفح، والتفاصيل والتقديم للمشتركين."]).forEach(function (t) { var sp = document.createElement("span"); sp.textContent = t; gw.appendChild(sp); }); $("#plans").insertAdjacentElement("afterbegin", gw); } } catch (x) {}
@@ -190,7 +196,7 @@ drawPick();
 $("#cats").innerHTML = [["steel", "حديد · Steel"], ["wood", "أخشاب · Wood"], ["plastic", "بلاستيك · Plastic"], ["food", "أغذية · Food"], ["paper", "ورق · Paper"], ["chem", "كيماويات · Chemicals"], ["oil", "نفط وغاز · Oil & Gas"], ["textile", "غزل ونسيج · Textiles"], ["build", "مواد بناء · Building Materials"], ["elec", "صناعات هندسية وكهربائية · Engineering"], ["pharma", "أدوية ومستلزمات طبية · Pharma"], ["other", "أخرى · Others"]].map(function (c) { return '<label><input type="checkbox" name="cat" value="' + c[0] + '"> ' + bi(c[1]) + '</label>'; }).join("");
 /* Premium = Egypt + 3 GCC states the member picks here (the Control Center's gcc_pick; the server refuses a Premium application without
    exactly that many — 400 gcc_required). #r-gcc (hidden) carries the codes: Janna's fillers set it and the boxes tick themselves. */
-function PICK() { return window.MIGPLAN && MIGPLAN.gccPickOf ? MIGPLAN.gccPickOf(plan) : 0; }
+function PICK() { return buyOff() ? 0 : window.MIGPLAN && MIGPLAN.gccPickOf ? MIGPLAN.gccPickOf(plan) : 0; }
 function gccW(n, en) { return window.MIGPLAN && MIGPLAN.gccCount ? MIGPLAN.gccCount(n, en) : (en ? n + " Gulf states" : n + " دول خليجية"); }
 $("#gccG").innerHTML = ((window.MIGPLAN && MIGPLAN.GCC) || [["SA", "السعودية", "Saudi Arabia", "🇸🇦"], ["AE", "الإمارات", "UAE", "🇦🇪"], ["KW", "الكويت", "Kuwait", "🇰🇼"], ["QA", "قطر", "Qatar", "🇶🇦"], ["BH", "البحرين", "Bahrain", "🇧🇭"], ["OM", "عُمان", "Oman", "🇴🇲"]]).map(function (c) { return '<label><input type="checkbox" name="gcc" value="' + c[0] + '"> <span aria-hidden="true">' + c[3] + "</span> " + bi(c[1] + " · " + c[2]) + "</label>"; }).join("");
 var GB = window.MIGPLAN && MIGPLAN.gccBind ? MIGPLAN.gccBind($("#gccF"), { pick: function () { return PICK() || 3; }, onChange: function (cs) { $("#r-gcc").value = cs.join(","); } }) : null;
@@ -219,7 +225,7 @@ if (window.MIGAPI && MIGAPI.token && MIGAPI.token()) MIGAPI.request("/me/recogni
   if (n && $("#form")) { var nt = document.createElement("div"); nt.className = "note2"; nt.setAttribute("role", "status"); nt.textContent = EN ? "We filled in your details from your old account — please review them." : "جبنا بياناتك من حسابك القديم — راجعها."; $("#form").insertAdjacentElement("afterbegin", nt); }
 }, function () { /* nothing to pre-fill */ });
 $("#today").textContent = "التاريخ: " + new Intl.DateTimeFormat("ar-EG-u-ca-gregory-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(new Date());
-function prodHint() { var l = LIM[plan]; $("#prodHint").textContent = l === 0 ? "باقة تسجيل البيانات فقط لا تشمل إدراج منتجات." : l === Infinity ? "منتجات غير محدودة في باقتك." : "يمكنك إدراج حتى " + l + " منتجاً في باقتك."; }
+function prodHint() { var l = LIM[plan]; if (buyOff()) { $("#prodHint").textContent = ""; return; } $("#prodHint").textContent = l === 0 ? "باقة تسجيل البيانات فقط لا تشمل إدراج منتجات." : l === Infinity ? "منتجات غير محدودة في باقتك." : "يمكنك إدراج حتى " + l + " منتجاً في باقتك."; }
 prodHint();
 var EMI = {}; $$("#r-emi option").forEach(function (o) { if (!o.value) return; var t = o.textContent.split(" · "); EMI[o.value] = EN && t[1] ? t[1] : t[0]; if (EN && t[1]) o.textContent = t[1]; });
 var TITLES = ["اختر باقة التسجيل", "بيانات الشركة · Company Details", "النشاط والمنتجات والقطاعات", "المستندات المطلوبة", "مسؤول التسجيل", "مراجعة الطلب وإرساله", "تم استلام طلب الاشتراك"];
@@ -233,7 +239,8 @@ function go(n) {
   $("#prev").style.visibility = n > 1 && n < 6 ? "visible" : "hidden";
   $("#next").textContent = n === 5 ? (EN ? "Submit the application" : "إرسال طلب الاشتراك") : "التالي ←";
   $("#nav3").style.display = n === 6 ? "none" : "flex"; $("#chosen").hidden = n === 6;
-  if (n === 5) { var f = fee(), v = Math.round(f * (window.MIGPLANS ? MIGPLANS.vatRate() : .14)); $("#sum").innerHTML = '<dt>الباقة</dt><dd>' + P()[1] + '</dd>' + (PICK() && window.MIGPLAN ? '<dt>' + (EN ? "Gulf states" : "دول الخليج") + '</dt><dd>' + esc(MIGPLAN.gccNames(gccVal())) + '</dd>' : '') + '<dt>الشركة</dt><dd>' + esc($("#r-name").value) + '</dd><dt>المحافظة</dt><dd>' + (EMI[$("#r-emi").value] || "—") + '</dd><dt>مدة التسجيل</dt><dd>سنة واحدة</dd><dt>رسوم التسجيل</dt><dd>' + egp(f) + '</dd><dt>ضريبة القيمة المضافة ' + (window.MIGPLANS ? MIGPLANS.vatLabel() : "14%") + '</dt><dd>' + egp(v) + '</dd><dt><b>الإجمالي</b></dt><dd style="font-size:1.15rem;color:var(--green)">' + egp((f + v)) + '</dd><dt>مسؤول التسجيل</dt><dd>' + esc($("#o-name").value) + ' · <span dir="ltr">' + esc($("#o-mail").value) + '</span></dd>'; }
+  if (n === 5 && buyOff()) { $("#sum").innerHTML = '<dt>الشركة</dt><dd>' + esc($("#r-name").value) + '</dd><dt>المحافظة</dt><dd>' + (EMI[$("#r-emi").value] || "—") + '</dd><dt>مسؤول التسجيل</dt><dd>' + esc($("#o-name").value) + ' · <span dir="ltr">' + esc($("#o-mail").value) + '</span></dd>'; }
+  else if (n === 5) { var f = fee(), v = Math.round(f * (window.MIGPLANS ? MIGPLANS.vatRate() : .14)); $("#sum").innerHTML = '<dt>الباقة</dt><dd>' + P()[1] + '</dd>' + (PICK() && window.MIGPLAN ? '<dt>' + (EN ? "Gulf states" : "دول الخليج") + '</dt><dd>' + esc(MIGPLAN.gccNames(gccVal())) + '</dd>' : '') + '<dt>الشركة</dt><dd>' + esc($("#r-name").value) + '</dd><dt>المحافظة</dt><dd>' + (EMI[$("#r-emi").value] || "—") + '</dd><dt>مدة التسجيل</dt><dd>سنة واحدة</dd><dt>رسوم التسجيل</dt><dd>' + egp(f) + '</dd><dt>ضريبة القيمة المضافة ' + (window.MIGPLANS ? MIGPLANS.vatLabel() : "14%") + '</dt><dd>' + egp(v) + '</dd><dt><b>الإجمالي</b></dt><dd style="font-size:1.15rem;color:var(--green)">' + egp((f + v)) + '</dd><dt>مسؤول التسجيل</dt><dd>' + esc($("#o-name").value) + ' · <span dir="ltr">' + esc($("#o-mail").value) + '</span></dd>'; }
   $("#form").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 function egp(x) { x = x.toLocaleString("en-US"); return EN ? "EGP " + x : x + " جنيه"; }
@@ -244,7 +251,7 @@ function valid(n) {
   $$('.stp[data-s="' + n + '"] [required]').forEach(function (i) { if (!i.value.trim() || !i.checkValidity()) bad.push(lbl(i)); });
   if (n === 1 && $("#r-vat").value && !/^\d{9}$/.test($("#r-vat").value.replace(/[\s-]/g, ""))) bad.push("رقم التسجيل الضريبي يجب أن يكون 9 أرقام");
   if (n === 1 && PICK() && gccVal().length !== PICK()) { bad.push(EN ? "Choose exactly " + gccW(PICK(), true) : "اختار " + gccW(PICK(), false) + " بالظبط"); if (GB) GB.bad(); }
-  if (n === 2) { if (!$$('input[name="cat"]:checked').length) bad.push("اختر قطاعاً واحداً على الأقل"); var cnt = $("#r-prod").value.split("\n").filter(function (x) { return x.trim(); }).length; if (LIM[plan] !== Infinity && cnt > LIM[plan] && LIM[plan] > 0) bad.push(EN ? "Number of products (" + cnt + ") exceeds your plan limit (" + LIM[plan] + ")" : "عدد المنتجات (" + cnt + ") أكبر من حد باقتك (" + LIM[plan] + ")"); }
+  if (n === 2) { if (!$$('input[name="cat"]:checked').length) bad.push("اختر قطاعاً واحداً على الأقل"); var cnt = $("#r-prod").value.split("\n").filter(function (x) { return x.trim(); }).length; if (!buyOff() && LIM[plan] !== Infinity && cnt > LIM[plan] && LIM[plan] > 0) bad.push(EN ? "Number of products (" + cnt + ") exceeds your plan limit (" + LIM[plan] + ")" : "عدد المنتجات (" + cnt + ") أكبر من حد باقتك (" + LIM[plan] + ")"); }
   if (n === 4) { if (!$("#o-terms").checked) bad.push("الإقرار والموافقة على الشروط"); if (window.MIGINQ && $("#o-mail").value.trim() && !MIGINQ.EMRE.test($("#o-mail").value.trim())) bad.push("الإيميل"); }
   if (n === 1 && window.MIGINQ && $("#r-mail").value.trim() && !MIGINQ.EMRE.test($("#r-mail").value.trim())) bad.push("البريد الإلكتروني");
   $("#err").textContent = bad.length ? (EN ? "Please complete: " + bad.map(function (x) { return window.MIGTR ? MIGTR(x) : x; }).join(", ") : "أكمل: " + bad.join("، ")) : "";
@@ -256,17 +263,19 @@ function finish() {
   var b = $("#next"), I = window.MIGINQ, cats = $$('input[name="cat"]:checked').map(function (i) { return i.value; }), f = fee();
   if (!I) { $("#err").textContent = EN ? "The sending service did not load, so nothing was sent. Please reload the page." : "خدمة الإرسال ماتحمّلتش، فمفيش حاجة اتبعتت. حدّث الصفحة."; return; }
   var box = document.createElement("div"); $("#err").textContent = "";
-  var pl = { plan: plan, plan_name: P()[1], fee_egp: f, company: $("#r-name").value.trim(), manager: $("#r-mgr").value.trim(), tel: $("#r-tel").value.trim(), governorate: $("#r-emi").value, address: $("#r-addr").value.trim(),
+  var nob = buyOff(), pk = nob ? "" : plan, pn = nob ? "" : P()[1];   /* buying off in this app: no plan — the team settles it */
+  if (nob) f = 0;
+  var pl = { plan: pk, plan_name: pn, fee_egp: f, company: $("#r-name").value.trim(), manager: $("#r-mgr").value.trim(), tel: $("#r-tel").value.trim(), governorate: $("#r-emi").value, address: $("#r-addr").value.trim(),
     cr_no: $("#r-cr").value.trim(), licence_no: ($("#r-lic") || { value: "" }).value.trim(), tax_no: $("#r-vat").value.trim(), website: ($("#r-web") || { value: "" }).value.trim(), company_email: $("#r-mail").value.trim(),
     activity: $("#r-act").value.trim(), products: $("#r-prod").value.trim().slice(0, 1000), sector: cats.join(","), terms: true, gcc: PICK() ? gccVal() : undefined };
   b.disabled = true;
-  I.send({ kind: "signup", target_type: "plan", target_id: plan, target_name: P()[1], name: $("#o-name").value.trim(), company: $("#r-name").value.trim(), email: $("#o-mail").value.trim() || $("#r-mail").value.trim(), phone: $("#o-mob").value.trim(),
+  I.send({ kind: "signup", target_type: "plan", target_id: pk, target_name: pn, name: $("#o-name").value.trim(), company: $("#r-name").value.trim(), email: $("#o-mail").value.trim() || $("#r-mail").value.trim(), phone: $("#o-mob").value.trim(),
     consent_wa: I.waChecked("rg"), message: $("#r-act").value.trim(), payload: pl }, { box: box, btn: b, hideForm: false }).then(function (j) {
     $("#doneStep").innerHTML = '<div class="done-box"><span class="ic">✓</span><h2>' + (EN ? "Your application was received" : "استلمنا طلب اشتراك ") + (EN ? "" : esc($("#r-name").value)) + '</h2></div>' + box.innerHTML
       + '<div class="card2"><h3 style="font-size:1rem;font-weight:800">' + (EN ? "What happens now (automatically)" : "اللي بيحصل دلوقتي (تلقائياً)") + '</h3><ol style="margin:0;padding-inline-start:20px;line-height:2">'
       + "<li>" + (EN ? "Sign in with a one-time code sent to your e-mail (no password) and complete your company profile." : "ادخل بكود لمرة واحدة بيوصلك على الإيميل (من غير باسورد) وكمّل ملف شركتك.") + "</li>"
-      + "<li>" + (window.MIGPAYREADY ? (EN ? "The secure payment link reaches the company e-mail within minutes (the invoice e-mail); we never ask for card details on our pages." : "هيوصلك رابط الدفع الآمن على بريد الشركة خلال دقايق (إيميل الفاتورة)؛ ومش هنطلب منك بيانات كارت على صفحاتنا أبداً.") : (EN ? "Once secure online payment is live, its link is e-mailed to you automatically; we never ask for card details on our pages." : "أول ما الدفع الإلكتروني الآمن يشتغل، رابطه بيوصلك تلقائياً على الإيميل؛ ومش هنطلب منك بيانات كارت على صفحاتنا أبداً.")) + "</li>"
-      + "<li>" + (EN ? "Your plan is activated automatically after payment, and the e-invoice reaches the same e-mail." : "الباقة بتتفعّل تلقائياً بعد الدفع، والفاتورة الإلكترونية بتوصلك على نفس الإيميل.") + "</li></ol>"
+      + (nob ? "" : "<li>" + (window.MIGPAYREADY ? (EN ? "The secure payment link reaches the company e-mail within minutes (the invoice e-mail); we never ask for card details on our pages." : "هيوصلك رابط الدفع الآمن على بريد الشركة خلال دقايق (إيميل الفاتورة)؛ ومش هنطلب منك بيانات كارت على صفحاتنا أبداً.") : (EN ? "Once secure online payment is live, its link is e-mailed to you automatically; we never ask for card details on our pages." : "أول ما الدفع الإلكتروني الآمن يشتغل، رابطه بيوصلك تلقائياً على الإيميل؛ ومش هنطلب منك بيانات كارت على صفحاتنا أبداً.")) + "</li>")
+      + (nob ? "" : "<li>" + (EN ? "Your plan is activated automatically after payment, and the e-invoice reaches the same e-mail." : "الباقة بتتفعّل تلقائياً بعد الدفع، والفاتورة الإلكترونية بتوصلك على نفس الإيميل.") + "</li>") + "</ol>"
       + '<div style="display:flex;gap:8px;flex-wrap:wrap">' + (window.MIGAPI ? '<button class="btn btn-green" type="button" id="regIn">🔑 ' + (EN ? "Sign in with an e-mail code" : "ادخل بكود على الإيميل") + "</button>" : "") + '<button class="btn btn-line" type="button" data-mgq-meet>📅 ' + (EN ? "Book a meeting with Janna" : "احجز اجتماع مع جنة") + '</button><a class="btn btn-line" href="home.html">' + (EN ? "Home" : "الرئيسية") + "</a></div></div>";
     go(6);
     var ri = $("#regIn"); if (ri) ri.onclick = function () { MIGAPI.open({ email: $("#o-mail").value.trim() || $("#r-mail").value.trim() }).then(function () { location.href = "dashboard.html"; }, function () {}); };

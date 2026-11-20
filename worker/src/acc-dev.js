@@ -13,11 +13,15 @@
                                    Cloudflare's «secrets changed» (409 secrets_changed). Each answer carries a signed `ack` (10 min, bound to
                                    the owner, target and id) that the next request sends back; force:true counts only with an ack of it.
      GET  /dev/health              key pages + APIs status / latency, /api/intel/health, D1 row counts (read-only), worker version — 12 / 10 min
-     GET  /dev/audit               the last developer-panel actions (dev.* + the cloudflare.dev_token key actions)
+     GET  /dev/audit               the last developer-panel actions (dev.* + the cloudflare.dev_token key actions + review.signin)
+     GET  /dev/review              «دخول مراجعي المتاجر» (switch store_review_signin): {set, email, until, live, switch_on, active, max_days}
+     PUT  /dev/review              {email, code (6 digits, not a trivial one), days 1–30} → stored as an HMAC (review-signin.js), audited dev.review
+     DELETE /dev/review            the address + code removed, audited dev.review — the code itself is never answered
    Nothing secret is ever answered: the token is read by cf-api.js only; Cloudflare messages are cut and scrubbed. */
 import DATA from "./data.json";
 import { now, iso, line, rateOk, site, hmac, safeEq, b64url, unb64url, enc, secretOf } from "./common.js";
-import { fail, all, first, needTables, batch, body as readBody, txt1, validator, auditStmtIf, dateOk } from "./acc-base.js";
+import { fail, all, first, needTables, batch, body as readBody, txt1, validator, auditStmt, auditStmtIf, dateOk } from "./acc-base.js";
+import { reviewView, reviewSave, reviewClear } from "./review-signin.js"; // «دخول مراجعي المتاجر» (store_review_signin): the address + code
 import { FEATURES, FEATURES_KEY, featureDef, isPolicy, featuresView, parseStore, storeJson, stateOf, forgetFeatures, valueOf, loadFeatures } from "./flags.js";
 import * as CF from "./cf-api.js";
 
@@ -73,6 +77,12 @@ export async function putFeatures(req, env, ctx, adm) {
   await loadFeatures(env, { fresh: true });
   return { body: { ok: true, changed, ...(await featuresView(env, { fresh: false })) } };
 }
+
+/* ---------- «دخول مراجعي المتاجر» (review-signin.js): the one review address + the owner's code ---------- */
+const REVIEW_H = { validator, fail, batch, needTables, auditStmt };
+export const getReview = env => reviewView(env);
+export async function putReview(req, env, ctx, adm) { const b = await readBody(req, 4096); return reviewSave(env, adm, b, REVIEW_H); }
+export const deleteReview = (req, env, ctx, adm) => reviewClear(env, adm, REVIEW_H);
 
 /* ---------- deploys ---------- */
 const tokenOut = tk => ({ set: !!tk.set, source: tk.source, readable: !!tk.readable });
@@ -266,7 +276,7 @@ export async function getHealth(req, env, ctx, adm) {
 /* ---------- audit (the developer panel's own actions) ---------- */
 export async function devAudit(env, url) {
   const lim = Math.min(200, Math.max(1, parseInt(url.searchParams.get("limit"), 10) || 50)), before = parseInt(url.searchParams.get("before"), 10);
-  const from = line(url.searchParams.get("from"), 10), where = ["(action LIKE 'dev.%' OR (action IN ('keys.set', 'keys.delete', 'keys.test') AND target_id = ?))"], args = [CF.CF_SLOT];
+  const from = line(url.searchParams.get("from"), 10), where = ["(action LIKE 'dev.%' OR action = 'review.signin' OR (action IN ('keys.set', 'keys.delete', 'keys.test') AND target_id = ?))"], args = [CF.CF_SLOT];
   if (Number.isInteger(before) && before > 0) { where.push("id < ?"); args.push(before); }
   if (from && dateOk(from)) { where.push("at >= ?"); args.push(from + "T00:00:00.000Z"); }
   const rows = await all(env, `SELECT id, at, actor_id, actor_email, actor_role, action, target_type, target_id, summary, before_json, after_json FROM cc_audit WHERE ${where.join(" AND ")} ORDER BY id DESC LIMIT ?`, ...args, lim);
