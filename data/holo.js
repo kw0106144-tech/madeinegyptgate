@@ -1334,8 +1334,8 @@
           sp.plan = [P(T("بفتح المستند الرسمي من موقع الجهة", "Opening the official document on the buyer's site"), 1200), P(T("بقرا الشروط والمستندات والتأمين والميعاد", "Reading the requirements, documents, bid bond and deadline"), 2200), P(T("بقولك اللي مكتوب فيه بس", "Telling you only what it says"), 800)];
           break;
         }
-        sp.kind = "search"; sp.title = a.action === "search" ? T(N + " بيدوّر في المصادر الرسمية: " + (iq || "فرص لقطاعك") + (imk ? " · " + imk : ""), N + " is searching official sources: " + (iq || "opportunities for your sector") + (imk ? " · " + imk : ""))
-          : T(N + " بيجهّزلك الجديد النهارده من المصادر الرسمية", N + " is preparing today's news from official sources");
+        sp.kind = "search"; sp.title = a.action === "search" ? T(N + " " + V(w, "بيدوّر", "بتدوّر") + " في المصادر الرسمية: " + (iq || "فرص لقطاعك") + (imk ? " · " + imk : ""), N + " is searching official sources: " + (iq || "opportunities for your sector") + (imk ? " · " + imk : ""))
+          : T(N + " " + V(w, "بيجهّزلك", "بتجهّزلك") + " الجديد النهارده من المصادر الرسمية", N + " is preparing today's news from official sources");
         sp.plan = [P(T("بفتح مركز المعلومات اليومي", "Opening the daily information center"), 900), P(T("بدوّر في المناقصات وطلبات الأسعار والمشاريع", "Scanning tenders, RFQs and projects"), 1300), P(T("بفلتر على نطاق باقتك", "Filtering to your plan's markets"), 1000), P(T("النتيجة معايا — بقولهالك دلوقتي", "Got it — telling you now"), 600)];
         break;
       }
@@ -1406,11 +1406,15 @@
       if (D.activeElement && D.activeElement.blur) D.activeElement.blur();
     } catch (e) {}
   }
+  /* data/call-holo.js shows these on the call video itself (the searching card and the results around the face, SDK calls): no second
+     scene of the same search over her face here (MIG_CALL_HOLO.owns; without it everything stays as it was) */
+  function owned(tool, args) { var C = W.MIG_CALL_HOLO; try { return !!(C && C.owns && C.owns(tool, args)); } catch (e) { return false; } }
   var api = {
     __v: 2, badges: 1, /* show/result take {badge} (the results header), result takes {tool} (its own scene); bassem_web_search / bassem_recall scenes */
     act: function (tool, args, opts) {
       try {
         tool = String(tool || "");
+        if (owned(tool, args || {})) return;
         var sp = fromTool(tool, args, opts), t = now();
         if (sp.skip) return;
         if (sp.key === S.lastKey && t - S.lastT < 2000) return; /* same tool call reported twice (widget + engine) */
@@ -1451,6 +1455,7 @@
     result: function (o) {
       try {
         o = o || {};
+        if (o.tool && owned(String(o.tool))) return; /* its search is on the call video (data/call-holo.js) */
         var items = (o.items || []).map(function (x) { return { title: x && x.title, sub: x && x.sub, href: x && x.href }; }).filter(function (x) { return str(x.title); });
         var sc = S.sc, n = o.count != null ? +o.count : items.length, lw = lastWaiting();
         /* {tool}: the results belong to THAT tool's scene — the running one, else the one waiting in the queue, else a scene of their own; never another tool's scene */
@@ -1482,6 +1487,9 @@
       S.state = "closing";
     },
     busy: function () { return S.state !== "idle" || waiting.length > 0; },
+    /* the running scene's kind ("welcome", "navigate", "search", "form", "email" …; "" = none): data/call-holo.js folds a welcome / page
+       scene when a search's cards need the wall */
+    scene: function () { var sc = S.sc; return sc && !sc.dead && S.state !== "closing" && S.state !== "idle" ? String(sc.kind || "") : ""; },
     /* re-measure now (data/bassem-live-tools.js: the video is back in view on a phone — review 2026-11-19 #19) */
     relayout: function () { try { relayout(); } catch (e) {} }
   };

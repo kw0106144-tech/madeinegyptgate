@@ -679,6 +679,7 @@ one stores nothing. Reader `loadFeatures` (ccBoot, memo per `env.DB`, 30 s; no t
 | `whatsapp_send` | on | server | `waLive()` false (reason `feature_off`; `sendWA` re-reads it fresh before every provider call) — LOCKED (cannot be switched on) without a respond.io token / passed token test / with `WA_DRY_RUN=1`; going live stays in «مفاتيح الخدمات» |
 | `bassem_web_search` | on | server | `POST /api/advisor/web` → 503 `feature_off` (after the tool-secret check) — LOCKED without a web-search key / tool secret |
 | `call_languages` | on | client | the 🌐 speaking-language button of Janna's and Bassem's calls (data/janna-live.js, `MIGFLAGS.on`): off → no button, no suggestions, every call hears as before (Arabic; English Janna: English); typed text in any language still gets an answer in it |
+| `call_holo` | on | client | the search cards on the call video (data/call-holo.js, `MIGFLAGS.on`): off → no cards on the video; the searches show on the shared screen as before (data/holo.js and bassem-intel-view.js take them back) |
 Permanent policies (shown, never switches): `visitor_links_signed_in`, `knowledge_team_approved`. Public: `GET /api/settings` →
 `features` (scope client / both, effective values) + `features_v`; the overlay does not carry them. The public `feature_off` answer:
 `503 {error:"feature_off", code:"feature_off", feature, message}`.

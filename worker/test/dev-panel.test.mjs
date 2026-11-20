@@ -295,6 +295,18 @@ describe("features: the registry, PUT, audit, the public JSON", () => {
     const flags = readFileSync(new URL("../../data/flags.js", import.meta.url), "utf8");
     assert.match(flags, /DEF\.call_languages = true;/);
   });
+  test("call_holo (the search cards on the call video, owner 2026-11-20): a client switch, on by default, public, the owner can switch it off", async () => {
+    assert.equal(FEATURE_KEYS.indexOf("call_holo"), FEATURE_KEYS.indexOf("call_languages") + 1, "with the other call switches");
+    const env = env0(), o = await owner(env);
+    const row = rowOf((await api(env, "GET", D + "/features", { token: o.token })).data, "call_holo");
+    assert.deepEqual([row.default, row.scope, row.value, row.effective, row.locked], [true, "client", true, true, null]);
+    assert.ok(row.label_ar && row.label_en && row.desc_ar && row.desc_en); assert.deepEqual(row.enforced_by, ["site"]);
+    assert.equal((await api(env, "GET", "/api/settings")).data.features.call_holo, true);
+    assert.equal((await setFeatures(env, { call_holo: false }, o.token)).status, 200);
+    assert.equal((await api(env, "GET", "/api/settings")).data.features.call_holo, false, "the call shows no cards; the shared screen as before");
+    assert.match(readFileSync(new URL("../../data/flags.js", import.meta.url), "utf8"), /DEF\.call_holo = true;/);
+    assert.match(readFileSync(new URL("../../data/call-holo.js", import.meta.url), "utf8"), /F\.on\("call_holo"\) === false/, "the cards read it");
+  });
   test("the setting name is reserved: an admin cannot pre-create «features» / dev.* / cloudflare.* as custom settings; a stray custom row is taken over by the owner's write", async () => {
     const env = env0(), o = await owner(env);
     for (const k of ["features", "dev.flags", "cloudflare.dev_token"]) {

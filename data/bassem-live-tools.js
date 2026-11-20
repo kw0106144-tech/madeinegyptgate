@@ -340,12 +340,17 @@
      focus jumps): this scroll is wanted, so it is marked like a touch for the time it runs */
   function wanted(o) { var n = 0; (function f() { try { o.dispatchEvent(new Event("wheel")); } catch (e) {} if (++n < 9) setTimeout(f, 250); })(); }
   function typing() { var a = D.activeElement, o = ov(); return !!(a && o && o.contains(a) && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable)); }
-  function showScreen(force) {
+  /* the holo cards show this search on the video itself (data/call-holo.js, owner 2026-11-20: he sees Bassem and the results together,
+     without scrolling): the video stays in view and «شوف الشاشة ↓» offers the screen — a tap on a result card opens it there */
+  function cardsHold(a) { var C = W.MIG_CALL_HOLO; try { return !!(a && C && C.owns && C.owns("janna_search", a)); } catch (e) { return false; } }
+  /* the member tapped a result card on the video since t (data/call-holo.js: that page is on the screen now, his choice) */
+  function cardTap(t) { var C = W.MIG_CALL_HOLO; try { return !!(C && C.tapped && C.tapped() >= t); } catch (e) { return false; } }
+  function showScreen(force, search) {
     var l = layer(), o = ov(); if (!l || !o) return;
     if (!stacked()) { l.back.classList.remove("on"); l.scr.classList.remove("blt-bk"); l.see.classList.remove("on"); return; }
     l.back.classList.add("on"); l.scr.classList.add("blt-bk"); /* one way back to the video, not two (QA L6) */
     var r = l.scr.getBoundingClientRect(); if (Math.abs(r.top) < 60) { l.see.classList.remove("on"); return; }
-    if (!force && (typing() || now() - touchT < 5000)) { l.see.classList.add("on"); return; } /* QA M5: never scroll the typing box away */
+    if (!force && (typing() || now() - touchT < 5000 || cardsHold(search))) { l.see.classList.add("on"); return; } /* QA M5: never scroll the typing box away */
     l.see.classList.remove("on"); wanted(o); try { o.scrollTo({ top: l.scr.offsetTop - 10, behavior: RM() ? "auto" : "smooth" }); } catch (e) { o.scrollTop = l.scr.offsetTop - 10; }
   }
   function backToVideo() { var o = ov(); if (!o) return; if (L && L.see) L.see.classList.remove("on"); wanted(o); try { o.scrollTo({ top: 0, behavior: RM() ? "auto" : "smooth" }); } catch (e) { o.scrollTop = 0; } }
@@ -383,7 +388,7 @@
     var s = SEC[a.section] ? a.section : "factories", S = SEC[s], q = cut(a.query, 60);
     if (s === "market") s = "products";
     if (!fr()) return Promise.resolve(T("شاشة باسم مش مفتوحة دلوقتي، فمفيش نتايج ظاهرة.", "Bassem's screen is not open, so no results are shown."));
-    showScreen();
+    showScreen(false, a);
     /* a search the page already put on the screen from janna_lookup's result (janna-live.js lookupDone; run() then loads nothing new): the
        screen is read as it is once its box holds the words — no wait for a new page that is not coming (speed review 2026-11-20 #5). When
        it is not there after 1.5 s and the page no longer says it is (the screen moved on, or other words — review F2), or after 6 s at
@@ -396,6 +401,7 @@
         return (el > 1500 && !still) || el > 6000 ? REAL : null;
       }, 11000, 200).then(function (d) {
         if (d !== REAL) return d;
+        if (cardTap(t0)) return null; /* he opened a result card himself: the screen keeps his page (no search over it) */
         var d1 = fdoc(); try { if (H && H.run) H.run("janna_search", a, { force: 1 }); } catch (e) {}
         return newPage(d1, looks, Math.max(2000, 10000 - (now() - t0)));
       })
