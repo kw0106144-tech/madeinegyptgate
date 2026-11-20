@@ -220,9 +220,10 @@ const ORDER_RX = [
 ];
 /* an ID card, a passport, a driving licence or a bank / payment card the model did NOT call id_document (it may say document or label):
    refused like one (review 2026-11-20: a card read as «document» kept the holder's name, «الجيزة - الدقي» and «مواليد 1990»; the number line
-   alone was dropped). Narrow words only: «بطاقة بيانات» (a nameplate) and «expiry date» (packaging) are NOT among them */
+   alone was dropped). Narrow words only: «بطاقة بيانات» (a nameplate), «expiry date» (packaging), «valid from / through» (an offer)
+   and «card holder» (a product) are NOT among them */
 const IDCARD_RX = [
-  /\b(?:valid\s+(?:thru|through|from)|good\s+thru|card\s*holder|date\s+of\s+birth|place\s+of\s+birth|passport|national\s+id|identity\s+card|id\s+card|driv(?:er'?s|ing)\s+licen[cs]e|(?:credit|debit|bank|payment)\s+card)\b/i,
+  /\b(?:valid\s+thru|good\s+thru|date\s+of\s+birth|place\s+of\s+birth|passport|national\s+id|identity\s+card|id\s+card|driv(?:er'?s|ing)\s+licen[cs]e|(?:credit|debit|bank|payment)\s+card)\b/i,
   new RegExp(AW + "(?:ال)?(?:الرقم\\s+القومي|رقم\\s+قومي|تاريخ\\s+الميلاد|محل\\s+الميلاد|مواليد\\s+(?:سن[ةه]\\s+)?[0-9٠-٩]|جواز\\s+(?:ال)?سفر|رخص[ةه]\\s+(?:ال)?(?:قياد[ةه]|سواق[ةه])|"
     + "بطاق[ةه]\\s+(?:ال)?(?:شخصي[ةه]|هوي[ةه]|رقم\\s+قومي|تموين|ائتمان(?:ي[ةه])?|بنكي[ةه]|بنك|فيزا|ميز[ةه])|كارت\\s+(?:ال)?(?:فيزا|بنك|ائتمان|ميز[ةه])|فيزا\\s+كارد)"),
 ];

@@ -271,7 +271,8 @@ describe("sanitiseSeen: what may reach a persona from a photo", () => {
       assert.equal(CM.sealCode(r.reason, r.flags), "x");
     }
     for (const c of [{ kind: "label", what_en: "motor nameplate", what_ar: "بطاقة بيانات موتور", text_seen: ["380V 50Hz", "7.5 kW"] }, { kind: "packaging", what_en: "paint can", what_ar: "علبة دهان", text_seen: ["EXP DATE 12/2027", "تاريخ الانتهاء 12/2027"] },
-      { kind: "machine", what_en: "baby incubator", what_ar: "حضانة مواليد" }, { kind: "packaging", what_en: "cardboard box", what_ar: "كرتونة", text_seen: ["Corrugated card board"] }]) assert.ok(CM.sanitiseSeen({ ...READ, ...c }).seen, JSON.stringify(c));
+      { kind: "machine", what_en: "baby incubator", what_ar: "حضانة مواليد" }, { kind: "packaging", what_en: "cardboard box", what_ar: "كرتونة", text_seen: ["Corrugated card board"] },
+      { kind: "product", what_en: "business card holder", what_ar: "حامل كروت", text_seen: [] }, { kind: "document", what_en: "supermarket offer flyer", what_ar: "منشور عروض", text_seen: ["Valid from 1/12 to 31/12", "Valid through December"] }]) assert.ok(CM.sanitiseSeen({ ...READ, ...c }).seen, JSON.stringify(c));
     for (const junk of [null, "x", [], { kind: "rocket" }, { kind: "product" }]) assert.equal(CM.sanitiseSeen(junk).reason, "unclear", JSON.stringify(junk));
     const s = seenOf({ what_ar: "steel rebar", what_en: "حديد", terms_ar: ["rebar", "حديد"], terms_en: ["حديد", "rebar"], text_seen: [] });
     assert.equal(s.seen, null, "no description left"); assert.equal(s.reason, "unclear");
