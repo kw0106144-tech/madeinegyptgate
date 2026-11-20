@@ -11,4 +11,20 @@
     <string name="mig_exit_no">Cancel</string>
     <string name="mig_share_file">Open or share the file</string>
     <string name="mig_file_failed">This file could not be opened in the app.</string>
+    <string name="mig_win_close">✕ Close</string>
+    <string name="mig_win_loading">Loading…</string>
+    <string name="mig_call_link_title">End the current call and open the link?</string>
+    <string name="mig_call_link_open">Open the link</string>
+    <string name="mig_call_link_stay">Stay on the call</string>
+    <string name="mig_link_copy">Copy link</string>
+    <string name="mig_link_share">Share</string>
+    <string name="mig_link_browser">Open in browser</string>
+    <string name="mig_link_copied">Link copied</string>
+    <string name="mig_link_failed">No app on this phone can open this link.</string>
+    <string name="mig_dl_started">Downloading %1$s…</string>
+    <string name="mig_dl_done">%1$s is in Downloads</string>
+    <string name="mig_dl_ready">%1$s is saved</string>
+    <string name="mig_dl_open">Open</string>
+    <string name="mig_print_failed">This page could not be printed.</string>
+    <string name="mig_chooser_title">Choose a file</string>
 </resources>
