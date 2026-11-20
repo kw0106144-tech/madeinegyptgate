@@ -192,7 +192,11 @@ describe("/api/janna/item — one item in full + a spoken Egyptian summary", () 
     assert.deepEqual(leanLookup({ error: "x" }), { error: "x" });
   });
   test("any-language calls: a 0-result query with no Arabic letter tells the model to translate and search again; Arabic queries keep today's text", async () => {
-    const fr = await call("/api/janna/lookup", { method: "POST", body: { section: "factories", query: "acier" } });
+    /* lookup-index 2026-11-20: a word of the synonym groups is translated by the server («acier» = حديد); a word they do not know keeps the
+       translate-and-search-again text */
+    const ac = await call("/api/janna/lookup", { method: "POST", body: { section: "factories", query: "acier" } });
+    assert.ok(ac.data.count > 0 && ac.data.results.every(r => /حديد|صلب|steel|iron/i.test(JSON.stringify(r)) || r.match), "acier = steel"); assert.doesNotMatch(ac.data.text, /ترجم/);
+    const fr = await call("/api/janna/lookup", { method: "POST", body: { section: "factories", query: "Stahl" } });
     assert.deepEqual([fr.status, fr.data.count], [200, 0]);
     assert.match(fr.data.text, /ترجميها للعربي \(acier = حديد\) ودوّري تاني قبل ما تقولي مفيش/, "Janna: feminine");
     const bassem = await call("/api/janna/lookup", { method: "POST", body: { section: "tenders", query: "Stahl", page: 1 } });

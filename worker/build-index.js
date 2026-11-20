@@ -1,17 +1,46 @@
 // Builds worker/src/data.json — a compact search index of the platform's public directory data for Janna's lookup API.
 // Run: node worker/build-index.js   (after updating data/*.js). No phone numbers or personal data are included.
 const fs = require('fs'), vm = require('vm'), path = require('path');
+/* the Worker's own ES modules (src/lookup-terms.js → src/text.js) build the search words, so the index and the queries always meet. Loading
+   them from this CommonJS script can print a module-loader notice on some Node 22 versions (require of an ES module, a package.json
+   without "type"); CI treats any stderr line as a failed data load, so ONLY those two notices are dropped — every other warning prints */
+const WARN = process.listeners('warning'); process.removeAllListeners('warning');
+process.on('warning', w => { if (w && (w.code === 'MODULE_TYPELESS_PACKAGE_JSON' || (w.name === 'ExperimentalWarning' && /ES Module|require\(\)/.test(String(w.message))))) return; WARN.forEach(f => f.call(process, w)); });
+const LK = require('./src/lookup-terms.js'), TX = require('./src/text.js');
 const D = path.join(__dirname, '..', 'data') + '/';
 const ctx = { window: {}, document: { createElement() { return {}; }, head: { appendChild() {} } }, console }; ctx.window = ctx; vm.createContext(ctx);
 // the published Control Center edits first (ACC-CONTRACT §4.6, P-T2): hidden rows are skipped by forEach, adds are indexed
 try { vm.runInContext(fs.readFileSync(D + 'mig-overlay.js', 'utf8'), ctx); const ov = process.env.MIG_OVERLAY_FILE || path.join(__dirname, '..', 'build', 'overlay.js'); if (fs.existsSync(ov)) vm.runInContext(fs.readFileSync(ov, 'utf8'), ctx); } catch (e) { console.error('overlay', e.message); }
-for (const f of ['regions', 'factories', 'facx', 'oldfac', 'oldprod', 'oldtend', 'oldrfq', 'offers', 'zones', 'real', 'videos']) try { vm.runInContext(fs.readFileSync(D + f + '.js', 'utf8'), ctx); } catch (e) { console.error(f, e.message); }
+for (const f of ['regions', 'factories', 'facx', 'oldfac', 'oldfacd', 'oldprod', 'oldtend', 'oldrfq', 'offers', 'zones', 'real', 'videos']) try { vm.runInContext(fs.readFileSync(D + f + '.js', 'utf8'), ctx); } catch (e) { console.error(f, e.message); }
 const c = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();
 const img = x => /\.(jpe?g|png|webp|gif)$/i.test(String(x).trim());
 const R = ctx.MIGREG || {}; const GN = k => { try { return (R.name && R.name(k)) || k || ''; } catch (e) { return k || ''; } };
-const out = { v: new Date().toISOString().slice(0, 10), f: [], p: [], t: [], q: [], o: [], z: [], i: [] };
-(ctx.MIGOLDFAC || []).forEach((f, i) => out.f.push([c(f[0]), c(f[3]), c(f[1]), c(f[2]) || GN(f[10]), (f[9] || []).filter(x => !img(x) && c(x) !== c(f[0])).slice(0, 10).map(c).join('، '), 'company.html#' + (f[16] || i)]));
-((ctx.MIGFACX && ctx.MIGFACX.list) || []).forEach((f, i) => out.f.push([c(f[0]), c(f[3]), c(f[1]), c(f[2]), c(f[4]).replace(/(\+?\d[\d\s-]{7,}\d)/g, '').slice(0, 160), 'company.html#x' + i]));
+const out = { v: new Date().toISOString().slice(0, 10), lk: LK.lookupVersion(), f: [], p: [], t: [], q: [], o: [], z: [], i: [] };
+/* f rows: [name, type, activity, location, products, "company.html#<ref>", words, sub-activity]
+   words (f[6]) = what the company makes, as the lookup searches it (src/lookup-terms.js storedForms() + the group phrases it holds,
+   each once): «<name + product words>|<description words>», every word as its number in fv (fixed-width base 36, fw characters: the
+   bundle stores Arabic as \u escapes, 6 bytes a letter, so each word is written once). The description is data/oldfacd.js (the
+   imported listings) or the researched text of data/facx.js, so «أكسجين», «درافيل» or «أسطوانات بوتاجاز» are found where the company
+   wrote them. Contacts never enter: e-mails, links and phone-like digit runs are cut before the words are taken, and a word with a digit
+   is never kept (a short code like «co2» apart). Description boilerplate («تعمل», «مجال»: lookup-terms.js FILLER) is left out. The
+   activity labels (f[2], the old site's sub-activity: f[7] = its index in fs, -1 = none) stay apart: the lookup uses them only to order
+   companies that match equally. */
+const CUT = s => c(s).replace(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g, ' ').replace(/(https?:\/\/|www\.)\S+/gi, ' ').replace(/\S+\.(com|net|org|eg|info|biz)(\/\S*)?(?=\s|$)/gi, ' ')
+  .replace(/(\+?[\d٠-٩][\d٠-٩\s\-]{7,}[\d٠-٩])/g, ' ');
+const stop = w => TX.STOP.has(w);
+const keyWords = (...texts) => { const o = []; for (const t of texts) { const s = CUT(t); for (const w of LK.words(s)) { if (w.length < 2 || (/[\d٠-٩]/.test(w) && !/^[a-z]{1,4}\d{1,3}$/.test(w)) || stop(w)) continue; for (const k of LK.storedForms(w)) if (k && k.length >= 2 && !stop(k) && !o.includes(k)) o.push(k); }
+  for (const k of LK.phraseTokens(s)) if (!o.includes(k)) o.push(k); } return o; }; // + the group phrases found in it («اسطوان_غاز»), one text at a time
+const FD = ctx.MIGOLDFACD || [];
+const rows = [];
+(ctx.MIGOLDFAC || []).forEach((f, i) => { const prods = (f[9] || []).filter(x => !img(x) && c(x) !== c(f[0])).slice(0, 10).map(c); rows.push({ r: [c(f[0]), c(f[3]), c(f[1]), c(f[2]) || GN(f[10]), prods.join('، '), 'company.html#' + (f[16] || i)], n: keyWords(c(f[0]), ...(f[9] || []).filter(x => !img(x)).map(c)), d: keyWords(FD[i]), sub: c(f[12]) }); });
+((ctx.MIGFACX && ctx.MIGFACX.list) || []).forEach((f, i) => rows.push({ r: [c(f[0]), c(f[3]), c(f[1]), c(f[2]), c(f[4]).replace(/(\+?\d[\d\s-]{7,}\d)/g, '').slice(0, 160), 'company.html#x' + i], n: keyWords(f[0]), d: keyWords(f[4]), sub: '' }));
+out.fs = [...new Set(rows.map(x => x.sub).filter(Boolean))];
+const SUB = new Map(out.fs.map((s, i) => [s, i]));
+const VOC = new Map(), bags = rows.map(x => { const n = new Set(x.n); return [x.n, x.d.filter(k => !n.has(k) && LK.indexable(k))]; });
+bags.forEach(b => b.forEach(l => l.forEach(k => { if (!VOC.has(k)) VOC.set(k, VOC.size); })));
+out.fv = [...VOC.keys()]; out.fw = Math.max(1, Math.ceil(Math.log(Math.max(2, VOC.size)) / Math.log(36)));
+const ids = l => l.map(k => VOC.get(k).toString(36).padStart(out.fw, '0')).join('');
+rows.forEach((x, i) => out.f.push([...x.r, ids(bags[i][0]) + '|' + ids(bags[i][1]), x.sub ? SUB.get(x.sub) : -1]));
 (ctx.MIGOLDP || []).forEach(p => out.p.push([c(p[0]), c(p[1]), c(p[2])]));
 // tender status = the honest 4-value rule from the deadline, as of the build day (Cairo); the Worker recomputes it per request
 // (src/index.js tenderStatus): passed → منتهية, ≤ 7 days → تنتهي قريباً, later → سارية, no deadline → غير محدد الموعد
