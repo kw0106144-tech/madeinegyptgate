@@ -213,15 +213,17 @@ Why it is needed:
 
 **Latency.** Bassem's saved prompt grows by 6,059 characters, and the session block adds up to 5,200. He goes from 16 to 24 tools. Read first-output p50 / p90 with `anam_session_stats` after the first calls. If latency degrades, trim B5 and B7 first; they repeat their tools' descriptions.
 
-## 6. voiceDetectionOptions: no change, for all three personas
+## 6. voiceDetectionOptions: no change for noise, for all three personas (Janna EN: `sttProvider` `anam` since 2026-11-20)
 
-The full reasons are in each persona file. (Later round, prepared in `anam/calls/`, NOT APPLIED: Janna EN gets `sttProvider` `anam` for
-the 🌐 language switch, her four numbers unchanged. When that write is made, update this section and `anam/live/README.md` in the same
-commit as the new live copies.)
+The full reasons are in each persona file. A later round changed one value, for language rather than noise. On 2026-11-20, in the
+«calls» round (`anam/calls/`, APPLIED), Janna EN got `sttProvider` `anam` for the 🌐 language switch. It came in the same write as her
+new prompt (`updatedAt` `2026-11-20T08:29:54.663Z`), and her four numbers did not change (0.45 / 1 / 30 / 180). All three personas now
+have `sttProvider` `anam`. Never "restore" Janna EN without `sttProvider`: it silently breaks the 🌐 switch to Arabic on the English
+pages. Her row and its rollback are in `anam/live/README.md`.
 
 - `speechEnhancementLevel` is already 1, the maximum.
 - `endOfSpeechSensitivity` 0.45 is the value the noise guard restores after its noisy-mode 0.35, which it sends per call by persona_config. A new persona value would change quiet calls too and make the client restore the wrong value.
-- `silenceBeforeAutoEndTurnSeconds` and `sttProvider` have no noise evidence.
+- `silenceBeforeAutoEndTurnSeconds` has no noise evidence. `sttProvider` has none either: Janna EN's change above is for the language switch only.
 - What noise needs is already in the client (janna-live.js 8003d2ef: own microphone + half-duplex noisy mode + ✋) and in the existing noise sections.
 - The open item is the noise agent's: one live call on desktop Chrome and one on an iPhone, reading `JANNA_LIVE.noise()`.
 

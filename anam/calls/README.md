@@ -1,7 +1,11 @@
-# «calls» round — prepared Anam changes (NOT APPLIED)
+# «calls» round — Anam changes (APPLIED on 2026-11-20)
 
-**Status: PREPARED, NOT APPLIED.** Nothing in this folder was written to Anam. Every Anam write needs the owner's OK (CLAUDE.md 1.1,
-`anam/APPLY.md`). The owner's requests behind it (2026-11-20): «جنة او باسم يتكلموا اي لغه في العالم بناءا علي الشخص اللي بيكلمهم»,
+**Status: APPLIED on 2026-11-20 (08:27–08:37 UTC).** The writes went in this order: Janna AR; Janna EN (her prompt and
+`voiceDetectionOptions` in one write); Bassem; then the `bassem_save_profile` tool update. Each used the `fields` of `updates.json`, with
+no 409. The new `updatedAt` values, the sha256s, the checks and the rollback (the previous texts at commit `78959c9`) are in
+`anam/live/README.md`, which now holds these texts as the live copies. The «PREPARED, NOT APPLIED» lines further down and in
+`updates.json` describe the state before the writes. Every Anam write needs the owner's OK (CLAUDE.md 1.1, `anam/APPLY.md`). The owner's
+requests behind this round (2026-11-20): «جنة او باسم يتكلموا اي لغه في العالم بناءا علي الشخص اللي بيكلمهم»,
 «لما بكلم جنة او باسم مش بيسكتوا بيفضلوا يتكلموا وده مش صح», «زود سرعه استجابه باسم وجنه».
 
 One `anam_persona_update` per persona carries every prompt edit of the three verified plans (LANGUAGE `prompt_changes`, BARGE-IN
