@@ -6,7 +6,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import worker from "../src/index.js";
-import { buildSummary, consolidateDay } from "../src/memory.js";
+import { buildSummary, consolidateDay, memoryCron } from "../src/memory.js";
 import { jannaSessionContext, RETURN_GREETING } from "../src/visitor.js";
 import { issueSession } from "../src/auth.js";
 import { D1 } from "./helpers.mjs";
@@ -81,7 +81,7 @@ describe("U18: a call where the visitor said nothing is no visit", () => {
     await vmem(env, { visitor_id: v, kind: "turns", call_id: "jc-greet-only-0009", turns: [{ role: "persona", text: GREET, seq: 0 }] });
     await env.DB.prepare("UPDATE advisor_memory SET at = ? WHERE member_id = ?").bind(new Date(t).toISOString(), "v:" + v).run();
     const r = await consolidateDay(env, Date.now());
-    assert.equal(r.empty, 1, JSON.stringify(r)); assert.equal((await summaries(env, "v:" + v)).length, 0);
+    assert.equal(r.calls, 0, "a call with no client turn and no search is not even picked: " + JSON.stringify(r)); assert.equal((await summaries(env, "v:" + v)).length, 0);
     /* Bassem: a member's call with only his greeting */
     const NOWI = new Date().toISOString();
     await env.DB.prepare("INSERT INTO members (id, company, email, plan, verified, created_at, updated_at, role, plan_expires, email_verified_at) VALUES ('mg1', 'Test Co', 'mg1@member.test', 'strategic', 1, ?, ?, 'user', '', ?)").bind(NOWI, NOWI, NOWI).run();
@@ -91,5 +91,17 @@ describe("U18: a call where the visitor said nothing is no visit", () => {
       body: JSON.stringify({ kind: "summary", call_id: "bc-greet-only-0001", final: true, turns: [{ role: "persona", text: "أهلاً يا باشمهندس، أنا باسم.", seq: 0 }] }) }), benv, { waitUntil() {} });
     const j = await res.json();
     assert.equal(res.status, 201, JSON.stringify(j)); assert.equal(j.summary, null); assert.equal((await summaries(env, "mg1")).length, 0);
+  });
+  test("review: 25 greeting-only calls do not hold the day open — the real call is consolidated in the first tick and the gate closes", async () => {
+    const env = { DB: new D1() }, now = Date.now(), at = ms => new Date(ms).toISOString();
+    const turn = (mid, call, role, text, seq, ms) => env.DB.prepare("INSERT INTO advisor_memory (member_id, kind, call_id, at, agent, text, terms, data_json, hash) VALUES (?, 'turn', ?, ?, 'janna', ?, '', ?, ?)")
+      .bind(mid, call, at(ms), text, JSON.stringify({ role, seq }), "turn|" + call + "|" + seq).run();
+    await turn("v:" + vid("a1"), "jc-real-call-0001", "persona", GREET, 0, now - 6 * 3600000);
+    await turn("v:" + vid("a1"), "jc-real-call-0001", "user", "عايز مصانع كرتون في الجيزة", 1, now - 6 * 3600000 + 5000);
+    for (let k = 0; k < 25; k++) await turn("v:" + String(k).padStart(2, "0").repeat(16), "jc-greet-only-" + String(k).padStart(4, "0"), "persona", GREET, 0, now - 2 * 3600000 - k * 60000);
+    const r = await memoryCron(env, now);
+    assert.deepEqual([r.calls, r.rebuilt, r.left, r.closed], [1, 1, 0, true], JSON.stringify(r));
+    assert.equal((await summaries(env, "v:" + vid("a1"))).length, 1);
+    assert.equal((await env.DB.prepare("SELECT COUNT(*) AS n FROM advisor_memory WHERE kind = 'summary'").first("n")), 1, "no summary for the greeting-only calls");
   });
 });

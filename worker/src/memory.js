@@ -799,10 +799,16 @@ export async function memoryCron(env, nowMs = Date.now()) {
 /* 0009: the per-client day digest, «ملخص العميل», the tasks' daily maintenance and the knowledge bank's merge run after this in the same
    platform cron (daily.js dailyMemory, once this day's consolidation is closed), from the summaries this rebuilds. */
 export async function consolidateDay(env, nowMs = Date.now(), { max = TICK.rebuildsPerTick } = {}) {
-  /* ONE query: the calls of the last days with their summary's «final» flag (review #2: no check query per call) */
+  /* ONE query: the calls of the last days with their summary's «final» flag (review #2: no check query per call). U18 review: only the calls
+     that CAN have a summary (a client turn, a search, or a summary already) — a greeting-only call gets none (rebuildSummary «empty»), so it
+     would stay not-final and be picked again every tick: 21 of them kept the day's gate open and stopped dailyMemory */
   const calls = (await env.DB.prepare(`SELECT t.member_id, t.call_id, MAX(t.agent) AS agent, MAX(t.at) AS last,
       (SELECT CASE WHEN json_valid(s.data_json) THEN json_extract(s.data_json, '$.final') END FROM advisor_memory s WHERE s.member_id = t.member_id AND s.hash = 'summary|' || t.call_id) AS fin
-    FROM advisor_memory t WHERE t.kind = 'turn' AND t.call_id != '' AND t.at >= ? GROUP BY t.member_id, t.call_id ORDER BY last DESC LIMIT ?`)
+    FROM advisor_memory t WHERE t.kind = 'turn' AND t.call_id != '' AND t.at >= ? GROUP BY t.member_id, t.call_id
+    HAVING MAX(CASE WHEN json_valid(t.data_json) THEN json_extract(t.data_json, '$.role') END = 'user') = 1
+      OR EXISTS (SELECT 1 FROM advisor_memory s WHERE s.member_id = t.member_id AND s.hash = 'summary|' || t.call_id)
+      OR EXISTS (SELECT 1 FROM advisor_memory q WHERE q.member_id = t.member_id AND q.call_id = t.call_id AND q.kind = 'search')
+    ORDER BY last DESC LIMIT ?`)
     .bind(iso(nowMs - LIM.consolidateDays * 86400000), LIM.consolidate * 4).all()).results || [];
   let rebuilt = 0, live = 0, done = 0, left = 0, empty = 0;
   for (const c of calls) {
