@@ -58,7 +58,7 @@
 import { line, now, iso, readJson, rateOk, isBlocked, effPlan, cairoDay, addDays, sha256, jparse, secretOf, ipHash } from "./common.js";
 import { authUser, bearer, isV2, isLinkSession } from "./auth.js";
 import { verifyToken, ELIGIBLE } from "./advisor.js";
-import { tokens, norm, stem, clean, maskPII, forLLM, asciiDigits, instructionLike, MASK_EMAIL, MASK_PHONE } from "./text.js";
+import { tokens, norm, stem, clean, maskPII, forLLM, asciiDigits, instructionLike, stripCues, MASK_EMAIL, MASK_PHONE } from "./text.js";
 export { clean, maskPII, forLLM, MASK_EMAIL, MASK_PHONE } from "./text.js"; // moved to text.js (websearch.js uses them too)
 import { roleOf, sessionVia, ROLE_PERMS, auditStmt, hasTable, rid } from "./acc-base.js";
 import { originOf, originOk } from "./janna-session.js";
@@ -218,7 +218,7 @@ function turnsOf(arr, cors) {
     if (!t || typeof t !== "object" || Array.isArray(t)) return { err: bad("turns", cors, "objects only") };
     const role = ROLE[String(t.role || "").toLowerCase()];
     if (!role) return { err: bad("turns.role", cors, "user | persona") };
-    const text = clean(t.text != null ? t.text : t.content, LIM.turn);
+    const raw = clean(t.text != null ? t.text : t.content, LIM.turn), text = role === "persona" ? stripCues(raw) : raw; // the persona's stray cue tags («[صاف]») are never stored
     const seq = Number.isInteger(t.seq) && t.seq >= 0 && t.seq <= 1e6 ? t.seq : null;
     if (text) rows.push({ role, text, seq });
   }
@@ -425,7 +425,7 @@ export async function rebuildSummary(env, memberId, callId, { tools: newTools = 
   const turnQ = dir => env.DB.prepare(`SELECT id, data_json, text FROM advisor_memory WHERE member_id = ? AND call_id = ? AND kind = 'turn' ORDER BY id ${dir} LIMIT ?`);
   const head = (await turnQ("ASC").bind(memberId, callId, LIM.callHead).all()).results || [], tail = (await turnQ("DESC").bind(memberId, callId, LIM.callTurns - LIM.callHead).all()).results || [];
   const byId = new Map(); for (const r of [...head, ...tail]) byId.set(r.id, r); // ≤ callTurns rows: a call of ≤ 400 turns is read whole
-  const turns = [...byId.values()].sort((a, b) => a.id - b.id).map(r => { const d = jparse(r.data_json, {}); return { role: d.role, text: r.text, ...(Number.isInteger(d.seq) ? { seq: d.seq } : {}) }; });
+  const turns = [...byId.values()].sort((a, b) => a.id - b.id).map(r => { const d = jparse(r.data_json, {}); return { role: d.role, text: d.role === "persona" ? stripCues(r.text) : r.text, ...(Number.isInteger(d.seq) ? { seq: d.seq } : {}) }; }); // a row stored before stripCues: its stray cue tags stay out of the summary, the tasks and the knowledge bank
   const turnCount = Number(await env.DB.prepare("SELECT COUNT(*) AS n FROM advisor_memory WHERE member_id = ? AND call_id = ? AND kind = 'turn'").bind(memberId, callId).first("n")) || turns.length;
   const searches = ((await env.DB.prepare("SELECT data_json FROM advisor_memory WHERE member_id = ? AND call_id = ? AND kind = 'search' ORDER BY id LIMIT 30").bind(memberId, callId).all()).results || [])
     .map(r => jparse(r.data_json, {})).filter(s => s && s.query).map(s => ({ ...s, results: Array.isArray(s.results) ? s.results : [] }));
@@ -466,7 +466,7 @@ function hitOut(r, nowMs) {
   else if (r.kind === "summary") Object.assign(h, { topics: (d.topics || []).map(x => llm(x, 40)).filter(Boolean), next: (d.next || []).map(x => llm(x, 100)).filter(Boolean), failed: (d.failed || []).map(x => llm(x, 80)).filter(Boolean), call_id: r.call_id });
   else if (r.kind === "turn") Object.assign(h, { role: d.role || "", call_id: r.call_id });
   else if (r.kind === "day") Object.assign(h, { day: d.day || date, calls: d.calls || 0, topics: (d.topics || []).map(x => llm(x, 40)).filter(Boolean) });
-  h.text = llm(r.text, r.kind === "day" ? 420 : 300);
+  h.text = llm(r.kind === "turn" && d.role === "persona" ? stripCues(r.text) : r.text, r.kind === "day" ? 420 : 300); // his own words, without a stray cue tag of an older row
   return h;
 }
 const refsAr = h => { const ids = (h.refs || []).map(x => x.id || x.ref).filter(Boolean).slice(0, 3); return ids.length ? " (أرقامها: " + ids.join("، ") + ")" : ""; };

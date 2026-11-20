@@ -69,7 +69,7 @@ import { memberContext, ephemeralFrom, todayLineAr, fitBlock, BLOCK_MAX } from "
 import { memoryContext, MEMORY_BLOCK, CONTEXT_MAX, callIdOk } from "./memory.js";
 import { memberProfile } from "./profile.js";
 import { resumeContext, RESUME_BLOCK } from "./resume.js";
-import { forLLM, instructionLike } from "./text.js";
+import { forLLM, instructionLike, stripCues } from "./text.js";
 import { jannaSessionContext, visitorContextOn } from "./visitor.js"; // 0009: Janna's memory of her visitors + «بنك المعلومات»
 import { featureOn, offMessage } from "./flags.js"; // «🛠️ المطوّر»: janna_live / bassem_live (owner switches, 503 feature_off)
 import { svc } from "./service-keys.js";            // the panel's Anam key as ccBoot already read it for this request (memo ≤ 60 s)
@@ -198,7 +198,7 @@ export async function continuation(env, memberId, callId, nowMs = Date.now()) {
   try {
     const rows = (await env.DB.prepare("SELECT at, text, data_json FROM advisor_memory WHERE member_id = ? AND call_id = ? AND kind = 'turn' ORDER BY id DESC LIMIT ?").bind(memberId, callId, CONTINUE_TURNS).all()).results || [];
     if (!rows.length || !(nowMs - Date.parse(rows[0].at) <= CONTINUE_MAX_AGE_MS)) return "";
-    const turns = rows.reverse().map(r => ({ role: jparse(r.data_json, {}).role === "user" ? "member" : "bassem", text: forLLM(r.text, 600) }))
+    const turns = rows.reverse().map(r => { const member = jparse(r.data_json, {}).role === "user"; return { role: member ? "member" : "bassem", text: forLLM(member ? r.text : stripCues(r.text), 600) }; }) // his own words: no stray cue tag («[صاف]») back into his prompt
       .filter(t => t.text && !instructionLike(t.text, { money: false }));
     return resumeContext({ turns }, { maxChars: CONTINUE_MAX_CHARS, maxItems: 12 });
   } catch (e) { return ""; } // no 0008 table yet: the part starts fresh

@@ -58,7 +58,7 @@ function anamMocks({ persona = JANNA_AR, start = Date.now() - 5 * 60000, end = n
   routes.push([/api\.anam\.ai\/v1\/sessions\/[^/]+\/transcript/, () => transcript === 200 ? Response.json({ sessionId: SID, transcriptsEnabled: true, nextOffset: null, totalMessages: 4, messages: [
     { role: "persona", message: "أهلاً منى! أنا جنة من منصة صنع في مصر. احكيلي عن نشاطك.", timestamp: new Date(start).toISOString() },
     { role: "user", message: "إحنا مصنع خضار مجمد في العاشر من رمضان وعايزين نصدّر للخليج وأفريقيا", timestamp: new Date(start + 30000).toISOString() },
-    { role: "persona", message: "الأنسب ليكم باقة الشريك الأساسي، ومعاها مستشارك باسم سنة كاملة.", timestamp: new Date(start + 60000).toISOString() },
+    { role: "persona", message: "[صاف] الأنسب ليكم باقة الشريك الأساسي، ومعاها مستشارك باسم سنة كاملة.", timestamp: new Date(start + 60000).toISOString() }, // a cue tag Anam did not take (2026-11-20)
     { role: "user", message: "طيب إزاي أسجّل؟", timestamp: new Date(start + 90000).toISOString() }] }) : new Response("", { status: transcript })]);
   routes.push([/api\.anam\.ai\/v1\/sessions\/[^/]+\/recording$/, () => recording === 200 ? Response.json({ recordingUrl: "https://cdn.anam.test/rec/abc.mp4?sig=x" }) : new Response("", { status: recording })]);
   routes.push([/cdn\.anam\.test/, () => new Response(video, { headers: { "Content-Type": "video/mp4", "Content-Length": String(video.length) } })]);
@@ -192,6 +192,9 @@ describe("start → finish → processing", () => {
     assert.match(sum.body.text, /الخليج، أفريقيا/);
     assert.match(sum.body.text, /إزاي أسجّل/);
     assert.match(att(sum, "transcript.txt"), /Mona: إحنا مصنع خضار مجمد/);
+    /* Janna's stray cue tag («[صاف]») is neither in the transcript she e-mails nor in the copy kept in R2 (worker/src/text.js stripCues) */
+    assert.match(att(sum, "transcript.txt"), /Janna \/ جنة: الأنسب ليكم باقة الشريك الأساسي/);
+    assert.doesNotMatch(att(sum, "transcript.txt") + new TextDecoder().decode(media.o.get(`meetings/${id}.transcript.json`).bytes), /صاف/);
     const tm = resend().find(x => x.body.to[0] === "info@madeinegyptgate.com");
     assert.ok(tm && !tm.body.text.includes("/recording?"), "team copy carries the summary, not the recording link");
     const row = await env.DB.prepare("SELECT * FROM meetings WHERE id = ?").bind(id).first();

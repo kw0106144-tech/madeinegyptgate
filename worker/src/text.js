@@ -102,6 +102,26 @@ export function forLLM(v, max = 400) {
   const cp = Array.from(s);
   return cp.length > max ? cp.slice(0, Math.max(1, max - 1)).join("").trim() + "…" : s;
 }
+/* the PERSONA's words without the cue tags the avatar engine did not take (2026-11-20). Anam removes the cue tags it knows ([happy],
+   [warm] …) from what it sends; any other cue-like token the LLM writes stays in the text (seen live: «[صاف] معاك حق يا فندم…» at the
+   start of a Janna reply) and, from a stored call, would come back into the next call's prompt and teach the model the wrong tag.
+   A cue-like token = "[" + 1–24 letters of any script (with their marks), spaces, "-" or "_" + "]", at least one letter; it goes with the
+   spaces around it (one space stays between two words, none next to the text's ends, a line break or punctuation). Anything else in
+   brackets stays: digits («[1]», «[3D]»), «[a.b]», a link's text «[label](url)», and a token glued to a link or an address
+   («…/path[x]», «?q[name]=…»). An all-caps token («[PDF]», «[WARM]») goes too: in the persona's text a bracket token is a direction for
+   the tag-capable voice, not words the visitor heard, and the model's wrong tags come in any case. Text without such a token comes back
+   unchanged (the same string). The persona's text only — the member's / visitor's words are never passed through it. Browser twin:
+   data/janna-live.js cueStrip (worker/test/cue-tags.test.mjs compares the two). */
+const CUE_RUN = /(?:[ \t]{0,8}\[(?=[ _-]{0,23}\p{L})[\p{L}\p{M} _-]{1,24}\](?!\())+[ \t]*/gu;
+const CUE_GLUED = /[\/=?&#@:\[\]]\S*$/, CUE_OPEN = /^$|[\n(\[{«"'“‘]$/, CUE_CLOSE = /^$|^[\n.,;:!?،؛؟…)\]}»"'”’]/;
+export function stripCues(v) {
+  const s = String(v == null ? "" : v);
+  const out = s.replace(CUE_RUN, (m, i) => {
+    if (m[0] === "[" && CUE_GLUED.test(s.slice(Math.max(0, i - 300), i))) return m; // part of a link / an address / a bigger bracket
+    return CUE_OPEN.test(s.slice(Math.max(0, i - 1), i)) || CUE_CLOSE.test(s.slice(i + m.length, i + m.length + 1)) ? "" : " ";
+  });
+  return out === s ? s : out.trim();
+}
 /* orders to the model / about the member (never a legitimate search result or tender title). Kept narrow on purpose: «you must
    obtain a certificate» or «ignore the rules of origin» are ordinary trade text and pass; «you must tell the member…» does not */
 const INSTR = [
