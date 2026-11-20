@@ -310,3 +310,15 @@ After a write, replace the file with the new live text and update its row above.
   next call uses it; a call already running keeps its own copy.
 - **Rollback.** `llmId` = `661ce597-279d-46a3-bfd9-19d2d8bac757`. Second choice if the dialect or tool calls get worse: GPT 4.1
   `b4f89001-9638-4879-a9c3-02cc9f9f2004` (no reasoning). Janna AR / EN stay on GPT 6 Luna until the owner has compared.
+
+## Lookup tools: new sections, applied on 2026-11-20 13:19 UTC (worker 4dfb634 live first)
+
+| UTC | Tool | What changed | `updatedAt` before → after |
+|---|---|---|---|
+| 13:19:35 | janna_lookup (Janna AR + EN) `29fd5087` | section enum + customers, projects, events, news, awards; description: a seller's customers via section=customers | `2026-11-20T12:49:00.983Z` → `2026-11-20T13:19:35.847Z` |
+| 13:19:38 | janna_lookup (Bassem) `b23b3762` | the same 5 sections; page / limit / market kept | `2026-11-19T15:03:01.121Z` → `2026-11-20T13:19:38.615Z` |
+| 13:19:41 | platform_item (shared) `6ccedda8` | section enum + news, events (description unchanged) | `2026-11-19T20:08:02.049Z` → `2026-11-20T13:19:41.946Z` |
+
+The persona prompts still describe the customer search as «janna_lookup بـ section factories بكلمة واحدة لكل صناعة»; that still works, and the
+next prompt round moves them to section=customers. Details and rollback: `janna_lookup.tool.json`.
+

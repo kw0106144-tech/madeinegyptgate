@@ -1,41 +1,115 @@
 {
- "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
- "name": "janna_lookup",
- "description": "Search the platform's REAL directory and get results you can say aloud: factories & companies (by activity/product and governorate), products, Egyptian tenders, RFQs, retail offers, industrial cities. Use it when the visitor asks which factories / suppliers / tenders / offers exist. A seller's potential customers: section=factories, ONE industry word per call («تغليف», «طباعة»; 2-3 industries = 2-3 calls in one reply, never add the counts up; no صناعات / مواد / معدات), governorate = his governorate, not the city (6th of October = الجيزة). Two or three names of ONE product go in one query («سلندرات درافيل rollers»), no governorate for tenders / RFQs. Say only what the result's `text` and results contain - never invent names, numbers or contacts. Also call janna_search with the query's main word only (the screen matches the whole phrase). Each result has an `id`: all its details with platform_item.",
- "config": {
-  "url": "https://madeinegyptgate.com/api/janna/lookup",
-  "method": "POST",
-  "parameters": {
-   "type": "object",
-   "required": [
-    "section",
-    "query"
-   ],
-   "properties": {
-    "query": {
-     "type": "string",
-     "description": "What the visitor is looking for (activity, product, company name, city) in Arabic or English, e.g. بلاستيك"
-    },
-    "section": {
-     "enum": [
-      "factories",
-      "suppliers",
-      "products",
-      "tenders",
-      "rfqs",
-      "offers",
-      "cities"
-     ],
-     "type": "string",
-     "description": "What to search: factories, suppliers, products, tenders, rfqs, offers or cities (industrial cities/zones)"
-    },
-    "governorate": {
-     "type": "string",
-     "description": "Optional Egyptian governorate in Arabic, e.g. الشرقية (an industrial city such as العاشر من رمضان keeps only the rows that name the city: give its governorate)"
-    }
-   }
-  },
-  "awaitResponse": true
+ "_note": "Live tool bodies as sent (masked enum values are the real lists below). Updated 2026-11-20 13:19 UTC: sections customers, projects, events, news, awards (worker 4dfb634 live).",
+ "janna_lookup_janna": {
+  "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
+  "updatedAt": "2026-11-20T13:19:35.847Z",
+  "previous_updatedAt": "2026-11-20T12:49:00.983Z",
+  "section_enum": [
+   "factories",
+   "suppliers",
+   "products",
+   "tenders",
+   "rfqs",
+   "offers",
+   "cities",
+   "customers",
+   "projects",
+   "events",
+   "news",
+   "awards"
+  ],
+  "properties": [
+   "query",
+   "section",
+   "governorate"
+  ],
+  "note": "no page / limit / market on purpose (worker/src/index.js `paged` → Bassem's masculine text)"
  },
- "disableInterruptions": false
+ "janna_lookup_bassem": {
+  "id": "b23b3762-3333-4212-9564-e4c813433212",
+  "updatedAt": "2026-11-20T13:19:38.615Z",
+  "previous_updatedAt": "2026-11-19T15:03:01.121Z",
+  "section_enum": [
+   "factories",
+   "suppliers",
+   "products",
+   "tenders",
+   "rfqs",
+   "offers",
+   "cities",
+   "customers",
+   "projects",
+   "events",
+   "news",
+   "awards"
+  ],
+  "properties": [
+   "query",
+   "section",
+   "governorate",
+   "market",
+   "page",
+   "limit"
+  ]
+ },
+ "platform_item_shared": {
+  "id": "6ccedda8-5896-4b9b-b3ae-c8ed462a4b3d",
+  "updatedAt": "2026-11-20T13:19:41.946Z",
+  "previous_updatedAt": "2026-11-19T20:08:02.049Z",
+  "section_enum": [
+   "tenders",
+   "rfqs",
+   "factories",
+   "products",
+   "offers",
+   "cities",
+   "awards",
+   "projects",
+   "news",
+   "events"
+  ],
+  "description": "unchanged"
+ },
+ "rollback": "send the previous enums: janna_lookup 7 values (factories, suppliers, products, tenders, rfqs, offers, cities), platform_item 8 values (without news, events), and the previous descriptions in git history of this file / anam/tools.create.json",
+ "previous_record": {
+  "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
+  "name": "janna_lookup",
+  "description": "Search the platform's REAL directory and get results you can say aloud: factories & companies (by activity/product and governorate), products, Egyptian tenders, RFQs, retail offers, industrial cities. Use it when the visitor asks which factories / suppliers / tenders / offers exist. A seller's potential customers: section=factories, ONE industry word per call («تغليف», «طباعة»; 2-3 industries = 2-3 calls in one reply, never add the counts up; no صناعات / مواد / معدات), governorate = his governorate, not the city (6th of October = الجيزة). Two or three names of ONE product go in one query («سلندرات درافيل rollers»), no governorate for tenders / RFQs. Say only what the result's `text` and results contain - never invent names, numbers or contacts. Also call janna_search with the query's main word only (the screen matches the whole phrase). Each result has an `id`: all its details with platform_item.",
+  "config": {
+   "url": "https://madeinegyptgate.com/api/janna/lookup",
+   "method": "POST",
+   "parameters": {
+    "type": "object",
+    "required": [
+     "section",
+     "query"
+    ],
+    "properties": {
+     "query": {
+      "type": "string",
+      "description": "What the visitor is looking for (activity, product, company name, city) in Arabic or English, e.g. بلاستيك"
+     },
+     "section": {
+      "enum": [
+       "factories",
+       "suppliers",
+       "products",
+       "tenders",
+       "rfqs",
+       "offers",
+       "cities"
+      ],
+      "type": "string",
+      "description": "What to search: factories, suppliers, products, tenders, rfqs, offers or cities (industrial cities/zones)"
+     },
+     "governorate": {
+      "type": "string",
+      "description": "Optional Egyptian governorate in Arabic, e.g. الشرقية (an industrial city such as العاشر من رمضان keeps only the rows that name the city: give its governorate)"
+     }
+    }
+   },
+   "awaitResponse": true
+  },
+  "disableInterruptions": false
+ }
 }
