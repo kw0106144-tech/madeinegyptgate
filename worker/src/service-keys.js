@@ -52,11 +52,12 @@ async function readAll(env) {
   out.wa_live = out.wa_switch && !!out.wa_test_ok_at; // the switch counts only after a passed token test (acc-keys.js enforces the full order)
   out.ws_provider = wsProviderOk(s["websearch.provider"]);
   out.ws_cap = s["websearch.cap"] === undefined ? -1 : wsCapOk(s["websearch.cap"]);
-  for (const [slot, key, state] of [["respondio.token", "respondio_token", "respondio_state"], ["anam.api_key", "anam_key", "anam_state"],
-    ["websearch.key", "ws_key", "ws_state"], ["bassem.tool_secret", "tool_secret", "tool_state"]]) {
+  /* the four sealed slots are read together (one D1 round trip instead of four — speed 2026-11-20); each slot keeps its own outcome */
+  await Promise.all([["respondio.token", "respondio_token", "respondio_state"], ["anam.api_key", "anam_key", "anam_state"],
+    ["websearch.key", "ws_key", "ws_state"], ["bassem.tool_secret", "tool_secret", "tool_state"]].map(async ([slot, key, state]) => {
     try { const v = await getSecret(env, slot); if (v) { out[key] = v; out[state] = "ok"; } else if (v === null) out[state] = "unreadable"; }
     catch (e) { out[state] = e && e.code === "config_secret_missing" ? "unreadable" : "none"; } // set, but CONFIG_SECRET is missing / changed
-  }
+  }));
   return out;
 }
 /* → the view (never throws); memo 60 s per database, `fresh` re-reads (after a write in this isolate) */

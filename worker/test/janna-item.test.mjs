@@ -1,8 +1,8 @@
 // /api/janna/item (src/janna-item.js), the richer /api/janna/lookup (ids, open_url, amounts, paging, market) and src/resume.js.
 // Runs against the real src/data.json + src/items.json (worker/build-items.js), so the assertions name real platform items.
-import { test, describe } from "node:test";
+import { test, describe, mock } from "node:test";
 import assert from "node:assert/strict";
-import worker, { search } from "../src/index.js";
+import worker, { search, leanLookup, foreignQuery } from "../src/index.js";
 import ITEMS from "../src/items.json";
 import { findItem, sayMoney, sayDate, absUrl, statusOf, sectionOf } from "../src/janna-item.js";
 import { resumeContext, resumeTurns, cleanTurn, RESUME_MAX_CHARS } from "../src/resume.js";
@@ -43,14 +43,17 @@ describe("items.json — the full public records", () => {
   });
 });
 
-describe("/api/janna/lookup — richer, paged, backward compatible", () => {
-  test("tenders «حديد»: old fields kept, plus id / ref_no / open_url / the amounts; Taiba first", async () => {
+describe("/api/janna/lookup — richer, paged; POST (Anam) lean, GET full", () => {
+  test("tenders «حديد»: id / ref_no / open_url / the amounts; Taiba first; the old fields stay on GET", async () => {
     const r = await call("/api/janna/lookup", { method: "POST", body: { section: "tenders", query: "حديد" } });
     assert.equal(r.status, 200);
     for (const k of ["section", "query", "count", "results", "text"]) assert.ok(k in r.data, k);
     assert.ok(r.data.count >= 10 && r.data.results.length === 6 && r.data.page === 1 && r.data.has_more === true);
     const t = r.data.results[0];
-    for (const k of ["ref", "type", "status", "title", "entity", "governorate", "activity", "deadline", "url"]) assert.ok(k in t, k);
+    for (const k of ["ref", "type", "status", "title", "entity", "governorate", "activity", "deadline"]) assert.ok(k in t, k);
+    for (const k of ["url", "list_url", "list_key"]) assert.ok(!(k in t), "POST is lean: " + k); /* speed 2026-11-20: open_url is the one link */
+    const g = (await call("/api/janna/lookup?section=tenders&query=" + encodeURIComponent("حديد"))).data.results[0];
+    for (const k of ["ref", "type", "status", "title", "entity", "governorate", "activity", "deadline", "url", "list_key"]) assert.ok(k in g, "GET keeps " + k);
     assert.equal(t.id, "eg-tnd-003"); assert.equal(t.ref_no, "6/2026/2027"); assert.equal(t.bid_bond_egp, 1000000); assert.equal(t.booklet_price_egp, 7000);
     assert.equal(t.open_url, S + "/tender-item/eg-tnd-003/");
     for (const x of r.data.results) { assert.ok(x.id, x.title); assert.match(x.open_url, /^https:\/\/madeinegyptgate\.com\//); assert.equal(x.market, "local"); }
@@ -122,14 +125,87 @@ describe("/api/janna/item — one item in full + a spoken Egyptian summary", () 
     const j = findItem("projects", { id: "r015" }, NOW); assert.equal(j.found, true); assert.equal(j.value_egp_million, 15000); assert.match(j.text, /15 مليار جنيه/); assert.ok(!/^مشروع مشروع/.test(j.text));
     assert.equal(j.progress, undefined); /* the research-only progress % is never served */
   });
-  test("errors: unknown item → POST 200 found:false (the Anam webhook hears it) / GET 404 (no invention), no section / no key 400, bad json 400, method 405", async () => {
+  test("errors: unknown item → POST 200 found:false (the Anam webhook hears it) / GET 404 (no invention); GET without section / key 400; a malformed POST 200 found:false + a text; method 405", async () => {
     const n = await call("/api/janna/item", { method: "POST", body: { section: "tenders", title: "طائرات فضائية حربية" } });
     assert.equal(n.status, 200); assert.equal(n.data.found, false); assert.match(n.data.text, /متخترعش/);
     assert.equal((await call("/api/janna/item?section=tenders&title=" + encodeURIComponent("طائرات فضائية حربية"))).status, 404);
     assert.equal((await call("/api/janna/item?id=eg-tnd-003")).status, 400);
     assert.equal((await call("/api/janna/item?section=tenders")).status, 400);
-    assert.equal((await call("/api/janna/item", { method: "POST", body: "{bad" })).status, 400);
+    /* speed 2026-11-20: a malformed POST never answers 400 (Anam's model heard only "HTTP error 400" and retried blind) */
+    const warn = mock.method(console, "warn", () => {});
+    try {
+      for (const [body, code] of [["{bad", "bad_json"], [{ id: "eg-tnd-003" }, "section_required"], [{ section: "tenders" }, "id_required"], [{}, "section_required"]]) {
+        const r = await call("/api/janna/item", { method: "POST", body });
+        assert.deepEqual([r.status, r.data.found], [200, false], JSON.stringify(body));
+        assert.match(r.data.text, /janna_lookup/); assert.match(r.data.text, /مرة واحدة بس/); assert.match(r.data.text, /متخترعش/);
+        assert.equal(r.data.title, undefined, "nothing that looks like an item");
+        assert.deepEqual(warn.mock.calls.at(-1).arguments, ["tool-soft-error", "/api/janna/item", code], "one log line, no body");
+      }
+      assert.equal(warn.mock.calls.length, 4);
+    } finally { warn.mock.restore(); }
     assert.equal((await call("/api/janna/item", { method: "PUT", body: {} })).status, 405);
+  });
+  test("speed 2026-11-20: a malformed lookup POST → 200 + a text the model can act on (never results); GET keeps 400", async () => {
+    const warn = mock.method(console, "warn", () => {});
+    try {
+      const bad = await call("/api/janna/lookup", { method: "POST", body: "{bad" });
+      assert.deepEqual([bad.status, bad.data.count, bad.data.results], [200, 0, []]); assert.match(bad.data.text, /مرة واحدة بس/); assert.match(bad.data.text, /مفيش نتايج تتقال من غير بحث/);
+      const none = await call("/api/janna/lookup", { method: "POST", body: { section: "factories" } });
+      assert.deepEqual([none.status, none.data.count, none.data.error], [200, 0, "query required"]); assert.match(none.data.text, /platform_item/); assert.match(none.data.text, /اسأله الأول/);
+      assert.deepEqual(warn.mock.calls.map(c => c.arguments), [["tool-soft-error", "/api/janna/lookup", "bad_json"], ["tool-soft-error", "/api/janna/lookup", "query_required"]]);
+      assert.equal((await call("/api/janna/lookup?section=factories")).status, 400, "GET keeps the status code");
+      assert.equal(warn.mock.calls.length, 2, "GET leaves no soft-error line");
+    } finally { warn.mock.restore(); }
+  });
+  test("speed 2026-11-20: POST lookup results are lean — open_url decoded and alone, no ref / ref_no equal to the id, no per_page / empty fields; GET is the full shape", async () => {
+    for (const [section, query] of [["factories", "حديد"], ["tenders", "حديد"], ["rfqs", "خراطيم"], ["products", "كركم"]]) {
+      const p = (await call("/api/janna/lookup", { method: "POST", body: { section, query } })).data;
+      const g = (await call("/api/janna/lookup?section=" + section + "&query=" + encodeURIComponent(query))).data;
+      assert.equal(p.text, g.text, "the spoken text is never touched");
+      assert.deepEqual([p.count, p.results.length, p.results.map(x => x.id)], [g.count, g.results.length, g.results.map(x => x.id)], section);
+      assert.ok(!("per_page" in p) && "per_page" in g); assert.ok(!("place" in p) && "place" in g && g.place === null);
+      for (let i = 0; i < p.results.length; i++) {
+        const x = p.results[i], y = g.results[i];
+        assert.ok(y.open_url, section + " every result has its page");
+        for (const k of ["url", "list_url", "list_key"]) assert.ok(!(k in x), section + " lean: " + k);
+        assert.equal(x.open_url, decodeURI(y.open_url)); assert.equal(encodeURI(x.open_url), y.open_url, "re-encoding gives the page back");
+        assert.ok(!/%[0-9A-F]{2}/i.test(x.open_url), "decoded: " + x.open_url);
+        if (y.ref_no != null && String(y.ref_no) !== String(y.id)) assert.equal(x.ref_no, y.ref_no); else assert.ok(!("ref_no" in x));
+        if (y.ref != null && String(y.ref) !== String(y.id)) assert.equal(x.ref, y.ref); else assert.ok(!("ref" in x));
+      }
+      if (section === "factories" || section === "tenders") {
+        const cut = 1 - JSON.stringify(p).length / JSON.stringify(g).length;
+        assert.ok(cut >= 0.25, section + ": " + Math.round(cut * 100) + " % smaller (o200k tokens: −36 … −52 % on real answers)");
+      }
+    }
+    const f = (await call("/api/janna/lookup", { method: "POST", body: { section: "factories", query: "حديد" } })).data.results[0];
+    assert.match(f.open_url, /^https:\/\/madeinegyptgate\.com\/factories\/[^%]+\/$/);
+  });
+  test("leanLookup: a result without its own page keeps its url; ids / refs that differ stay; GET-only callers and errors pass through", () => {
+    const r = leanLookup({ section: "tenders", per_page: 6, place: null, widened_to: null, governorate: null, count: 2, text: "t",
+      results: [{ ref: "a", id: "a", ref_no: "a", url: "https://madeinegyptgate.com/tenders/search/#a", open_url: "https://madeinegyptgate.com/tender-item/%D8%AD%D8%AF%D9%8A%D8%AF/", list_url: "u", list_key: "a" },
+        { ref: "OFF:1", id: "eg-tnd-9", ref_no: "1/2026", url: "https://madeinegyptgate.com/x/" }, { id: "x", open_url: "https://madeinegyptgate.com/%E0%A4%A/" }] });
+    assert.deepEqual(r.results[0], { id: "a", open_url: "https://madeinegyptgate.com/tender-item/حديد/" });
+    assert.deepEqual(r.results[1], { ref: "OFF:1", id: "eg-tnd-9", ref_no: "1/2026", url: "https://madeinegyptgate.com/x/" });
+    assert.equal(r.results[2].open_url, "https://madeinegyptgate.com/%E0%A4%A/", "a malformed escape stays encoded");
+    assert.deepEqual(Object.keys(r).sort(), ["count", "results", "section", "text"]);
+    assert.deepEqual(leanLookup({ error: "x" }), { error: "x" });
+  });
+  test("any-language calls: a 0-result query with no Arabic letter tells the model to translate and search again; Arabic queries keep today's text", async () => {
+    const fr = await call("/api/janna/lookup", { method: "POST", body: { section: "factories", query: "acier" } });
+    assert.deepEqual([fr.status, fr.data.count], [200, 0]);
+    assert.match(fr.data.text, /ترجميها للعربي \(acier = حديد\) ودوّري تاني قبل ما تقولي مفيش/, "Janna: feminine");
+    const bassem = await call("/api/janna/lookup", { method: "POST", body: { section: "tenders", query: "Stahl", page: 1 } });
+    assert.equal(bassem.data.count, 0); assert.match(bassem.data.text, /ترجمها للعربي \(acier = حديد\) ودوّر تاني قبل ما تقول مفيش/, "Bassem (pages): masculine");
+    for (const q of ["сталь", "钢铁"]) { const r = search("factories", q, ""); assert.equal(r.count, 0); assert.match(r.text, /ترجم/, q); }
+    const ar = search("factories", "حديد", "");
+    assert.ok(ar.count > 0); assert.doesNotMatch(ar.text, /ترجم/);
+    const arNone = search("factories", "خخخظظظ ذذذضضض", "");
+    assert.equal(arNone.count, 0);
+    assert.equal(arNone.text, "لا توجد نتائج مطابقة في دليل المنصة لهذا البحث. لا تخترعي نتائج؛ اقترحي كلمات بحث أخرى أو نشر طلب عرض سعر مجاني.", "exactly today's text");
+    const mixed = search("factories", "مصنع xyzqq", "");
+    assert.equal(mixed.count, 0); assert.doesNotMatch(mixed.text, /ترجم/, "an Arabic letter in the query: today's text");
+    assert.ok(foreignQuery("acier") && foreignQuery("钢铁") && !foreignQuery("حديد") && !foreignQuery("") && !foreignQuery("123"));
   });
   test("JANNA_KEY: the same rule as the lookup", async () => {
     const env = { JANNA_KEY: "k-test" };

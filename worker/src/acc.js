@@ -45,11 +45,17 @@ export { neutral, roleOf, ROLE_PERMS, PERMS, OWNER_ONLY } from "./acc-base.js";
 export const audit = auditInsert;
 
 /* ---------- boot & cron ---------- */
+/* the four loaders share no state (each memo is keyed by env.DB), so they run together: a cold isolate waits about two D1 round trips
+   instead of nine one after the other (speed 2026-11-20). Each one still fails on its own: plans / mail → the defaults, keys → the empty
+   view (no panel keys, WhatsApp switch off: fail-closed — every real send re-reads the switch anyway), features → the defaults. */
 export async function ccBoot(env, CC) {
-  try { await PL.bootPlans(env); } catch (e) { /* defaults stay */ }
-  try { if (CC && CC.email && typeof CC.email.loadMailConfig === "function") await CC.email.loadMailConfig(env); } catch (e) { /* defaults stay */ }
-  try { await loadServiceKeys(env); } catch (e) { /* empty view: no panel keys, WhatsApp switch off (fail-closed) */ }
-  try { await loadFeatures(env); } catch (e) { /* the defaults */ }
+  const safe = f => Promise.resolve().then(f).catch(() => { /* defaults stay */ });
+  await Promise.all([
+    safe(() => PL.bootPlans(env)),
+    safe(() => (CC && CC.email && typeof CC.email.loadMailConfig === "function" ? CC.email.loadMailConfig(env) : null)),
+    safe(() => loadServiceKeys(env)),
+    safe(() => loadFeatures(env)),
+  ]);
 }
 export async function ccCron(env, nowMs = Date.now(), CC) {
   const out = {};

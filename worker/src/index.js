@@ -2,10 +2,13 @@
    Lets the live assistant «جنة» (Anam persona, SERVER_WEBHOOK tool "janna_lookup") search the platform's real public
    directory (factories & companies, products, tenders, RFQs, retail offers, industrial cities) and SAY the results.
    - POST /api/janna/lookup   body {section, query, governorate?, limit?, page?, market?}  → {count, page, pages, has_more, results[], text}
-   - GET  /api/janna/lookup?section=&query=&governorate=&page=               (same, for testing / the website)
+     (lean for the model: leanLookup below; a malformed request still answers 200 with a `text` the model can act on — never a bare 400)
+   - GET  /api/janna/lookup?section=&query=&governorate=&page=               (the full shape, for testing / the website)
      each result also carries id (for /api/janna/item), open_url (the item's own page) and, for tenders, the amounts the data has
    - GET|POST /api/janna/item {section, id|ref|title}  → the full public record of ONE item + a spoken summary (src/janna-item.js)
    - GET  /api/janna/health
+   - POST /api/janna/timing   the live-call page's start timing beacon → 204 + one log line of numbers (src/live-timing.js)
+   The webhook routes, the health check and the timing beacon skip ccBoot (BARE below): they read only the bundled data or their own tables.
    Security: if the secret JANNA_KEY is set (wrangler secret put JANNA_KEY), requests must send header X-Janna-Key with it
    (the Anam tool sends it). No API keys are stored in the code. Data = worker/src/data.json (public directory only; no phones). */
 import DATA from "./data.json";
@@ -21,6 +24,7 @@ import { handleAdmin } from "./admin.js";           // /api/admin/*       monito
 import { handleEv, handleUnsub } from "./ev.js";    // /api/ev, /api/unsub
 import { handleWA, bassemCron } from "./whatsapp.js"; // /api/wa/*        respond.io webhook + Bassem's daily WhatsApp
 import { handleJannaSession } from "./janna-session.js"; // /api/janna/session  live-call session tokens (JS SDK: no third-party mark)
+import { handleTiming } from "./live-timing.js";       // /api/janna/timing   the call page's start timing beacon (numbers only)
 import { handleItem, enrichResult } from "./janna-item.js"; // /api/janna/item  one item in full + the lookup results' ids / open_url / amounts
 import { handleMemory, memoryCron, budgetEnv, TICK } from "./memory.js"; // /api/advisor/memory  Bassem's memory (searches, call turns, summaries, facts)
 // ---- 0009 memory upgrades: Janna's visitor memory, «بنك المعلومات», the daily memory update ----
@@ -28,7 +32,7 @@ import { handleVisitorMemory } from "./visitor.js";   // /api/janna/memory[/task
 import { handleKnowledge } from "./knowledge.js";     // /api/janna/knowledge  the personas' knowledge_lookup tool
 import { dailyMemory } from "./daily.js";              // day digests + «ملخص العميل» + tasks / knowledge merge / caps report (once per Cairo day)
 import { dailyJobs, newCountFor } from "./digest.js";
-import { cairoDay, addDays } from "./common.js";
+import { cairoDay, addDays, toolSoftError } from "./common.js";
 // ---- Bassem web search (src/websearch.js): POST /api/advisor/web — Anam SERVER_WEBHOOK bassem_web_search (X-MIG-Tool header) ----
 import { handleWebSearch } from "./websearch.js";
 // Admin Control Center (docs/janna/ACC-CONTRACT.md §0.2): one CC object handed to every new handler (no cross-area imports)
@@ -140,11 +144,18 @@ function search(section, query, governorate, limit, page, market) {
   const pages = Math.max(1, Math.ceil(res.length / L)), pg = Math.min(Math.max(Math.floor(+page || 1), 1), 1000), from = (pg - 1) * L;
   const top = res.slice(from, from + L).map(r => enrichResult(section, r[1])), more = Math.max(0, res.length - from - top.length);
   return { section, query, governorate: gov || null, place: place || null, market: section === "tenders" ? mk : undefined, widened_to: widened, count: res.length, page: pg, pages, per_page: L, has_more: more > 0, results: top,
-    text: (widened ? "نتائج قليلة داخل " + place + " نفسها، فتمت إضافة نتائج من محافظة " + widened + ". " : "") + (pg > pages && res.length ? `دي كانت كل النتائج (${res.length}) في ${pages === 1 ? "صفحة واحدة" : pages + " صفحات"}؛ مفيش صفحة ${pg}.` : summary(section, res.length, top.slice(0, 6), gov || place, paged)) + (more && paged ? ` وفيه كمان ${more} نتيجة: اطلب page=${pg + 1}، أو هات تفاصيل نتيجة بالـ id بتاعها من platform_item.` : "") };
+    text: (widened ? "نتائج قليلة داخل " + place + " نفسها، فتمت إضافة نتائج من محافظة " + widened + ". " : "") + (pg > pages && res.length ? `دي كانت كل النتائج (${res.length}) في ${pages === 1 ? "صفحة واحدة" : pages + " صفحات"}؛ مفيش صفحة ${pg}.` : summary(section, res.length, top.slice(0, 6), gov || place, paged, query)) + (more && paged ? ` وفيه كمان ${more} نتيجة: اطلب page=${pg + 1}، أو هات تفاصيل نتيجة بالـ id بتاعها من platform_item.` : "") };
 }
+/* a query with letters and not one Arabic letter (acier, Stahl, сталь, 钢铁 — or English the EN map does not know): the platform's data is
+   Arabic + English, so a 0-result answer must not read as «none exist» — the model translates the word and searches again (any-language
+   plan 2026-11-20). Arabic queries keep today's text byte for byte. */
+const ARABIC_LETTER = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+export const foreignQuery = q => /\p{L}/u.test(String(q || "")) && !ARABIC_LETTER.test(String(q || ""));
 /* m = the caller is Bassem (his tool definition sends page / market — holo5 `paged`): the same text in the masculine; Janna keeps hers */
-function summary(section, n, top, where, m) {
-  if (!n) return "لا توجد نتائج مطابقة في دليل المنصة لهذا البحث" + (where ? " في " + where : "") + (m ? ". لا تخترع نتائج؛ اقترح كلمات بحث أخرى أو نشر طلب عرض سعر مجاني." : ". لا تخترعي نتائج؛ اقترحي كلمات بحث أخرى أو نشر طلب عرض سعر مجاني.");
+function summary(section, n, top, where, m, query) {
+  if (!n) return "لا توجد نتائج مطابقة في دليل المنصة لهذا البحث" + (where ? " في " + where : "") + (m ? ". لا تخترع نتائج؛ اقترح كلمات بحث أخرى أو نشر طلب عرض سعر مجاني." : ". لا تخترعي نتائج؛ اقترحي كلمات بحث أخرى أو نشر طلب عرض سعر مجاني.")
+    + (!foreignQuery(query) ? "" : m ? " بيانات المنصة بالعربي والإنجليزي: لو الكلمة بلغة تانية ترجمها للعربي (acier = حديد) ودوّر تاني قبل ما تقول مفيش."
+      : " بيانات المنصة بالعربي والإنجليزي: لو الكلمة بلغة تانية ترجميها للعربي (acier = حديد) ودوّري تاني قبل ما تقولي مفيش.");
   const items = top.map(r => r.sectors !== undefined ? `${r.name} (${r.governorate}${r.sectors ? "، قطاعات: " + r.sectors : ""})` : r.name ? `${r.name} (${r.activity || ""}${r.location ? "، " + r.location : ""})` : r.title ? `${r.title} — ${r.entity} — ${r.status}${r.deadline ? "، آخر موعد " + r.deadline : ""}` : r.product ? `${r.product}${r.store ? " في " + r.store + " بسعر " + r.price_egp + " جنيه" : r.maker ? " — " + r.maker : ""}` : r.name_en || "");
   return `عدد النتائج في دليل المنصة: ${n}. أهمها: ${items.join("؛ ")}. هذه بيانات حقيقية من المنصة؛ ${m ? "اذكر منها فقط ولا تضيف" : "اذكري منها فقط ولا تضيفي"} بيانات تواصل (التواصل عبر زر «اطلب عرض سعر» في ملف المنشأة).`;
 }
@@ -152,10 +163,43 @@ function summary(section, n, top, where, m) {
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Janna-Key" };
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...CORS } });
 
+/* POST /api/janna/lookup answers lean for the model (speed 2026-11-20: 1.2–2.0k tokens a result list → −36 … −52 %, and 45 % of it was
+   URLs): a result with its own page keeps only open_url, DECODED («/factories/مصنع-…/» instead of %D8%… — easier to copy; the call page
+   re-encodes links before they go into an e-mail), and ref / ref_no only when they differ from the id; per_page and empty place /
+   widened_to / governorate are left out. `text` is never touched. GET (the site, the tests) keeps the full shape. */
+export function leanLookup(o) {
+  if (!o || typeof o !== "object" || !Array.isArray(o.results)) return o;
+  const results = o.results.map(r => {
+    if (!r || typeof r !== "object") return r;
+    const x = { ...r };
+    if (x.open_url) {
+      delete x.url; delete x.list_url; delete x.list_key;
+      try { x.open_url = decodeURI(x.open_url); } catch (e) { /* a malformed escape: keep it encoded */ }
+    }
+    if (x.id != null && x.ref_no != null && String(x.ref_no) === String(x.id)) delete x.ref_no;
+    if (x.id != null && x.ref != null && String(x.ref) === String(x.id)) delete x.ref;
+    return x;
+  });
+  const y = { ...o, results };
+  delete y.per_page;
+  for (const k of ["place", "widened_to", "governorate"]) if (y[k] == null) delete y[k];
+  return y;
+}
+/* Anam's webhooks hear only "HTTP error 400" from a refused call and retry blind (8f4d017e turn 74: 32 s): a malformed POST gets 200 with a
+   text the model can act on (never results it could repeat); GET keeps the status codes. Each such answer is one log line (toolSoftError). */
+const LOOKUP_TEXT = {
+  bad_json: "طلب البحث وصل ناقص. ابعت section و query تاني مرة واحدة بس؛ ولو فشل تاني قول إن البحث مش متاح دلوقتي، ومفيش نتايج تتقال من غير بحث.",
+  no_query: "مفيش كلمة بحث في الطلب: لازم query فيها المنتج أو النشاط أو اسم الشركة (زي حديد أو بلاستيك). لتفاصيل بند واحد بالـ id أو الرقم استخدم platform_item. لو مش واضح العميل بيدوّر على إيه اسأله الأول.",
+};
+/* speed 2026-11-20: these read only the bundled data (data.json / items.json) or their own tables, never what ccBoot loads (plans matrix,
+   mail config, service keys, feature switches) — a cold isolate saved 1.2–1.4 s of nine D1 reads on every Anam webhook */
+const BARE = new Set(["/api/janna/lookup", "/api/janna/item", "/api/janna/knowledge", "/api/janna/health", "/api/janna/timing"]);
+
 const WORKER = {
   async fetch(req, env, ctx) {
-    const url = new URL(req.url);
-    try { await CC.acc.ccBoot(env, CC); } catch (e) { /* defaults */ }
+    const url = new URL(req.url), p0 = url.pathname.length > 1 && url.pathname.endsWith("/") ? url.pathname.slice(0, -1) : url.pathname;
+    let bootMs = 0; // how long ccBoot took for this request (the session token's Server-Timing «boot»)
+    if (!BARE.has(p0)) { const b0 = Date.now(); try { await CC.acc.ccBoot(env, CC); } catch (e) { /* defaults */ } bootMs = Date.now() - b0; }
     // Control Center first: the /api/me, /api/auth and /api/admin regexes below would swallow these paths (ACC-CONTRACT §3.0).
     // Every family is anchored at the start of the path (review F9): /api/janna/x/api/admin/cc/… is NOT the Control Center, so a WAF /
     // Access / IP rule written for /api/admin/* or /api/me/* cannot be bypassed through another routed prefix.
@@ -181,19 +225,22 @@ const WORKER = {
     if (/^\/api\/ev\/?$/.test(url.pathname)) return handleEv(req, env, ctx);
     if (/^\/api\/unsub\/?$/.test(url.pathname)) return handleUnsub(req, env, ctx);
     if (/^\/api\/wa(\/|$)/.test(url.pathname)) return handleWA(req, env, ctx);
-    if (/^\/api\/janna\/session\/?$/.test(url.pathname)) return handleJannaSession(req, env, ctx);
+    if (/^\/api\/janna\/session\/?$/.test(url.pathname)) return handleJannaSession(req, env, ctx, { bootMs });
     if (/^\/api\/janna\/item\/?$/.test(url.pathname)) return handleItem(req, env, ctx); // holo5, janna-item.js
     if (/^\/api\/janna\/memory(\/|$)/.test(url.pathname)) return handleVisitorMemory(req, env, ctx); // 0009, visitor.js
     if (/^\/api\/janna\/knowledge\/?$/.test(url.pathname)) return handleKnowledge(req, env, ctx); // 0009, knowledge.js
+    if (/^\/api\/janna\/timing\/?$/.test(url.pathname)) return handleTiming(req, env, ctx); // live-timing.js (same-origin beacon: no CORS)
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
     if (/^\/api\/janna\/health\/?$/.test(url.pathname)) return json({ ok: true, data: DATA.v, factories: DATA.f.length, products: DATA.p.length, tenders: DATA.t.length, rfqs: DATA.q.length, offers: DATA.o.length, zones: DATA.z.length, items: (DATA.i || []).length });
     if (!/^\/api\/janna\/lookup\/?$/.test(url.pathname)) return json({ error: "not found" }, 404);
     if (env && env.JANNA_KEY && req.headers.get("X-Janna-Key") !== env.JANNA_KEY) return json({ error: "unauthorized" }, 401);
+    const post = req.method === "POST";
     let a = Object.fromEntries(url.searchParams);
-    if (req.method === "POST") { try { a = Object.assign(a, await req.json()); } catch (e) { return json({ error: "bad json" }, 400); } }
+    if (post) { try { a = Object.assign(a, await req.json()); } catch (e) { toolSoftError("/api/janna/lookup", "bad_json"); return json({ error: "bad json", count: 0, results: [], text: LOOKUP_TEXT.bad_json }, 200); } }
     const section = ["factories", "suppliers", "products", "market", "tenders", "rfqs", "offers", "cities"].includes(a.section) ? a.section : "factories";
-    if (!a.query && !a.governorate) return json({ error: "query required" }, 400);
-    return json(search(section, String(a.query || "").slice(0, 200), String(a.governorate || "").slice(0, 60), a.limit, a.page, a.market));
+    if (!a.query && !a.governorate) { if (post) toolSoftError("/api/janna/lookup", "query_required"); return json({ error: "query required", count: 0, results: [], text: LOOKUP_TEXT.no_query }, post ? 200 : 400); }
+    const r = search(section, String(a.query || "").slice(0, 200), String(a.governorate || "").slice(0, 60), a.limit, a.page, a.market);
+    return json(post ? leanLookup(r) : r);
   },
   /* Cloudflare Email Routing → replies to deal-<id>@reply.madeinegyptgate.com (AI Deal Advisor) */
   async email(message, env, ctx) {

@@ -10,7 +10,7 @@
 import DATA from "./data.json";
 import ITEMS from "./items.json";
 import { norm } from "./text.js";
-import { cairoDay, addDays } from "./common.js";
+import { cairoDay, addDays, toolSoftError } from "./common.js";
 
 export const SITE = "https://madeinegyptgate.com/";
 /* stored paths: "/tender-item/eg-tnd-003/" (decoded UTF-8) or a site hash link "tenders/search/#OFF%3A1" (already encoded) */
@@ -192,7 +192,8 @@ export function findItem(section, a = {}, nowMs = Date.now()) {
   return Object.assign({ found: true }, rec, others.length ? { others } : {});
 }
 
-/* ---------- /api/janna/lookup results: the same ids + clean URLs + the amounts (backward compatible: fields are only ADDED) ---------- */
+/* ---------- /api/janna/lookup results: the same ids + clean URLs + the amounts. Fields are only ADDED here: POST (Anam) is then made lean
+   by index.js leanLookup (open_url decoded, no url / list_url / list_key beside it, no ref / ref_no equal to the id); GET is full ---------- */
 export function enrichResult(section, r, nowMs = Date.now()) {
   const sec = sectionOf(section) || section; if (!r || typeof r !== "object") return r;
   if (sec === "tenders") {
@@ -215,18 +216,26 @@ export function enrichResult(section, r, nowMs = Date.now()) {
 /* ---------- HTTP: same key rule and CORS as /api/janna/lookup ---------- */
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Janna-Key" };
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...CORS } });
+const ITEM_TEXT = {
+  bad_json: "طلب التفاصيل وصل ناقص. ابعت section و id من نتيجة janna_lookup تاني مرة واحدة بس؛ ولو فشل تاني قول إن التفاصيل مش متاحة دلوقتي، ومتخترعش بيانات.",
+  no_section: "لازم section (tenders أو rfqs أو factories أو products أو offers أو cities أو awards أو projects) و id من نتيجة janna_lookup. ابعتهم تاني مرة واحدة بس، ومتخترعش بيانات.",
+  no_id: "لازم id أو ref أو title للبند. ابعت section و id من نتيجة janna_lookup تاني مرة واحدة بس؛ ولو مفيش نتيجة دوّر الأول بـ janna_lookup، ومتخترعش بيانات.",
+};
 export async function handleItem(req, env, ctx, nowMs = Date.now()) {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "GET" && req.method !== "POST") return json({ error: "method" }, 405);
   if (env && env.JANNA_KEY && req.headers.get("X-Janna-Key") !== env.JANNA_KEY) return json({ error: "unauthorized" }, 401);
   let a = Object.fromEntries(new URL(req.url).searchParams);
-  if (req.method === "POST") {
-    let b; try { b = await req.json(); } catch (e) { return json({ error: "bad json" }, 400); }
+  /* speed 2026-11-20: a malformed POST (Anam's platform_item) answers 200 found:false with a text the model can act on — a 400 reached it as
+     a bare "HTTP error 400" and it retried blind; GET keeps the status codes. One log line each, never the body. */
+  const post = req.method === "POST", soft = (code, o) => { if (post) toolSoftError("/api/janna/item", code); return json({ found: false, ...o }, post ? 200 : 400); };
+  if (post) {
+    let b; try { b = await req.json(); } catch (e) { return soft("bad_json", { error: "bad json", text: ITEM_TEXT.bad_json }); }
     if (b && typeof b === "object") { for (const k of ["arguments", "parameters", "args", "input"]) if (b[k] && typeof b[k] === "object") b = Object.assign({}, b[k], b); a = Object.assign(a, b); }
   }
   const sec = sectionOf(a.section);
-  if (!sec) return json({ error: "section required", sections: ["tenders", "rfqs", "factories", "products", "offers", "cities", "awards", "projects"] }, 400);
-  if (!a.id && !a.ref && !a.title && !a.query && !a.name) return json({ error: "id, ref or title required" }, 400);
+  if (!sec) return soft("section_required", { error: "section required", sections: ["tenders", "rfqs", "factories", "products", "offers", "cities", "awards", "projects"], text: ITEM_TEXT.no_section });
+  if (!a.id && !a.ref && !a.title && !a.query && !a.name) return soft("id_required", { error: "id, ref or title required", text: ITEM_TEXT.no_id });
   const r = findItem(sec, { id: a.id == null ? "" : String(a.id).slice(0, 160), ref: a.ref == null ? "" : String(a.ref).slice(0, 160), title: String(a.title || a.query || a.name || "").slice(0, 300) }, nowMs);
   /* an Anam webhook answer that is not 2xx may never reach the model (holo5 tools.md #4): POST says «not found» with 200; GET keeps 404 */
   return json(r, r.found || req.method === "POST" ? 200 : 404);
