@@ -1554,13 +1554,40 @@
   function fallback(q, confused) {
     show({ segs: [ln(confused ? "confused" : "fallback")], q: q, acts: [chip(["srch", "factories"]), chip(["srch", "market"]), chip(["srch", "tenders"]), chip(["reg"]), chip(["rfq"])] });
   }
+  /* 🌐 (owner 2026-11-20 «جنة او باسم يتكلموا اي لغه في العالم»): this scripted bubble speaks Arabic and English only, so Franco Arabic
+     («ana 3ayez masane3 7adid»: a Latin word with 2 3 5 6 7 8 9 in it, or two of its everyday words) is Arabic, and a message in another
+     language — another script's letters, accented Latin, or 3+ Latin words with none of English and one of another language — gets one
+     line in both languages and the live call, where Janna speaks the visitor's language. English and Arabic messages: exactly as before */
+  var FRANCO_X = /^(b2b|b2c|b2g|c2c|p2p|mp3|mp4|h2o|co2|a3|a4|a5|2d|3d|4g|5g|g7|g20|ps5|x5|q7|u2|w3c|covid19)$/;
+  var FRANCO_W = " ana enta enty inta inti howa heya ehna ezay ezayak ezayek izay leh fein fen feen keda kda kedda mesh msh mish 3ayez 3ayza 3awez 3awza abga 3andy 3andi momken mumkin bkam bekam tamam shokran ahlan yalla khalas ya3ni kwayes kwayesa awy awi delwa2ty dlw2ty bardo bardu ";
+  function franco(q) {
+    var w = String(q || "").toLowerCase().match(/[a-z0-9']+/g) || [], n = 0, seen = {}, i, x;
+    for (i = 0; i < w.length; i++) {
+      x = w[i];
+      if (/[a-z]/.test(x) && /(^|[^0-9])[235-9]([^0-9]|$)/.test(x) && !FRANCO_X.test(x)) return true;
+      if (!seen[x] && FRANCO_W.indexOf(" " + x + " ") > -1) { seen[x] = 1; n++; }
+    }
+    return n >= 2;
+  }
+  var EN_W = " the a an and or of in on at to for from with by is are was be am i you we he she it they my me your our this that these those what where when who how which why can could would will do does did have has need want looking look find search show give get send please hello hi hey thanks thank ok okay yes no not any some all about more price prices list cost costs factory factories company companies supplier suppliers product products tender tenders rfq rfqs quote quotation buy sell offer offers plan plans register registration egypt egyptian cairo giza steel iron plastic cement casting ";
+  var OTHER_W = " je tu il nous vous ils elle le la les des du est une pour avec et mais dans sur cherche bonjour merci oui pas qui quel quelle combien prix usine usines acier ciment veux voudrais besoin el los las es una para con por busco hola gracias quiero necesito fabrica fabricas acero precio donde eu nao uma com obrigado preciso aco io sono il lo gli della ciao grazie cerco voglio acciaio fabbrica ich bin der die das und ist nicht mit suche brauche hallo danke bitte fabrik stahl preis bir ve ben merhaba fabrika ik het een van zoek dank saya ingin mencari pabrik baja terima kasih untuk habari asante nataka kiwanda chuma ";
+  function otherLang(q) {
+    var s = String(q || ""), w, i, en = 0, ot = 0;
+    if (/[\u0600-\u06ff]/.test(s)) return false;
+    if (/[\u0370-\u058f\u0590-\u05ff\u0900-\u0dff\u0e00-\u0e7f\u1100-\u11ff\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(s)) return true; /* another script */
+    if (/[\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u024f]/.test(s)) return true; /* accented Latin */
+    w = s.toLowerCase().match(/[a-z]+/g) || [];
+    for (i = 0; i < w.length; i++) { if (EN_W.indexOf(" " + w[i] + " ") > -1) en++; else if (OTHER_W.indexOf(" " + w[i] + " ") > -1) ot++; }
+    return w.length >= 3 && !en && ot > 0;
+  }
   function handle(q, fromVoice) {
     q = String(q || "").trim(); if (!q) return;
-    /* switch language only on a real sentence: one English word ("hello", "ok") keeps her in Arabic */
-    var hasAr = /[\u0600-\u06FF]/.test(q), enW = (q.match(/[a-z]{2,}/gi) || []).length;
-    if (!ST.flow) { if (enW >= 2 && !hasAr && L !== "en") setLang("en", true); else if (hasAr && L !== "ar") setLang("ar", true); }
+    /* switch language only on a real sentence: one English word ("hello", "ok") keeps her in Arabic; Franco Arabic is Arabic */
+    var hasAr = /[\u0600-\u06FF]/.test(q), enW = (q.match(/[a-z]{2,}/gi) || []).length, fr = !hasAr && franco(q), oth = !hasAr && !fr && otherLang(q);
+    if (!ST.flow) { if (fr) { if (L !== "ar") setLang("ar", true); } else if (enW >= 2 && !hasAr && L !== "en") setLang("en", true); else if (hasAr && L !== "ar") setLang("ar", true); }
     logT("u", q);
     if (ST.flow) { reply(function () { flowInput(q); }, rnd(300, 600)); return; }
+    if (oth && liveOn()) { reply(function () { show({ segs: [seg("جنة المباشرة بتتكلم لغتك — كلّمها فيديو أو اكتبلها بلغتك", "happy"), seg("Live Janna speaks your language — call or type to her in it", "happy")], q: q, acts: [chip(["live"]), chip(["can"])], speak: false }); }); return; }
     reply(function () { understand(q); });
   }
   function understand(q) {

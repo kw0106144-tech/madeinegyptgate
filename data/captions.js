@@ -17,7 +17,7 @@
   var css = ''
     + '.mig-cc{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);z-index:2147483600;max-width:min(780px,calc(100vw - 32px));pointer-events:none;'
     + 'background:rgba(8,12,16,.86);color:#fff;border-radius:14px;padding:10px 18px 11px;box-shadow:0 10px 30px -10px rgba(0,0,0,.6);font:600 clamp(.95rem,1.4vw,1.12rem)/1.7 Cairo,"IBM Plex Sans Arabic",Tahoma,sans-serif;'
-    + 'text-align:center;opacity:0;transition:opacity .25s ease;unicode-bidi:plaintext}'
+    + 'text-align:center;opacity:0;transition:opacity .25s ease;unicode-bidi:isolate}'
     + '.mig-cc.on{opacity:1}.mig-cc b{color:#e9c46a;font-weight:800;margin-inline-end:6px}.mig-cc .w{color:#fff}.mig-cc .d{color:rgba(255,255,255,.62)}'
     + '.mig-ccbtn{position:fixed;z-index:2147483601;left:calc(env(safe-area-inset-left,0px) + 12px);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);border:1px solid rgba(255,255,255,.35);background:rgba(8,12,16,.75);color:#fff;'
     + 'border-radius:8px;font:800 .72rem/1 Tahoma,sans-serif;padding:6px 7px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .25s}'
@@ -50,8 +50,9 @@
   setInterval(function () { lift(); place(); }, 1500);
 
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  /* cue tags in any script (🌐: Janna's Arabic calls already show [دافئة] [متفهمة] [داعم]; more languages = more translated tags) */
   function clean(s) {
-    return String(s || "").replace(/\[(happy|warm|playful|curious|supportive|concerned|sad|surprised|angry|distressed|neutral|laughter)\]/gi, "")
+    return String(s || "").replace(/\[[^\[\]\n]{1,24}\]/g, "")
       .replace(/https?:\/\/\S+/g, "").replace(/(?:\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDC00-\uDEFF]|[\u2600-\u27BF\uFE0F])/g, "").replace(/\s+/g, " ").trim();
   }
   function speakerName() {
@@ -75,11 +76,17 @@
     return out;
   }
   var cur = null, hideT = 0, timer = 0;
+  /* a caption's direction (🌐 the persona may speak any language): rtl when it has a letter of a right-to-left script (Arabic, Hebrew,
+     Syriac, Thaana …: an Arabic caption that starts with «Rand Water» stays rtl, as before), ltr when it has another letter, else the page's.
+     The box isolates its content (unicode-bidi:isolate, so this dir decides — never the name's letters), the name and the words each in
+     their own run: «جنة:» comes first in a French caption on the Arabic page, on the right of an Arabic one exactly as before */
+  function dirOf(s) { return /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/.test(s) ? "rtl" : /[A-Za-z\u00c0-\u024f\u0370-\u058f\u0900-\u1fff\u2c00-\ud7ff\uf900-\ufb1c]/.test(s) ? "ltr" : EN ? "ltr" : "rtl"; }
   function render(who, chunk, done) {
     if (!on) return;
     place();
-    box.innerHTML = "<b>" + esc(who) + ":</b>" + (done ? '<span class="w">' + esc(chunk) + "</span>" : esc(chunk));
-    box.dir = /[؀-ۿ]/.test(chunk) ? "rtl" : "ltr";
+    var d = dirOf(chunk);
+    box.innerHTML = "<b><bdi>" + esc(who) + "</bdi>:</b>" + '<span dir="' + d + '" style="unicode-bidi:isolate"' + (done ? ' class="w"' : "") + ">" + esc(chunk) + "</span>";
+    box.dir = d;
     box.classList.add("on"); btn.classList.add("show");
   }
   function hide(now) { clearTimeout(hideT); hideT = setTimeout(function () { box.classList.remove("on"); if (now) btn.classList.remove("show"); }, now ? 0 : 1400); }

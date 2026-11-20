@@ -382,7 +382,11 @@
     if (s === "market") s = "products";
     if (!fr()) return Promise.resolve(T("شاشة باسم مش مفتوحة دلوقتي، فمفيش نتايج ظاهرة.", "Bassem's screen is not open, so no results are shown."));
     showScreen();
-    return newPage(d0, function (d) { return pageOf(d) === S.key && boxHas(d, S, q); }, 11000).then(function (d) {
+    /* a search the page already put on the screen from janna_lookup's result (janna-live.js lookupDone; run() then loads nothing new): the
+       screen is read as it is once its box holds the words — no wait for a new page that is not coming (speed review 2026-11-20 #5) */
+    var pre = false; try { pre = !!(H && H.shown && H.shown(a)); } catch (e) { pre = false; }
+    return (pre ? until(function () { var d = fdoc(); return ready(d) && pageOf(d) === S.key && boxHas(d, S, q) ? d : null; }, 11000, 200)
+      : newPage(d0, function (d) { return pageOf(d) === S.key && boxHas(d, S, q); }, 11000)).then(function (d) {
       if (!d) { var d2 = fdoc(); if (ready(d2) && pageOf(d2) === S.key) d = d2; }
       if (!d) return T("الشاشة لسه ما عرضتش نتايج البحث ده — قول للعضو إن الصفحة بتحمّل وجرّب تاني بعد ثواني.", "The screen has not shown this search yet — tell the member the page is loading and try again in a few seconds.");
       return settled(d, S, 3500).then(function () { return s === "tenders" && soonest(d) ? sleep(300).then(function () { return settled(d, S, 2500); }) : d; }).then(function () {
@@ -428,7 +432,10 @@
     var want = String(a.page || "home");
     return newPage(d0, function (d) { var k = pageOf(d); return k === want || (want === "home" && k === "home") || !!k; }, 9000).then(function (d) {
       d = d || fdoc(); if (!ready(d)) return T("الصفحة لسه بتحمّل على الشاشة.", "The page is still loading on the screen.");
-      return sleep(700).then(function () {
+      /* rendered = its summary (title, counters, first cards) is the same on two looks 150 ms apart, and a list page shows its cards (the
+         factories page fills its numbers by script, #olK is empty until it renders) — 700 ms at most, as before (speed review 2026-11-20 #8) */
+      var last0 = "", same0 = 0;
+      return until(function () { var k0 = secOfPage(pageOf(d)), ok = !k0 || cards(d, SEC[k0]).length > 0, s0 = pageSummary(d); if (ok && s0 === last0) same0++; else { same0 = 0; last0 = s0; } return same0 >= 2 ? d : null; }, 700, 150).then(function () {
         var marks = [], kl = d.querySelectorAll("#olK .k, .fstats a, .kpis .k, .ol-top .k");
         for (var i = 0; i < kl.length && marks.length < 4; i++) if (shown(kl[i])) marks.push({ el: kl[i], lab: tx(kl[i].querySelector("small, span")) });
         var h1 = d.querySelector("h1"); if (h1 && shown(h1)) marks.unshift({ el: h1, lab: "" });
@@ -446,7 +453,10 @@
     showScreen();
     return until(function () { var d = fdoc(); return ready(d) && pageOf(d) === "advisor" && d.querySelector("#advQ") ? d : null; }, 10000, 220).then(function (d) {
       if (!d) return T("صفحة الفرص (مستشارك) ما اتفتحتش على الشاشة لسه.", "The opportunities page (advisor) has not opened on the screen yet.");
-      return sleep(1100).then(function () {
+      /* THIS opportunity: the list re-rendered for the search (a new #advQ: advisor.part.py renderBrief) and the drawer shows another title
+         than before — 1.1 s at most, as before; never «a card is there» (the cards exist before the filter runs) (speed review 2026-11-20 #8) */
+      var hx = d.querySelector("#advDr:not([hidden]) h2"), h0 = hx ? tx(hx) : "", q0 = d.querySelector("#advQ");
+      return until(function () { var q1 = d.querySelector("#advQ"), h = d.querySelector("#advDr:not([hidden]) h2"); return q1 && q1 !== q0 && h && tx(h) !== h0 ? d : null; }, 1100, 100).then(function () {
         var c = null, l = d.querySelectorAll("article.opc"); for (var i = 0; i < l.length; i++) if (shown(l[i])) { c = l[i]; break; }
         if (!c) return T("مفيش فرصة مفتوحة بالوصف ده في نطاق باقة العضو على الشاشة. ماتخترعش فرصة.", "No open opportunity with that description in the member's plan markets is on the screen. Do not invent one.");
         var f = cardFacts({ title: "h3" }, c), meta = [].map.call(c.querySelectorAll(".opc-m span, .opc-f .chip, .opc-t .chip"), tx).filter(Boolean).slice(0, 8);
@@ -622,8 +632,8 @@
       var dl1 = d0 && openDialog(d0); if (dl1) { var x1 = dl1.querySelector(".x"); if (x1) x1.click(); }
       go(um[1]);
       var seenU = 0;
-      return until(function () { var d = fdoc(); if (!ready(d) || d.readyState !== "complete") return null; if (openDialog(d) && (d !== d0 || /#/.test(um[1]))) return d; if (d !== d0 && d.querySelector("h1")) { if (!seenU) seenU = now(); return now() - seenU > 800 ? d : null; } return null; }, 11000, 220)
-        .then(function (d) { return d ? sleep(400).then(function () { return shownItem(d, S); }) : T("صفحة البند لسه ما اتفتحتش على الشاشة.", "The item's page has not opened on the screen yet."); });
+      return until(function () { var d = fdoc(); if (!ready(d) || d.readyState !== "complete") return null; if (openDialog(d) && (d !== d0 || /#/.test(um[1]))) return d; if (d !== d0 && d.querySelector("h1")) { if (!seenU) seenU = now(); return now() - seenU > 300 ? d : null; } return null; }, 11000, 220) /* 300 / 100 ms (were 800 / 400): shownItem's settleText still waits for the text to settle (speed #8) */
+        .then(function (d) { return d ? sleep(100).then(function () { return shownItem(d, S); }) : T("صفحة البند لسه ما اتفتحتش على الشاشة.", "The item's page has not opened on the screen yet."); });
     }
     /* tenders / RFQs by number: found on the list itself (numbers are NOT unique — OFF:1 ×5, OFF: ×10 …) */
     if (ref && (s === "tenders" || s === "rfqs")) return openByRef(S, ref.replace(/^intl-/i, ""), q, d0, cur);

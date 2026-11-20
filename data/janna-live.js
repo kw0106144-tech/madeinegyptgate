@@ -175,7 +175,7 @@
     + '.jnl-sdk .jv-ctl{position:absolute;z-index:3;left:0;right:0;bottom:0;display:flex;align-items:center;gap:8px;padding:10px 12px 12px}'
     + '.jnl-sdk .jv-ctl button{flex:none;min-width:44px;height:44px;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:rgba(4,18,26,.78);color:#fff;font:inherit;font-weight:800;font-size:.9rem;cursor:pointer;padding:0 12px}'
     + '.jnl-sdk .jv-ctl .jv-mic[aria-pressed="true"]{background:#8E0B20;border-color:#ff9aa9}.jnl-sdk .jv-ctl .jv-end{background:#c8102e;border-color:#c8102e}.jnl-sdk .jv-ctl button:disabled{opacity:.5;cursor:default}'
-    + '.jnl-sdk .jv-ctl form{flex:1;min-width:0;display:flex;gap:6px;margin:0}.jnl-sdk .jv-ctl input{flex:1;min-width:0;height:44px;box-sizing:border-box;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:rgba(4,18,26,.78);color:#fff;font:inherit;font-size:.9rem;padding:0 16px}'
+    + '.jnl-sdk .jv-ctl form{flex:1;min-width:0;display:flex;gap:6px;margin:0}.jnl-sdk .jv-ctl input{flex:1;min-width:0;height:44px;box-sizing:border-box;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:rgba(4,18,26,.78);color:#fff;font:inherit;font-size:.9rem;padding:0 13px}'
     + '.jnl-sdk .jv-ctl input::placeholder{color:rgba(223,247,255,.7)}.jnl-sdk[dir="rtl"] .jv-snd{transform:scaleX(-1)}.jnl-sdk button:focus-visible,.jnl-sdk input:focus-visible{outline:3px solid #e9c46a;outline-offset:2px}'
     /* «وضع الدوشة» (noise guard, owner 2026-11-19): a small chip pinned just above the call's control bar (nzPlace). It lives on <body>, above
        the hologram layer (holo.js .mgh, z-index 2147483500 — on short phones its panels run down to the controls by design), so ✋ is never
@@ -184,6 +184,18 @@
     + '.jnl-nzf .jv-nz{pointer-events:auto;width:max-content;max-width:100%;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 8px;padding:7px 10px;border-radius:16px;background:rgba(4,18,26,.94);border:1px solid rgba(233,196,106,.65);color:#fff;font-weight:700;font-size:.8rem;line-height:1.55;text-align:center;box-shadow:0 12px 28px -14px rgba(0,0,0,.85)}'
     + '.jnl-nzf .jv-nz span{flex:1 1 220px;min-width:0}.jnl-nzf button{flex:none;height:40px;border-radius:999px;border:1px solid rgba(255,255,255,.5);background:rgba(4,18,26,.75);color:#fff;font:inherit;font-weight:800;font-size:.84rem;padding:0 14px;cursor:pointer}'
     + '.jnl-nzf .nz-hand,.jnl-nzf .nz-on{background:#0b5d47;border-color:#e9c46a}.jnl-nzf .jv-nz.hd .nz-hand{box-shadow:0 0 0 3px rgba(233,196,106,.6)}.jnl-nzf .nz-x{width:40px;padding:0}.jnl-nzf button:focus-visible{outline:3px solid #e9c46a;outline-offset:2px}'
+    /* 🌐 the language the person speaks (langUi): the button beside 🎙️, its link under «ابدأ», its menu over the video, its chip (the noise
+       chip's look, stacked above it: langPlace) */
+    + '.jnl-sdk .jv-ctl .jv-lang{position:relative;width:44px;padding:0;font-size:1.05rem}.jnl-sdk .jv-ctl .jv-lang b{position:absolute;bottom:2px;inset-inline-end:1px;min-width:16px;box-sizing:border-box;padding:0 3px;border-radius:7px;background:#0b5d47;border:1px solid #e9c46a;font-size:.56rem;line-height:1.35;letter-spacing:.02em}.jnl-sdk .jv-ctl .jv-lang[hidden],.jnl-sdk .jv-lgo[hidden]{display:none}'
+    + '.jnl-sdk .jv-lgo{flex:0 0 100%;box-sizing:border-box;margin:0;border:0;background:none;padding:2px 8px;color:#dff7ff;font:inherit;font-weight:700;font-size:.84rem;text-decoration:underline;text-underline-offset:3px;text-shadow:0 1px 3px rgba(0,0,0,.95);cursor:pointer}'
+    + '.jnl-sdk .jv-lgm{position:absolute;z-index:6;top:52px;bottom:72px;left:50%;transform:translateX(-50%);width:min(420px,calc(100% - 20px));display:flex;flex-direction:column;gap:8px;box-sizing:border-box;padding:10px 12px;border-radius:16px;background:rgba(4,18,26,.96);border:1px solid rgba(233,196,106,.65);box-shadow:0 18px 44px -16px rgba(0,0,0,.85);color:#fff}'
+    + '.jnl-sdk .jv-lgm .lgm-h{display:flex;align-items:center;gap:8px}.jnl-sdk .jv-lgm .lgm-h b{flex:1;min-width:0;font-size:.86rem;line-height:1.5}.jnl-sdk .jv-lgm .lgm-x{flex:none;width:36px;height:36px;padding:0;border-radius:50%;border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;font:inherit;cursor:pointer}'
+    + '.jnl-sdk .jv-lgm .lgm-q{flex:none;height:40px;box-sizing:border-box;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.08);color:#fff;font:inherit;font-size:.9rem;padding:0 14px}.jnl-sdk .jv-lgm .lgm-q::placeholder{color:rgba(223,247,255,.7)}'
+    + '.jnl-sdk .jv-lgm ul{list-style:none;margin:0;padding:0;overflow-y:auto;flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:6px;align-content:start;overscroll-behavior:contain}'
+    + '.jnl-sdk .jv-lgm li[hidden]{display:none}.jnl-sdk .jv-lgm li button{width:100%;min-height:44px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;box-sizing:border-box;padding:4px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);color:#fff;font:inherit;font-weight:800;font-size:.9rem;cursor:pointer;text-align:start}'
+    + '.jnl-sdk .jv-lgm li button small{font-weight:600;font-size:.72rem;color:#bff3ff}.jnl-sdk .jv-lgm li button[aria-selected="true"]{border-color:#e9c46a;background:rgba(11,93,71,.75)}'
+    + '.jnl-sdk .jv-lgm .lgm-n{margin:0;font-size:.74rem;line-height:1.6;color:#cfe6ee}.jnl-sdk .jv-lgm button:focus-visible,.jnl-sdk .jv-lgm input:focus-visible,.jnl-sdk .jv-lgo:focus-visible{outline:3px solid #e9c46a;outline-offset:2px}'
+    + 'html.jnl-lgm-on .jnl-nzf{display:none!important}.jnl-lgf .jv-lg span{flex:0 1 auto}.jnl-lgf .jv-lg bdi{font-weight:800}.jnl-lgf .lg-yes,.jnl-lgf .lg-back{background:#0b5d47;border-color:#e9c46a}.jnl-lgf .lg-yes,.jnl-lgf .lg-no,.jnl-lgf .lg-x{width:40px;padding:0}'
     /* the platform's sign-in box (data/mig-api.js) must show above the call when Bassem's call asks for a sign-in */
     + 'html.jnl-on .mig-dlg{z-index:2147483300}'
     + '.jnl-cap{min-height:54px;margin-top:10px;display:flex;align-items:flex-start;justify-content:center;gap:8px}'
@@ -365,6 +377,8 @@
   /* the call's DOM events → its handlers: the widget's own events, or the same events re-dispatched by the SDK call (sdkFire) */
   function wire(el) {
     el.addEventListener("anam-agent:tool-call-started", function (e) { var d = e.detail || {}; HT.tool = Date.now(); cmpGive(d.toolName); if (d.toolType && d.toolType !== "client") { holoTool(d.toolName, d.arguments || {}); return; } run(d.toolName, d.arguments || {}); });
+    /* speed review 2026-11-20 #5: what a janna_lookup found goes on the screen at once (lookupDone), platform_item's one item opens (itemShow) */
+    el.addEventListener("anam-agent:tool-call-completed", function (e) { try { lookupDone(e.detail || {}); } catch (x) {} try { itemShow(e.detail || {}); } catch (x) {} });
     el.addEventListener("anam-agent:session-started", function (e) { SID = String((e.detail && e.detail.sessionId) || ""); sessT0 = Date.now(); onSession(); holoWelcome(); if (NUDGE) nudge(NUDGE, 0); });
     el.addEventListener("anam-agent:session-ended", function (e) { onSessionEnd(e.detail || {}); });
     el.addEventListener("anam-agent:message-received", function (e) { onMessage(e.detail || {}); });
@@ -397,15 +411,15 @@
     /* the same real photo as the docked figure (data/janna-real.js / bassem-real.js): a cut-out, so the office stays behind her / him */
     var body = (R && R.body) || (B ? "img/bassem/body.webp" : "img/janna/body.webp"), wh = B ? ' width="623" height="1619"' : ' width="1243" height="1128"';
     var ai = who(["جنة · مساعِدة بالذكاء الاصطناعي", "باسم · مستشار بالذكاء الاصطناعي"], ["Janna · AI assistant", "Bassem · AI advisor"]);
-    var mic = T("اكتم الميكروفون", "Mute microphone"), ph = T("اكتب رسالتك…", "Type a message…"), snd = T("ابعت", "Send"), end = T("إنهاء المكالمة", "End call");
+    var mic = T("اكتم الميكروفون", "Mute microphone"), ph = T("اكتب بأي لغة…", "Any language…"), snd = T("ابعت", "Send"), end = T("إنهاء المكالمة", "End call"), lgh = langHead();
     return '<div class="jnl-sdk" data-p="' + (B ? "bassem" : "janna") + '" data-state="idle" dir="' + D2 + '" role="group" aria-label="' + esc(ai) + '">'
       + '<img class="jv-pst" src="' + esc(body) + '"' + wh + ' alt="' + esc(name) + '" decoding="async">'
       + '<video id="jnlVid' + (++VIDN) + '" autoplay playsinline aria-label="' + esc(who(["فيديو جنة المباشر", "فيديو باسم المباشر"], ["Janna's live video", "Bassem's live video"])) + '"></video>'
       + '<div class="jv-ai" translate="no"><i aria-hidden="true"></i><span>' + esc(ai) + '</span></div>'
       + '<div class="jv-st" role="status" aria-live="polite"></div>'
       + '<div class="jv-acts"><button type="button" class="jv-go"><i aria-hidden="true"></i><span>' + esc(T("ابدأ الكلام مع ", "Start talking to ") + name) + '</span></button>'
-      + '<button type="button" class="jv-go2" hidden>⌨️ ' + esc(T("كمّل كتابة من غير ميكروفون", "Continue by typing (no microphone)")) + '</button></div>'
-      + '<div class="jv-ctl" hidden><button type="button" class="jv-mic" aria-pressed="false" title="' + esc(mic) + '" aria-label="' + esc(mic) + '">🎙️</button>'
+      + '<button type="button" class="jv-go2" hidden>⌨️ ' + esc(T("كمّل كتابة من غير ميكروفون", "Continue by typing (no microphone)")) + '</button><button type="button" class="jv-lgo" hidden title="' + esc(lgh) + '" aria-label="' + esc(lgh) + '">🌐</button></div>'
+      + '<div class="jv-ctl" hidden><button type="button" class="jv-mic" aria-pressed="false" title="' + esc(mic) + '" aria-label="' + esc(mic) + '">🎙️</button><button type="button" class="jv-lang" hidden aria-haspopup="dialog" aria-expanded="false" title="' + esc(lgh) + '" aria-label="' + esc(lgh) + '">🌐</button>'
       + '<form novalidate><input type="text" maxlength="500" autocomplete="off" enterkeyhint="send" placeholder="' + esc(ph) + '" aria-label="' + esc(ph) + '"><button type="submit" class="jv-snd" title="' + esc(snd) + '" aria-label="' + esc(snd) + '">➤</button></form>'
       + '<button type="button" class="jv-end" title="' + esc(end) + '" aria-label="' + esc(end) + '">✕</button></div></div>';
   }
@@ -416,6 +430,7 @@
     bx.querySelector(".jv-go2").onclick = function () { bx.__go = null; sdkStart(true); };
     bx.querySelector(".jv-end").onclick = function () { sdkStop("user"); };
     bx.querySelector(".jv-mic").onclick = sdkMute;
+    bx.querySelector(".jv-lang").onclick = bx.querySelector(".jv-lgo").onclick = function () { langMenu(!LG.menu); }; /* 🌐 */
     var f = bx.querySelector(".jv-ctl form"), inp = f.querySelector("input");
     f.onsubmit = function (e) { if (e && e.preventDefault) e.preventDefault(); var v = inp.value.trim(); if (!v) return; if (sdkSay(v)) inp.value = ""; else say(T("ثانية واحدة — المكالمة لسه بتتوصل", "One moment — the call is still connecting")); };
     var v = bx.querySelector("video");
@@ -442,9 +457,9 @@
     var ml = mu ? T("شغّل الميكروفون", "Unmute microphone") : T("اكتم الميكروفون", "Mute microphone");
     mic.hidden = !!(me && me.textOnly); mic.disabled = !ok || !!(me && me.micDenied); mic.textContent = mu ? "🔇" : "🎙️"; mic.title = ml; mic.setAttribute("aria-label", ml); mic.setAttribute("aria-pressed", mu ? "true" : "false");
     inp.disabled = !txt; snd.disabled = !txt;
-    var ph = me && me.micDenied && !me.textOnly ? T("الميكروفون مقفول — اكتب رسالتك هنا…", "Microphone blocked — type your message here…") : T("اكتب رسالتك…", "Type a message…");
+    var ph = me && me.micDenied && !me.textOnly ? T("الميكروفون مقفول — اكتب رسالتك هنا…", "Microphone blocked — type your message here…") : inp.clientWidth >= 220 ? T("اكتب رسالتك بأي لغة…", "Type a message in any language…") : T("اكتب بأي لغة…", "Any language…"); /* 🌐 any language; short where the 🌐 button leaves a narrow box (390 px) */
     if (inp.placeholder !== ph) { inp.placeholder = ph; inp.setAttribute("aria-label", ph); }
-    nzChip();
+    nzChip(); langUi();
   }
   /* the pinned SDK, loaded once (SRI; jsDelivr, then the same bytes from unpkg); when neither loads, this page does not try again for
      10 minutes (the next «ابدأ» goes straight to the widget instead of waiting for the CDNs again) */
@@ -576,7 +591,43 @@
     var t = me && me.tm; if (!t || t.marks[k] != null) return;
     t.marks[k] = Math.round(PERF() - t.t0);
     if (k === "ready" || k === "voice") { try { window.dispatchEvent(new CustomEvent("mig:live-timing", { detail: tmOut(t) })); } catch (e) {} }
+    if (k === "voice") tmBeacon(me);
   }
+  /* speed review 2026-11-20 #11 (the owner's «بياخد وقت» about the start, which Anam's data cannot see): POST /api/janna/timing, a
+     text/plain JSON body of numbers only — no id, no words, no address. k "start" (once, at «voice»): {p, relay 0|1, region (Anam's
+     getActiveSessionRegion), ms: {token, sdk, mic, stream, connected, ready, video, play, voice}, srv: the Worker's Server-Timing durations};
+     k "turns" (the call's end): up to 20 [first reasoning chunk, last reasoning chunk, first words], ms after the end of his speech (-1 = none) */
+  function tmSend(o) {
+    var u = String(window.MIG_API_BASE || "/api").replace(/\/+$/, "") + "/janna/timing", b = JSON.stringify(o);
+    try { if (navigator.sendBeacon && navigator.sendBeacon(u, b)) return; } catch (e) {}
+    try { if (window.fetch) fetch(u, { method: "POST", body: b, keepalive: true, credentials: "omit", headers: { "Content-Type": "text/plain" } }).then(null, function () {}); } catch (e) {}
+  }
+  function tmRegion(me) { var rg = ""; try { rg = String((me.client && me.client.getActiveSessionRegion && me.client.getActiveSessionRegion()) || ""); } catch (e) { rg = ""; } return /^[a-z0-9._-]{1,40}$/i.test(rg) ? rg : ""; }
+  function tmBeacon(me) {
+    var t = me && me.tm, ms = {}, srv = {}, k, m, rx = /(checks|ctx|persona|wait|token|total);dur=(\d+)/g;
+    if (!t || t.sent) return; t.sent = 1;
+    for (k in t.marks) if (t.marks.hasOwnProperty(k) && /^(token|sdk|mic|stream|connected|ready|video|play|voice)$/.test(k)) ms[k] = Math.max(0, Math.round(+t.marks[k] || 0));
+    while ((m = rx.exec(String(t.server || "")))) srv[m[1]] = +m[2];
+    t.region = tmRegion(me); /* kept for the "turns" beacon: the client is gone by the call's end */
+    tmSend({ k: "start", p: t.persona === "bassem" ? "bassem" : "janna", relay: me.relay ? 1 : 0, region: t.region, ms: ms, srv: srv });
+  }
+  function tmTurns(me, on) {
+    if (!me.tm) return; /* the first part of a call only (continuation parts are not timed) */
+    var c = { e: 0, r0: -1, r1: -1, o: -1 }, L = me.tm.turns = [];
+    me.tmPush = function () { if (c.e && L.length < 20 && (c.r0 >= 0 || c.o >= 0)) L.push([c.r0, c.r1, c.o]); c = { e: 0, r0: -1, r1: -1, o: -1 }; };
+    on("USER_SPEECH_ENDED", function () { me.tmPush(); c.e = Date.now(); });
+    on("REASONING_STREAM_EVENT_RECEIVED", function () { if (!c.e) return; var d = Date.now() - c.e; if (c.r0 < 0) c.r0 = d; c.r1 = d; });
+    on("MESSAGE_STREAM_EVENT_RECEIVED", function (ev) { if (c.e && ev && ev.role === "persona" && c.o < 0) c.o = Date.now() - c.e; });
+  }
+  function tmTurnsSend(me) {
+    var t = me && me.tm; if (!t || !me.tmPush || t.turnsSent) return; me.tmPush(); t.turnsSent = 1;
+    if (t.turns && t.turns.length) tmSend({ k: "turns", p: t.persona === "bassem" ? "bassem" : "janna", region: t.region || tmRegion(me), turns: t.turns });
+  }
+  /* a browser whose stream → connected took over 8 s starts its next calls through Anam's TURN relay for 30 days (localStorage
+     "mig-jnl-relay" = until when); a relay start that fails drops it (relayDrop: a network that blocks TURN / TLS never fails every call) */
+  function relayMem() { var v = 0; try { v = +localStorage.getItem("mig-jnl-relay") || 0; if (v && v <= Date.now()) { localStorage.removeItem("mig-jnl-relay"); v = 0; } } catch (e) { v = 0; } return v > Date.now(); }
+  function relaySlow(me) { var t = me.tm && me.tm.marks; if (me.relay || !t || t.stream == null || t.connected == null || t.connected - t.stream <= 8000) return; try { localStorage.setItem("mig-jnl-relay", String(Date.now() + 30 * 864e5)); } catch (e) {} }
+  function relayDrop(me) { if (me && me.relay) { try { localStorage.removeItem("mig-jnl-relay"); } catch (e) {} } }
   function tmOut(t) { var o = { persona: t.persona, server: t.server }; for (var k in t.marks) if (t.marks.hasOwnProperty(k)) o[k] = t.marks[k]; return o; }
   function connMsg(me) {
     var slow = !!(me && me.tm && PERF() - me.tm.t0 >= SLOW_MS);
@@ -593,7 +644,9 @@
     /* a network that blocks UDP can hold the first frames for many seconds before the SDK's own fallback: window.JANNA_LIVE_RELAY = 1 (set
        by a page, or in the console before «ابدأ») sends the media through Anam's TURN relay from the start (Anam docs: Client Options,
        rtcConfiguration.iceTransportPolicy "relay") — off by default; JANNA_LIVE.timing() shows whether stream → connected was the slow part */
-    if (String(window.JANNA_LIVE_RELAY) === "1") opts.rtcConfiguration = { iceTransportPolicy: "relay" };
+    var rl = String(window.JANNA_LIVE_RELAY) === "1" || relayMem(); /* + a browser whose last start stalled (relaySlow; speed review 2026-11-20 #11) */
+    if (rl) opts.rtcConfiguration = { iceTransportPolicy: "relay" };
+    me.relay = rl;
     try { c = A.createClient(token, opts); } catch (e) { sdkFail(me, "start"); return; }
     me.client = c;
     var mlc = { client: c, persona: persona }; window.MIG_LIVE_CLIENT = mlc; try { window.dispatchEvent(new CustomEvent("mig:live-client", { detail: mlc })); } catch (e) {} /* contract: data/bassem-memory.js, data/bassem-live-tools.js … attach here */
@@ -601,11 +654,13 @@
     var on = function (k, fn) { if (E[k]) c.addListener(E[k], function (a, b) { if (LV !== me || me.closed) return; try { fn(a, b); } catch (x) {} }); };
     contWire(me, on);
     me.nz = me.nz || nzNew(); nzWire(me, on); /* «وضع الدوشة»: after contWire, so a continued part's cut greeting is already marked */
+    langWire(me, on); /* 🌐 this tab's choice again (after contCtx), applied / refused */
     on("MIC_PERMISSION_PENDING", function () { if (!me.ready && !me.cont) { me.micAsk = true; sdkUi("connecting", T("اسمح للمتصفح يستخدم الميكروفون علشان تتكلم مع ", "Allow the microphone so you can talk to ") + sdkName()); } });
     on("MIC_PERMISSION_GRANTED", function () { if (me.micAsk) { me.micAsk = false; if (!me.ready && !me.closed && !me.cont) sdkUi("connecting", connMsg(me)); } });
     /* the SDK keeps the call without a microphone: the text box still works */
     on("MIC_PERMISSION_DENIED", function () { me.micAsk = false; me.micDenied = true; updCtl(); say(T("الميكروفون مقفول للموقع ده — تقدر تكتب في الخانة تحت، أو تسمح بالميكروفون من إعدادات المتصفح.", "The microphone is blocked for this site — you can type in the box below, or allow the microphone in your browser settings.")); });
-    on("CONNECTION_ESTABLISHED", function () { tmMark(me, "connected"); });
+    on("CONNECTION_ESTABLISHED", function () { tmMark(me, "connected"); relaySlow(me); });
+    tmTurns(me, on); /* the reasoning time of each reply, for the call's end (numbers only) */
     on("SESSION_READY", function (sid) {
       if (me.ready) return; /* once per call, even if the engine repeats it after a reconnect */
       clearTimeout(me.connT); me.ready = true; me.st = "live"; me.sid = String(sid || ""); me.t0 = Date.now(); tmMark(me, "ready"); sdkUi("live"); sdkTimers(me);
@@ -667,7 +722,7 @@
     document.head.appendChild(sc);
   }
   function liveTools(c) {
-    var h = { persona: persona, frame: function () { return frame; }, go: go, say: say, run: run, ov: function () { return ov; }, link: function (u) { return withLang(url(u)); } };
+    var h = { persona: persona, frame: function () { return frame; }, go: go, say: say, run: run, ov: function () { return ov; }, link: function (u) { return withLang(url(u)); }, shown: lookupShown };
     if (window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.attach) { try { MIG_LIVE_TOOLS.attach(c, h); } catch (e) {} } else { loadTools(); (window.__migLTQ = window.__migLTQ || []).push([c, h]); }
   }
 
@@ -728,6 +783,7 @@
     try { scr = window.MIG_LIVE_TOOLS && MIG_LIVE_TOOLS.screenText ? MIG_LIVE_TOOLS.screenText() : ""; } catch (e) {}
     var s = "[CONTINUATION of the same live call — part " + (me.chain.n + 1) + "] The video connection was renewed automatically (one session has a fixed maximum length). The member is still with you and did not hang up. Do NOT greet again, do not introduce yourself, do not mention any reconnection or time limit: continue exactly where the conversation stopped and answer the member's next words in context.";
     if (scr) s += "\nOn the shared screen now: " + scr;
+    var lc = langOn() ? langStored() : ""; if (lc) s += "\nLANGUAGE: " + lc + " (" + langRow(lc)[3] + "): continue only in " + langRow(lc)[3] + ".";
     if (r.length) s += "\nThe conversation so far (oldest first):\n" + r.map(function (m) { return (m.role === "user" ? "Member: " : nm + ": ") + m.text; }).join("\n");
     return s.slice(0, 6000);
   }
@@ -860,7 +916,7 @@
   }
   /* an old part, stopped quietly (its CONNECTION_CLOSED is ignored: it is not LV any more) */
   function contRetire(o) {
-    if (!o || o.retired) return; o.retired = true; o.swapped = true;
+    if (!o || o.retired) return; o.retired = true; o.swapped = true; tmTurnsSend(o); /* the first part's reply times (numbers only) */
     sdkClear(o); clearInterval(o.watchT); try { if (o.ac) o.ac.close(); } catch (e) {} o.ac = null;
     var c = o.client; o.closed = true; o.st = "ended"; o.client = null;
     if (c) { try { var p = c.stopStreaming(); if (p && p.then) p.then(null, function () {}); } catch (e) {} }
@@ -943,6 +999,7 @@
   /* one tool call = one action, even when the engine reports it on both channels (dedicated event + legacy client event) */
   function sdkTool(me, name, type, args, id) {
     if (!name) return;
+    if (typeof args === "string") { try { args = JSON.parse(args); } catch (e) { args = {}; } }
     args = args && typeof args === "object" ? args : {};
     var k = "", now = Date.now(); try { k = String(name) + "|" + JSON.stringify(args); } catch (e) { k = String(name); }
     if ((id && me.seen["#" + id]) || (me.seen[k] && now - me.seen[k] < 1500)) return;
@@ -973,12 +1030,13 @@
     me.closed = true; me.st = "ended"; sdkClear(me); me.client = null;
     var bx = sdkBox(), v = bx && bx.querySelector("video"); if (bx) bx.classList.remove("on"); try { if (v) v.srcObject = null; } catch (e) {}
     if (!me.ready) { if (me.stopReason) sdkUi("idle"); else sdkFail(me, me.micDenied || /MICROPHONE/.test(code) ? "mic" : "start"); return; }
-    sdkFire("session-ended", { sessionId: me.sid, reason: details || code });
+    sdkFire("session-ended", { sessionId: me.sid, reason: details || code }); tmTurnsSend(me);
     var mins = me.chain && me.chain.n ? Math.round((Date.now() - me.chain.t0) / 60000) : Math.round(me.max / 60), maxed = me.stopReason === "max" || /max(imum)?.?(duration|length)/i.test(details); contUi(false); contEnd(me);
     sdkUi("ended", maxed ? T("خلصت مدة المكالمة (" + mins + " دقايق). تقدر تبدأ مكالمة جديدة.", "The call reached its " + mins + "-minute limit. You can start a new call.")
       : me.stopReason || /NORMAL|SERVER_CLOSED/.test(code) || !code ? T("المكالمة انتهت.", "The call has ended.") : T("الاتصال اتقطع — تقدر تبدأ مكالمة جديدة.", "The connection dropped — you can start a new call."));
   }
   function sdkFail(me, why) {
+    if (why === "start") relayDrop(me); /* a start through the relay failed: the next call tries without it */
     if (contBack(me)) return; /* a new part that did not start: the running one keeps the call (review #14) */
     me.closed = true; me.st = "error"; sdkClear(me); me.client = null; contUi(false); contEnd(me);
     if (why === "mic") { sdkUi("error", T("الميكروفون مقفول للموقع ده. اسمح بيه من إعدادات المتصفح وجرّب تاني، أو كمّل كتابة.", "The microphone is blocked for this site. Allow it in your browser settings and try again, or continue by typing."), { go: T("جرّب تاني", "Try again"), typing: true }); return; }
@@ -1008,7 +1066,7 @@
   function toWidget(fromStart) {
     var v = ov && ov.querySelector(".jnl-me .v"); if (!v || v.querySelector("anam-agent")) return;
     var nm = sdkName();
-    micDrop(); /* the widget captures its own microphone */
+    micDrop(); langDrop(); /* the widget captures its own microphone; no 🌐 there */
     v.innerHTML = widgetHtml(nm); ov.setAttribute("data-mode", "widget");
     mountWidget();
     if (fromStart) say(T("اضغط «ابدأ الكلام مع " + nm + "» علشان نبدأ", "Press “Start talking to " + nm + "” to begin"));
@@ -1019,6 +1077,7 @@
     if (!t || !me || !me.client || !me.ready || !me.dc || me.closed) return false;
     try { me.client.sendUserMessage(t); } catch (e) { return false; }
     NZ.typed.push({ t: Date.now(), x: nzNorm(t) }); if (NZ.typed.length > 6) NZ.typed.shift(); /* a typed turn is never a noise interruption */
+    langTyped(t); /* 🌐 a script only some languages write in: a suggestion, never a switch */
     sdkFire("message-sent", { content: t }); return true;
   }
   function sdkMute() {
@@ -1036,42 +1095,54 @@
         missing or unanswered for MIC_WAIT → the SDK's own capture exactly as before (its MIC_PERMISSION_* events → the existing UI).
         Released when the call is over (sdkUi), when the widget takes over and on close();
      2) false interruptions: the persona was speaking (her text still streaming, her voice on the meter, or her message reported
-        interrupted), USER_SPEECH_STARTED fired, and the user turn after it was empty, noise-like or ≤ 2 short words (never a short answer «اه» / «تمام» / "ok", never «استنى» / "stop"
-        / her name / a question / a number / text the visitor typed). Each → an offer chip (tap = noisy-room mode now); never noisy-room mode by
-        itself (owner 2026-11-19: Bassem and Janna must stay interactive);
-     3) noisy-room mode (half-duplex): while the persona speaks the microphone is muted (muteInputAudio; the visitor's own mute stays his),
-        it reopens ~250 ms after her voice stops (the meter; else her text timing). The chip says «🔇 المكان فيه دوشة — هكمّل كلامي، ولو عايز
-        تقاطعني دوس ✋ استنى» with ✋ (interruptPersona + the microphone at once) and «↩︎ الوضع العادي». The persona's own
-        endOfSpeechSensitivity (the Lab's) is KEPT in this mode (owner 2026-11-19 «بياخد وقت في الرد»: the lower 0.35 it used to send made
-        every reply wait longer for the end of his sentence, while the closed microphone already keeps her voice and the room out while she
-        talks); a page may still lower it with window.JANNA_LIVE_EOS_NOISY (0–1): a persona_config data message then sends that value and
-        puts NZ_EOS[0] (JANNA_LIVE_EOS_NORMAL, default 0.45) back on the way out. Kept for the tab (sessionStorage "mig-jnl-noise2"): the
-        next call starts in it.
+        interrupted), USER_SPEECH_STARTED fired, and the user turn after it was empty, only fillers («امم», "uh") or one of the recogniser's
+        own phrases on noise («اشتركوا في القناة» …; never with a stop word, never text the visitor typed). Review 2026-11-20 of the owner's «لما بكلم جنة او
+        باسم مش بيسكتوا»: a short word is a real barge-in («بس», «لأ», «استنى», "wait", "dur" — any language, any script), never noise. Two
+        within 90 s → an offer chip, only where his own voice is measured (4); never noisy-room mode by itself (owner 2026-11-19);
+     3) noisy-room mode: while the persona speaks the microphone is muted (muteInputAudio; the visitor's own mute stays his); it reopens
+        ~250 ms after her voice stops (the meter; else her text timing) AND at once when his own voice is heard (4) — Anam's VAD then stops her
+        exactly as in normal mode. Never used where his voice cannot be measured (iOS / iPadOS unless JANNA_LIVE_NOISE_METER = 1, the SDK's
+        own capture, no Web Audio): the call stays in normal mode there. The chip says «🔇 المكان فيه دوشة — الدوشة اللي بعيد مش هتقطعني، وصوتك
+        إنت بيوقفني؛ ولو ماوقفتش دوس ✋» with ✋ (interruptPersona + the microphone at once) and «↩︎ الوضع العادي». The persona's own endOfSpeechSensitivity
+        (the Lab's) is KEPT in this mode; a page may still lower it with window.JANNA_LIVE_EOS_NOISY (0–1), and NZ_EOS[0] goes back on the way
+        out. For THIS call only (review 2026-11-20): every call starts in normal mode; the tab keys of earlier builds are cleared at load;
+     4) his own voice (near-field): every 80 ms the level of OUR capture (echo-cancelled, noise-suppressed; never the clone the SDK mutes)
+        against a bar = the largest of NZ_NEAR_MIN, the room × NZ_NEAR (window.JANNA_LIVE_NEAR, 1.5–20, default 2) and, once his own voice is
+        known in this call, NZ_SELF × his voice (window.JANNA_LIVE_SELF, 0.2–0.9, default 0.5 = 6 dB under the median level of his voice
+        while Anam heard him with the microphone open and her silent: a TV, office voices 2-3 m away and her echo reach the microphone well
+        under that). The room = the 90th percentile of the last ~4 s, each level committed NZ_LAG later and dropped when Anam reports his
+        speech in between (his own first syllables never become room). This tick and one of the two before over the bar = his voice; -1
+        until 12 room levels are in (the microphone is never closed before his voice can reopen it). An opening Anam's VAD does not confirm
+        within NZ_HOLD adds its peak to the room (gone ~4 s later; never a level as loud as his own voice): no lasting penalty. In normal
+        mode the same measure only counts his barge-ins that Anam did not hear (JANNA_LIVE.noise().missed_by_anam), nothing more.
      The meter is a Web Audio analyser on the persona's own stream (AUDIO_STREAM_STARTED), never connected to the speakers, its context made
      inside the «ابدأ» tap; window.JANNA_LIVE_NOISE_METER = 0 turns it off (text timing only), = 1 turns it on for iOS / iPadOS too (off there
      by default: Web Audio on a remote WebRTC stream has not been tried on a real iPhone); window.JANNA_LIVE_MIC_WAIT (ms, 1000–60000,
      default 15000) bounds the wait for the browser's answer; JANNA_LIVE_EOS_NORMAL / _NOISY override NZ_EOS. JANNA_LIVE.noise() / .noise(true|false). */
-  var NZ_KEY = "mig-jnl-noise2", MIC_WAIT = (function () { var n = parseInt(window.JANNA_LIVE_MIC_WAIT, 10); return n >= 1000 && n <= 60000 ? n : 15000; })(), NZ_TH = 0.012, NZ_EOS = [nzNum(window.JANNA_LIVE_EOS_NORMAL, 0.45), nzNum(window.JANNA_LIVE_EOS_NOISY, -1)]; /* -1: noisy-room mode keeps the persona's value */
-  var NZ = { on: false, why: "", fis: [], offerUntil: 0, ac: null, mic: null, typed: [], last: null, el: null };
-  try { NZ.on = sessionStorage.getItem(NZ_KEY) === "1"; } catch (e) {}
-  var NZ_STOP = /(^| )(استني|استنا|لحظه|ثانيه|ثواني|ثوان|كفايه|خلاص|وقف|وقفي|اسكت|اسكتي|بس بس|جنه|باسم|stop|wait|hold on|hang on|one sec|janna|bassem)( |$)/;
-  var NZ_FILL = /^(ا+ه*|ه+|ا?م+|ه+م+|ها+|اها|اوه|يا|و|uh+|um+|hm+|mm+|ah+|oh+|eh+|er+m?|huh|ha+)$/;
+  var MIC_WAIT = (function () { var n = parseInt(window.JANNA_LIVE_MIC_WAIT, 10); return n >= 1000 && n <= 60000 ? n : 15000; })(), NZ_TH = 0.012, NZ_EOS = [nzNum(window.JANNA_LIVE_EOS_NORMAL, 0.45), nzNum(window.JANNA_LIVE_EOS_NOISY, -1)]; /* -1: noisy-room mode keeps the persona's value */
+  var NZ = { on: false, why: "", fis: [], offerUntil: 0, ac: null, mic: null, mm: null, typed: [], last: null, el: null, near: 0, nearMiss: 0, missed: 0, his: 0, hv: [] };
+  try { sessionStorage.removeItem("mig-jnl-noise"); sessionStorage.removeItem("mig-jnl-noise2"); } catch (e) {} /* earlier builds kept the mode for the tab */
+  var NZ_NEAR = (function () { var n = parseFloat(window.JANNA_LIVE_NEAR); return n >= 1.5 && n <= 20 ? n : 2; })(), NZ_NEAR_MIN = 0.015, NZ_HOLD = 900, NZ_RB = 50, NZ_LAG = 800, NZ_SELF = (function () { var n = parseFloat(window.JANNA_LIVE_SELF); return n >= 0.2 && n <= 0.9 ? n : 0.5; })();
+  var NZ_STOP = /(^| )(استني|استنا|لحظه|ثانيه|ثواني|ثوان|كفايه|خلاص|وقف|وقفي|اسكت|اسكتي|بس|معلش|اسمع|اسمعي|جنه|باسم|stop|wait|hold on|hang on|one sec|janna|bassem|attends|attendez|espera|espere|aspetta|warte|bekle|subiri)( |$)/;
+  var NZ_FILL = /^(ا+ه*|ه+|ا?م+|ه+م+|ها+|اها|اوه|و|uh+|um+|hm+|mm+|ah+|oh+|eh+|er+m?|huh|ha+)$/;
   /* owner 2026-11-19 («لما بقوله اه او اوكيه مش بيفهم»): a short answer is a real reply, never noise — checked before NZ_FILL (which matches «اه») */
-  var NZ_ANS = /^(اه|ايوه|ايوا|ايو|اوكي|اوكيه|اوك|اوكاي|تمام|ماشي|طيب|طب|نعم|لا|لاء|لاا|اكيد|صح|موافق|حاضر|ok|okay|okey|yes|yeah|yep|yup|no|nope|sure|right|fine)$/;
+  var NZ_ANS = /^(اه|ايوه|ايوا|ايو|اوكي|اوكيه|اوك|اوكاي|تمام|ماشي|طيب|طب|نعم|لا|لاء|لاا|اكيد|صح|موافق|حاضر|ok|okay|okey|yes|yeah|yep|yup|no|nope|sure|right|fine|oui|si|vale|ja|evet|hayir|da|sim|nao|non|nein|ndiyo|sawa)$/; /* + the 🌐 languages' short answers */
+  /* the recogniser's own phrases on noise (Bassem's live prompt lists those it wrote): noise unless a stop word is in them */
+  var NZ_HALL = /(^| )(اشتركوا في القناه|شكرا للمشاهده|شكرا لكم|تابعونا|ترجمه نانسي قنقر|المترجم|موسيقي|thanks for watching|thank you for watching|subscribe to (the|my|our|this) channel|please subscribe|like and subscribe)( |$)/;
   function nzNum(v, d) { v = parseFloat(v); return v >= 0 && v <= 1 ? v : d; }
-  function nzNew() { return { gate: false, gateT: 0, eos: null, loudT: 0, meterOk: false, lvl: null, src: null, pid: "", pon: false, pt0: 0, pn: 0, plast: 0, puntil: 0, pintT: 0, cutId: "", handT: 0, cand: null, usedPid: "", seenU: {}, hn: 0, userOn: false }; }
+  function nzNew() { return { gate: false, gateT: 0, eos: null, loudT: 0, meterOk: false, lvl: null, src: null, pid: "", pon: false, pt0: 0, pn: 0, plast: 0, puntil: 0, pintT: 0, cutId: "", handT: 0, cand: null, usedPid: "", seenU: {}, hn: 0, userOn: false, uT: 0, rb: null, pq: null, nh: 0, nearT: 0, nearPk: 0, aT: 0, nearOk: false, nearEver: false, mT: 0, lv: -1, room: 0, thr: 0 }; }
   function nzMicOk(me) { return !!me && !me.textOnly && !me.micDenied; }
   function nzEvt(kind, d) { try { window.dispatchEvent(new CustomEvent("mig:noise", { detail: { kind: kind, on: NZ.on, why: (d && d.why) || "", count: NZ.fis.length } })); } catch (e) {} }
-  function nzNorm(s) { return String(s || "").replace(/\[[a-z_ -]{2,24}\]/gi, " ").replace(/[\u064B-\u065F\u0670\u0640]/g, "").replace(/[أإآٱ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").toLowerCase().replace(/[^\u0621-\u064A\u0660-\u0669a-z0-9]+/g, " ").replace(/\s+/g, " ").trim(); }
-  /* the user turn that followed an interruption: "empty" | "noise" | "short" = false; "" = meant */
+  function nzNorm(s) { return String(s || "").replace(/\[[a-z_ -]{2,24}\]/gi, " ").replace(/[\u064B-\u065F\u0670\u0640]/g, "").replace(/[أإآٱ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").toLowerCase().replace(/[\s\u0021-\u002F\u003A-\u0040\u005B-\u0060\u007B-\u007E\u00A0-\u00BF\u00D7\u00F7\u2000-\u206F\u060C\u061B\u061F\u066A-\u066D\u06D4\u3000-\u303F\uFF01-\uFF0F\uFF1A-\uFF20\u2190-\u2BFF\uD800-\uDFFF\uFE00-\uFE0F]+/g, " ").replace(/\s+/g, " ").trim(); } /* every script's letters stay; punctuation, symbols, ♪ and emoji go */
+  /* the user turn that followed an interruption: "empty" | "noise" = false; "" = meant. Review 2026-11-20 («مش بيسكتوا»): no "short" — a short
+     word is how people barge in («بس», «لأ», "wait"); a letter of another script = another language = meant */
   function nzJudge(raw) {
     var r = String(raw || ""), t = nzNorm(r), w;
     if (!t) return "empty";
-    if (/[?\u061F]/.test(r) || /[0-9\u0660-\u0669]/.test(t) || NZ_STOP.test(t)) return "";
+    if (/[?\u061F]/.test(r) || /[^\u0621-\u064A\u0660-\u0669a-z0-9 ]/.test(t)) return ""; /* a question; a letter of another script */
+    if (NZ_HALL.test(t) && !NZ_STOP.test(t)) return "noise";
     w = t.split(" ");
-    if (w.some(function (x) { return NZ_ANS.test(x); })) return ""; /* «اه» / «تمام» / "ok" = a reply */
-    if (w.every(function (x) { return NZ_FILL.test(x); })) return "noise";
-    return w.length <= 2 && w.every(function (x) { return x.length <= 4; }) ? "short" : "";
+    return w.every(function (x) { return NZ_FILL.test(x) && !NZ_ANS.test(x); }) ? "noise" : ""; /* «اه» / «تمام» / "ok" = a reply */
   }
   function nzTyped(text) {
     var x = nzNorm(text), now = Date.now(); if (!x) return false;
@@ -1081,7 +1152,7 @@
   /* --- our own microphone --- */
   function micLive(s) { try { var t = s && s.getAudioTracks ? s.getAudioTracks() : []; return !!(t.length && t[0].readyState !== "ended"); } catch (e) { return false; } }
   function micStop(s) { try { if (s && s.getTracks) s.getTracks().forEach(function (t) { try { t.stop(); } catch (x) {} }); } catch (e) {} }
-  function micDrop() { var s = NZ.mic; NZ.mic = null; micStop(s); }
+  function micDrop() { var s = NZ.mic; NZ.mic = null; nzMicOff(); micStop(s); }
   function micGet(me) {
     var md = navigator.mediaDevices, c = { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 }, p, shown = false, tm;
     if (!md || !md.getUserMedia || !window.Promise) return null;
@@ -1126,9 +1197,51 @@
       z.src = src; z.lvl = me.nzLvl = function () { if (ac.state !== "running") return -1; an.getByteTimeDomainData(buf); var q = 0; for (var i = 0; i < buf.length; i++) { var x = (buf[i] - 128) / 128; q += x * x; } return Math.sqrt(q / buf.length); };
     } catch (e) { z.src = null; z.lvl = null; }
   }
+  /* --- his own voice (near-field, item 4): OUR capture, never the clone the SDK mutes; -1 = not measurable here --- */
+  function nzMicOff() { var m = NZ.mm; NZ.mm = null; try { if (m && m.src) m.src.disconnect(); } catch (e) {} }
+  function nzMicLvl(me) {
+    var s = NZ.mic, ac = NZ.ac, m = NZ.mm, b, q = 0, i, x;
+    if (!me || me.micUsed !== "own" || !s || !ac || ac.state !== "running" || !micLive(s)) return -1;
+    if (!m || m.s !== s) {
+      nzMicOff();
+      try { var an = ac.createAnalyser(), src = ac.createMediaStreamSource(s); an.fftSize = 2048; src.connect(an); m = NZ.mm = { s: s, src: src, an: an, f: typeof an.getFloatTimeDomainData === "function" }; m.buf = m.f ? new Float32Array(an.fftSize) : new Uint8Array(an.fftSize); } catch (e) { nzMicOff(); return -1; }
+    }
+    b = m.buf;
+    if (m.f) { m.an.getFloatTimeDomainData(b); for (i = 0; i < b.length; i++) q += b[i] * b[i]; }
+    else { m.an.getByteTimeDomainData(b); for (i = 0; i < b.length; i++) { x = (b[i] - 128) / 128; q += x * x; } }
+    return Math.sqrt(q / b.length);
+  }
+  /* the room: levels committed NZ_LAG after they were measured (nzUserOn drops the queue: his first syllables never become room) */
+  function nzRoomAdd(z, v) { var rb = z.rb || (z.rb = []); rb.push(v); if (rb.length > NZ_RB) rb.shift(); }
+  /* one 80 ms step: 1 = his own voice now, 0 = not, -1 = no measure (or not enough room yet: the microphone then stays open) */
+  function nzNearStep(z, m, now) {
+    if (m < 0) return -1;
+    var pq = z.pq || (z.pq = []), rb = z.rb || (z.rb = []), srt, room, thr;
+    while (pq.length && now - pq[0][0] >= NZ_LAG) nzRoomAdd(z, pq.shift()[1]);
+    srt = rb.slice().sort(function (a, b) { return a - b; });
+    room = srt.length ? srt[Math.floor((srt.length - 1) * 0.9)] : 0;
+    thr = Math.max(NZ_NEAR_MIN, room * NZ_NEAR, NZ.his * NZ_SELF);
+    z.lv = m; z.room = room; z.thr = thr;
+    z.nh = ((z.nh << 1) | (m > thr ? 1 : 0)) & 7;
+    if (m > thr) z.aT = now;
+    if (z.nearT && m > z.nearPk) z.nearPk = m;
+    /* clamped to the bar: a louder room raises it within seconds, a burst over it cannot */
+    if (!z.userOn && !(z.nearT && now - z.nearT < NZ_HOLD)) pq.push([now, Math.min(m, thr)]);
+    if (rb.length < 12) return -1;
+    return (z.nh & 1) && (z.nh & 6) ? 1 : 0;
+  }
+  /* his own voice in this call: Anam hears him, she is silent, the microphone is open; the median of his last 60 loud ticks */
+  function nzHis(z) {
+    var hv = NZ.hv, s; if (!(z.lv > z.room * NZ_NEAR) || z.lv <= NZ_NEAR_MIN) return;
+    hv.push(z.lv); if (hv.length > 60) hv.shift();
+    if (hv.length >= 15) { s = hv.slice().sort(function (a, b) { return a - b; }); NZ.his = s[Math.floor(s.length / 2)]; }
+  }
+  /* nearEver: our capture gave a real signal in this part (an analyser that only reads silence never closes the microphone) */
+  function nzNear(me, z, now) { var r = nzNearStep(z, nzMicLvl(me), now); z.nearOk = r >= 0; if (r >= 0 && z.lv >= 0.0005) z.nearEver = true; return r; }
   function nzPrep(me) { nzDefault(); me.nz = nzNew(); NZ.offerUntil = 0; if (me.textOnly) return; nzAc(); me.micP = micGet(me); }
-  /* «🛠️ المطوّر» → noise_mode_default on: a call starts in noisy-room mode unless the visitor chose a mode in this tab ("1" / "0") */
-  function nzDefault() { var s = null; try { s = sessionStorage.getItem(NZ_KEY); } catch (e) {} if (!NZ.on && s === null && window.MIGFLAGS && MIGFLAGS.on && MIGFLAGS.on("noise_mode_default") === true) { NZ.on = true; NZ.why = "default"; } } /* a new call: no offer left from the last one */
+  /* a new call: normal mode, no offer and no count from the last call (review 2026-11-20: the mode is per call); «🛠️ المطوّر» →
+     noise_mode_default on: the call starts in noisy-room mode, which still closes the microphone only where his own voice is measured */
+  function nzDefault() { NZ.on = false; NZ.why = ""; NZ.fis = []; NZ.near = 0; NZ.nearMiss = 0; NZ.missed = 0; NZ.his = 0; NZ.hv = []; if (window.MIGFLAGS && MIGFLAGS.on && MIGFLAGS.on("noise_mode_default") === true) { NZ.on = true; NZ.why = "default"; } }
   function nzEnd(me) {
     var z = me && me.nz; if (!z) return;
     if (z.cand) { clearTimeout(z.cand.tm); z.cand.done = true; }
@@ -1144,7 +1257,7 @@
     on("AUDIO_STREAM_STARTED", function (st) { nzMeter(me, st); });
     on("VIDEO_STREAM_STARTED", function (st) { setTimeout(function () { var bx = sdkBox(), v = bx && bx.querySelector("video"); if (LV === me) nzMeter(me, st && st.getAudioTracks ? st : v && v.srcObject); }, 400); }); /* her voice inside the video stream */
     on("DATA_CHANNEL_OPEN", function () { setTimeout(function () { if (NZ.on && LV === me) nzEos(me); }, 0); }); /* after sdkRun's own handler set me.dc */
-    on("PERSONA_CONFIG_UPDATE_APPLIED", function () { me.nz.eosOk = Date.now(); });
+    on("PERSONA_CONFIG_UPDATE_APPLIED", function (x) { var cf = x && x.changedFields; if (!cfAny(cf) || cfHas(cf, "voiceDetectionOptions") || cfHas(cf, "endOfSpeechSensitivity")) me.nz.eosOk = Date.now(); }); /* a 🌐 languageCode update is not this one */
     on("SERVER_WARNING", function (m) { me.nz.warn = String(m || "").slice(0, 200); });
     me.timers.push(setInterval(function () { nzTick(me); }, 80));
   }
@@ -1166,7 +1279,7 @@
     z.hn = msgs.length;
   }
   function nzUserOn(me) {
-    var z = me.nz, now = Date.now(); z.userOn = true;
+    var z = me.nz, now = Date.now(); z.userOn = true; z.uT = now; if (z.pq) z.pq.length = 0; /* what came just before was him, not the room */
     if (NZ.on || !nzMicOk(me) || !me.ready || (me.cont && me.cont.greet !== "done") || (z.cand && !z.cand.done) || !z.pid || z.pid === z.usedPid) return; /* one interruption = one check, once per persona message */
     var strong = z.pon || (z.meterOk && now - z.loudT < 220) || (z.pintT > 0 && now - z.pintT < 1500);
     var weak = !z.meterOk && now < z.puntil - 300; /* no meter: her estimated voice was still playing (needs her «interrupted») */
@@ -1199,22 +1312,48 @@
     NZ.fis = NZ.fis.filter(function (t) { return now - t < 90000; }); NZ.fis.push(now);
     NZ.last = { why: why, text: String(text || "").slice(0, 80), at: now };
     nzEvt("false-interruption", { why: why });
-    /* owner 2026-11-19 («عايزه يبقي متفاعل»): never switch to half-duplex by itself — only offer it (the chip); the visitor decides */
+    /* owner 2026-11-19 («عايزه يبقي متفاعل»): never switch to half-duplex by itself — only offer it (the chip); the visitor decides.
+       Review 2026-11-20: offered after TWO noise cuts within 90 s, and only where his own voice still stops her in that mode */
+    if (NZ.fis.length < 2 || !me.nz || !me.nz.nearEver) return;
     NZ.offerUntil = now + 20000; nzChip(); setTimeout(nzChip, 20100);
+  }
+  /* ?nzdebug=1 (tests on a phone, where there are no DevTools): the guard's numbers in a corner of the call; nothing else changes */
+  var NZ_DBG = /[?&#]nzdebug=1(?![0-9])/.test(String(location.href));
+  function nzDbg(z, now) {
+    var el = NZ.dbg; if (!NZ_DBG || now - (NZ.dbgT || 0) < 250) return; NZ.dbgT = now;
+    if (!el) { el = NZ.dbg = document.createElement("div"); el.setAttribute("translate", "no"); el.setAttribute("aria-hidden", "true"); el.style.cssText = "position:fixed;left:6px;top:6px;z-index:2147483647;background:rgba(0,0,0,.75);color:#fff;font:11px/1.4 monospace;padding:4px 6px;border-radius:6px;pointer-events:none;direction:ltr;white-space:pre"; document.body.appendChild(el); }
+    el.textContent = (NZ.on ? "noisy" : "normal") + (z.gate ? " MIC-SHUT" : "") + (z.userOn ? " anam-hears-you" : "") + "\nlevel " + z.lv.toFixed(3) + "  room " + z.room.toFixed(3) + "  bar " + z.thr.toFixed(3) + "  you " + NZ.his.toFixed(3) + "\nopens " + NZ.near + "  not-speech " + NZ.nearMiss + "  missed-by-anam " + NZ.missed + "  noise-cuts " + NZ.fis.length;
   }
   /* the half-duplex gate: shut while she speaks, open ~250 ms after her voice stops */
   function nzTick(me) {
     var z = me.nz; if (!z || LV !== me || me.closed || me.swapped || !me.ready) return;
-    var now = Date.now(), lv = -1; nzPlace();
+    var now = Date.now(), lv = -1; nzPlace(); nzDbg(z, now);
     if (z.lvl) { try { lv = z.lvl(); } catch (e) { z.lvl = null; } }
     if (lv > NZ_TH) { z.loudT = now; z.meterOk = true; }
     if (z.pon && now - z.plast > 5000 && (z.meterOk ? now - z.loudT > 1000 : now > z.puntil)) z.pon = false; /* her end-of-speech never came */
+    if (z.userOn && now - z.uT > 10000 && now - z.aT > 3000) z.userOn = false; /* a speech start whose end never came (Anam docs: ~10 s), and he is quiet here */
     /* speaking: her text still coming; her voice on the meter; or (her voice not heard on the meter yet) her text timing — never the ✋-cut
        tail, never a continued part's cut greeting (no heard message yet: z.pid stays empty) */
     var heard = z.meterOk && z.loudT >= z.pt0, fresh = now - z.handT > 1200;
     var spk = z.pon || (!!z.pid && fresh && (z.meterOk && now - z.loudT < 120 || !heard && now < z.puntil));
-    if (!NZ.on || !nzMicOk(me)) { if (z.gate) nzGate(me, false); return; }
-    if (spk) { nzGate(me, true); return; }
+    var near = nzMicOk(me) && !me.muted ? nzNear(me, z, now) : -1; /* his own mute stays his */
+    if (near >= 0 && z.userOn && !spk && !z.gate) nzHis(z);
+    /* normal mode, and wherever his voice is not measured: the microphone stays open and Anam's VAD stops her when he speaks */
+    if (!NZ.on || near < 0 || !z.nearEver) {
+      if (z.gate) nzGate(me, false);
+      if (near > 0 && spk && !z.userOn && !z.mT) z.mT = now; /* his voice while she talks: did Anam hear it? */
+      if (z.mT && now - z.mT > 700) { if (!(z.uT > z.mT - 300)) NZ.missed++; z.mT = 0; }
+      return;
+    }
+    /* noisy-room mode: his own voice opens the microphone at once; Anam's VAD then stops her */
+    if (near > 0 && z.gate) { z.nearT = now; z.nearPk = z.lv; NZ.near++; nzGate(me, false); return; }
+    if (z.nearT) {
+      if (z.userOn || now - z.nearT < NZ_HOLD) return;
+      /* not speech for Anam: that level is room for ~4 s — never a level as loud as his own voice (a short «بس» Anam heard too little of) */
+      if (!(z.uT > z.nearT)) { NZ.nearMiss++; if (!(NZ.his && z.nearPk >= NZ.his * 0.8)) { for (var i = 0; i < 6; i++) nzRoomAdd(z, z.nearPk); } }
+      z.nearT = 0;
+    }
+    if (spk && !z.userOn) { nzGate(me, true); return; }
     if (!z.gate) return;
     if (heard ? now - z.loudT >= 250 && (now >= z.puntil - 1200 || now - z.loudT >= 800) : now >= z.puntil + 250) nzGate(me, false);
     else if (now - z.gateT > 60000) nzGate(me, false);
@@ -1234,8 +1373,7 @@
   }
   function nzSet(on, why) {
     on = !!on; if (NZ.on === on) { nzChip(); return; }
-    NZ.on = on; NZ.why = String(why || ""); NZ.fis = []; NZ.offerUntil = 0;
-    try { sessionStorage.setItem(NZ_KEY, on ? "1" : "0"); } catch (e) {}
+    NZ.on = on; NZ.why = String(why || ""); NZ.fis = []; NZ.offerUntil = 0; /* this call only (review 2026-11-20) */
     var me = LV;
     if (me && me.nz && !me.closed) { nzEos(me); if (on) nzTick(me); else nzGate(me, false); }
     nzChip(); nzEvt(on ? "on" : "off", { why: why });
@@ -1254,7 +1392,7 @@
   }
   function nzChip() {
     var bx = sdkBox(), me = LV, z = me && me.nz, el = NZ.el, c, live = !!(bx && ov && !ov.hidden && z && me.ready && !me.closed && nzMicOk(me));
-    var m = !live ? "" : NZ.on ? "on" : Date.now() < NZ.offerUntil ? "offer" : "";
+    var m = !live || !z.nearEver ? "" : NZ.on ? "on" : Date.now() < NZ.offerUntil ? "offer" : ""; /* only where his own voice is measured */
     if (!m) { if (el) el.hidden = true; return; }
     if (!el) { el = NZ.el = document.createElement("div"); el.className = "jnl-nzf"; el.setAttribute("translate", "no"); el.innerHTML = '<div class="jv-nz" role="status" aria-live="polite"></div>'; document.body.appendChild(el); if (!NZ.rz) { NZ.rz = 1; window.addEventListener("resize", nzPlace); } }
     if (!ov.__nz) { ov.__nz = 1; ov.addEventListener("scroll", nzPlace, { passive: true }); } /* phones: the call column scrolls */
@@ -1262,8 +1400,8 @@
     if (c.getAttribute("data-m") !== m) {
       c.setAttribute("data-m", m);
       c.innerHTML = m === "on"
-        ? '<span>' + esc(T("🔇 المكان فيه دوشة — هكمّل كلامي، ولو عايز تقاطعني دوس ✋ استنى", "🔇 It's noisy where you are — I'll keep talking. To interrupt me, tap ✋ Wait")) + '</span><button type="button" class="nz-hand">' + esc(T("✋ استنى", "✋ Wait")) + '</button><button type="button" class="nz-off">' + esc(T("↩︎ الوضع العادي", "↩︎ Normal mode")) + '</button>'
-        : '<span>' + esc(T("🔇 شكل المكان عندك فيه دوشة — تحب أكمّل كلامي من غير ما الدوشة تقطعني؟", "🔇 It sounds noisy where you are — shall I keep talking without the noise cutting me off?")) + '</span><button type="button" class="nz-on">' + esc(T("🔇 أيوه، وضع الدوشة", "🔇 Yes, noisy-room mode")) + '</button><button type="button" class="nz-x" title="' + esc(T("لأ، شكراً", "No, thanks")) + '" aria-label="' + esc(T("لأ، شكراً", "No, thanks")) + '">✕</button>';
+        ? '<span>' + esc(T("🔇 المكان فيه دوشة — الدوشة اللي بعيد مش هتقطعني، وصوتك إنت بيوقفني؛ ولو ماوقفتش دوس ✋", "🔇 It's noisy where you are — distant noise won't cut me off, your own voice still stops me; if I don't stop, tap ✋")) + '</span><button type="button" class="nz-hand">' + esc(T("✋ استنى", "✋ Wait")) + '</button><button type="button" class="nz-off">' + esc(T("↩︎ الوضع العادي", "↩︎ Normal mode")) + '</button>'
+        : '<span>' + esc(T("🔇 شكل المكان عندك فيه دوشة — تحب الدوشة اللي بعيد ماتقطعنيش؟ صوتك إنت هيفضل يوقفني", "🔇 It sounds noisy where you are — shall I keep distant noise from cutting me off? Your own voice will still stop me")) + '</span><button type="button" class="nz-on">' + esc(T("🔇 أيوه، وضع الدوشة", "🔇 Yes, noisy-room mode")) + '</button><button type="button" class="nz-x" title="' + esc(T("لأ، شكراً", "No, thanks")) + '" aria-label="' + esc(T("لأ، شكراً", "No, thanks")) + '">✕</button>';
       var b1 = c.querySelector(".nz-hand"), b2 = c.querySelector(".nz-off"), b3 = c.querySelector(".nz-on"), b4 = c.querySelector(".nz-x");
       if (b1) b1.onclick = nzHand;
       if (b2) b2.onclick = function () { nzAc(); nzSet(false, "visitor"); };
@@ -1274,11 +1412,194 @@
   }
   /* the chip's place: centred over the video, its bottom 6 px above the control bar (followed on every tick, scroll and resize) */
   function nzPlace() {
-    var el = NZ.el, bx = sdkBox(); if (!el || el.hidden) return;
+    var el = NZ.el, bx = sdkBox(); if (!el || el.hidden) { langPlace(); return; }
     var ctl = bx && bx.querySelector(".jv-ctl"), r = bx ? bx.getBoundingClientRect() : null, cr = ctl && !ctl.hidden ? ctl.getBoundingClientRect() : null, vh = window.innerHeight || document.documentElement.clientHeight;
-    if (!r || !r.width || !cr || !cr.height) { el.style.visibility = "hidden"; return; }
+    if (!r || !r.width || !cr || !cr.height) { el.style.visibility = "hidden"; langPlace(); return; }
     el.style.visibility = ""; el.style.left = Math.round(r.left + 10) + "px"; el.style.width = Math.max(0, Math.round(r.width - 20)) + "px"; el.style.bottom = Math.round(vh - cr.top + 6) + "px";
+    langPlace(); /* the 🌐 chip sits above this one */
   }
+  /* ---------- 🌐 the language the person SPEAKS in the call (owner 2026-11-20: «جنة او باسم يتكلموا اي لغه في العالم بناءا علي الشخص اللي
+     بيكلمهم»). Every call hears exactly as before (Janna on the Arabic pages and Bassem on both: Arabic; Janna on the English pages: English);
+     only the person changes it — 🌐 next to 🎙️, or its link under «ابدأ الكلام» before the call — never this page by itself. The choice:
+     sessionStorage "mig-jnl-lang:<persona>" (this tab only) and, on a live part, Anam's documented mid-session update persona_config
+     {languageCode} — languageCode ONLY: sttProvider / sttLanguages cannot change mid-session — + addContext(langNote) for the LLM (no extra
+     reply). Every later part / call of this tab sends it again at DATA_CHANNEL_OPEN, and only when it differs from the persona's own: a call
+     where nobody chose sends no persona_config and no LANGUAGE line. Applied = a PERSONA_CONFIG_UPDATE_APPLIED whose changedFields name
+     languageCode (SDK 4.29.1 emits it; Anam's event list does not show it yet); a SERVER_WARNING within 5 s with no such event (Anam drops a
+     refused update and says why) puts the choice back and says so in Arabic AND English (the person who chose may read neither page language).
+     Suggestions only (a chip for 20 s, once per browser and language: localStorage "mig-jnl-langask"): the browser's language (not ar / en on
+     the Arabic pages), Arabic for Janna on an English page, English for Bassem on an English page, and typed text in a script scriptLang()
+     is sure of — never on Arabic or Latin text. Off in the widget and while «🛠️ المطوّر» → call_languages is off (data/flags.js).
+     JANNA_LIVE.lang() = {current, def, stored, applied, warn}; JANNA_LIVE.lang(code) chooses (tests). */
+  var LG = { mem: {}, asked: {}, prev: "", sentT: 0, sentTo: "", applied: false, warn: "", ask: "", askUntil: 0, fail: 0, el: null, menu: null, doc: null, key: null, rz: 0 };
+  function langOn() { var F = window.MIGFLAGS; return !!sdkBox() && !(F && F.on && F.on("call_languages") === false); }
+  function langDef() { return persona === "janna" && EN ? "en" : "ar"; }
+  function langStored() { var s = ""; try { s = sessionStorage.getItem("mig-jnl-lang:" + persona) || ""; } catch (e) { s = LG.mem[persona] || ""; } return langRow(s) && s !== langDef() ? s : ""; }
+  function langStore(code) { code = langRow(code) && code !== langDef() ? code : ""; LG.mem[persona] = code; try { if (code) sessionStorage.setItem("mig-jnl-lang:" + persona, code); else sessionStorage.removeItem("mig-jnl-lang:" + persona); } catch (e) {} }
+  /* what the persona hears now: the person's 🌐 choice in this tab, else the persona's own language */
+  function callLang() { return (langOn() && langStored()) || langDef(); }
+  function langLabel(c) { return c === "ar" ? "ع" : String(c).toUpperCase(); }
+  function langHead() { return T("لغة كلامك في المكالمة (مش لغة الموقع)", "The language you speak in this call (not the site language)"); }
+  /* changedFields of PERSONA_CONFIG_UPDATE_APPLIED (an object, a list or a string): does it name k (camel or snake case, at any depth)? */
+  function cfHas(cf, k) {
+    var sk = k.replace(/[A-Z]/g, function (c) { return "_" + c.toLowerCase(); }), i, j;
+    if (!cf) return false;
+    if (typeof cf === "string") return cf.indexOf(k) > -1 || cf.indexOf(sk) > -1;
+    if (Object.prototype.toString.call(cf) === "[object Array]") { for (i = 0; i < cf.length; i++) if (cfHas(cf[i], k)) return true; return false; }
+    if (typeof cf !== "object") return false;
+    if (Object.prototype.hasOwnProperty.call(cf, k) || Object.prototype.hasOwnProperty.call(cf, sk)) return true;
+    for (j in cf) if (Object.prototype.hasOwnProperty.call(cf, j) && cf[j] && typeof cf[j] === "object" && cfHas(cf[j], k)) return true;
+    return false;
+  }
+  function cfAny(cf) { if (!cf) return false; if (typeof cf === "string" || Object.prototype.toString.call(cf) === "[object Array]") return cf.length > 0; if (typeof cf === "object") { for (var k in cf) if (Object.prototype.hasOwnProperty.call(cf, k)) return true; } return false; }
+  /* the person's choice (the menu, the chips, JANNA_LIVE.lang) — the only way the language changes */
+  function langSet(code) {
+    code = String(code == null ? "" : code).toLowerCase(); if (!langRow(code) || !langOn()) return false;
+    var me = LV, prev = callLang();
+    langStore(code); LG.ask = ""; LG.fail = 0; LG.warn = "";
+    if (code !== prev) { LG.prev = prev; LG.applied = false; if (me && me.ready && me.dc && me.client && !me.closed && !me.swapped) langSend(me, code, 1); }
+    langUi(); return true;
+  }
+  /* persona_config {languageCode} (nothing else) + the LLM's LANGUAGE line (note: 0 none — a continued part has it in resumeText —, 1 mid-call, 2 the call's start) */
+  function langSend(me, code, note) {
+    try { me.client.sendDataMessage(JSON.stringify({ message_type: "persona_config", data: { languageCode: code } })); } catch (e) { return false; }
+    LG.sentT = Date.now(); LG.sentTo = code; LG.applied = false;
+    if (note) { try { if (me.client.addContext) me.client.addContext(langNote(code, note === 2)); } catch (e) {} }
+    return true;
+  }
+  /* every part, once it is ready and its data channel is open: the choice of this tab again — only when there is one */
+  function langPart(me) {
+    if (me.langDone || !me.ready || !me.dc || !me.client || me.closed || me.swapped || LV !== me || !langOn()) return;
+    me.langDone = true;
+    var stored = langStored();
+    if (stored && stored !== langDef()) { LG.prev = langDef(); langSend(me, stored, me.cont ? 0 : 2); }
+    langUi();
+  }
+  function langWire(me, on) {
+    on("DATA_CHANNEL_OPEN", function () { setTimeout(function () { langPart(me); }, 0); });
+    on("SESSION_READY", function () { setTimeout(function () { langPart(me); }, 0); if (!me.cont) setTimeout(function () { if (LV === me && !me.closed) langAskBrowser(); }, 1500); });
+    on("PERSONA_CONFIG_UPDATE_APPLIED", function (x) { if (cfHas(x && x.changedFields, "languageCode")) { LG.applied = true; LG.sentT = 0; langUi(); } });
+    on("SERVER_WARNING", function (m) { langWarn(me, m); });
+  }
+  /* Anam refused the update (a language its speech-to-text provider does not take): the choice goes back, said in both languages */
+  function langWarn(me, m) {
+    if (!LG.sentT || LG.applied || Date.now() - LG.sentT > 5000) return;
+    var to = langRow(LG.sentTo), back = langRow(LG.prev && LG.prev !== LG.sentTo ? LG.prev : langDef());
+    LG.sentT = 0; LG.warn = String(m == null ? "" : m).slice(0, 200); LG.fail = Date.now();
+    langStore(back[0]);
+    try { if (me.client && me.client.addContext && to) me.client.addContext("LANGUAGE: switching what you hear to " + to[3] + " failed; the person's speech still reaches you as " + back[3] + " speech-to-text. Reply in the language of their own words (typed messages reach you exactly as written)."); } catch (e) {}
+    langUi(); setTimeout(langChip, 10100);
+  }
+  /* a suggestion: the 20 s chip, once per browser and language (localStorage, else this page) */
+  function langAsk(code) {
+    var now = Date.now(), seen = {};
+    if (!langOn() || !code || code === callLang() || (LG.ask && now < LG.askUntil) || LG.asked[code]) return;
+    try { seen = JSON.parse(localStorage.getItem("mig-jnl-langask") || "{}") || {}; } catch (e) { seen = {}; }
+    if (seen[code]) return;
+    seen[code] = now; LG.asked[code] = 1; try { localStorage.setItem("mig-jnl-langask", JSON.stringify(seen)); } catch (e) {}
+    LG.ask = code; LG.askUntil = now + 20000; langChip(); setTimeout(langChip, 20100);
+  }
+  var LANG_ALIAS = { fil: "tl", nb: "no", nn: "no", iw: "he", "in": "id" };
+  function langAskBrowser() {
+    if (!langOn() || langStored()) return; /* he chose already */
+    var nl = "", p, def = langDef();
+    try { nl = String((navigator.languages && navigator.languages[0]) || navigator.language || ""); } catch (e) {}
+    p = nl.toLowerCase().split(/[-_]/)[0]; p = LANG_ALIAS[p] || p;
+    if (!langRow(p)) return;
+    if (persona === "janna" && EN && p === "ar") { langAsk("ar"); return; }
+    if (persona === "bassem" && EN && p === "en") { langAsk("en"); return; }
+    if (p !== "ar" && p !== "en" && p !== def) langAsk(p);
+  }
+  /* he typed in a script only one language (or a few) writes in: suggest it — the typed message itself reaches the LLM as written */
+  function langTyped(t) { var c = ""; try { c = scriptLang(t); } catch (e) { c = ""; } if (c && c !== callLang()) langAsk(c); }
+  /* the 🌐 button, its link under «ابدأ», the menu and the chip follow the state */
+  function langUi() {
+    var bx = sdkBox(), me = LV, on = langOn(), cur = callLang(), r = langRow(cur) || langRow("ar"), tl = langHead() + ": " + r[1];
+    if (bx) {
+      var b = bx.querySelector(".jv-lang"), g = bx.querySelector(".jv-lgo");
+      if (b) { b.hidden = !on || !!(me && (me.textOnly || me.micDenied)); b.innerHTML = '<span aria-hidden="true">🌐</span><b aria-hidden="true">' + esc(langLabel(cur)) + "</b>"; b.title = tl; b.setAttribute("aria-label", tl); }
+      if (g) { g.hidden = !on; g.textContent = "🌐 " + r[1]; g.title = tl; g.setAttribute("aria-label", tl); }
+    }
+    if (!on && LG.menu) langMenu(false);
+    langChip();
+  }
+  function langFold(s) {
+    s = String(s == null ? "" : s).toLowerCase();
+    try { if (s.normalize) s = s.normalize("NFD"); } catch (e) {}
+    return s.replace(/[\u0300-\u036f\u064b-\u0652\u0640]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/\s+/g, " ").replace(/^\s+|\s+$/g, "");
+  }
+  /* the menu: every language by its own name (the persona's own first, then العربية / English), with a filter box */
+  function langMenu(open) {
+    var bx = sdkBox(), m = LG.menu, b = bx && bx.querySelector(".jv-lang"), cur, def, hd, order, items = [], i, r, q, lis;
+    if (!open || !bx || !langOn()) {
+      if (m && m.parentNode) m.parentNode.removeChild(m); LG.menu = null; if (b) b.setAttribute("aria-expanded", "false"); document.documentElement.classList.remove("jnl-lgm-on");
+      if (LG.doc) { document.removeEventListener("click", LG.doc, true); document.removeEventListener("keydown", LG.key, true); LG.doc = LG.key = null; }
+      return;
+    }
+    if (m) return;
+    cur = callLang(); def = langDef(); hd = langHead(); order = [def, def === "ar" ? "en" : "ar"];
+    for (i = 0; i < CALL_LANGS.length; i++) if (order.indexOf(CALL_LANGS[i][0]) < 0) order.push(CALL_LANGS[i][0]);
+    for (i = 0; i < order.length; i++) {
+      r = langRow(order[i]);
+      items.push('<li data-s="' + esc(langFold(r.join(" "))) + '"><button type="button" role="option" data-l="' + r[0] + '" aria-selected="' + (r[0] === cur ? "true" : "false") + '"><bdi lang="' + r[0] + '">' + esc(r[1]) + (r[0] === cur ? " ✓" : "") + "</bdi><small>" + esc(T(r[2], r[3])) + "</small></button></li>");
+    }
+    m = LG.menu = document.createElement("div"); m.className = "jv-lgm"; m.setAttribute("role", "dialog"); m.setAttribute("aria-label", hd); m.dir = EN ? "ltr" : "rtl";
+    m.innerHTML = '<div class="lgm-h"><b>🌐 ' + esc(hd) + '</b><button type="button" class="lgm-x" title="' + esc(T("إغلاق", "Close")) + '" aria-label="' + esc(T("إغلاق", "Close")) + '">✕</button></div>'
+      + '<input type="search" class="lgm-q" autocomplete="off" enterkeyhint="search" placeholder="' + esc(T("دوّر على لغتك…", "Find your language…")) + '" aria-label="' + esc(T("دوّر على لغتك", "Find your language")) + '">'
+      + '<ul role="listbox" aria-label="' + esc(hd) + '">' + items.join("") + "</ul>"
+      + '<p class="lgm-n">' + esc(who(["جنة هتسمعك وترد عليك باللغة اللي تختارها، وتقدر تكتبلها بأي لغة في الخانة تحت.", "باسم هيسمعك ويرد عليك باللغة اللي تختارها، وتقدر تكتبله بأي لغة في الخانة تحت."], ["Janna hears you and answers in the language you choose; you can also type to her in any language in the box below.", "Bassem hears you and answers in the language you choose; you can also type to him in any language in the box below."])) + "</p>";
+    bx.appendChild(m); if (b) b.setAttribute("aria-expanded", "true"); document.documentElement.classList.add("jnl-lgm-on"); /* the chips step aside while it is open */
+    q = m.querySelector(".lgm-q"); lis = m.querySelectorAll("li");
+    q.oninput = function () { var v = langFold(q.value); for (var j = 0; j < lis.length; j++) lis[j].hidden = !!v && lis[j].getAttribute("data-s").indexOf(v) < 0; };
+    m.querySelector(".lgm-x").onclick = function () { langMenu(false); };
+    m.querySelector("ul").onclick = function (e) { var t = e.target && e.target.closest ? e.target.closest("[data-l]") : null; if (!t) return; langMenu(false); langSet(t.getAttribute("data-l")); };
+    LG.doc = function (e) { var t = e.target; if (LG.menu && !LG.menu.contains(t) && !(t && t.closest && t.closest(".jv-lang, .jv-lgo, .jnl-lgf"))) langMenu(false); };
+    LG.key = function (e) { if (e.key !== "Escape" && e.key !== "Esc") return; langMenu(false); var b2 = sdkBox() && sdkBox().querySelector(".jv-lang"); if (b2 && !b2.hidden) { try { b2.focus(); } catch (x) {} } };
+    document.addEventListener("click", LG.doc, true); document.addEventListener("keydown", LG.key, true);
+    try { if (window.matchMedia && window.matchMedia("(pointer:fine)").matches) q.focus(); else { var s0 = m.querySelector('[aria-selected="true"]'); if (s0) s0.focus(); } } catch (e) {}
+  }
+  /* the chip over the video: «🎤 Français · ↩︎ عربي» while another language is on, a suggestion «🎤 Español? ✓ ✕», or the refusal (both languages) */
+  function langChip() {
+    var bx = sdkBox(), me = LV, el = LG.el, now = Date.now(), cur = callLang(), def = langDef(), m = "", c, r, k, nm;
+    var live = !!(bx && ov && !ov.hidden && me && me.ready && !me.closed && !me.textOnly && langOn());
+    if (live) m = LG.fail && now - LG.fail < 10000 ? "fail" : LG.ask && now < LG.askUntil && LG.ask !== cur ? "ask" : cur !== def ? "cur" : "";
+    if (!m) { if (el) el.hidden = true; return; }
+    if (!el) {
+      el = LG.el = document.createElement("div"); el.className = "jnl-nzf jnl-lgf"; el.setAttribute("translate", "no");
+      el.innerHTML = '<div class="jv-nz jv-lg" role="status" aria-live="polite"></div>'; document.body.appendChild(el);
+      if (!LG.rz) { LG.rz = 1; window.addEventListener("resize", langPlace); }
+    }
+    if (!ov.__lg) { ov.__lg = 1; ov.addEventListener("scroll", langPlace, { passive: true }); }
+    c = el.firstChild; el.dir = EN ? "ltr" : "rtl"; k = m + ":" + (m === "ask" ? LG.ask : cur) + ":" + def;
+    if (c.getAttribute("data-k") !== k) {
+      c.setAttribute("data-k", k);
+      if (m === "fail") c.innerHTML = '<span>⚠️ <bdi dir="rtl" lang="ar">ماقدرتش أغيّر لغة السمع — تقدر تكتب بلغتك في الخانة تحت</bdi><br><bdi dir="ltr" lang="en">I could not switch the listening language — you can type in your language in the box below</bdi></span><button type="button" class="lg-x" title="' + esc(T("إغلاق", "Close")) + '" aria-label="' + esc(T("إغلاق", "Close")) + '">✕</button>';
+      else if (m === "ask") {
+        r = LG.ask === "menu" ? null : langRow(LG.ask);
+        nm = r ? '<bdi lang="' + r[0] + '">' + esc(r[1]) + (/[\u0590-\u08ff]/.test(r[1]) ? "؟" : "?") + "</bdi>" : "🌐?"; /* the question mark in the name's own run */
+        c.innerHTML = '<span title="' + esc(langHead()) + '">🎤 ' + nm + '</span><button type="button" class="lg-yes" title="' + esc(r ? T("أيوه، هتكلم بال" + r[2], "Yes, I'll speak " + r[3]) : T("اختار لغتك", "Choose your language")) + '" aria-label="' + esc(r ? T("أيوه، هتكلم بال" + r[2], "Yes, I'll speak " + r[3]) : T("اختار لغتك", "Choose your language")) + '">✓</button><button type="button" class="lg-no" title="' + esc(T("لأ، شكراً", "No, thanks")) + '" aria-label="' + esc(T("لأ، شكراً", "No, thanks")) + '">✕</button>';
+      } else {
+        r = langRow(cur);
+        c.innerHTML = '<span title="' + esc(langHead()) + '">🎤 <bdi lang="' + r[0] + '">' + esc(r[1]) + '</bdi></span><button type="button" class="lg-back" title="' + esc(def === "en" ? T("ارجع للإنجليزي", "Back to English") : T("ارجع للعربي", "Back to Arabic")) + '" aria-label="' + esc(def === "en" ? T("ارجع للإنجليزي", "Back to English") : T("ارجع للعربي", "Back to Arabic")) + '">' + (def === "en" ? "↩︎ English" : "↩︎ عربي") + "</button>";
+      }
+      var y = c.querySelector(".lg-yes"), n0 = c.querySelector(".lg-no"), bk = c.querySelector(".lg-back"), x0 = c.querySelector(".lg-x");
+      if (y) y.onclick = function () { var a = LG.ask; LG.ask = ""; if (a === "menu") { langChip(); langMenu(true); } else langSet(a); };
+      if (n0) n0.onclick = function () { LG.ask = ""; langChip(); };
+      if (bk) bk.onclick = function () { langSet(langDef()); };
+      if (x0) x0.onclick = function () { LG.fail = 0; langChip(); };
+    }
+    el.hidden = false; langPlace();
+  }
+  /* its place: like the noise chip's (6 px above the control bar), and above the noise chip when both show */
+  function langPlace() {
+    var el = LG.el, bx = sdkBox(); if (!el || el.hidden) return;
+    var ctl = bx && bx.querySelector(".jv-ctl"), r = bx ? bx.getBoundingClientRect() : null, cr = ctl && !ctl.hidden ? ctl.getBoundingClientRect() : null, vh = window.innerHeight || document.documentElement.clientHeight;
+    var nz = NZ.el, nr = nz && !nz.hidden && nz.style.visibility !== "hidden" ? nz.getBoundingClientRect() : null;
+    if (!r || !r.width || !cr || !cr.height) { el.style.visibility = "hidden"; return; }
+    el.style.visibility = ""; el.style.left = Math.round(r.left + 10) + "px"; el.style.width = Math.max(0, Math.round(r.width - 20)) + "px"; el.style.bottom = Math.round(vh - (nr && nr.height ? nr.top : cr.top) + 6) + "px";
+  }
+  function langDrop() { langMenu(false); LG.ask = ""; LG.fail = 0; if (LG.el && LG.el.parentNode) LG.el.parentNode.removeChild(LG.el); LG.el = null; }
+  window.addEventListener("mig:flags", function () { try { langUi(); } catch (e) {} });
   /* the stage height inside the widget (see SHADOW_CSS); retried until the widget has rendered its shadow root */
   function shadowCss(ag, n) {
     var sr = null; try { sr = ag.shadowRoot; } catch (e) {}
@@ -1354,7 +1675,7 @@
     if (ov.classList.contains("fs")) fullscreen(false);
     /* the SDK call is ended explicitly (stops the session and its minutes); removing the widget's element ends the widget's session */
     sdkStop("close"); LV = null;
-    micDrop(); NZ.offerUntil = 0; if (NZ.el && NZ.el.parentNode) NZ.el.parentNode.removeChild(NZ.el); NZ.el = null; try { if (NZ.ac) { var acp = NZ.ac.close(); if (acp && acp.then) acp.then(null, function () {}); } } catch (e) {} NZ.ac = null; /* noise guard: microphone + meter released */
+    langDrop(); micDrop(); NZ.offerUntil = 0; if (NZ.el && NZ.el.parentNode) NZ.el.parentNode.removeChild(NZ.el); NZ.el = null; try { if (NZ.ac) { var acp = NZ.ac.close(); if (acp && acp.then) acp.then(null, function () {}); } } catch (e) {} NZ.ac = null; /* noise guard: microphone + meter released */
     /* the captions box goes back to the page first */
     try { if (window.MIGCAPTIONS && MIGCAPTIONS.place) { ov.hidden = true; MIGCAPTIONS.place(); } } catch (e) {}
     ov.remove(); ov = null; frame = null; SID = ""; sessT0 = 0; NUDGE = ""; document.documentElement.style.overflow = ""; document.documentElement.classList.remove("jnl-on");
@@ -1500,8 +1821,49 @@
     try { var r = el.getBoundingClientRect(), y = r.top + w.pageYOffset - (at === "center" ? (w.innerHeight - r.height) / 2 : 70); w.scrollTo({ top: Math.max(0, y), behavior: "smooth" }); } catch (e) {}
   }
   function govCode(g) { if (!g) return ""; if (GOV[String(g).toUpperCase()]) return String(g).toUpperCase(); var n = norm(g); for (var k in GOV) if (norm(GOV[k]) === n || norm(GOV[k]).indexOf(n) > -1) return k; return ""; }
+  /* ---------- the page shows what the lookups found (speed review 2026-11-20 #5) ----------
+     A janna_lookup that found something puts the same search on the shared screen as soon as its RESULT is in (the screen moves before the
+     persona speaks: her next pass takes ≥ 0.67 s after the tool returns), so her own janna_search for it does not load it again (run);
+     platform_item's ONE item (found, not «ambiguous») opens its own page. From the result, never from the call's start: webhook arguments
+     arrive nested ({bodyParams}), and a search that found nothing (a foreign word too) never replaces the screen. Never over work on the
+     screen (screenBusy: the deal room, a form being filled); the first lookup in 2.5 s only. Bassem's screen tools read it as they read his
+     own janna_search (data/bassem-live-tools.js watchSearch, host.shown) */
+  var LKS = { k: "", t: 0 }, LK_SEC = { factories: "factories", suppliers: "suppliers", products: "market", market: "market", tenders: "tenders", rfqs: "rfqs", offers: "offers" };
+  function lookupDone(d) {
+    if (String(d.toolName || "") !== "janna_lookup" || !frame) return;
+    var r = resJson(d.result), now = Date.now(), sec, q, s;
+    if (!r || !(+r.count > 0) || !r.results || !r.results.length || now - LKS.t < 2500 || screenWork()) return;
+    if (r.section === "cities") { LKS = { k: "cities", t: now }; run("janna_navigate", { page: "cities" }, { mirror: 1 }); return; }
+    sec = LK_SEC[r.section] || ""; q = String(r.query || "").slice(0, 120);
+    if (!sec || !q || (sec === "tenders" && r.market && r.market !== "local")) return;
+    LKS = { k: sec + "|" + norm(q), t: now }; s = { section: sec, query: q }; if (r.governorate) s.governorate = String(r.governorate);
+    run("janna_search", s, { mirror: 1 });
+  }
+  /* is this search the one lookupDone put on the screen (the last 20 s)? */
+  function lookupShown(a) { a = a || {}; return !!LKS.k && Date.now() - LKS.t < 20000 && LKS.k === (LK_SEC[a.section] || a.section) + "|" + norm(a.query); }
+  function itemShow(d) {
+    if (String(d.toolName || "") !== "platform_item" || !frame) return;
+    var r = resJson(d.result), u = String((r && r.found === true && !r.ambiguous && r.open_url) || ""), i = u.indexOf("/", 8), h = i > 0 ? u.slice(0, i).toLowerCase() : "";
+    if ((h === "https://madeinegyptgate.com" || h === "https://www.madeinegyptgate.com") && u.length > i + 1 && !screenWork()) go(u.slice(i));
+  }
+  /* work a navigation would lose, for the page's OWN moves above: the deal room open, or a text field of a real form (the RFQ, contact,
+     registration and deal forms) that differs from its page value. A list's filters and its script-filled selects are no work (screenBusy
+     counts every select whose options a script filled, so it is true on most list pages) */
+  function screenWork() {
+    var d = null, dr, f, i, x, t; try { d = frame && frame.contentDocument; } catch (e) { return false; }
+    if (!d || !d.querySelector) return false;
+    dr = d.querySelector("#advDr"); if (dr && !dr.hidden) return true;
+    f = d.querySelectorAll("form input, form textarea");
+    for (i = 0; i < f.length; i++) {
+      x = f[i]; t = String(x.type || "").toLowerCase();
+      if (/^(hidden|submit|button|reset|search|image|file|checkbox|radio|range|color)$/.test(t) || (x.closest && x.closest("[role=search]"))) continue;
+      if (String(x.value || "") !== String(x.defaultValue || "")) return true;
+    }
+    return false;
+  }
   function run(name, a, o) {
     a = a && typeof a === "object" ? a : {};
+    if (name === "janna_search" && !(o && o.mirror) && lookupShown(a)) return; /* already on the screen (lookupDone) */
     /* every tool call is also shown on the holographic workspace (holo.js de-duplicates the same call reported twice) */
     try { if (window.MIGHOLO && MIGHOLO.act) MIGHOLO.act(name, a, { who: /^bassem_/.test(name) ? "bassem" : persona }); } catch (e) {}
     logAct(name, a);
@@ -1675,7 +2037,9 @@
   /* the only Bassem tools that may be handed over to advisor.html (they drive its own controls; nothing here sends without the page) */
   var BCMD_OK = { bassem_open_opportunity: 1, bassem_start_deal: 1, bassem_draft_email: 1, bassem_send_email: 1, bassem_update_deal: 1, bassem_open_guide: 1 };
   function setIn(d, sel, v, ev) { var el = d.querySelector(sel); if (!el || v == null || v === "") return null; el.value = String(v); (ev || ["input", "change"]).forEach(function (t) { el.dispatchEvent(new Event(t, { bubbles: true })); }); glow(el); return el; }
-  function advSearch(d, q, cb) { var i = d.querySelector("#advQ"); if (i && q != null) { i.value = String(q); if (i.oninput) i.oninput(); else i.dispatchEvent(new Event("input", { bubbles: true })); glow(i); } setTimeout(function () { cb(d.querySelector(".opc")); }, 650); }
+  /* the advisor page filters 250 ms after an input and rebuilds its list with #advQ (advisor.part.py renderBrief): the cards are read once the
+     new #advQ is there (650 ms at most, as before) — never earlier, or the first UNFILTERED card would be opened (speed review 2026-11-20 #8) */
+  function advSearch(d, q, cb) { var i = d.querySelector("#advQ"), t0 = Date.now(); if (i && q != null) { i.value = String(q); if (i.oninput) i.oninput(); else i.dispatchEvent(new Event("input", { bubbles: true })); glow(i); } (function wait() { var i2 = d.querySelector("#advQ"); if ((i && i2 && i2 !== i) || Date.now() - t0 >= 650) { cb(d.querySelector(".opc")); return; } setTimeout(wait, 50); })(); }
   function dealText(d) { var dr = d.querySelector("#advDr"); if (!dr) return ""; var t = dr.textContent || ""; [].forEach.call(dr.querySelectorAll("input,textarea"), function (x) { t += " " + (x.value || ""); }); return t.toLowerCase(); }
   /* the e-mail addresses written in the open deal (its text and its fields), lower case, each once */
   function dealMails(d) {
@@ -1765,18 +2129,75 @@
      shown, or tapped ✓); his own typing is his; anything else Bassem passes is only offered as a one-tap suggestion. */
 
   /* @mail-pure-begin — no DOM and no state of the call (only T): worker/test/bassem-email.test.mjs runs this block on its own */
+  /* @lang-pure-begin — the languages a person may SPEAK in a live call (the 🌐 switch, «🌐 the language the person speaks» below):
+     the codes Anam's own speech-to-text takes (docs personas/voices/multilingual: 57 + the beta bn yue gu ha ln mt oc tg te; "yue" has 3
+     letters) as [code, native name, Arabic name (the one «بال» takes: بالفرنساوي), English name]. No DOM and no state of the call:
+     functions/_tests/call-lang.test.mjs runs this block on its own (inside @mail-pure: langName below reads it) */
+  var CALL_LANGS = [["ar", "العربية", "عربي", "Arabic"], ["en", "English", "إنجليزي", "English"], ["af", "Afrikaans", "أفريكانز", "Afrikaans"],
+    ["hy", "Հայերեն", "أرمني", "Armenian"], ["az", "Azərbaycanca", "أذربيجاني", "Azerbaijani"], ["be", "Беларуская", "بيلاروسي", "Belarusian"],
+    ["bn", "বাংলা", "بنغالي", "Bengali"], ["bs", "Bosanski", "بوسني", "Bosnian"], ["bg", "Български", "بلغاري", "Bulgarian"],
+    ["yue", "粵語", "كانتوني", "Cantonese"], ["ca", "Català", "كتالوني", "Catalan"], ["zh", "中文", "صيني", "Chinese"],
+    ["hr", "Hrvatski", "كرواتي", "Croatian"], ["cs", "Čeština", "تشيكي", "Czech"], ["da", "Dansk", "دنماركي", "Danish"],
+    ["nl", "Nederlands", "هولندي", "Dutch"], ["et", "Eesti", "إستوني", "Estonian"], ["fi", "Suomi", "فنلندي", "Finnish"],
+    ["fr", "Français", "فرنساوي", "French"], ["gl", "Galego", "جاليكي", "Galician"], ["de", "Deutsch", "ألماني", "German"],
+    ["el", "Ελληνικά", "يوناني", "Greek"], ["gu", "ગુજરાતી", "جوجاراتي", "Gujarati"], ["ha", "Hausa", "هوسا", "Hausa"],
+    ["he", "עברית", "عبري", "Hebrew"], ["hi", "हिन्दी", "هندي", "Hindi"], ["hu", "Magyar", "مجري", "Hungarian"],
+    ["is", "Íslenska", "آيسلندي", "Icelandic"], ["id", "Bahasa Indonesia", "إندونيسي", "Indonesian"], ["it", "Italiano", "إيطالي", "Italian"],
+    ["ja", "日本語", "ياباني", "Japanese"], ["kn", "ಕನ್ನಡ", "كانادا", "Kannada"], ["kk", "Қазақ тілі", "كازاخي", "Kazakh"],
+    ["ko", "한국어", "كوري", "Korean"], ["lv", "Latviešu", "لاتفي", "Latvian"], ["ln", "Lingála", "لينجالا", "Lingala"],
+    ["lt", "Lietuvių", "ليتواني", "Lithuanian"], ["mk", "Македонски", "مقدوني", "Macedonian"], ["ms", "Bahasa Melayu", "ملايو", "Malay"],
+    ["mt", "Malti", "مالطي", "Maltese"], ["mi", "Māori", "ماوري", "Maori"], ["mr", "मराठी", "ماراثي", "Marathi"],
+    ["ne", "नेपाली", "نيبالي", "Nepali"], ["no", "Norsk", "نرويجي", "Norwegian"], ["oc", "Occitan", "أوكسيتاني", "Occitan"],
+    ["fa", "فارسی", "فارسي", "Persian"], ["pl", "Polski", "بولندي", "Polish"], ["pt", "Português", "برتغالي", "Portuguese"],
+    ["ro", "Română", "روماني", "Romanian"], ["ru", "Русский", "روسي", "Russian"], ["sr", "Српски", "صربي", "Serbian"],
+    ["sk", "Slovenčina", "سلوفاكي", "Slovak"], ["sl", "Slovenščina", "سلوفيني", "Slovenian"], ["es", "Español", "إسباني", "Spanish"],
+    ["sw", "Kiswahili", "سواحيلي", "Swahili"], ["sv", "Svenska", "سويدي", "Swedish"], ["tl", "Tagalog", "تاجالوج", "Tagalog"],
+    ["tg", "Тоҷикӣ", "طاجيكي", "Tajik"], ["ta", "தமிழ்", "تاميلي", "Tamil"], ["te", "తెలుగు", "تيلوجو", "Telugu"],
+    ["th", "ไทย", "تايلاندي", "Thai"], ["tr", "Türkçe", "تركي", "Turkish"], ["uk", "Українська", "أوكراني", "Ukrainian"],
+    ["ur", "اردو", "أردو", "Urdu"], ["vi", "Tiếng Việt", "فيتنامي", "Vietnamese"], ["cy", "Cymraeg", "ويلزي", "Welsh"]];
+  function langRow(c) { c = String(c == null ? "" : c).toLowerCase(); for (var i = 0; i < CALL_LANGS.length; i++) if (CALL_LANGS[i][0] === c) return CALL_LANGS[i]; return null; }
+  /* the line the persona's LLM gets (addContext, no reply of its own) when the person chose what she / he hears; greet: the call starts with it */
+  function langNote(code, greet) {
+    var r = langRow(code) || langRow("ar"), nm = r[3], ar = r[0] === "ar";
+    return "LANGUAGE: " + r[0] + " (" + nm + "). The person tapped 🌐 and chose " + nm + ": their speech now reaches you in " + nm + ". From your next reply "
+      + (ar ? "speak Egyptian Arabic exactly as your rules say" : "speak only " + nm + ", natural and correct,") + " until they choose or speak another language."
+      + (greet ? " If you greeted them in another language, greet them again in one short sentence in " + (ar ? "Egyptian Arabic" : nm) + "." : "")
+      + " Tool arguments stay as your rules say (search words in Arabic or English).";
+  }
+  /* typed text → a code ONLY for an unmistakable non-Latin, non-Arabic script (2+ letters, more than its Latin ones): kana = ja (before Han),
+     Han zh, Hangul ko, Hebrew he, Greek el, Thai th, Armenian hy, Bengali bn, Gujarati gu, Tamil ta, Telugu te, Kannada kn; "menu" for
+     Cyrillic or Devanagari (several languages share them); "" for any text with an Arabic letter and for Latin text — Egyptians type English
+     and Franco («ana 3ayez») every day, so it never suggests anything there */
+  var LANG_SCR = [["ja", /[\u3040-\u30ff]/g], ["zh", /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/g], ["ko", /[\u1100-\u11ff\u3130-\u318f\uac00-\ud7af]/g],
+    ["he", /[\u05d0-\u05ea\u05f0-\u05f2]/g], ["el", /[\u0370-\u03ff\u1f00-\u1fff]/g], ["th", /[\u0e01-\u0e5b]/g], ["hy", /[\u0531-\u0587]/g],
+    ["bn", /[\u0980-\u09ff]/g], ["gu", /[\u0a80-\u0aff]/g], ["ta", /[\u0b80-\u0bff]/g], ["te", /[\u0c00-\u0c7f]/g], ["kn", /[\u0c80-\u0cff]/g],
+    ["menu", /[\u0400-\u04ff\u0900-\u097f]/g]];
+  function scriptLang(text) {
+    var s = String(text == null ? "" : text), best = "", bn = 0, i, n, lat;
+    if (/[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff]/.test(s)) return "";
+    lat = (s.match(/[a-z\u00c0-\u024f]/gi) || []).length;
+    for (i = 0; i < LANG_SCR.length; i++) { n = (s.match(LANG_SCR[i][1]) || []).length; if (n > bn) { bn = n; best = LANG_SCR[i][0]; } }
+    if (bn < 2 || lat >= bn) return "";
+    return best === "zh" && /[\u3040-\u30ff]/.test(s) ? "ja" : best; /* kana with Han = Japanese */
+  }
+  /* @lang-pure-end */
   var MAILRX = /^[a-z0-9!#$%&'*+\/=?^_`{|}~.-]{1,64}@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}$/;
   function mailOk(s) { s = String(s == null ? "" : s); return s.length <= 254 && MAILRX.test(s) && s.indexOf("..") < 0 && !/^\.|\.@/.test(s); }
   /* the spoken words of an address → its characters (Latin and Egyptian forms; letters said one by one are joined) */
-  var MSYM = [[/^(?:at|@|آت|ات|أت|إت|ايت|آيت)$/, "@"], [/^(?:dot|\.|point|period|دوت|نقطة|نقطه|بوينت)$/, "."],
-    [/^(?:underscore|_|اندرسكور|أندرسكور|إندرسكور|شرطةسفلية)$/, "_"], [/^(?:dash|hyphen|minus|-|داش|هايفن|شرطة|شرطه)$/, "-"]];
+  /* the 🌐 languages too: arobase / arroba / chiocciola / Klammeraffe / собака / 艾特 / ایٹ · punto / ponto / Punkt / nokta / точка / 点 / 點 /
+     ڈاٹ · Unterstrich / 下划线 / «tiret bas» «guion bajo» «trattino basso» «alt çizgi» · tiret / guion / trattino / Bindestrich / tire /
+     дефис — never Turkish «et» (French «et» = «and») nor «دات» (an Egyptian «ذات» can be heard so) */
+  var MSYM = [[/^(?:at|@|آت|ات|أت|إت|ايت|آيت|arobase|arroba|chiocciola|klammeraffe|собака|艾特|ایٹ)$/, "@"], [/^(?:dot|\.|point|period|دوت|نقطة|نقطه|بوينت|punto|ponto|punkt|nokta|точка|点|點|ڈاٹ)$/, "."],
+    [/^(?:underscore|_|اندرسكور|أندرسكور|إندرسكور|شرطةسفلية|unterstrich|下划线|tiretbas|guionbajo|trattinobasso|altçizgi)$/, "_"], [/^(?:dash|hyphen|minus|-|داش|هايفن|شرطة|شرطه|tiret|guion|guión|trattino|bindestrich|tire|дефис)$/, "-"]];
   var MTLD = { "كوم": "com", "نت": "net", "اورج": "org", "أورج": "org", "جوف": "gov" };
   var MSAY = { "@": ["آت", "at"], ".": ["دوت", "dot"], "_": ["أندرسكور", "underscore"], "-": ["داش", "dash"] };
   function mailTokens(text) {
     var s = String(text == null ? "" : text).toLowerCase()
       .replace(/[\u0660-\u0669]/g, function (c) { return String(c.charCodeAt(0) - 1632); }).replace(/[\u06f0-\u06f9]/g, function (c) { return String(c.charCodeAt(0) - 1776); })
       .replace(/[\u064b-\u0652\u0640]/g, "").replace(/\uff20/g, "@").replace(/\bat\s+sign\b/g, "at").replace(/\bunder\s+score\b/g, "underscore")
-      .replace(/[اأإ]ندر\s+سكور/g, "اندرسكور").replace(/شرط[ةه]\s+(?:سفلي[ةه]|تحتي[ةه])/g, "شرطةسفلية");
+      .replace(/[اأإ]ندر\s+سكور/g, "اندرسكور").replace(/شرط[ةه]\s+(?:سفلي[ةه]|تحتي[ةه])/g, "شرطةسفلية")
+      .replace(/(^|\s)(?:tiret\s+bas|gui[oó]n\s+bajo|trattino\s+basso|alt\s+çizgi)(?=\s|$)/g, function (m, a) { return a + m.slice(a.length).replace(/\s+/g, "").replace("ó", "o"); })
+      .replace(/\s*(艾特|点|點)\s*/g, " $1 ");
     var raw = s.split(/[\s,،;؛]+/), out = [], i, k, w, sym;
     for (i = 0; i < raw.length; i++) {
       w = raw[i].replace(/^[«»"'“”‘’()\[\]<>{}:!?؟]+/, "").replace(/[«»"'“”‘’()\[\]<>{}:!?؟]+$/, "");
@@ -1880,8 +2301,8 @@
     var c = " " + String(market || "").toLowerCase().replace(/^(africa|asia):/, "") + " ";
     return BIZ.ar.indexOf(c) > -1 ? ["ar"] : BIZ.arfr.indexOf(c) > -1 ? ["ar", "fr"] : BIZ.fr.indexOf(c) > -1 ? ["fr"] : BIZ.enfr.indexOf(c) > -1 ? ["en", "fr"] : BIZ.pt.indexOf(c) > -1 ? ["pt", "en"] : ["en"];
   }
-  var LNAME = { ar: ["عربي", "Arabic"], en: ["إنجليزي", "English"], fr: ["فرنساوي", "French"], pt: ["برتغالي", "Portuguese"], zh: ["صيني", "Chinese"], sw: ["سواحيلي", "Swahili"], es: ["إسباني", "Spanish"], de: ["ألماني", "German"], tr: ["تركي", "Turkish"], ru: ["روسي", "Russian"], it: ["إيطالي", "Italian"] };
-  function langName(l) { var n = LNAME[l]; return n ? T(n[0], n[1]) : String(l || "").toUpperCase(); }
+  /* every 🌐 language (CALL_LANGS; the 11 e-mail languages keep their names: فرنساوي، إسباني …) */
+  function langName(l) { var n = langRow(l); return n ? T(n[2], n[3]) : String(l || "").toUpperCase(); }
   /* which opportunity of the call an e-mail is about: the most words of its title / buyer / ref (and original title) in the e-mail; the
      notice on the screen needs one such word, any other two — an e-mail about nothing the tools returned starts a deal of its own */
   var STOPW = " the and for with from our your this that dear sir madam regards supply tender notice request please kind best السادة تحية طيبة وبعد من في على الى إلى عن مع هذا هذه بخصوص ";
@@ -1995,7 +2416,7 @@
     if (name === "bassem_intel") return { k: "intel:" + id, o: { ref: "", title: title, entity: String(x.entity || ""), market: String(x.market || ""), country: String(x.market_name || x.country || ""), source_url: String(x.url || ""), closing_date: String(x.deadline || "").slice(0, 10), kind: String(x.kind || "") } };
     var sec = String(x.section || "");
     if (sec && !/^tenders?$/.test(sec)) return null; /* RFQs, factories, products … are answered through the platform, not by e-mail */
-    return { k: "item:" + id, o: { ref: String(x.ref_no || x.ref || id), title: title, entity: String(x.entity || ""), market: String(x.market || "local"), country: String(x.country || ""), source_url: String(x.documents_url || x.url || x.open_url || ""), closing_date: String(x.deadline || "").slice(0, 10), kind: "gov" } };
+    return { k: "item:" + id, o: { ref: String(x.ref_no || x.ref || id), title: title, entity: String(x.entity || ""), market: String(x.market || "local"), country: String(x.country || ""), source_url: enc(x.documents_url || x.url || x.open_url || ""), closing_date: String(x.deadline || "").slice(0, 10), kind: "gov" } };
   }
   /* a completed tool call (anam-agent:tool-call-completed, both the SDK call and the widget): only what the platform's SERVER tools returned
      — never a client tool's answer (ours quote the address he dictated, which must stay «said», never become «data») */
@@ -2082,13 +2503,18 @@
     if (i.several) return T("في بيانات الفرصة أكتر من عنوان (" + i.several.join("، ") + "): اسأله يختار أنهي واحد، وحطه في to.", "The opportunity's data has several addresses (" + i.several.join(", ") + "): ask him which one, and put it in to.");
     return T("خانة المستلم فاضية: اسأله مرة واحدة «أبعته لمين؟» — ماتقولش إنك مش عارف، وماتخمّنش عنوان — ولما يقوله حطه في to (حتى لو قاله بالكلام زي info آت … دوت com).", "The To box is empty: ask him once «Who shall I send it to?» — never say you don't know, never guess one — and when he says it put it in to (even spoken, like info at … dot com).");
   }
-  /* the answer of bassem_draft_email: what is on the screen, and what Bassem does now (the 2-3 sentence summary, «تحب أبعته؟») */
-  function draftWords(where, info, lang, o) {
-    var bl = o && (o.market || o.country) ? bizLang(o.market) : null, foreign = lang && lang !== "ar", L = [];
+  /* the answer of bassem_draft_email: what is on the screen, and what Bassem does now (the 2-3 sentence summary, «تحب أبعته؟»); cl = the
+     language the member speaks in the call (callLang(): the 🌐 choice, else Arabic) — "ar" gives exactly the words of before */
+  function draftWords(where, info, lang, o, cl) {
+    var bl = o && (o.market || o.country) ? bizLang(o.market) : null, foreign = lang && lang !== "ar", L = [], ml, fo;
+    cl = langRow(cl) ? String(cl).toLowerCase() : "ar";
     L.push(T((where === "room" ? "المسودة في غرفة الصفقة قدامه على الشاشة" : "المسودة قدامه على الشاشة") + (lang ? " بال" + langName(lang) : "") + "، ولسه مااتبعتتش.", (where === "room" ? "The draft is in the deal room on his screen" : "The draft is on his screen") + (lang ? " in " + langName(lang) : "") + ", not sent yet."));
     L.push(toWords(info));
-    L.push(T("قوله دلوقتي في جملتين أو تلاتة بالمصري الإيميل بيقول إيه (رايح لمين، وبيطلب إيه، وأهم نقطة فيه) من غير ما تقراه" + (foreign ? "، وده مهم لأنه مش بالعربي" : "") + "، وبعدين اسأله «تحب أبعته؟». لو طلب تقراهوله اقراه كله" + (foreign ? "، ولو مش فاهم اللغة قوله معناه بالمصري جملة جملة" : "") + ".",
+    if (cl === "ar") L.push(T("قوله دلوقتي في جملتين أو تلاتة بالمصري الإيميل بيقول إيه (رايح لمين، وبيطلب إيه، وأهم نقطة فيه) من غير ما تقراه" + (foreign ? "، وده مهم لأنه مش بالعربي" : "") + "، وبعدين اسأله «تحب أبعته؟». لو طلب تقراهوله اقراه كله" + (foreign ? "، ولو مش فاهم اللغة قوله معناه بالمصري جملة جملة" : "") + ".",
       "Now tell him in 2-3 sentences what the e-mail says (to whom, what it asks, the key point) without reading it out" + (foreign ? " — it matters, it is not in Arabic" : "") + ", then ask «Shall I send it?». Read it in full only if he asks."));
+    else { ml = langName(cl); fo = !!lang && lang !== cl;
+      L.push(T("قوله دلوقتي في جملتين أو تلاتة بال" + ml + " (لغته هو) الإيميل بيقول إيه (رايح لمين، وبيطلب إيه، وأهم نقطة فيه) من غير ما تقراه" + (fo ? "، وده مهم لأنه مش بلغته" : "") + "، وبعدين اسأله بلغته «تحب أبعته؟». لو طلب تقراهوله اقراه كله" + (fo ? "، ولو مش فاهم اللغة قوله معناه بلغته جملة جملة" : "") + ".",
+        "Now tell him in 2-3 sentences in his language (" + ml + ") what the e-mail says (to whom, what it asks, the key point) without reading it out" + (fo ? " — it matters, it is not in his language" : "") + ", then ask him in his language «Shall I send it?». Read it in full only if he asks" + (fo ? "; if he does not understand that language, tell him its meaning in his language sentence by sentence" : "") + ".")); }
     if (lang && bl && bl.indexOf(lang) < 0) L.push(T("ملاحظة: الجهة في " + (o.country || o.market) + " والتعامل الرسمي معاها بال" + langName(bl[0]) + "؛ لو هو ماطلبش ال" + langName(lang) + " بنفسه، اكتب الإيميل تاني بال" + langName(bl[0]) + ".",
       "Note: the buyer is in " + (o.country || o.market) + " and does business in " + langName(bl[0]) + "; unless he asked for " + langName(lang) + " himself, write it again in " + langName(bl[0]) + "."));
     return L.join(" ");
@@ -2277,7 +2703,7 @@
     /* phones: the screen sits under the video — the «الشاشة» button pings, as it does when the screen changes */
     var sw = ov && ov.querySelector(".jnl-hd .sw"); if (sw) { sw.classList.remove("new"); void sw.offsetWidth; sw.classList.add("new"); }
     done("bassem_draft_email");
-    return draftWords("cmp", info, lg, pick && pick.o);
+    return draftWords("cmp", info, lg, pick && pick.o, callLang());
   }
   /* the composer's draft FROM THE PLATFORM (Bassem's bassem_send_email, or the member's own «📤 ابعت») → the text for Bassem */
   function cmpSendNow(via) {
@@ -2344,7 +2770,7 @@
           var sg0 = d.querySelector("#advStg"), mb0 = d.querySelector("#mBody"); ROOM_DEAL = sg0 ? String(sg0.getAttribute("data-stage") || "") : "";
           ROOM_DRAFT = "b" + Date.now().toString(36); ROOM_AT = Date.now(); if (mb0) mb0.setAttribute("data-bassem-draft", ROOM_DRAFT); /* roomSend sends only this form */
           glow(d.querySelector("#mBody")); done("bassem_draft_email");
-          res(draftWords("room", info, mailLang(String(a.subject || "") + "\n" + String(a.body || ""), a.language), roomOpp(d)));
+          res(draftWords("room", info, mailLang(String(a.subject || "") + "\n" + String(a.body || ""), a.language), roomOpp(d), callLang()));
         }, 300);
       });
     });
@@ -2433,6 +2859,9 @@
      platform_item results) is remembered; a link in a message he sends is replaced by the remembered link of the same host it is closest
      to; a foreign link that matches nothing is not sent at all (the platform's own pages pass as they are). */
   var URLS = {}, URLS_N = 0;
+  /* a link as it goes into a message or an e-mail: percent-encoded — janna_lookup's lean answer (POST from Anam) gives open_url decoded, Arabic
+     letters and all, so the model copies it right (speed review 2026-11-20 #12); an encoded link stays as it is */
+  function enc(u) { u = String(u == null ? "" : u); if (!/[^\x21-\x7e]/.test(u)) return u; try { return encodeURI(decodeURI(u)); } catch (e) { try { return encodeURI(u); } catch (x) { return u; } } }
   function urlsKeep(x) {
     var s = ""; try { s = typeof x === "string" ? x : JSON.stringify(x); } catch (e) { return; }
     var m = String(s || "").replace(/\\\//g, "/").match(/https?:\/\/[^\s"'<>\\]+/g) || [];
@@ -2455,15 +2884,15 @@
     return String(msg || "").replace(/(https?:\/\/|www\.)[^\s<>"'«»]+/gi, function (u0) {
       var u = u0.replace(/[),.;:\]]+$/, ""), tail = u0.slice(u.length), k, d, lim, best = "", bd = 1e9, h;
       if (/^www\./i.test(u)) u = "https://" + u;
-      if (URLS[u]) return u + tail;
+      if (URLS[u]) return enc(u) + tail;
       h = urlHost(u);
       for (k in URLS) {
         if (!URLS.hasOwnProperty(k) || urlHost(k) !== h) continue;
         lim = Math.max(3, Math.round(k.length * 0.04)); d = urlDist(u, k, lim);
         if (d <= lim && d < bd) { bd = d; best = k; }
       }
-      if (best) return best + tail;
-      if (h === "madeinegyptgate.com") return u + tail;
+      if (best) return enc(best) + tail;
+      if (h === "madeinegyptgate.com") return enc(u) + tail;
       return T("(الرابط الرسمي موجود على صفحة الفرصة في المنصة)", "(the official link is on the opportunity's page on the platform)") + tail;
     });
   }
@@ -2808,10 +3237,13 @@
   /* the last call's start, in ms after the «ابدأ» tap (tmMark): {persona, server: the Worker's Server-Timing, token, sdk, mic, stream,
      connected, ready, video, play, voice} — null before the first call */
   window.JANNA_LIVE.timing = function () { return TM ? tmOut(TM) : null; };
-  /* «وضع الدوشة»: noise() = the guard's state; noise(true | false) switches noisy-room mode (kept for the tab) */
+  /* «وضع الدوشة»: noise() = the guard's state; noise(true | false) switches noisy-room mode (this call only) */
+  /* 🌐 lang() = {current, def, stored, applied, warn}; lang(code) = the person's choice (tests, the console) */
+  window.JANNA_LIVE.lang = function (code) { if (code != null && code !== "") langSet(code); return { current: callLang(), def: langDef(), stored: langStored(), applied: LG.applied, warn: LG.warn }; };
   window.JANNA_LIVE.noise = function (on) {
     if (on === true || on === false) nzSet(on, "api");
     var z = LV && LV.nz;
-    return { on: NZ.on, why: NZ.why, false_interruptions: NZ.fis.length, last: NZ.last, offer: Date.now() < NZ.offerUntil, gate: !!(z && z.gate), eos: z ? z.eos : null, eos_applied: !!(z && z.eosOk), server_warning: (z && z.warn) || "", meter: !!(z && z.meterOk), mic: (LV && LV.micUsed) || "", mic_error: (LV && LV.micErr) || "" };
+    return { on: NZ.on, why: NZ.why, false_interruptions: NZ.fis.length, last: NZ.last, offer: Date.now() < NZ.offerUntil, gate: !!(z && z.gate), eos: z ? z.eos : null, eos_applied: !!(z && z.eosOk), server_warning: (z && z.warn) || "", meter: !!(z && z.meterOk), mic: (LV && LV.micUsed) || "", mic_error: (LV && LV.micErr) || "",
+      near: { measured: !!(z && z.nearEver), now: !!(z && z.nearOk), opens: NZ.near, not_speech: NZ.nearMiss, k: NZ_NEAR, self: NZ_SELF, his: NZ.his, level: z ? z.lv : -1, room: z ? z.room : 0, threshold: z ? z.thr : 0 }, missed_by_anam: NZ.missed };
   };
 })();
