@@ -292,7 +292,7 @@
   "glass": "glass-ceramics"
  },
  "_admin": "The Admin Control Center (deploy 2): key «admin» → /admin/ (static_paths), a standalone page written by panel.part.py through PAGE_WRITERS (noindex,nofollow, never in a sitemap; /admin.html → /admin/ 301 from the build). Team boards: «seo-team» → /seo-team/, «data-desk» → /data-desk/.",
- "_pwa": "The installable app (PWA, seo_build.part.py emit_pwa): /manifest.webmanifest (AR) + /manifest.en.webmanifest (EN), /sw.js, /offline/, the app tags in every page head (pwa_head) and data/pwa.js; icons in img/app/ (tools/app_icons.py). kill: true (or MIG_PWA_KILL=1 at build time) ships a sw.js that deletes the app's caches and unregisters itself, and pages that unregister it: the kill switch. never / never_files only ADD to the built-in lists of paths the worker never touches (api, admin, login, dashboard, advisor, meeting, inbox, seo-admin, seo-team, data-desk, pay, panel; /data/overlay.js and the old system's files of deploy/legacy-live.txt). cache_max: entries per runtime cache (code: /data/ ?v= scripts, /assets/ and /fonts/ code; img: pictures).",
+ "_pwa": "The installable app (PWA, seo_build.part.py emit_pwa): /manifest.webmanifest (AR) + /manifest.en.webmanifest (EN), /sw.js, /offline/, the app tags in every page head (pwa_head) and data/pwa.js; icons in img/app/ (tools/app_icons.py). kill: true (or MIG_PWA_KILL=1 at build time) ships a sw.js that deletes the app's caches and unregisters itself, and pages that unregister it: the kill switch. never / never_files only ADD to the built-in lists of paths the worker never touches (api, admin, login, dashboard, advisor, meeting, inbox, seo-admin, seo-team, data-desk, pay, panel, downloads; /data/overlay.js, /app/android.apk and the old system's files of deploy/legacy-live.txt). cache_max: entries per runtime cache (code: /data/ ?v= scripts, /assets/ and /fonts/ code; img: pictures).",
  "pwa": {
   "kill": false,
   "never": [],
@@ -301,5 +301,12 @@
    "code": 80,
    "img": 250
   }
+ },
+ "_app": "The app download page /app/ + /en/app/, the Android APK channel /downloads/android/ and /.well-known/assetlinks.json (seo_app.part.py). android_package: the app id of app/ (Capacitor). android_cert_sha256: the SHA-256 of every certificate that signs the Android app, «AA:BB:…» (keytool -list -v / apksigner verify --print-certs): today the release key of the APK on the site; add Google Play's app signing key (Play Console → App integrity) when the Play app exists. Public values (served in assetlinks.json). tools/publish_apk.py and deploy/stage.py (through assetlinks.json) refuse an APK whose signer is not listed here, and the debug key always. The APKs themselves: downloads/android/, written by tools/publish_apk.py (CLAUDE.md 5.7).",
+ "app": {
+  "android_package": "com.madeinegyptgate.app",
+  "android_cert_sha256": [
+   "2C:AD:3C:DA:9D:5D:BA:2E:6C:12:66:43:36:E5:73:67:57:F3:B9:25:6F:C3:8B:BA:0B:E1:2E:DE:9E:43:EB:EE"
+  ]
  }
 }

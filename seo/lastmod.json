@@ -2,24 +2,29 @@
 "_about": "Persisted lastmod per path (seo_build.part.py): the date is kept while the content hash is unchanged; \"en\": an English twin was published; \"gone\": first build without the page (kept 400 days for redirects).",
 "pages": {
 "/": {
-"hash": "591530e82c70",
-"lastmod": "2026-11-19"
+"hash": "bb27cf10dd34",
+"lastmod": "2026-11-20"
 },
 "/about/": {
-"hash": "90589483bcbf",
-"lastmod": "2026-11-19"
+"hash": "7ee0c2004dd3",
+"lastmod": "2026-11-20"
 },
 "/admin/": {
 "hash": "53d604a9ad91",
 "lastmod": "2026-11-18"
 },
 "/advisor/": {
-"hash": "2c027bb6330a",
-"lastmod": "2026-11-19"
+"hash": "ea7878891c08",
+"lastmod": "2026-11-20"
 },
 "/agencies/": {
-"hash": "08c020d30094",
-"lastmod": "2026-11-19"
+"hash": "b7add147a6c5",
+"lastmod": "2026-11-20"
+},
+"/app/": {
+"hash": "bd6d293171bb",
+"lastmod": "2026-11-20",
+"en": 1
 },
 "/awards/": {
 "hash": "4297c2916c6a",
@@ -122,8 +127,8 @@
 "en": 1
 },
 "/awards/search/": {
-"hash": "76183fc00249",
-"lastmod": "2026-11-19"
+"hash": "e00ec4738526",
+"lastmod": "2026-11-20"
 },
 "/awards/uaes-modon-awards-316mln-contract-for-project-in-egypts-ras-el-hekma-r/": {
 "hash": "a5dfb99edab7",
@@ -131,44 +136,44 @@
 "en": 1
 },
 "/bourse/": {
-"hash": "2c027bb6330a",
-"lastmod": "2026-11-19"
+"hash": "ea7878891c08",
+"lastmod": "2026-11-20"
 },
 "/consultant-leads/": {
-"hash": "a70f1e9c1e34",
-"lastmod": "2026-11-19"
+"hash": "91312dc5fb6d",
+"lastmod": "2026-11-20"
 },
 "/contact/": {
-"hash": "dcdd926646bf",
-"lastmod": "2026-11-19"
+"hash": "c105e6cd09cd",
+"lastmod": "2026-11-20"
 },
 "/contractor-leads/": {
-"hash": "a73d2214902a",
-"lastmod": "2026-11-19"
+"hash": "3240cca98d1a",
+"lastmod": "2026-11-20"
 },
 "/contractors/": {
-"hash": "f68c23b66051",
-"lastmod": "2026-11-19"
+"hash": "db0c685eafa4",
+"lastmod": "2026-11-20"
 },
 "/dashboard/": {
-"hash": "2fd1bf12fa7b",
-"lastmod": "2026-11-19"
+"hash": "6e36f1e0edad",
+"lastmod": "2026-11-20"
 },
 "/data-desk/": {
-"hash": "dc4196ada14d",
-"lastmod": "2026-11-19"
+"hash": "d39352852870",
+"lastmod": "2026-11-20"
 },
 "/deal/": {
-"hash": "2c027bb6330a",
-"lastmod": "2026-11-19"
+"hash": "ea7878891c08",
+"lastmod": "2026-11-20"
 },
 "/en/": {
-"hash": "48dd841b2783",
-"lastmod": "2026-11-19"
+"hash": "31c3b85342ee",
+"lastmod": "2026-11-20"
 },
 "/events/": {
-"hash": "c2fcd6e4b128",
-"lastmod": "2026-11-19",
+"hash": "2b04018df04a",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/events/africa-health-excon-2027/": {
@@ -197,8 +202,8 @@
 "en": 1
 },
 "/events/calendar/": {
-"hash": "83ea9a1eeafc",
-"lastmod": "2026-11-19"
+"hash": "c8365d7e96c2",
+"lastmod": "2026-11-20"
 },
 "/events/edex-2027/": {
 "hash": "60b7dcdafd7d",
@@ -2823,8 +2828,8 @@
 "lastmod": "2026-11-18"
 },
 "/factories/search/": {
-"hash": "c2362011b6ec",
-"lastmod": "2026-11-19"
+"hash": "2dc04f1e5fb1",
+"lastmod": "2026-11-20"
 },
 "/factories/shotmed-paper-industries/": {
 "hash": "dde1f59871c9",
@@ -16601,8 +16606,8 @@
 "en": 1
 },
 "/governorates/explore/": {
-"hash": "a100a7b14e33",
-"lastmod": "2026-11-19"
+"hash": "426bc4e61846",
+"lastmod": "2026-11-20"
 },
 "/governorates/faiyum/": {
 "hash": "fcd6ded5aaab",
@@ -16784,8 +16789,8 @@
 "en": 1
 },
 "/inbox/": {
-"hash": "f2c926644c6d",
-"lastmod": "2026-11-19"
+"hash": "39d40e3b2183",
+"lastmod": "2026-11-20"
 },
 "/industrial-zones/": {
 "hash": "bcd82bd0b11e",
@@ -16793,8 +16798,8 @@
 "en": 1
 },
 "/industrial-zones/explore/": {
-"hash": "3dc1671c35fa",
-"lastmod": "2026-11-19"
+"hash": "9a2fe24032b3",
+"lastmod": "2026-11-20"
 },
 "/industrial-zones/fz-alexandria/": {
 "hash": "f09126732990",
@@ -17993,36 +17998,36 @@
 "lastmod": "2026-11-18"
 },
 "/intl/": {
-"hash": "27ca56b1824f",
-"lastmod": "2026-11-19"
+"hash": "b5ec5e2a47a6",
+"lastmod": "2026-11-20"
 },
 "/leads/": {
-"hash": "95e06a1244d9",
-"lastmod": "2026-11-19"
+"hash": "e1e43b12976d",
+"lastmod": "2026-11-20"
 },
 "/legal/": {
-"hash": "35e8f3b9bd80",
-"lastmod": "2026-11-19"
+"hash": "e3b249606c74",
+"lastmod": "2026-11-20"
 },
 "/login/": {
 "hash": "0587de74be50",
 "lastmod": "2026-11-18"
 },
 "/map/": {
-"hash": "aa28e57136cd",
-"lastmod": "2026-11-19"
+"hash": "b52a1397396b",
+"lastmod": "2026-11-20"
 },
 "/market/": {
-"hash": "2d59725d078f",
-"lastmod": "2026-11-19"
+"hash": "128c2ebf891a",
+"lastmod": "2026-11-20"
 },
 "/media-center/": {
-"hash": "20c3a43f42a7",
-"lastmod": "2026-11-19"
+"hash": "33b132f26447",
+"lastmod": "2026-11-20"
 },
 "/meeting/": {
-"hash": "2c027bb6330a",
-"lastmod": "2026-11-19"
+"hash": "ea7878891c08",
+"lastmod": "2026-11-20"
 },
 "/news/": {
 "hash": "5580df5207a0",
@@ -18528,12 +18533,12 @@
 "en": 1
 },
 "/news/search/": {
-"hash": "81795a8b6e2b",
-"lastmod": "2026-11-19"
+"hash": "c582fe60380f",
+"lastmod": "2026-11-20"
 },
 "/offers/": {
-"hash": "be4c06ffb783",
-"lastmod": "2026-11-19",
+"hash": "18d7a9650e0e",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/offers/ariika-fringe-honeycomb-throw-blanket/": {
@@ -18825,8 +18830,8 @@
 "lastmod": "2026-11-18"
 },
 "/offers/search/": {
-"hash": "81d4be0cd7a8",
-"lastmod": "2026-11-19"
+"hash": "cc4bb7bfd334",
+"lastmod": "2026-11-20"
 },
 "/offers/seoudi-abu-auf-classic-instant-coffee-100-g/": {
 "hash": "c3b774e59053",
@@ -18949,12 +18954,12 @@
 "lastmod": "2026-11-18"
 },
 "/outlets/": {
-"hash": "a30a01074fc3",
-"lastmod": "2026-11-19"
+"hash": "e7040d877327",
+"lastmod": "2026-11-20"
 },
 "/pay/": {
-"hash": "90d18c887e34",
-"lastmod": "2026-11-19"
+"hash": "aa38e18e680f",
+"lastmod": "2026-11-20"
 },
 "/products/": {
 "hash": "1d7fd7fa4637",
@@ -18977,8 +18982,8 @@
 "en": 1
 },
 "/project-news/": {
-"hash": "8fc36baa5703",
-"lastmod": "2026-11-19"
+"hash": "21e5332a65a8",
+"lastmod": "2026-11-20"
 },
 "/projects/": {
 "hash": "d1ae8c7d0517",
@@ -19311,16 +19316,16 @@
 "en": 1
 },
 "/projects/search/": {
-"hash": "a2862279c94a",
-"lastmod": "2026-11-19"
+"hash": "acee762b8879",
+"lastmod": "2026-11-20"
 },
 "/radar/": {
-"hash": "c943066f1109",
-"lastmod": "2026-11-19"
+"hash": "87c4dd6a67af",
+"lastmod": "2026-11-20"
 },
 "/register/": {
-"hash": "00d36aa5e23f",
-"lastmod": "2026-11-19"
+"hash": "c6f3b249aaab",
+"lastmod": "2026-11-20"
 },
 "/rfq/": {
 "hash": "590a51566c65",
@@ -19328,8 +19333,8 @@
 "en": 1
 },
 "/rfq/search/": {
-"hash": "0fc43a3116cc",
-"lastmod": "2026-11-19"
+"hash": "244b97975357",
+"lastmod": "2026-11-20"
 },
 "/rfq/تقرير-تحليل-طلب-عرض-سعر-توريد-غلاف-وع/": {
 "hash": "2b838961472e",
@@ -19357,12 +19362,12 @@
 "en": 1
 },
 "/seo-admin/": {
-"hash": "bca395bd4087",
-"lastmod": "2026-11-19"
+"hash": "c9095ad59cc4",
+"lastmod": "2026-11-20"
 },
 "/seo-team/": {
-"hash": "1807e00a7894",
-"lastmod": "2026-11-19"
+"hash": "7077b5b49f80",
+"lastmod": "2026-11-20"
 },
 "/site-map/": {
 "hash": "3cf08379a657",
@@ -19370,8 +19375,8 @@
 "en": 1
 },
 "/suppliers/": {
-"hash": "51234645dbac",
-"lastmod": "2026-11-19"
+"hash": "2697536511f2",
+"lastmod": "2026-11-20"
 },
 "/tender-item/12-2026-bapco-br2630001687/": {
 "hash": "b0906a1a88cb",
@@ -19379,8 +19384,8 @@
 "en": 1
 },
 "/tender-item/13-2026-masen/": {
-"hash": "3881a6016021",
-"lastmod": "2026-10-14",
+"hash": "d2f3177629e2",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/tender-item/15-2026-bapco-br2630002209/": {
@@ -19416,8 +19421,8 @@
 "en": 1
 },
 "/tender-item/5-2026-bngec-rfq-be2630001259/": {
-"hash": "0b217f9e4544",
-"lastmod": "2026-11-05",
+"hash": "15afd9002da0",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/tender-item/508-2026-btb-phc-134-2026/": {
@@ -19846,8 +19851,8 @@
 "lastmod": "2026-07-20"
 },
 "/tender-item/et-ce-boa-541070-go-rfq/": {
-"hash": "d01d2d07c2fa",
-"lastmod": "2026-11-03",
+"hash": "bca7e33493b5",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/tender-item/et-moh-537673-go-rfb/": {
@@ -19911,8 +19916,8 @@
 "en": 1
 },
 "/tender-item/ne-p-lire-564566-go-rfb/": {
-"hash": "647430504183",
-"lastmod": "2026-10-30",
+"hash": "3a1ae16d98bb",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/tender-item/pk-kp-sdu-577974-go-rfb/": {
@@ -19960,18 +19965,18 @@
 "en": 1
 },
 "/tender-item/ug-moes-535422-go-rfb/": {
-"hash": "023037c7e347",
-"lastmod": "2026-10-01",
+"hash": "f939f95a5281",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/tender-item/uz-inson-rfb-2-2-7-8/": {
-"hash": "ae44630b6c25",
-"lastmod": "2026-11-04",
+"hash": "54d5ab3de1df",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/tender-item/wjir-aoi-32b-f-68c/": {
-"hash": "363392535bbc",
-"lastmod": "2026-10-13",
+"hash": "9bc4b3b0e228",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/tender-item/zr-pif-574511-go-rfb/": {
@@ -21476,8 +21481,8 @@
 "lastmod": "2026-11-18"
 },
 "/tenders/": {
-"hash": "f20c3f67c747",
-"lastmod": "2026-11-19",
+"hash": "fc5a3f34e549",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/tenders/category/chemicals-water/": {
@@ -21521,13 +21526,13 @@
 "en": 1
 },
 "/tenders/category/international/": {
-"hash": "da96f5f7807e",
-"lastmod": "2026-11-19",
+"hash": "10b0e427f7b8",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/tenders/category/international/page/2/": {
-"hash": "4a979df788fe",
-"lastmod": "2026-11-19",
+"hash": "d47fcd338128",
+"lastmod": "2026-11-20",
 "en": 1
 },
 "/tenders/category/it-computers/": {
@@ -21606,20 +21611,20 @@
 "lastmod": "2026-11-19"
 },
 "/tenders/search/": {
-"hash": "0c59e980af2a",
-"lastmod": "2026-11-19"
+"hash": "8603d4af7899",
+"lastmod": "2026-11-20"
 },
 "/track/": {
-"hash": "729e92c41db9",
-"lastmod": "2026-11-19"
+"hash": "bcb8cc4bd1b4",
+"lastmod": "2026-11-20"
 },
 "/useful-links/": {
-"hash": "a7c2ce6c085c",
-"lastmod": "2026-11-19"
+"hash": "4b848ca0925b",
+"lastmod": "2026-11-20"
 },
 "/videos/": {
-"hash": "93195670ccee",
-"lastmod": "2026-11-19"
+"hash": "4281945650b2",
+"lastmod": "2026-11-20"
 }
 }
 }

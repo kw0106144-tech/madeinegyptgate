@@ -1,7 +1,10 @@
-# The two files the site must serve for app links (later)
+# The two files the site must serve for app links
 
-**Not part of the site build yet, on purpose.** They only work with values the owner gets from the stores, and a wrong file is
-worse than none. Until they are served, links to madeinegyptgate.com keep opening in the browser (everything else in the app works).
+**Android: made by the site build (since 2026-11-20).** The build writes `/.well-known/assetlinks.json` itself (`seo_app.part.py`) from
+`seo/config.json` `"app"`: the package and `android_cert_sha256`, today the release key that signs the APK offered on `/app/`
+(CLAUDE.md 5.7). The template here only shows the format: when the Google Play app exists, add Play's **app signing key** SHA-256 to
+`android_cert_sha256` in `seo/config.json`, not here. **iOS: not served yet, on purpose**: `apple-app-site-association` needs the
+Apple Team ID, and a wrong file is worse than none. Until it is served, links to madeinegyptgate.com open in the browser on iPhone.
 
 | File here | Served by the site at | Fill in | Where the value comes from |
 |---|---|---|---|
