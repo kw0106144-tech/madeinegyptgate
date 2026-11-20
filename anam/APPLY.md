@@ -215,7 +215,9 @@ Why it is needed:
 
 ## 6. voiceDetectionOptions: no change, for all three personas
 
-The full reasons are in each persona file.
+The full reasons are in each persona file. (Later round, prepared in `anam/calls/`, NOT APPLIED: Janna EN gets `sttProvider` `anam` for
+the 🌐 language switch, her four numbers unchanged. When that write is made, update this section and `anam/live/README.md` in the same
+commit as the new live copies.)
 
 - `speechEnhancementLevel` is already 1, the maximum.
 - `endOfSpeechSensitivity` 0.45 is the value the noise guard restores after its noisy-mode 0.35, which it sends per call by persona_config. A new persona value would change quiet calls too and make the client restore the wrong value.
