@@ -194,7 +194,8 @@ describe("any-language calls (2026-11-20): «بنك المعلومات» stays A
       assert.deepEqual(ask(s), [], s);
   });
   test("Arabic, English and Egyptian Franco questions are captured exactly as before", () => {
-    assert.deepEqual(ask("الباقة المميزة بكام؟").map(q => [q.question, q.intent, q.words]), [["الباقة المميزة بكام؟", "plans", ["باقه", "مميزه", "بكام"]]]);
+    /* lookup-index 2026-11-20: stem() meets the singular ة with the plural ات, so «المميزة» is «مميز» (as «مميزات») */
+    assert.deepEqual(ask("الباقة المميزة بكام؟").map(q => [q.question, q.intent, q.words]), [["الباقة المميزة بكام؟", "plans", ["باقه", "مميز", "بكام"]]]);
     assert.deepEqual(ask("أنا أحمد محمود صاحب مصنع حديد، الباقة المميزة بكام؟").map(q => q.question), ["الباقة المميزة بكام؟"]);
     assert.deepEqual(ask("How much is the premium plan?").map(q => [q.question, q.intent, q.words]), [["How much is the premium plan?", "plans", ["premium", "plan"]]]);
     assert.deepEqual(ask("el plan b kam?").map(q => [q.question, q.intent, q.words]), [["el plan b kam?", "plans", ["el", "plan", "kam"]]]);

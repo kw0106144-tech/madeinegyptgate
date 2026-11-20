@@ -19,7 +19,7 @@
    deals, follow tasks of follows that are gone, past meetings, and Janna's registration task once the visitor is a member.
    OPEN TASKS + DUE DATES GO FIRST into the next call's context (tasksContext → memory.js memoryContext / visitor.js visitorContext). */
 import { iso, cairoDay, cairoHM, addDays, sha256, jparse } from "./common.js";
-import { norm, tokens, clean, forLLM, instructionLike, asciiDigits, MASK_EMAIL, MASK_PHONE } from "./text.js";
+import { norm, tokens, clean, forLLM, instructionLike, asciiDigits, MASK_EMAIL, MASK_PHONE, stem } from "./text.js";
 import { hasTable } from "./acc-base.js";
 
 export const TASK_LIM = Object.freeze({ title: 160, open: 200, context: 8, list: 20, perCall: 24 });
@@ -63,7 +63,7 @@ const TASK_STOP = new Set(["فكرني", "فكريني", "تابعلي", "تاب
   "الصبح", "بالليل", "يوم", "الاسبوع", "اسبوع", "الشهر", "الجاي", "الجايه", "ونص", "وربع", "ايميل", "الايميل", "واتساب", "الواتساب", "واتس", "رساله", "هبعتلك", "هتابع",
   "هنتابع", "هفكرك", "هبلغك", "هرجعلك", "هكلمك", "هتواصل", "هجهزلك", "هحضرلك", "هكتبلك", "هدورلك", "هشوفلك", "معاك", "معاكي", "عليه", "عليها", "ده", "دي", "دا", "كده",
   "خلاص", "طيب", "تمام", "يعني", "كمان", "بقى", "بقي", "برضه", "برضو", "ياريت", "يا", "ريت", "اوكي", "حاضر", "ماشي", "بس", "اهو", "دلوقتي", "حالا", "فورا", "اول", "ما", "تقدر", "تقدري",
-  "remind", "send", "follow", "find", "call", "please", "tomorrow", "today", "email", "whatsapp", "me", "you", "will", "can", "could", "up", "ll", "ok", "okay", "then", "also", "now"].map(w => norm(w)));
+  "remind", "send", "follow", "find", "call", "please", "tomorrow", "today", "email", "whatsapp", "me", "you", "will", "can", "could", "up", "ll", "ok", "okay", "then", "also", "now"].flatMap(w => [norm(w), stem(w)])); // + the stem: taskWords() compares stems («متابعة» → «متابع»)
 export const taskWords = text => tokens(unmask(text), 40).filter(w => !TASK_STOP.has(w) && !/^\d+$/.test(w)).slice(0, 12);
 const overlap = (a, b) => { const s = new Set(b); return a.filter(w => s.has(w)).length; };
 /* does a successful tool (its words) do THIS task (its words)? a follow is one precise thing («حديد الصلب في الخليج» ≠ «… في الصين»):

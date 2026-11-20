@@ -61,10 +61,21 @@ const seenId = new Set(), uid = b => { let id = b || 'tender', k = 2; while (see
   out.q.push({ id: c(q[0]), date: c(q[1]), title: c(q[2]), details: clean(q[3], 900), details_en: clean(q[10], 900), delivery: clean(q[4]), qty: clean(q[5]), deadline: c(q[6]),
     gov: GN(q[7]), sector: c(q[9]), flags: +q[11] || 0, path: enc(stat || 'rfq/search/#' + encodeURIComponent(c(q[0]))), list: 'rfq/search/#' + encodeURIComponent(c(q[0])) });
 });
-/* ---- factories: keyed by data.json f[5]'s hash (company.html#<key>) — description snippet, verified mark, governorate, clean URL */
-const FD = ctx.MIGOLDFACD || [];
-(ctx.MIGOLDFAC || []).forEach((f, i) => { if (!f) return; const k = String(f[16] || i); out.f[k] = [clean(FD[i], 140), f[4] ? 1 : 0, GN(f[10]), enc(HC[k] || 'company.html#' + k), +f[11] || 0]; });
-((ctx.MIGFACX && ctx.MIGFACX.list) || []).forEach((f, i) => { if (!f) return; const k = 'x' + i; out.f[k] = [clean(f[4], 140), f[5] ? 1 : 0, '', enc(HC[k] || 'company.html#' + k), 0]; });
+/* ---- factories: keyed by data.json f[5]'s hash (company.html#<key>) — description snippet, verified mark, governorate, clean URL
+   verified = «✓ موثّق من فريق المنصة», the site's own test (pages.part.py VFX, seo_build.part.py): one of the 91 companies of
+   data/factories.js (MIGFAC) by its name or by the spelling data/facx.js keeps for it (SAME), and the directory listing of the same
+   company (seo_build name_key) — the old f[4] / f[5] flags of oldfac.js / facx.js are 0 for every row (lookup-index 2026-11-20) */
+const FD = ctx.MIGOLDFACD || [], FX = (ctx.MIGFACX && ctx.MIGFACX.list) || [];
+const SAME = (ctx.MIGFACX && ctx.MIGFACX.same) || (() => { try { const m = /var SAME = (\{[^;]*\});/.exec(fs.readFileSync(D + 'facx.js', 'utf8')); return m ? JSON.parse(m[1]) : {}; } catch (e) { return {}; } })();
+const TEAM = new Set((ctx.MIGFAC || []).map(f => c(f && f.name_ar)).filter(Boolean)); for (const [k, v] of Object.entries(SAME)) if (TEAM.has(c(k))) TEAM.add(c(v));
+const nameKey = s => String(s || '').replace(/[٠-٩]/g, d => String(d.charCodeAt(0) - 0x660)).replace(/[۰-۹]/g, d => String(d.charCodeAt(0) - 0x6f0)).toLowerCase()
+  .replace(/[ً-ْٰ]/g, '').replace(/ـ/g, '').replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي')
+  .replace(/[^ء-يa-z0-9]+/g, ' ').replace(/(^|\s)(co|ltd|llc|sae|inc|company)(?=\s|$)/g, ' ').replace(/(^|\s)(ش م م|ش م|ش ذ م م|ذ م م)(?=\s|$)/g, ' ')
+  .replace(/\s+/g, ' ').trim().replace(/^(الشركه|شركه|مصنع|مصانع|مؤسسه)\s+/, '').replace(/ /g, '');
+const MEMBER = new Map(); (ctx.MIGOLDFAC || []).forEach((f, i) => { if (f && !MEMBER.has(nameKey(f[0]))) MEMBER.set(nameKey(f[0]), i); });
+const teamMember = new Set(); FX.forEach(x => { if (x && TEAM.has(c(x[0])) && MEMBER.has(nameKey(x[0]))) teamMember.add(MEMBER.get(nameKey(x[0]))); });
+(ctx.MIGOLDFAC || []).forEach((f, i) => { if (!f) return; const k = String(f[16] || i); out.f[k] = [clean(FD[i], 140), f[4] || teamMember.has(i) ? 1 : 0, GN(f[10]), enc(HC[k] || 'company.html#' + k), +f[11] || 0]; });
+FX.forEach((f, i) => { if (!f) return; const k = 'x' + i; out.f[k] = [clean(f[4], 140), f[5] || TEAM.has(c(f[0])) ? 1 : 0, '', enc(HC[k] || 'company.html#' + k), 0]; });
 /* ---- products (data.json p order): the full product page /industrial_products/<legacy slug>/ */
 (ctx.MIGOLDP || []).forEach(p => { if (!p) return; const ls = legacySlug(p[5]); out.p.push({ key: c(p[0]) + '|' + c(p[1]), name: c(p[0]), maker: c(p[1]).replace(/^من إنتاج\s*/, ''), cat: c(p[2]), name_en: c(p[6]), flags: +p[7] || 0, path: ls ? enc('/industrial_products/' + ls + '/') : 'market.html' }); });
 /* ---- retail offers */

@@ -1,6 +1,6 @@
 /* Arabic/English text normalisation shared by the Janna lookup (index.js) and the automatic matching engine (matching.js).
    norm(): lower case, no diacritics/tatweel, alef variants → ا, ة → ه, ى → ي, punctuation → space.
-   stem(): drops a leading «ال» and common plural/nisba suffixes so «البلاستيكية» ≈ «بلاستيك». */
+   stem(): drops a leading «ال» and common plural/nisba suffixes so «البلاستيكية» ≈ «بلاستيك» (rules: see STEM_* below). */
 export const EN = { cairo: "القاهرة", giza: "الجيزة", alexandria: "الإسكندرية", qalyubia: "القليوبية", sharqia: "الشرقية", sharkia: "الشرقية", dakahlia: "الدقهلية", gharbia: "الغربية", menoufia: "المنوفية", monufia: "المنوفية", beheira: "البحيرة", damietta: "دمياط", "port said": "بورسعيد", ismailia: "الإسماعيلية", suez: "السويس", fayoum: "الفيوم", "beni suef": "بني سويف", minya: "المنيا", assiut: "أسيوط", sohag: "سوهاج", qena: "قنا", luxor: "الأقصر", aswan: "أسوان", "10th of ramadan": "العاشر من رمضان", "tenth of ramadan": "العاشر من رمضان", "6th of october": "السادس من أكتوبر", sadat: "السادات", obour: "العبور", sokhna: "العين السخنة",
   plastic: "بلاستيك", plastics: "بلاستيك", steel: "حديد", iron: "حديد", food: "غذائية", foods: "غذائية", textile: "نسيج", textiles: "نسيج", garments: "ملابس", chemicals: "كيماويات", chemical: "كيماويات", paper: "ورق", packaging: "تغليف", furniture: "أثاث", glass: "زجاج", cables: "كابلات", cable: "كابلات", electrical: "كهرباء", pharmaceutical: "أدوية", medicine: "أدوية", ceramics: "سيراميك", marble: "رخام", aluminum: "ألومنيوم", aluminium: "ألومنيوم", copper: "نحاس", dairy: "ألبان", cement: "أسمنت", paint: "دهانات", paints: "دهانات", leather: "جلود", wood: "أخشاب", machinery: "معدات", factory: "", factories: "", manufacturers: "", company: "", companies: "", in: "", the: "", of: "", and: "" };
 export const STOP = new Set(["مصنع", "مصانع", "شركه", "شركات", "شركة", "في", "فى", "من", "على", "علي", "عن", "اللي", "انا", "عايز", "عاوز", "محتاج", "محتاجين", "دور", "دوري", "دوريلي", "ابحث", "ابحثي", "منتجات", "منتج", "و", "ال", "مدينه", "مدينة", "محافظه", "محافظة", "المسجله", "المسجلة",
@@ -10,7 +10,41 @@ export const STOP = new Set(["مصنع", "مصانع", "شركه", "شركات",
 export function norm(s) {
   return String(s || "").toLowerCase().replace(/[ً-ْـ]/g, "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
 }
-export function stem(w) { w = norm(w); if (w.length > 4 && w.startsWith("ال")) w = w.slice(2); if (w.length > 4 && /(يه|ات|ين|ون)$/.test(w)) w = w.slice(0, -2); return w; }
+/* stem() rules (lookup-index 2026-11-20, the Al-Atlal call 8bacbfac):
+   - a suffix comes off only when 4 letters or more stay («أدوية» was «ادو», which also starts «ادوات»; «غازية» stays apart from «غاز»);
+   - «ال» that belongs to the word stays (STEM_KEEP_AL: the KEEP list of worker-intel/src/terms.js + a few; «ألبان» was «بان», «ألواح شمسية»
+     was «واح شمس»); otherwise the article comes off as before (a word of 5 letters or more);
+   - the singular ة meets the plural ات: one suffix of STEM_SUFFIX at most («اسطوانة» = «أسطوانات» = «اسطوان»); a final «ي» stays (it is
+     also the «لي» / «ني» of a request: «تابعلي», «فكرني»);
+   - broken plurals and the plurals / adjectives of 3-letter roots map to the stem of their singular (STEM_PLURAL: «أنابيب» = «أنبوبة»,
+     «غازات» = «غاز», «درافيل» = «درفيل»); a word mapped to itself is never cut («استيلين» is acetylene, not «استيل» steel).
+   Latin words and numbers are left as they are. */
+const STEM_KEEP_AL = new Set(["الواح", "البان", "الياف", "العاب", "الوان", "الماس", "المانيا", "الماني", "المان", "اليات", "البسه"]);
+const STEM_KEEP_AL_START = ["الكترون", "الومنيوم", "المونيوم", "الومينيوم", "المنيوم", "الوميتال"];
+const STEM_SUFFIX = ["يات", "يين", "ات", "ين", "ون", "يه", "ه"];
+const stemKeepsAl = w => STEM_KEEP_AL.has(w) || STEM_KEEP_AL_START.some(k => w.startsWith(k));
+function stemRules(w) {
+  if (!stemKeepsAl(w) && w.length > 4 && w.startsWith("ال")) w = w.slice(2);
+  for (const s of STEM_SUFFIX) if (w.length - s.length >= 4 && w.endsWith(s)) return w.slice(0, -s.length);
+  return w;
+}
+/* plural (or adjective) → its singular; normalised here, and the singular goes through the same rules, so both spellings meet */
+const STEM_PLURAL = new Map(Object.entries({
+  انابيب: "انبوبة", مواسير: "ماسورة", براميل: "برميل", درافيل: "درفيل", صناديق: "صندوق", اكياس: "كيس", زيوت: "زيت", اسمدة: "سماد", ادوية: "دواء",
+  اغذية: "غذاء", معادن: "معدن", اجهزة: "جهاز", الات: "آلة", مضخات: "مضخة", محابس: "محبس", بلوف: "بلف", اقمشة: "قماش", خيوط: "خيط", احبار: "حبر",
+  اسلاك: "سلك", الواح: "لوح", اسياخ: "سيخ", مكابس: "مكبس", افران: "فرن", فلاتر: "فلتر", كراسي: "كرسي", ابواب: "باب", شبابيك: "شباك", عبوات: "عبوة",
+  علب: "علبة", شنط: "شنطة", غازات: "غاز", رولات: "رول", لمبات: "لمبة", مصابيح: "مصباح", تروس: "ترس", سيور: "سير", خراطيم: "خرطوم", مسامير: "مسمار",
+  اوعية: "وعاء", اطباق: "طبق", اكواب: "كوب", صحون: "صحن", اعلاف: "علف", اخشاب: "خشب", احجار: "حجر", اعشاب: "عشب", جلود: "جلد", احذية: "حذاء",
+  شرائط: "شريط", اشرطة: "شريط", ادوات: "أداة", قوالب: "قالب", خدمات: "خدمة", شركات: "شركة", طبية: "طبي", ورقي: "ورق", ورقية: "ورق", خشبي: "خشب",
+  خشبية: "خشب", جلدي: "جلد", جلدية: "جلد", قطني: "قطن", قطنية: "قطن", كاسات: "كاس", بذور: "بذرة", مخازن: "مخزن", ملاعق: "ملعقة", سكاكين: "سكين",
+  استيلين: "استيلين", اسيتيلين: "اسيتيلين",
+}).map(([p, s]) => [norm(p), norm(s) === norm(p) ? norm(p) : stemRules(norm(s))]));
+export function stem(w) {
+  w = norm(w); if (!w || /^[a-z0-9]+$/.test(w)) return w;
+  const p = STEM_PLURAL.get(w); if (p) return p;
+  const a = !stemKeepsAl(w) && w.length > 4 && w.startsWith("ال") ? w.slice(2) : w; // «الأنابيب» → «انابيب» → «انبوب»
+  return STEM_PLURAL.get(a) || stemRules(a);
+}
 export function englishToArabic(q) {
   let s = " " + String(q || "").toLowerCase() + " ";
   for (const k of Object.keys(EN).sort((a, b) => b.length - a.length)) if (EN[k]) s = s.split(" " + k + " ").join(" " + k + " " + EN[k] + " ");
