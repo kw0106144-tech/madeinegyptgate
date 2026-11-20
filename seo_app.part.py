@@ -23,10 +23,14 @@ the site, iPhone installs the site itself from Safari (the PWA, seo_build.part.p
                      file over Pages' 25 MiB stops the build («app:» problems; deploy/stage.py check_app checks the upload again, and
                      refuses an APK whose signer assetlinks.json does not list — the debug key always).
   /.well-known/assetlinks.json   Android App Links for com.madeinegyptgate.app: seo/config.json "app" (package + the SHA-256 of the
-                     signing certificates: the release key now, Google Play's app signing key when the Play app exists). No
-                     apple-app-site-association: it needs the Apple Team ID (app/well-known/README.md).
+                     signing certificates: the release key now, Google Play's app signing key when the Play app exists).
+  /.well-known/apple-app-site-association   iOS Universal Links + the shared web credentials of com.madeinegyptgate.app, written
+                     only once seo/config.json app.ios_team_id holds the owner's Apple Team ID (10 characters; a wrong file is worse
+                     than none, so none until then; a malformed value stops the build). The paths that must open in the browser come
+                     before «/*» (the first matching component wins): /api/*, /pay* (a payment link opens the gateway in the browser),
+                     /media/* and the owner's old system (/panel.html, /login.html) — app parity plan, item app-links-live.
 _headers / _routes.json: the APKs are attachments of type application/vnd.android.package-archive, nosniff, cached a year (the file
-names carry the version); assetlinks.json is application/json; /app/android.apk and /.well-known/* skip the Functions (Pages applies
+names carry the version); assetlinks.json and apple-app-site-association are application/json; /app/android.apk and /.well-known/* skip the Functions (Pages applies
 _redirects and _headers there). The service worker never touches /downloads/ or /app/android.apk (seo_build.part.py PWA_DEF).
 Browser code here is ES5 (CLAUDE.md 2.1).
 """
@@ -413,6 +417,27 @@ def appdl_module(H):
         return [{'relation': ['delegate_permission/common.handle_all_urls', 'delegate_permission/common.get_login_creds'],
                  'target': {'namespace': 'android_app', 'package_name': pkg, 'sha256_cert_fingerprints': fps}}], []
 
+    TEAM_RX = re.compile(r'^[A-Z0-9]{10}$')        # Apple Developer → Membership details → Team ID
+    AASA_BROWSER = (('/api/*', 'the API: never a page of the app'),
+                    ('/pay*', 'a payment link opens the gateway in the browser'),
+                    ('/media/*', 'files, not pages'),
+                    ('/panel.html', "the owner's old system (deploy/legacy-live.txt)"),
+                    ('/login.html', "the owner's old system (deploy/legacy-live.txt)"))
+
+    def aasa():
+        """/.well-known/apple-app-site-association → (the JSON object, problems); (None, []) while app.ios_team_id is empty"""
+        c = (S.get('cfg') or {}).get('app') or {}
+        tid = c.get('ios_team_id') or ''
+        if not tid:
+            return None, []
+        if not isinstance(tid, str) or not TEAM_RX.match(tid):
+            return None, ['app: seo/config.json app.ios_team_id %r is not an Apple Team ID (10 upper-case letters or digits)' % (tid,)]
+        app_id = tid + '.' + APPDL_PACKAGE
+        comps = [{'/': p, 'exclude': True, 'comment': why} for p, why in AASA_BROWSER]
+        comps.append({'/': '/*', 'comment': 'every other page of madeinegyptgate.com opens in the app when it is installed'})
+        return {'applinks': {'details': [{'appIDs': [app_id], 'components': comps}]},
+                'webcredentials': {'apps': [app_id]}}, []
+
     def key():
         a = apk_info()
         return ('app-dl', 2, [a.get(k) for k in ('state', 'version', 'code', 'sha256', 'published')])
@@ -515,10 +540,13 @@ def appdl_module(H):
         return ('/downloads/android/*.apk\n  Content-Type: application/vnd.android.package-archive\n  Content-Disposition: attachment\n'
                 '  ! X-Content-Type-Options\n  X-Content-Type-Options: nosniff\n  Cache-Control: public, max-age=31536000, immutable\n'
                 '/downloads/android/latest.json\n  Cache-Control: public, max-age=300\n'
-                '/.well-known/assetlinks.json\n  Content-Type: application/json\n  Cache-Control: public, max-age=3600\n')
+                '/.well-known/assetlinks.json\n  Content-Type: application/json\n  Cache-Control: public, max-age=3600\n'
+                + ('/.well-known/apple-app-site-association\n  Content-Type: application/json\n  Cache-Control: public, max-age=3600\n'
+                   if aasa()[0] else ''))
 
     def emit(OUT):
-        """the APK channel (/downloads/android/: latest.json + the APKs of the repository) and /.well-known/assetlinks.json"""
+        """the APK channel (/downloads/android/: latest.json + the APKs of the repository), /.well-known/assetlinks.json and, once the
+        Apple Team ID is in seo/config.json, /.well-known/apple-app-site-association"""
         a = apk_info()
         probs = list(a.get('problems') or [])
         dst = OUT + APPDL_DIR
@@ -541,8 +569,17 @@ def appdl_module(H):
             os.makedirs(OUT + '.well-known', exist_ok=True)
             with open(wk, 'w', encoding='utf-8') as f:
                 f.write(json.dumps(al, indent=2) + '\n')
+        ia, iprobs = aasa()
+        probs += iprobs
+        wa = OUT + '.well-known/apple-app-site-association'
+        if os.path.exists(wa):
+            os.remove(wa)
+        if ia:
+            os.makedirs(OUT + '.well-known', exist_ok=True)
+            with open(wa, 'w', encoding='utf-8') as f:
+                f.write(json.dumps(ia, indent=2) + '\n')
         return {'apk': {k: a.get(k) for k in ('state', 'version', 'code', 'file', 'bytes', 'sha256', 'min_sdk', 'published')},
-                'copied': copied, 'assetlinks': bool(al), 'redirect': redirect_rule(), 'problems': probs}
+                'copied': copied, 'assetlinks': bool(al), 'aasa': bool(ia), 'redirect': redirect_rule(), 'problems': probs}
 
     return {'css': APPDL_CSS, 'path': APPDL_PATH, 'render': render, 'key': key, 'apk_info': apk_info, 'emit': emit,
             'redirect_rule': redirect_rule, 'headers': headers, 'routes_exclude': ['/.well-known/*', APPDL_APK]}

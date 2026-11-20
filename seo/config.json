@@ -309,6 +309,7 @@
   "android_package": "com.madeinegyptgate.app",
   "android_cert_sha256": [
    "2C:AD:3C:DA:9D:5D:BA:2E:6C:12:66:43:36:E5:73:67:57:F3:B9:25:6F:C3:8B:BA:0B:E1:2E:DE:9E:43:EB:EE"
-  ]
+  ],
+  "ios_team_id": ""
  }
 }

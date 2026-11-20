@@ -286,7 +286,11 @@ switch wait for the owner's word-for-word approval: `docs/app/OWNER-APPROVAL-AR.
   closes it), `janna-live.js` (the microphone is the app's, 60 s Android wait, the consent card), `mig-api.js` (the sign-in step kept in
   localStorage; board-to-board links open in place), `pay.js` (the gateway in the in-app browser), `pwa.js` (Android share sheet),
   `seo.js` (no ad pixels in the iPhone app), `janna-welcome.js` (no self-start voice). Tests: `worker/test/app-parity*.test.mjs`,
-  `review-signin.test.mjs`, `delete-request.test.mjs`, `bassem-tab.test.mjs`, `dev-panel.test.mjs`.
+  `review-signin.test.mjs`, `delete-request.test.mjs`, `bassem-tab.test.mjs`, `dev-panel.test.mjs`;
+- App Links files (`seo_app.part.py`, from `seo/config.json` `"app"`): `/.well-known/assetlinks.json` (`handle_all_urls` +
+  `get_login_creds`) always; `/.well-known/apple-app-site-association` only once `app.ios_team_id` holds the owner's Apple Team ID
+  (empty today: no file, because a wrong one is worse than none; a malformed value stops the build). It sends `/api/*`, `/pay*`,
+  `/media/*`, `/panel.html` and `/login.html` to the browser and every other path to the app, plus `webcredentials` for the same app.
 
 ---
 
