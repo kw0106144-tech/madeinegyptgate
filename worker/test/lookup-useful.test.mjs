@@ -184,6 +184,14 @@ describe("U15 the dated lists: events, news, projects, awards", () => {
     assert.equal(n.found, true); assert.equal(n.title, n0.title); assert.match(n.text, /منشور في/); assert.equal(n.source, n0.source);
     assert.equal(findItem("events", { title: "فود أفريكا" }, NOW).id, "food-africa-2026");
   });
+  test("review: an event that started 2 days ago may still be running — «بدأ», listed first, never «انتهى» (the data keeps no end date)", () => {
+    const d2 = Date.parse("2026-11-28T10:00:00Z"), d9 = Date.parse("2026-12-05T10:00:00Z"); // Cairo Wood Show: 26–29 Nov 2026 (data/real.js)
+    const w = search("events", "أخشاب", "", undefined, undefined, undefined, { nowMs: d2 }).results.find(x => x.id === "cairo-woodshow-2026");
+    assert.equal(w.status, "بدأ"); assert.equal(search("events", "معارض", "", 10, undefined, undefined, { nowMs: d2 }).results[0].id, "cairo-woodshow-2026", "the running one first");
+    const it = findItem("events", { id: "cairo-woodshow-2026" }, d2); assert.equal(it.status, "بدأ"); assert.match(it.text, /بدأ يوم .* وممكن يكون لسه شغال/); assert.doesNotMatch(it.text, /وخلص/);
+    assert.equal(findItem("events", { id: "cairo-woodshow-2026" }, d9).status, "انتهى");
+    assert.match(search("events", "أخشاب", "", undefined, undefined, undefined, { nowMs: d2 }).text, /\(بدأ\)/);
+  });
 });
 
 describe("U16 the members' own records, live from D1 (src/lookup-members.js)", () => {
@@ -305,6 +313,12 @@ describe("U12 platform_item for a company: its own words, the team's verified ma
       if (seen >= 20) break;
     }
     assert.ok(seen >= 5, String(seen));
+    /* review: an abbreviation's dot or a dot inside brackets ends no sentence («ش. م. م.», «أ. ف.», «(كوب – طبق. إلخ)») */
+    const about = k => { const t = findItem("factories", { id: k }, NOW).text, i = t.indexOf("وحسب نبذته على المنصة: "); return i < 0 ? "" : t.slice(i + 23, i + 23 + 150); };
+    for (const [k, cut] of [["201", "والزيوت ش."], ["1209", "المعدنية – أ."], ["2607", "(كوب – طبق."]]) {
+      const a = about(k); if (!a) continue; // the directory changed: nothing to check
+      assert.ok(!a.includes(cut + " المنشأة") && !a.includes(cut + " التواصل"), k + " ends at an abbreviation: " + a);
+    }
   });
 });
 

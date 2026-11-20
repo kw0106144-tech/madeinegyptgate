@@ -34,7 +34,7 @@ import { handleEv, handleUnsub } from "./ev.js";    // /api/ev, /api/unsub
 import { handleWA, bassemCron } from "./whatsapp.js"; // /api/wa/*        respond.io webhook + Bassem's daily WhatsApp
 import { handleJannaSession } from "./janna-session.js"; // /api/janna/session  live-call session tokens (JS SDK: no third-party mark)
 import { handleTiming } from "./live-timing.js";       // /api/janna/timing   the call page's start timing beacon (numbers only)
-import { handleItem, enrichResult, absUrl } from "./janna-item.js"; // /api/janna/item  one item in full + the lookup results' ids / open_url / amounts
+import { handleItem, enrichResult, absUrl, eventStatus } from "./janna-item.js"; // /api/janna/item  one item in full + the lookup results' ids / open_url / amounts
 import { handleMemory, memoryCron, budgetEnv, TICK } from "./memory.js"; // /api/advisor/memory  Bassem's memory (searches, call turns, summaries, facts)
 // ---- 0009 memory upgrades: Janna's visitor memory, «بنك المعلومات», the daily memory update ----
 import { handleVisitorMemory } from "./visitor.js";   // /api/janna/memory[/tasks]  Janna's memory of her visitors
@@ -385,10 +385,10 @@ function search(section, query, governorate, limit, page, market, { members = nu
   } else if (section === "events" || section === "news") {
     /* U15: events = the next ones first (then the past ones, newest first); news = the newest first — inside each class of match */
     const ev = section === "events", X = ev ? eventIx() : newsIx(), I = DATA.i || [], G = norm(gov), today = cairoDay(nowMs);
-    const first = k => { const d = dayOf(I[X.rows[k]][2]); return !d ? 0 : ev && d >= today ? 2e6 - dayNum(d) : dayNum(d); };
+    const first = k => { const d = dayOf(I[X.rows[k]][2]); return !d ? 0 : ev && eventStatus(d, today) !== "انتهى" ? 2e6 - dayNum(d) : dayNum(d); }; // running / next first
     for (const r of byFirst(ranked(X, k => !gov || norm(govOf(I[X.rows[k]][4])).includes(G), { first }), first)) {
       const x = I[X.rows[r.i]], d = dayOf(x[2]);
-      res.push([r, tag(P, C, r, ev ? { title: x[5], date: d, status: !d ? "" : d >= today ? "قادم" : "انتهى", activity: x[3] || "", governorate: govOf(x[4]) || undefined, host: x[9] || undefined, id: x[1], open_url: absUrl(x[6]), documents_url: x[10] || undefined }
+      res.push([r, tag(P, C, r, ev ? { title: x[5], date: d, status: eventStatus(d, today), activity: x[3] || "", governorate: govOf(x[4]) || undefined, host: x[9] || undefined, id: x[1], open_url: absUrl(x[6]), documents_url: x[10] || undefined }
         : { title: x[5], date: d, category: x[3] || "", governorate: govOf(x[4]) || undefined, source: x[9] || "", id: x[1], open_url: absUrl(x[6]), documents_url: x[10] || undefined })]);
     }
   } else if (section === "projects") {
@@ -511,7 +511,7 @@ function itemLine(section, r, has) {
 /* the closing line of a text: what the data is and what the persona must not add */
 function tailOf(section, m) {
   if (section === "news") return `دي أخبار منشورة على المنصة بمصدرها وتاريخها؛ ${m ? "قول المصدر والتاريخ زي ما هما، ومتضيفش" : "قولي المصدر والتاريخ زي ما هما، ومتضيفيش"} أرقام أو أسعار مش مكتوبة في الخبر.`;
-  if (section === "events") return `دي معارض من أجندة المنصة بمواعيدها المنشورة؛ ${m ? "قول التاريخ زي ما هو، واللي «انتهى» قول إنه خلص" : "قولي التاريخ زي ما هو، واللي «انتهى» قولي إنه خلص"}، والتسجيل والتفاصيل من موقع المعرض الرسمي.`;
+  if (section === "events") return `دي معارض من أجندة المنصة بمواعيدها المنشورة؛ ${m ? "قول التاريخ زي ما هو، واللي «بدأ» ممكن يكون لسه شغال، واللي «انتهى» قول إنه خلص" : "قولي التاريخ زي ما هو، واللي «بدأ» ممكن يكون لسه شغال، واللي «انتهى» قولي إنه خلص"}، والتسجيل والتفاصيل من موقع المعرض الرسمي.`;
   if (section === "projects" || section === "awards") return `دي بيانات منشورة بمصادرها على المنصة؛ ${m ? "اذكر منها فقط ومتضيفش" : "اذكري منها فقط ومتضيفيش"} أرقام أو جهات مش مكتوبة، والتواصل مع الجهات دي مش من خلال المنصة.`;
   return `هذه بيانات حقيقية من المنصة؛ ${m ? "اذكر منها فقط ولا تضيف" : "اذكري منها فقط ولا تضيفي"} بيانات تواصل (التواصل عبر زر «اطلب عرض سعر» في ملف المنشأة).`;
 }

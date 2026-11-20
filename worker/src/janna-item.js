@@ -119,7 +119,9 @@ function aboutLine(name, desc, products) {
   let cut = /…$/.test(d) || d.length > 140;
   if (n && d.startsWith(n)) d = d.slice(n.length).replace(/^[\s\-–—:،,|]+/, "");
   d = forLLM(d, 170);
-  const s1 = /^(.{24,}?[.!؟?؛])(?:\s|$)/u.exec(d); if (s1 && s1[1].length < d.length - 1) { d = s1[1]; cut = false; }
+  /* the end of a sentence follows a word of 3+ letters, outside brackets (review: «ش. م. م.», «أ. ف.», «Co.», «(كوب – طبق. إلخ)» cut
+     «تأسست شركة طنطا للكتان والزيوت ش.») */
+  const s1 = /^(.{24,}?[^\s.]{3}[.!؟?؛])(?:\s|$)/u.exec(d); if (s1 && s1[1].length < d.length - 1 && !/\([^)]*$/.test(s1[1])) { d = s1[1]; cut = false; }
   d = endDot(d);
   if (d.length < 12 || instructionLike(d)) return "";
   const nd = norm(d).slice(0, 40), np = norm(products || "");
@@ -190,11 +192,15 @@ function newsRecord(x, nowMs) {
     "التفاصيل من المصدر نفسه، ومفيش أرقام أو أسعار غير اللي في الخبر."]);
   return rec;
 }
+/* an event's status on `today` (review: data.json i keeps its START date only, and the events of the data last 1–3 days): one that started
+   in the last 4 days may still be running — «بدأ», never «انتهى» (the lookup's events section uses the same rule) */
+export const eventStatus = (d, today) => (!d ? "" : d >= today ? "قادم" : (Date.parse(today) - Date.parse(d)) / 86400000 <= 4 ? "بدأ" : "انتهى");
 function eventRecord(x, nowMs) {
-  const d = /^\d{4}-\d{2}-\d{2}/.test(String(x[2] || "")) ? String(x[2]).slice(0, 10) : "", up = d && d >= cairoDay(nowMs), where = x[4] && x[4] !== NO_GOV ? x[4] : "";
-  const rec = { section: "events", id: x[1], title: x[5], date: d || undefined, status: d ? (up ? "قادم" : "انتهى") : undefined, activity: x[3] || undefined, governorate: where || undefined,
+  const d = /^\d{4}-\d{2}-\d{2}/.test(String(x[2] || "")) ? String(x[2]).slice(0, 10) : "", st = eventStatus(d, cairoDay(nowMs)), where = x[4] && x[4] !== NO_GOV ? x[4] : "";
+  const rec = { section: "events", id: x[1], title: x[5], date: d || undefined, status: st || undefined, activity: x[3] || undefined, governorate: where || undefined,
     host: x[9] || undefined, documents_url: x[10] || undefined, open_url: absUrl(x[6]), contact: CONTACT.events }; // host = the organiser, else the venue (build-index.js)
-  rec.text = join([x[5] + (where ? " في " + where : "") + (x[9] ? " (" + x[9] + ")" : "") + ".", d ? (up ? "ميعاده " + sayDate(d, nowMs) + "." : "كان يوم " + sayDate(d, nowMs) + " وخلص.") : "وميعاده مش منشور في بيانات المنصة.",
+  rec.text = join([x[5] + (where ? " في " + where : "") + (x[9] ? " (" + x[9] + ")" : "") + ".", !d ? "وميعاده مش منشور في بيانات المنصة." : st === "قادم" ? "ميعاده " + sayDate(d, nowMs) + "."
+    : st === "بدأ" ? "بدأ يوم " + sayDate(d, nowMs) + " وممكن يكون لسه شغال؛ آخر يوم فيه من موقعه الرسمي." : "كان يوم " + sayDate(d, nowMs) + " وخلص.",
     x[3] ? "مجاله: " + x[3] + "." : "", "التسجيل والتفاصيل من موقع المعرض الرسمي."]);
   return rec;
 }
