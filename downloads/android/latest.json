@@ -1,0 +1,13 @@
+{
+ "version": "1.0.0",
+ "code": 1,
+ "file": "madeinegyptgate-1.0.0-1.apk",
+ "bytes": 6755759,
+ "sha256": "824cfb8319036c555b3c5abd9d64838b820d002804bb543c1f996839cbe21671",
+ "min_sdk": 24,
+ "published": "2026-11-20",
+ "package": "com.madeinegyptgate.app",
+ "cert_sha256": [
+  "2C:AD:3C:DA:9D:5D:BA:2E:6C:12:66:43:36:E5:73:67:57:F3:B9:25:6F:C3:8B:BA:0B:E1:2E:DE:9E:43:EB:EE"
+ ]
+}
