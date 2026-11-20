@@ -161,7 +161,11 @@
   function deadline(d) { var f = fmtDay(d); return f ? "⏳ " + T("آخر ميعاد ", "Deadline ") + f : ""; }
   /* the same fact for a narrow card: the hourglass says «deadline» («⏳ 3 ديسمبر 2026») */
   function short(f) { return String(f || "").replace(/^⏳ (?:آخر ميعاد|Deadline) /, "⏳ "); }
-  function rfqTitle(s) { return clean(String(s || "").replace(/^\s*طلب\s+عرض\s+سعر\s*[–\-:]\s*/, "").replace(/\s*[–\-]\s*رقم\s+الطلب\s*:.*$/, "").replace(/\s*[–\-]\s*بتاريخ\s+[\d\-\/]+\s*$/, ""), 160); }
+  function rfqTitle(s) { return clean(String(s || "").replace(/^\s*طلب\s+عرض\s+سعر\s*[–\-:]\s*/, "").replace(/\s*[–\-]\s*رقم\s+الطلب\s*:.*$/, "").replace(/\s*[–\-]\s*بتاريخ\s+[\d\-\/]+\s*$/, "")
+    .replace(/^\s*(?:Request\s+for\s+Quotation|RFQ)(?:\s*\(RFQ\))?\s*[–\-:]\s*/i, "").replace(/\s*[–\-]\s*Request\s+No\b.*$/i, "").replace(/\s*[–\-]\s*\d{1,2}-\d{1,2}-\d{4}\s*$/, ""), 160); }
+  /* a shown data value: on English pages the site's own English for it (data/i18n-en.js through trEn — the names and titles the English
+     pages show), then shortened; on Arabic pages the value as it is */
+  function tclean(v, n) { return clean(trEn(clean(v)), n); }
 
   /* ---------- a tool call → what the card says (null: not one the cards show) ---------- */
   function words(v, n) { return clean(v, n || 60); }
@@ -207,7 +211,7 @@
   function cardOf(sec, r) {
     r = r || {}; var rs = String(r.section || ""), c = { sec: sec, ic: S(sec).ic, tag: T(S(sec).one[0], S(sec).one[1]), title: "", sub: "", fact: "", href: pathOf(r.open_url || r.url), ok: false }, t;
     if (sec === "intel") {
-      c.title = clean(r.title || r.title_ar || r.title_orig, 160); c.sub = clean(r.entity, 70);
+      c.title = tclean(r.title || r.title_ar || r.title_orig, 160); c.sub = tclean(r.entity, 70);
       c.tag = EN ? KIND_EN[r.kind] || c.tag : clean(r.kind_label, 30) || c.tag;
       t = EN ? (clean(r.country, 40) || mkName(String(r.market || ""))) : (clean(r.market_name, 30) || clean(r.country, 40));
       c.fact = deadline(r.deadline) || (t ? "🌍 " + t : "") || (money(r.value, r.currency) ? "💰 " + money(r.value, r.currency) : "");
@@ -215,7 +219,7 @@
       return c;
     }
     if (r.product != null && (sec === "products" || sec === "offers") && !(rs === "factories")) {
-      c.title = clean(EN && r.product_en ? r.product_en : r.product, 140);
+      c.title = EN && r.product_en ? clean(r.product_en, 140) : tclean(r.product, 140);
       if (sec === "offers" || r.price_egp != null) {
         c.sec = "offers"; c.ic = S("offers").ic; c.tag = T(S("offers").one[0], S("offers").one[1]);
         c.sub = [clean(r.brand, 40), clean(r.store, 50)].filter(Boolean).join(" · ");
@@ -229,30 +233,30 @@
     if (rs === "factories" || sec === "factories" || sec === "suppliers" || (sec === "products" && r.name)) {
       c.sec = rs === "factories" && sec === "products" ? "factories" : sec; c.ic = S("factories").ic;
       t = clean(r.type, 20); c.tag = EN ? (/مورد/.test(t) ? "Supplier" : /شركة/.test(t) ? "Company" : "Factory") : t || T(S(c.sec).one[0], S(c.sec).one[1]);
-      c.title = clean(r.name || r.title, 140); c.sub = trEn(clean(r.activity, 70));
+      c.title = tclean(r.name || r.title, 140); c.sub = tclean(r.activity, 70);
       t = place(r.governorate) || place(r.location); c.fact = t ? "📍 " + t : "";
       c.ok = r.verified === true;
       return c;
     }
     if (sec === "tenders") {
-      c.title = clean(EN && r.title_en ? r.title_en : r.title, 160); c.sub = clean(EN && r.entity_en ? r.entity_en : trEn(clean(r.entity, 70)), 70);
+      c.title = EN && r.title_en ? clean(r.title_en, 160) : tclean(r.title, 160); c.sub = EN && r.entity_en ? clean(r.entity_en, 70) : tclean(r.entity, 70);
       var intl = r.market && r.market !== "local", where = intl ? clean(EN && r.country_en ? r.country_en : trEn(clean(r.country, 40)), 40) : place(r.governorate), st = clean(r.status, 30);
       c.fact = deadline(r.deadline) || (where ? (intl ? "🌍 " : "📍 ") + where : "") || (st ? stMark(st) + trEn(st) : "");
       if (r.type && !EN && /^(مناقصة|ممارسة|مزايدة|طلب)/.test(clean(r.type, 24))) c.tag = clean(r.type, 24);
       return c;
     }
     if (sec === "rfqs") {
-      c.title = rfqTitle(r.title) || clean(r.title, 160); c.sub = trEn(clean(r.activity, 70));
+      c.title = rfqTitle(trEn(clean(r.title))) || tclean(r.title, 160); c.sub = tclean(r.activity, 70);
       t = clean(r.quantity, 50);
       c.fact = deadline(r.deadline) || (t ? "📦 " + t : "") || (place(r.governorate) ? "📍 " + place(r.governorate) : "") || (fmtDay(r.date) ? "🗓️ " + fmtDay(r.date) : "");
       return c;
     }
     if (sec === "cities") {
-      c.title = clean(EN && r.name_en ? r.name_en : r.name || r.title, 140); t = ZONE[String(r.type || "")]; c.sub = t ? T(t[0], t[1]) : "";
+      c.title = EN && r.name_en ? clean(r.name_en, 140) : tclean(r.name || r.title, 140); t = ZONE[String(r.type || "")]; c.sub = t ? T(t[0], t[1]) : "";
       t = place(r.governorate); c.fact = t ? "📍 " + t : "";
       return c;
     }
-    c.title = clean(r.title || r.name, 160); c.sub = clean(r.entity || r.owner || r.winner, 70);
+    c.title = tclean(r.title || r.name, 160); c.sub = tclean(r.entity || r.owner || r.winner, 70);
     t = place(r.governorate); c.fact = deadline(r.deadline) || (t ? "📍 " + t : "");
     return c;
   }
@@ -268,10 +272,10 @@
     } else if (sec === "rfqs") {
       if (clean(r.quantity, 50)) add("📦 " + clean(r.quantity, 50)); if (clean(r.delivery, 50)) add("🚚 " + clean(r.delivery, 50)); if (place(r.governorate)) add("📍 " + place(r.governorate));
     } else if (sec === "projects") {
-      c.sub = clean(r.owner, 60) || c.sub; if (clean(r.stage, 30)) add("🏗️ " + trEn(clean(r.stage, 30)));
+      c.sub = tclean(r.owner, 60) || c.sub; if (clean(r.stage, 30)) add("🏗️ " + trEn(clean(r.stage, 30)));
       if (+r.value_egp_million > 0) add("💰 " + T(fmtN(r.value_egp_million) + " مليون ج.م", "EGP " + fmtN(r.value_egp_million) + " million")); if (clean(r.contractor, 50)) add("👷 " + clean(r.contractor, 50));
     } else if (sec === "awards") {
-      c.sub = clean(r.winner, 60) || c.sub; if (clean(r.entity, 60)) add("🏛️ " + clean(r.entity, 60)); if (fmtDay(r.date)) add("🗓️ " + fmtDay(r.date));
+      c.sub = tclean(r.winner, 60) || c.sub; if (clean(r.entity, 60)) add("🏛️ " + tclean(r.entity, 60)); if (fmtDay(r.date)) add("🗓️ " + fmtDay(r.date));
     } else if (sec === "intel") {
       t = EN ? (clean(r.country, 40) || mkName(String(r.market || ""))) : (clean(r.market_name, 30) || clean(r.country, 40)); if (t) add("🌍 " + t);
       if (money(r.value, r.currency)) add("💰 " + money(r.value, r.currency)); t = ISTATUS[String(r.status || "")]; if (t) add(stMark(t[1]) + T(t[0], t[1]));
@@ -404,14 +408,23 @@
     /* 1) the searching / header card */
     if (need.head) {
       var hh = need.tall ? 74 : 62;
-      if (z.ul && z.ul.w >= 150 && z.ul.h >= 62) { out.head = place1(z.ul, 270, hh, ""); z.ul = shrink(z.ul, out.head); }
+      /* the shelf under the chin: the header in its first column of k (k = 1: alone, the whole shelf), at the reading start */
+      var shelfHead = function (k) {
+        var hc = shelfCols(k, 96)[0]; if (!hc) return null;
+        var hh2 = Math.min(hc.h, k > 1 ? Math.max(hh, HGT.full + 6) : hh), hw = Math.min(hc.w, k > 1 ? 260 : 300), s = { l: ob.rtl ? hc.r - hw : hc.l, t: hc.b - hh2, w: hw, h: hh2, cls: "" };
+        used.push(R(s.l, s.t, s.l + s.w, s.t + s.h)); return s;
+      };
+      /* phones with no result card to place (searching, nothing found, did not finish): the shelf, never the corner sliver beside the AI label
+         where «بدوّر على» and the words would be cut to a few letters (390×664: 132×37 px) */
+      if (!wide && !need.n && z.bot && z.bot.w >= 200 && z.bot.h >= 50 && !(z.ul && z.ul.w >= 150 && z.ul.h >= 62)) out.head = shelfHead(1);
+      if (out.head) { /* placed */ }
+      else if (z.ul && z.ul.w >= 150 && z.ul.h >= 62) { out.head = place1(z.ul, 270, hh, ""); z.ul = shrink(z.ul, out.head); }
       else if (z.tl && z.tl.w >= 104 && z.tl.h >= 34) { out.head = place1(z.tl, 250, Math.min(z.tl.h, hh), ""); z.tl = null; }
       else if (z.ur && z.ur.w >= 104 && z.ur.h >= 62) { out.head = place1(z.ur, 250, hh, ""); z.ur = shrink(z.ur, out.head); }
       else if (z.ul && z.ul.w >= 104 && z.ul.h >= 62) { out.head = place1(z.ul, 250, hh, ""); z.ul = shrink(z.ul, out.head); }
       else if (z.bot && z.bot.w >= 120 && z.bot.h >= 34) {
         /* no wall above or beside the head (Bassem on a tall phone): the header takes the shelf's first column, two results the others */
-        var hc = shelfCols(wide ? 2 : 3, 96)[0];
-        if (hc) { var hh2 = Math.min(hc.h, Math.max(hh, HGT.full + 6)); out.head = { l: hc.l, t: hc.b - hh2, w: Math.min(hc.w, 260), h: hh2, cls: "" }; used.push(R(out.head.l, out.head.t, out.head.l + out.head.w, out.head.t + out.head.h)); }
+        out.head = shelfHead(Math.min(wide ? 2 : 3, 1 + Math.min(2, need.n || 0)));
       } else {
         var sl = [z.ur, z.ul, z.ll, z.lr];
         for (var si = 0; si < sl.length && !out.head; si++) if (sl[si] && sl[si].w >= 40 && sl[si].h >= 46) out.head = place1(sl[si], 86, 64, "hpill");
@@ -471,12 +484,16 @@
   function fromCall(e, bx) { var t = e && e.target; if (!bx) return false; if (!t || t === D || t === W) return true; return t === bx || !!(bx.contains && bx.contains(t)); }
   function debugOn() { try { return W.JANNA_LIVE_HOLO_DEBUG === 1 || /[?&#]holodebug=1\b/.test(String(W.location && (W.location.search + W.location.hash))); } catch (e) { return false; } }
 
-  var G = null, SEEN = {}, SEEN_N = 0, LAYER = null, TICK = 0, LAST_OWN = {}, CSS_ON = false, FOLD_T = 0;
+  var G = null, SEEN = {}, SEEN_N = 0, LAYER = null, TICK = 0, LAST_OWN = {}, CSS_ON = false, FOLD_T = 0, TAP_T = 0;
   /* does the cards' layer show this tool now (data/holo.js / bassem-intel-view.js ask before their own scene of it)? Without
      arguments: was this tool's last start one of the cards' (data/bassem-live-tools.js gives its facts with no arguments) */
   function owns(tool, a) {
     tool = String(tool || ""); if (!enabled() || !box()) return false;
     if (a === undefined) return !!(LAST_OWN[tool] && now() - LAST_OWN[tool] < 20000);
+    /* while the cards are up no page scene of data/holo.js goes over them (on phones it sits on the shelf under the chin, where the results
+       are): a page she only TALKS about moves the shared screen 25 s after her search (data/janna-live.js holoTopic) while she is still
+       explaining the results — the screen still moves, the hologram leaves the wall to the cards */
+    if (tool === "janna_navigate") return !!(G && !G.hidden && LAYER && LAYER.parentNode);
     return !!specOf(tool, a);
   }
   function newGroup(t) {
@@ -614,7 +631,7 @@
     + "background:linear-gradient(160deg,rgba(12,48,66,.86),rgba(4,18,26,.82) 58%,rgba(8,34,48,.86));box-shadow:0 0 0 1px rgba(2,10,16,.35),0 0 18px -5px rgba(90,210,255,.75),inset 0 0 16px -7px rgba(120,220,255,.5);"
     + "line-height:1.25;font-size:11px;font-weight:600;text-decoration:none;color:inherit;text-align:start;text-shadow:0 1px 2px rgba(0,0,0,.7);opacity:0;transform:translateY(6px) scale(.97);transition:opacity .35s ease,transform .35s ease,left .3s ease,top .3s ease,width .3s ease,height .3s ease;-webkit-tap-highlight-color:transparent}"
     + ".jv-holo .jvh-c.on{opacity:1;transform:none}.jv-holo .jvh-c.out{opacity:0;transform:translateY(-5px) scale(.97);pointer-events:none}"
-    + ".jv-holo .full,.jv-holo .ifull,.jv-holo .hfull{padding:6px 10px 7px}"
+    + ".jv-holo .full,.jv-holo .ifull,.jv-holo .hfull{padding:6px 10px 7px}.jv-holo .ifull{padding:5px 10px 4px}"
     + ".jv-holo .jvh-c::before,.jv-holo .jvh-c::after{content:\"\";position:absolute;width:8px;height:8px;border:2px solid rgba(170,238,255,.9);pointer-events:none}"
     + ".jv-holo .jvh-c::before{top:2px;left:2px;border-right:0;border-bottom:0;border-top-left-radius:5px}.jv-holo .jvh-c::after{bottom:2px;right:2px;border-left:0;border-top:0;border-bottom-right-radius:5px}"
     + ".jv-holo .jvh-c>*{position:relative;min-width:0;flex:none}"
@@ -623,9 +640,9 @@
     + ".jv-holo .jvh-dot{flex:none;width:7px;height:7px;border-radius:50%;background:#5ad2ff;box-shadow:0 0 8px #5ad2ff;animation:jvhPulse 1.2s ease-in-out infinite}.jv-holo .jvh-dot.ok{animation:none;background:#7fe3c0;box-shadow:0 0 8px #7fe3c0}"
     + ".jv-holo .jvh-q{font-weight:800;font-size:13px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
     + ".jv-holo .jvh-l{color:#cdefff;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.jv-holo .jvh-w{color:#f1d58b;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"
-    + ".jv-holo .jvh-n{flex:none;padding:0 6px;border-radius:99px;background:rgba(90,210,255,.22);border:1px solid rgba(120,220,255,.55);color:#fff;font-weight:800;font-size:11px;line-height:1.35}"
+    + ".jv-holo .jvh-n{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:0 6px;border-radius:99px;background:rgba(90,210,255,.22);border:1px solid rgba(120,220,255,.55);color:#fff;font-weight:800;font-size:11px;line-height:1.2}.jv-holo .jvh-h>span:not(:last-child){flex:none}"
     + ".jv-holo .jvh-cs{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;color:#e4f8ff;font-weight:700}"
-    + ".jv-holo .hmid{padding:4px 9px}.jv-holo .hmid .jvh-cs{-webkit-line-clamp:1;display:block;white-space:nowrap;text-overflow:ellipsis}.jv-holo .hmid .jvh-q{font-size:12.5px}"
+    + ".jv-holo .hmid{padding:3px 9px}.jv-holo .hmid .jvh-cs{-webkit-line-clamp:1;display:block;white-space:nowrap;text-overflow:ellipsis}.jv-holo .hmid .jvh-q{font-size:12.5px}"
     + ".jv-holo .hstrip{padding:3px 8px;justify-content:center}.jv-holo .hstrip>.jvh-l,.jv-holo .hstrip>.jvh-cs,.jv-holo .hstrip>.jvh-w{padding-inline-end:24px}.jv-holo .hstrip .jvh-cs{-webkit-line-clamp:1;display:block;white-space:nowrap;text-overflow:ellipsis}"
     /* «بدوّر…»: a light sweeping over the glass and a scanning line at its foot */
     + ".jv-holo .jvh-sw{position:absolute!important;inset:0;pointer-events:none;overflow:hidden;border-radius:inherit}.jv-holo .jvh-sw::before{content:\"\";position:absolute;top:0;bottom:0;left:-45%;width:45%;background:linear-gradient(90deg,rgba(120,220,255,0),rgba(150,230,255,.22),rgba(120,220,255,0));animation:jvhSweep 1.9s ease-in-out infinite}"
@@ -665,6 +682,7 @@
     if (e.defaultPrevented || e.button > 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return; /* a new tab: data/janna-live.js topClick, as for any link */
     var p = String(a.getAttribute("data-p") || a.getAttribute("href") || "");
     if (e.preventDefault) e.preventDefault();
+    TAP_T = now(); /* his choice: data/bassem-live-tools.js never runs a search over it (MIG_CALL_HOLO.tapped) */
     var J = JL(), ok = false; try { ok = !!(J && J.showCard && J.showCard(p)); } catch (x2) { ok = false; }
     if (!ok && J && J.show) { try { J.show(p); } catch (x3) {} }
     if (G) G.hover = now();
@@ -700,7 +718,7 @@
   /* ---------- rendering ---------- */
   function cardHtml(c, cls) {
     var sec = S(c.sec), ic = esc(c.ic || sec.ic), pill = cls === "pill", lite = cls === "slim" || cls === "mini", item = cls === "ifull" || cls === "icompact", big = cls === "full" || cls === "tall" || item, h = "";
-    var fact = cls === "full" || item ? c.fact : short(c.fact);
+    var fact = cls === "full" || cls === "ifull" ? c.fact : short(c.fact);
     if (!item && c.more && c.more.length) fact = [cls === "full" ? c.fact : short(c.fact)].concat(c.more).filter(Boolean).join(" · "); /* one item in a short card */
     var ok = c.ok ? ' <em title="' + esc(T("موثّق من فريق المنصة", "Verified by the platform team")) + '">✓ ' + esc(T("موثّق", "Verified")) + "</em>" : "";
     if (pill) return '<span class="jvh-tag">' + ic + '</span><b class="jvh-t" dir="auto">' + esc(c.title) + "</b>";
@@ -710,13 +728,14 @@
     if (big && c.sub) h += '<span class="jvh-e" dir="auto">' + esc(c.sub) + "</span>";
     if (fact) h += '<span class="jvh-f" dir="auto">' + esc(fact) + "</span>";
     else if (!big && c.sub && !one) h += '<span class="jvh-e" dir="auto">' + esc(c.sub) + "</span>";
-    if (item && c.more) for (var i = 0; i < c.more.length && i < (cls === "ifull" ? 2 : 1); i++) h += '<span class="jvh-f" dir="auto">' + esc(c.more[i]) + "</span>";
+    if (cls === "ifull" && c.more) for (var i = 0; i < c.more.length && i < 2; i++) h += '<span class="jvh-f" dir="auto">' + esc(c.more[i]) + "</span>";
     return h;
   }
   /* the header: «بدوّر على» + the words + the sections while searching; «لقيت» + each section's count; «مالقيتش…» / «ماكملش» */
   function headHtml(mode, cls, w) {
     var X = '<button type="button" class="jvh-x" aria-label="' + esc(T("إخفاء الكروت", "Hide the cards")) + '" title="' + esc(T("إخفاء", "Hide")) + '">✕</button>';
     var q = qWords(), lb = labels(), t = now(), strip = cls === "hstrip", pill = cls === "hpill", h = "", i, r, lens = w && w < 140 ? "" : "🔎 "; /* a narrow header: the pulsing dot says it */
+    var narrow = !!(w && w < 190); /* measured in Cairo: «🔎 لقيت» + «نتيجة واحدة» + the ✕ need 181 px */
     if (mode === "search") {
       var it = itemRow(), opening = !!(it && !it.search && G.rows.length === 1), head = opening ? T("بفتحلك", "Opening") : T("بدوّر على", "Searching"), waiting = t - G.t0 > WAIT_MS;
       var wait = '<span class="jvh-w">' + esc(T("لسه " + V("مستني", "مستنية") + " الرد…", "Still waiting for the answer…")) + "</span>";
@@ -730,7 +749,8 @@
     }
     if (mode === "none" || mode === "fail" || mode === "screen") {
       var ic = mode === "screen" ? "🖥️" : mode === "fail" ? "⚠️" : "🔍";
-      var m1 = mode === "none" ? T("مالقيتش نتايج مطابقة", "No matching results") : mode === "fail" ? T("البحث ده ماكملش", "This search did not finish") : stacked() ? T("النتايج على الشاشة تحت", "The results are on the screen below") : T("النتايج على الشاشة جنبي", "The results are on the screen beside me");
+      var m1 = mode === "none" ? (narrow ? T("مفيش نتايج", "No results") : T("مالقيتش نتايج مطابقة", "No matching results")) : mode === "fail" ? (narrow ? T("ماكملش", "Did not finish") : T("البحث ده ماكملش", "This search did not finish"))
+        : narrow ? T("على الشاشة", "On the screen") : stacked() ? T("النتايج على الشاشة تحت", "Results on the screen below") : T("النتايج على الشاشة جنبي", "Results on the screen beside me");
       var m2 = mode === "none" ? (q ? T("لـ «" + q + "»", "for “" + q + "”") : "") : mode === "fail" ? T("مفيش نتايج أعرضها", "No results to show") : q;
       if (pill) return '<span class="jvh-h" style="padding:0;justify-content:center">' + ic + '</span><span class="jvh-l" dir="auto">' + esc(m1) + "</span>";
       h = X + '<span class="jvh-h"><span>' + ic + " " + esc(m1) + "</span></span>";
@@ -739,16 +759,16 @@
       return h;
     }
     /* results: «🔎 لقيت · 22 نتيجة», the words, each section's count («مصانع 10 · مناقصات 11 · فرص مفيش») */
-    var chips = [], n = total(), wide = false;
+    var chips = [], n = total(), wide = false, iconic = narrow || ((strip || cls === "hmid") && chipLen() * (EN ? 6.2 : 5.2) > (w || 0) - 22); /* one line that would be cut: the icons */
     for (i = 0; i < G.rows.length; i++) {
       r = G.rows[i]; if (r.kind !== "list") continue; if (r.wide) wide = true;
       var v = r.failed ? (r.lost ? T("مفيش رد", "no answer") : T("ماكملش", "failed")) : r.count != null ? (r.count ? fmtN(r.count) : T("مفيش", "none")) : r.screen ? T("على الشاشة", "on the screen") : "…";
-      chips.push(rowLabel(r) + ": " + v);
+      chips.push(iconic ? S(r.sec).ic + (strip ? "" : " ") + v : rowLabel(r) + ": " + v);
     }
-    var nb = n ? '<span class="jvh-n">' + esc(nRes(n)) + "</span>" : "", cs = '<span class="jvh-cs" dir="auto">' + esc(chips.join(" · ")) + "</span>";
+    var nb = n ? '<span class="jvh-n">' + esc(nRes(n)) + "</span>" : "", cs = '<span class="jvh-cs" dir="auto">' + esc(strip && iconic && chips.length > 2 && n ? nRes(n) : chips.join(" · ")) + "</span>"; /* the two-line strip (390×664): the total when 3 sections would be cut */
     if (pill) return '<span class="jvh-h" style="padding:0;justify-content:center">🔎</span><span class="jvh-q">' + esc(n ? nRes(n) : q) + "</span>";
-    if (strip) return X + '<span class="jvh-h"><i class="jvh-dot ok"></i><span dir="auto">' + lens + esc(q || T("لقيت", "Found")) + "</span></span>" + cs;
-    h = X + '<span class="jvh-h"><i class="jvh-dot ok"></i><span>' + lens + esc(T("لقيت", "Found")) + "</span>" + nb + "</span>";
+    if (strip) return X + '<span class="jvh-h"><span dir="auto">' + lens + esc((narrow && q.length > 12 ? q.split(" · ")[0] : q) || T("لقيت", "Found")) + "</span></span>" + cs; /* two short lines: the words (the first when they would be cut), the counts */
+    h = X + '<span class="jvh-h">' + (narrow && nb ? nb : '<i class="jvh-dot ok"></i><span>' + lens + esc(T("لقيت", "Found")) + "</span>" + nb) + "</span>";
     if (q) h += '<span class="jvh-q" dir="auto">' + esc(q) + "</span>";
     h += cs;
     if (wide) h += '<span class="jvh-w">' + esc(T("وسّعت البحث لأسواق تانية", "Widened to other markets")) + "</span>";
@@ -771,6 +791,13 @@
     if (el && el.tagName.toLowerCase() !== tag) { l.removeChild(el); el = null; }
     if (!el) { el = D.createElement(tag); el.setAttribute("data-k", k); l.appendChild(el); setTimeout(function () { el.className = el.className.replace(/\s*\bon\b/g, "") + " on"; }, 20); }
     return el;
+  }
+  /* a slot that moves far up or down (the header from the shelf under the chin to the corner when the results come): it appears in its new
+     place instead of sliding there across her face */
+  function slot(l, k, tag, s) {
+    var el = slotEl(l, k, tag), a = el.__s;
+    if (a && Math.abs(a.t - s.t) > 80) { l.removeChild(el); el = slotEl(l, k, tag); }
+    el.__s = { l: s.l, t: s.t }; return el;
   }
   function put(el, s, cls, html, href, title) {
     var k = cls + "|" + html;
@@ -804,10 +831,10 @@
     var need = { head: head, n: one ? 0 : p.length, item: !!one, tall: (mode === "search" && t - G.t0 > WAIT_MS) || (mode === "results" && chipLen() > (EN ? 30 : 34)) };
     var plan = planOf(geomNow(bx), obstacles(bx), need);
     var keep = {};
-    if (plan.head) { var hel = slotEl(l, "head", "div"); hel.__mode = mode === "none" ? "jvh-none" : mode === "fail" ? "jvh-fail" : mode === "search" ? "jvh-s" : "jvh-sum"; put(hel, plan.head, plan.head.cls, headHtml(mode, plan.head.cls, plan.head.w)); keep.head = 1; }
+    if (plan.head) { var hel = slot(l, "head", "div", plan.head); hel.__mode = mode === "none" ? "jvh-none" : mode === "fail" ? "jvh-fail" : mode === "search" ? "jvh-s" : "jvh-sum"; put(hel, plan.head, plan.head.cls, headHtml(mode, plan.head.cls, plan.head.w)); keep.head = 1; }
     var cards = one ? [one] : p;
     for (var i = 0; i < cards.length && i < plan.cards.length; i++) {
-      var s = plan.cards[i], c = cards[i], href = c.href || "", tg = href ? "a" : "div", el = slotEl(l, "r" + i, tg);
+      var s = plan.cards[i], c = cards[i], href = c.href || "", tg = href ? "a" : "div", el = slot(l, "r" + i, tg, s);
       put(el, s, s.cls, cardHtml(c, s.cls), href, c.title + (c.sub ? " — " + c.sub : "") + (href ? T(" (افتحها على الشاشة)", " (open it on the screen)") : ""));
       keep["r" + i] = 1;
     }
@@ -862,7 +889,7 @@
   D.addEventListener("loadedmetadata", function (e) { if (e && e.target && e.target.tagName === "VIDEO") soon(); }, true);
   D.addEventListener("resize", function (e) { if (e && e.target && e.target.tagName === "VIDEO") soon(); }, true); /* the stream's own size changed */
 
-  W.MIG_CALL_HOLO = { v: 1, owns: owns, on: function () { return !!(G && !G.hidden && LAYER && LAYER.parentNode); }, clear: clear, layout: function () { if (G && !G.hidden) render(false); },
+  W.MIG_CALL_HOLO = { v: 1, owns: owns, on: function () { return !!(G && !G.hidden && LAYER && LAYER.parentNode); }, clear: clear, tapped: function () { return TAP_T; }, layout: function () { if (G && !G.hidden) render(false); },
     state: function () { if (!G) return null; var t = now(); return { mode: phase(t), rows: G.rows.map(function (r) { return { sec: r.sec, q: r.q, count: r.count, items: r.items.length, failed: r.failed, screen: r.screen, item: !!r.item }; }), fadeIn: G.fadeAt ? Math.max(0, G.fadeAt - t) : null, hidden: !!G.hidden }; },
-    _t: { argsOf: argsOf, resOf: resOf, clean: clean, specOf: specOf, cardOf: cardOf, itemCard: itemCard, oppCard: oppCard, rowLabel: rowLabel, nRes: nRes, pathOf: pathOf, stageGeom: stageGeom, posOf: posOf, faceOf: faceOf, zonesOf: zonesOf, planOf: planOf, FACES: FACES, HGT: HGT } };
+    _t: { argsOf: argsOf, resOf: resOf, clean: clean, specOf: specOf, cardOf: cardOf, itemCard: itemCard, oppCard: oppCard, cardHtml: cardHtml, rowLabel: rowLabel, nRes: nRes, pathOf: pathOf, stageGeom: stageGeom, posOf: posOf, faceOf: faceOf, zonesOf: zonesOf, planOf: planOf, FACES: FACES, HGT: HGT } };
 })();

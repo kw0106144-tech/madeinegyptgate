@@ -73,7 +73,9 @@ function clockOf() {
 /* a page with the call open: viewport, persona, language, stacked layout; the chips and the hologram are optional obstacles */
 const PHONE = { w: 390, h: 844, stage: { left: 10, top: 82, width: 370, height: 694 }, ai: { left: 154, top: 94, width: 214, height: 30 }, ctl: { left: 10, top: 710, width: 370, height: 66 }, stacked: true };
 const DESK = { w: 1280, h: 800, stage: { left: 426, top: 103, width: 840, height: 600 }, ai: { left: 1040, top: 115, width: 214, height: 30 }, ctl: { left: 426, top: 637, width: 840, height: 66 }, stacked: false };
-function page({ vp = PHONE, persona = "janna", lang = "ar", holoOff, flags, speaking = false, screenWork = false } = {}) {
+/* a phone on its side (844×390): a 360×240 stage, no shelf under the chin — the header gets a narrow wall beside the head */
+const LAND = { w: 844, h: 390, stage: { left: 470, top: 79, width: 360, height: 240 }, ai: { left: 604, top: 91, width: 214, height: 30 }, ctl: { left: 470, top: 253, width: 360, height: 66 }, stacked: false };
+function page({ vp = PHONE, persona = "janna", lang = "ar", holoOff, flags, speaking = false, screenWork = false, dict } = {}) {
   const C = clockOf(), doc = { listeners: {} };
   const mk = t => new El(t, doc);
   doc.createElement = mk; doc.head = mk("head"); doc.documentElement = mk("html"); doc.body = mk("body"); doc.documentElement.appendChild(doc.head); doc.documentElement.appendChild(doc.body);
@@ -96,6 +98,7 @@ function page({ vp = PHONE, persona = "janna", lang = "ar", holoOff, flags, spea
   win.__speaking = speaking;
   if (holoOff !== undefined) win.JANNA_LIVE_HOLO = holoOff;
   if (flags) win.MIGFLAGS = { on: k => (k in flags ? flags[k] : true) };
+  if (dict) win.MIGTR = s => (Object.prototype.hasOwnProperty.call(dict, s) ? dict[s] : s); /* data/i18n.js on English pages: exact dictionary matches */
   win.window = win; win.document = doc;
   const ctx = { window: win, document: doc, Date: C.Date, setTimeout: C.setTimeout, clearTimeout: C.clearTimeout, setInterval: C.setInterval, clearInterval: C.clearInterval, Intl, JSON, Math, String, Object, Array, RegExp, isFinite, parseFloat, parseInt, Number,
     CustomEvent: function (n, o) { this.type = n; this.detail = o && o.detail; this.bubbles = !!(o && o.bubbles); } };
@@ -175,8 +178,10 @@ describe("result cards on TOOL_CALL_COMPLETED: only what the tool returned", () 
     P.start("janna_lookup", { query: "كاوتش", section: "factories" }, "l1"); P.start("janna_lookup", { query: "كاوتش", section: "tenders" }, "l2"); P.start("janna_search", { query: "كاوتش", section: "factories" }, "s1");
     P.done("janna_search", "s1", null, "client"); P.done("janna_lookup", "l1", FACTORIES); P.done("janna_lookup", "l2", TENDERS);
     const head = P.card("head"), r = P.cards().filter(c => /^r\d$/.test(c.getAttribute("data-k")));
-    assert.match(html(head), /لقيت/); assert.match(html(head), /21 نتيجة/, "10 + 11, the tools' own counts");
-    assert.match(html(head), /مصانع: 10 · مناقصات: 11/);
+    /* a phone: the corner beside the AI label is narrow (132 px) — the count and each section's icon, never «لقيت» squeezed to «ل…» */
+    assert.match(html(head), /21 نتيجة/, "10 + 11, the tools' own counts"); assert.match(html(head), /🏭 10 · 📄 11/); assert.doesNotMatch(html(head), /لقيت/);
+    const Dk = page({ vp: DESK }); Dk.start("janna_lookup", { query: "كاوتش", section: "factories" }, "l1"); Dk.start("janna_lookup", { query: "كاوتش", section: "tenders" }, "l2"); Dk.done("janna_lookup", "l1", FACTORIES); Dk.done("janna_lookup", "l2", TENDERS);
+    assert.match(html(Dk.card("head")), /لقيت/); assert.match(html(Dk.card("head")), /مصانع: 10 · مناقصات: 11/, "a wide header: the sections' words");
     assert.equal(r.length, 3, "three result cards");
     assert.match(html(r[0]), /شركة القاهرة للكاوتشوك/); assert.match(html(r[0]), /📍 القاهرة/);
     assert.match(html(r[1]), /عملية توريد فلاتر وزيوت وكاوتش/); assert.match(html(r[1]), /غير محدد الموعد/, "the tool's own status: no deadline is never made up");
@@ -273,6 +278,17 @@ describe("behaviour: replaced by a new search, the fade, the tap, the end of the
     P.click(btn); P.C.advance(400); assert.equal(P.cards().length, 0, "✕ hides the cards");
     P.C.advance(2000); P.start("janna_lookup", { query: "حديد", section: "factories" }, "l3"); assert.ok(P.card("head"), "the next search shows again");
   });
+  test("while the cards are up no page scene of data/holo.js goes over them (a page she only talks about, 25 s later); the tap is remembered", () => {
+    const P = page();
+    assert.equal(P.H.owns("janna_navigate", { page: "market" }), false, "no cards: the hologram's page scene as before");
+    P.start("janna_lookup", { query: "كاوتش", section: "factories" }, "l1"); P.done("janna_lookup", "l1", FACTORIES);
+    assert.equal(P.H.owns("janna_navigate", { page: "market" }), true, "results up: holo.js leaves the wall to the cards (the screen still moves)");
+    assert.equal(P.H.tapped(), 0);
+    const a = P.card("r0"), inner = new El("b", P.doc); a.appendChild(inner); P.click(inner);
+    assert.equal(P.H.tapped(), P.C.t, "data/bassem-live-tools.js watchSearch never runs a search over the page he chose");
+    P.C.advance(40000); assert.equal(P.cards().length, 0); assert.equal(P.H.owns("janna_navigate", { page: "market" }), false, "cards gone: as before");
+    assert.match(BLT, /function cardTap\(t\) \{ var C = W\.MIG_CALL_HOLO;/); assert.match(BLT, /if \(d !== REAL\) return d;\n        if \(cardTap\(t0\)\) return null;/);
+  });
   test("the call ends: nodes and timers gone", () => {
     const P = page();
     P.start("janna_lookup", { query: "كاوتش", section: "factories" }, "l1"); P.done("janna_lookup", "l1", FACTORIES);
@@ -285,11 +301,27 @@ describe("behaviour: replaced by a new search, the fade, the tap, the end of the
     P.start("janna_lookup", { query: "كاوتش", section: "factories" }, "l1"); P.start("janna_lookup", { query: "كاوتش", section: "tenders" }, "l2");
     assert.match(html(P.card("head")), /Searching/); assert.match(html(P.card("head")), /Factories · Tenders/);
     P.done("janna_lookup", "l1", FACTORIES); P.done("janna_lookup", "l2", TENDERS);
-    assert.match(html(P.card("head")), /Factories: 10 · Tenders: 11/); assert.match(html(P.card("r0")), /Factory/); assert.match(html(P.card("r0")), /📍 Cairo/);
+    assert.match(html(P.card("head")), /21 results/); assert.match(html(P.card("head")), /🏭 10 · 📄 11/); assert.match(html(P.card("r0")), /Factory/); assert.match(html(P.card("r0")), /📍 Cairo/);
+    const Dk = page({ lang: "en", vp: DESK }); Dk.start("janna_lookup", { query: "كاوتش", section: "factories" }, "l1"); Dk.start("janna_lookup", { query: "كاوتش", section: "tenders" }, "l2"); Dk.done("janna_lookup", "l1", FACTORIES); Dk.done("janna_lookup", "l2", TENDERS);
+    assert.match(html(Dk.card("head")), /Found/); assert.match(html(Dk.card("head")), /Factories: 10 · Tenders: 11/);
     assert.match(html(P.card("r1")), /No published deadline/);
     assert.doesNotMatch(html(P.card("head")), /لقيت|بدوّر|مصانع|مناقصات|نتيجة|نتايج/, "no Arabic label (the words she searched for stay as said)");
     const N = page({ lang: "en" }); N.start("janna_lookup", { query: "سلندرات", section: "tenders" }, "l1"); N.done("janna_lookup", "l1", NONE("tenders"));
     assert.match(html(N.card("head")), /No matching results/); assert.match(html(N.card("head")), /for “سلندرات”/);
+  });
+  test("English page: names and titles in the site's own English (its dictionary, as the English pages show them); an RFQ's frame dropped", () => {
+    const dict = { "شركة القاهرة للكاوتشوك والبلاستيك (جورج خلف وشركاه)": "Cairo Rubber and Plastic Company (George Khalaf & Partners)", "الغزل والنسيج والملابس الجاهزة": "Spinning, weaving and ready-made garments", "عملية توريد فلاتر وزيوت وكاوتش": "Supply of Filters, Oils and Tires", "جهة حكومية": "Government entity",
+      "طلب عرض سعر – توريد غلاف وعاء ضغط من شركة Protec Arisawa – بتاريخ 8-11-2026 – رقم الطلب: 0137789": "Request for Quotation – Supply of a Pressure Vessel Shell by Protec Arisawa – 8-11-2026 – Request No. 0137789" };
+    const P = page({ lang: "en", dict });
+    P.start("janna_lookup", { query: "كاوتش", section: "factories" }, "l1"); P.start("janna_lookup", { query: "كاوتش", section: "tenders" }, "l2"); P.done("janna_lookup", "l1", FACTORIES); P.done("janna_lookup", "l2", TENDERS);
+    assert.match(html(P.card("r0")), /Cairo Rubber and Plastic Company \(George Khalaf &amp; Partners\)/); assert.match(html(P.card("r0")), /Spinning, weaving/);
+    assert.match(html(P.card("r1")), /Supply of Filters, Oils and Tires/); assert.match(html(P.card("r1")), /Government entity/);
+    assert.doesNotMatch(html(P.card("r0")) + html(P.card("r1")), /شركة القاهرة|عملية توريد/, "no Arabic where the site has its English");
+    const R = page({ lang: "en", dict });
+    R.start("janna_lookup", { query: "x", section: "rfqs" }, "r1"); R.done("janna_lookup", "r1", { section: "rfqs", count: 1, results: [{ title: Object.keys(dict)[4], activity: "x", date: "2026-11-08", open_url: "/rfq/x/" }] });
+    assert.match(html(R.card("r0")), />Supply of a Pressure Vessel Shell by Protec Arisawa</, "no «Request for Quotation –» / date / request number frame");
+    const A = page({ dict }); A.start("janna_lookup", { query: "كاوتش", section: "factories" }, "l1"); A.done("janna_lookup", "l1", FACTORIES);
+    assert.match(html(A.card("r0")), /شركة القاهرة للكاوتشوك/, "an Arabic page keeps the data as it is");
   });
   test("Bassem: his screen's own facts (mig:screen-result) fill an opened item; bassem_open_opportunity's answer becomes its card", () => {
     const P = page({ persona: "bassem", vp: DESK });
@@ -337,6 +369,31 @@ describe("where: the free wall around the face, never over the face, the AI labe
     assert.ok(p.cards.every(c => c.t >= g.head.b), "under the chin");
     assert.ok(p.cards[0].l > p.cards[1].l && p.cards[1].l > p.cards[2].l, "Arabic: the first result on the right");
     const L = T.planOf(g, { ai, bottom: H - 66, rects: [], rtl: false }, { head: true, n: 3 }); assert.ok(L.cards[0].l < L.cards[1].l, "English: on the left");
+  });
+  test("phones with no result card yet (searching, nothing found): the header on the shelf under the chin, readable, at the reading start; results: the corner", () => {
+    for (const [W, H] of [[370, 694], [370, 514], [340, 630]]) {
+      const g = T.stageGeom(W, H, 1152, 768, [0.5, 0.3], T.faceOf("janna")), ai = { l: W - 226, t: 12, r: W - 12, b: 42 };
+      for (const rtl of [true, false]) {
+        const p = T.planOf(g, { ai, bottom: H - 66, rects: [], rtl }, { head: true, n: 0 });
+        assert.ok(p.head.t >= g.head.b && p.head.w >= 200, W + "×" + H + ": on the shelf, wide: " + JSON.stringify(p.head));
+        assert.ok(rtl ? p.head.l + p.head.w > W - 12 : p.head.l < 12, "at the reading start");
+        assert.ok(!X({ l: p.head.l, t: p.head.t, r: p.head.l + p.head.w, b: p.head.t + p.head.h }, g.head) && p.head.t + p.head.h <= H - 66);
+      }
+    }
+    const g = T.stageGeom(370, 694, 1152, 768, [0.5, 0.3], T.faceOf("janna")), p3 = T.planOf(g, { ai: { l: 144, t: 12, r: 358, b: 42 }, bottom: 628, rects: [], rtl: true }, { head: true, n: 3 });
+    assert.ok(p3.head.t + p3.head.h <= g.head.t, "with results the header goes to the corner and the shelf holds the results");
+    /* in the page: searching on the shelf, then the results — the header appears in the corner (a new card), it never slides up across her face */
+    const P = page(); P.start("janna_lookup", { query: "كاوتش", section: "factories" }, "l1"); const h1 = P.card("head"), r1 = P.rectOf(h1);
+    assert.ok(r1.t >= T.stageGeom(370, 694, 1152, 768, [0.5, 0.3], T.faceOf("janna")).head.b, "searching: on the shelf");
+    P.done("janna_lookup", "l1", FACTORIES); const h2 = P.card("head"), r2 = P.rectOf(h2);
+    assert.ok(r2.b <= 66 && h2 !== h1 && h1.parentNode === null, "results: the corner, as a new card (no slide over the face)");
+    const L = page({ vp: LAND }); L.start("janna_lookup", { query: "سلندرات", section: "tenders" }, "l1"); L.done("janna_lookup", "l1", NONE("tenders"));
+    assert.match(html(L.card("head")), /مفيش نتايج/, "a narrow header (a phone on its side): short words that fit"); assert.doesNotMatch(html(L.card("head")), /مالقيتش نتايج مطابقة/);
+  });
+  test("one item in a narrow card (icompact): tag, title, buyer and the short fact; ifull adds its two other facts", () => {
+    const c = T.itemCard("tenders", ITEM), sm = T.cardHtml(c, "icompact"), big = T.cardHtml(c, "ifull");
+    assert.equal((sm.match(/class="jvh-f"/g) || []).length, 1, "icompact: one fact line (82 px hold 5 lines)"); assert.doesNotMatch(sm, /آخر ميعاد/, "its short form");
+    assert.equal((big.match(/class="jvh-f"/g) || []).length, 3); assert.match(big, /آخر ميعاد 12 يناير 2027/);
   });
   test("a chip above the bar (🌐 / noise) or the hologram's panel is never covered: the cards go above or beside it", () => {
     const W = 370, H = 694, g = T.stageGeom(W, H, 1152, 768, [0.5, 0.3], T.faceOf("janna")), ai = { l: 144, t: 12, r: 358, b: 42 };

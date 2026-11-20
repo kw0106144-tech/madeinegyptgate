@@ -343,6 +343,8 @@
   /* the holo cards show this search on the video itself (data/call-holo.js, owner 2026-11-20: he sees Bassem and the results together,
      without scrolling): the video stays in view and «شوف الشاشة ↓» offers the screen — a tap on a result card opens it there */
   function cardsHold(a) { var C = W.MIG_CALL_HOLO; try { return !!(a && C && C.owns && C.owns("janna_search", a)); } catch (e) { return false; } }
+  /* the member tapped a result card on the video since t (data/call-holo.js: that page is on the screen now, his choice) */
+  function cardTap(t) { var C = W.MIG_CALL_HOLO; try { return !!(C && C.tapped && C.tapped() >= t); } catch (e) { return false; } }
   function showScreen(force, search) {
     var l = layer(), o = ov(); if (!l || !o) return;
     if (!stacked()) { l.back.classList.remove("on"); l.scr.classList.remove("blt-bk"); l.see.classList.remove("on"); return; }
@@ -399,6 +401,7 @@
         return (el > 1500 && !still) || el > 6000 ? REAL : null;
       }, 11000, 200).then(function (d) {
         if (d !== REAL) return d;
+        if (cardTap(t0)) return null; /* he opened a result card himself: the screen keeps his page (no search over it) */
         var d1 = fdoc(); try { if (H && H.run) H.run("janna_search", a, { force: 1 }); } catch (e) {}
         return newPage(d1, looks, Math.max(2000, 10000 - (now() - t0)));
       })
