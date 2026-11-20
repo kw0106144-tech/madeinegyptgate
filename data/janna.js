@@ -225,6 +225,12 @@
     "stage.again": { m: "happy", ar: "أهلاً بيك تاني 😊 اختار اللي تحبه من هنا، أو اسألني أي حاجة.", en: "Welcome back 😊 Pick anything here, or ask me whatever you like." },
     "stage.dock": { m: "happy", ar: "أنا هنا في الركن لو احتجتني 😊 دوس عليّا في أي وقت.", en: "I'll be right here in the corner 😊 Tap me any time." },
     "stage.search": { m: "happy", ar: "بتدوّر على إيه؟ اختار القسم، أو اكتبلي على طول، زي: مصانع بلاستيك في الشرقية.", en: "What are you looking for? Pick a section, or just type, e.g. plastic factories in Sharqia." },
+    /* 📎 a photo in her bubble (switch chat_photos): the platform reads it (worker/src/chat-media.js); she never says she saw it */
+    "photo.reading": { m: "thinking", ar: "ثواني، المنصة بتقرا الصورة…", en: "One moment, the platform is reading the photo…" },
+    "photo.got": { m: "happy", ar: "الصورة شكلها فيها {what} — صح؟", en: "The photo looks like {what} — right?" },
+    "photo.low": { m: "thinking", ar: "مش متأكدة من الصورة، باين إنها {what} — هي إيه بالظبط؟ اكتبلي اسمها.", en: "I'm not sure about the photo — it looks like {what}. What is it exactly? Type its name." },
+    "photo.none": { m: "empathetic", ar: "الصورة وصلت، بس المنصة ماقدرتش تقرا اللي فيها. اكتبلي اسم المنتج وأنا أدوّرلك.", en: "The photo arrived, but the platform couldn't read it. Type the product's name and I'll search for it." },
+    "photo.person": { m: "calm", ar: "أنا مابوصفش الناس ولا بقرا البطاقات أو بيانات التواصل — ابعتلي صورة للمنتج نفسه أو اكتبلي اسمه.", en: "I don't describe people or read ID cards or contact details — send me a photo of the product itself or type its name." },
     "live.none": { m: "empathetic", ar: "الفيديو المباشر مش متاح في الصفحة دي دلوقتي 🙏 أقدر أبعت رسالتك للمنصة برقم متابعة، أو نكمّل هنا كتابة وصوت.", en: "Live video isn't available on this page right now 🙏 I can send your message to the platform with a tracking number, or we carry on here by text and voice." },
     /* guided tour (8 steps) */
     "tour.start": { m: "excited", ar: "يلا بينا نلف المنصة سوا 🧭 هوريك أهم الأقسام في ٨ خطوات، ودوس «التالي» لما تخلص كل خطوة.", en: "Let's tour the platform together 🧭 Eight short steps through the main sections; tap “Next” after each one." },
@@ -389,6 +395,8 @@
     /* tour */
     tNext: { ar: "التالي ←", en: "Next →" }, tBack: { ar: "→ رجوع", en: "← Back" }, tEnd: { ar: "إنهاء الجولة", en: "End tour" }, tCont: { ar: "كمّلي الجولة", en: "Continue the tour" }, tStep: { ar: "خطوة", en: "Step" },
     /* items */
+    photoBtn: { ar: "ابعتلي صورة المنتج", en: "Send me a photo of the product" }, photoF: { ar: "🔎 دوّري عليها في المصانع", en: "🔎 Search factories for it" },
+    photoM: { ar: "🛒 دوّري في السوق", en: "🛒 Search the marketplace" }, photoLive: { ar: "🎥 كلّم جنة عنها", en: "🎥 Talk to Janna about it" },
     openIt: { ar: "افتح", en: "Open" }, source: { ar: "المصدر الرسمي", en: "Official source" }, showAll: { ar: "اعرضهم في الصفحة", en: "Show them on the page" }, details: { ar: "التفاصيل", en: "Details" }
   };
   function t(k) { return (TX[k] || {})[L] || ""; }
@@ -528,6 +536,7 @@
     + '.jn-in{display:flex;gap:6px;padding:10px;border-top:1px solid #eef2f6}.jn-in input{flex:1;min-width:0;border:1px solid #e2e8f0;border-radius:11px;padding:8px 10px;font:inherit;font-size:.88rem}'
     + '.jn-in input.need{border-color:#22b8e0;box-shadow:0 0 0 3px rgba(34,184,224,.18)}'
     + '.jn-in button{border:0;border-radius:11px;padding:0 12px;font:inherit;font-weight:800;cursor:pointer;background:#0f172a;color:#fff}.jn-in .mic{background:#c8102e}.jn-in .mic.rec{animation:jnPulse 1s ease infinite}'
+    + '.jn-in .att{background:#eef2f6;color:#0f172a}.jn-in .att[hidden]{display:none}.jn-body .jn-cmth{display:block;max-width:132px;max-height:132px;margin:8px 0 0;border-radius:10px;object-fit:cover;border:1px solid #e2e8f0}'
     + '@keyframes jnPulse{0%,100%{box-shadow:0 0 0 0 rgba(200,16,46,.5)}50%{box-shadow:0 0 0 8px rgba(200,16,46,0)}}'
     + '.jn-mini{position:fixed;z-index:65;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);width:64px;height:64px;border-radius:50%;background:#000;border:2px solid rgba(120,220,255,.7);box-shadow:0 0 22px -4px rgba(90,210,255,.85);overflow:hidden;cursor:pointer;padding:0}'
     + '.jn-mini img{width:100%;height:100%;object-fit:cover;display:block}.jn-mini svg{width:200%;height:200%;margin:-6% 0 0 -50%;display:block}'
@@ -729,7 +738,7 @@
 
   /* ---------- the speech bubble ---------- */
   var bub = document.createElement("section"); bub.className = "jn-bub"; bub.hidden = true; bub.setAttribute("translate", "no"); bub.setAttribute("aria-live", "polite");
-  bub.innerHTML = '<span class="jn-pin" aria-hidden="true"></span><div class="jn-hd"><span class="jn-emo" aria-hidden="true">😊</span><div><b class="jn-n"></b><small class="jn-r"></small></div><span class="jn-sp"></span><button type="button" class="jn-exp" aria-label="">⤢</button><button type="button" class="jn-snd"></button><button type="button" class="jn-lng"></button><button type="button" class="jn-cl" aria-label="✕">✕</button></div><div class="jn-body"></div><div class="jn-acts"></div><div class="jn-qr" hidden></div><form class="jn-in"><input type="text" autocomplete="off" enterkeyhint="send"><button type="button" class="mic" aria-label="mic">🎤</button><button type="submit" aria-label="send">➤</button></form>';
+  bub.innerHTML = '<span class="jn-pin" aria-hidden="true"></span><div class="jn-hd"><span class="jn-emo" aria-hidden="true">😊</span><div><b class="jn-n"></b><small class="jn-r"></small></div><span class="jn-sp"></span><button type="button" class="jn-exp" aria-label="">⤢</button><button type="button" class="jn-snd"></button><button type="button" class="jn-lng"></button><button type="button" class="jn-cl" aria-label="✕">✕</button></div><div class="jn-body"></div><div class="jn-acts"></div><div class="jn-qr" hidden></div><form class="jn-in"><input type="text" autocomplete="off" enterkeyhint="send"><button type="button" class="att" hidden aria-label="📎">📎</button><button type="button" class="mic" aria-label="mic">🎤</button><button type="submit" aria-label="send">➤</button><input type="file" class="jn-file" accept="image/jpeg,image/png,image/webp" hidden tabindex="-1" aria-hidden="true"></form>';
   document.body.appendChild(fig); document.body.appendChild(mini); document.body.appendChild(beam); document.body.appendChild(bub);
   if (KIOSK) document.body.classList.add("jn-kiosk");
   var bodyEl = bub.querySelector(".jn-body"), acts = bub.querySelector(".jn-acts"), qr = bub.querySelector(".jn-qr"), input = bub.querySelector("input"), emo = bub.querySelector(".jn-emo"), pin = bub.querySelector(".jn-pin");
@@ -744,6 +753,34 @@
     input.placeholder = ST.flow && ST.flow.ph ? ST.flow.ph : t("ask"); bub.querySelector(".mic").title = t("mic");
   }
   chrome();
+  /* ---------- 📎 «ابعتلي صورة المنتج» (owner 2026-11-20; switch chat_photos): data/chat-media.js (loaded with this file's ?v= or
+     window.MIGVER_CM, only while the switch is on) redraws the photo, the platform reads it once with AI and keeps nothing
+     (worker/src/chat-media.js, a bubble ticket — no visitor id), and she searches with what it says. Never in the kiosk. ---------- */
+  var CMF = bub.querySelector(".jn-file"), CMB = bub.querySelector(".jn-in .att"), CML = 0;
+  function cmOn() { var F = window.MIGFLAGS; return !KIOSK && !!(F && F.on && F.on("chat_photos") === true); }
+  function cmLoad() { if (window.MIGCHATMEDIA || CML) return; CML = 1; var sc = document.createElement("script"); sc.src = "data/chat-media.js" + (window.MIGVER_CM || (DV ? "?v=" + DV : "")); sc.charset = "utf-8"; sc.async = true; sc.onload = cmBtn; sc.onerror = function () { CML = 0; if (sc.parentNode) sc.parentNode.removeChild(sc); }; document.head.appendChild(sc); }
+  function cmBtn() { if (!CMB) return; var on = cmOn(); if (on && !window.MIGCHATMEDIA) cmLoad(); CMB.hidden = !(on && window.MIGCHATMEDIA); CMB.title = t("photoBtn"); CMB.setAttribute("aria-label", t("photoBtn")); }
+  /* the notice once per device (a bubble message, not spoken), then the picker — «تمام، اختار صورة» is a tap, so the picker opens */
+  function cmPick() { var M = window.MIGCHATMEDIA; if (!M || !CMF) return; if (!M.okSeen("b")) { show({ segs: [seg(M.tx("noticeB", L === "en"), "calm")], acts: [btn("cmok", M.tx("ok", L === "en"), null, "pri"), btn("cmno", M.tx("cancel", L === "en"))], speak: false }); return; } cmOpen(); }
+  function cmOpen() { try { CMF.value = ""; } catch (e) {} try { CMF.click(); } catch (e) {} }
+  if (CMF) CMF.addEventListener("change", function () {
+    var f = CMF.files && CMF.files[0], M = window.MIGCHATMEDIA; if (!f || !M) return;
+    M.photoPrep(f, function (e, p) { try { CMF.value = ""; } catch (x) {} if (e) { if (e !== "none") show({ segs: [seg(M.tx(e, L === "en"), "empathetic")], acts: [chip(["srch", "market"]), chip(["srch", "factories"])] }); return; } cmLook(p); });
+  });
+  function cmLook(p) {
+    var M = window.MIGCHATMEDIA, en = L === "en"; logT("u", "📎");
+    show({ segs: [ln("photo.reading")], html: p.url ? '<img class="jn-cmth" src="' + esc(p.url) + '" alt="">' : "", speak: false });
+    M.bubbleLook(p, en, function (err, j) {
+      if (err) { show({ segs: [seg(err.t, "empathetic")], acts: [chip(["srch", "market"]), chip(["srch", "factories"])] }); return; }
+      var s = j.seen, r = j.reason, what = s ? (en ? s.what_en || s.what_ar : s.what_ar || s.what_en) : "";
+      if (!s || !what) { show({ segs: [ln(/^(person|id_document|contact_card)$/.test(String(r)) ? "photo.person" : "photo.none")], acts: [chip(["srch", "market"]), chip(["srch", "factories"])] }); return; }
+      var ta = s.terms_ar || [], te = s.terms_en || [], term = (en ? te[0] || ta[0] : ta[0] || te[0]) || what, acts = [btn("cmf", t("photoF"), term, "pri"), btn("cmm", t("photoM"), term)];
+      if (liveOn()) acts.push(btn("live", t("photoLive"), ""));
+      show({ segs: [ln(s.confidence === "low" ? "photo.low" : "photo.got", { what: what })], acts: acts });
+    });
+  }
+  window.addEventListener("mig:flags", function () { try { cmBtn(); } catch (e) {} });
+  setTimeout(cmBtn, 0);
   /* html.jn-bubon while her bubble is open (captions bar and toasts step aside, see the styles) */
   (function () { var sync = function () { document.documentElement.classList.toggle("jn-bubon", !bub.hidden); }; try { new MutationObserver(sync).observe(bub, { attributes: true, attributeFilter: ["hidden"] }); } catch (e) {} sync(); })();
 
@@ -1723,10 +1760,14 @@
     if (b.classList.contains("jn-snd")) { soundOn = !soundOn; ls("janna-snd", soundOn ? "1" : "0"); if (!soundOn) stop(); chrome(); return; }
     if (b.classList.contains("jn-lng")) { setLang(L === "ar" ? "en" : "ar"); return; }
     if (b.classList.contains("mic")) { listen(); return; }
+    if (b.classList.contains("att")) { cmPick(); return; } /* 📎 */
     var k = b.getAttribute("data-jn"), v = b.getAttribute("data-v"); if (!k) { stop(); return; }
     var label = b.textContent.replace(/[←→]/g, "").trim();
     if (k === "ans" || k === "skip") { if (ST.flow) { logT("u", label); reply(function () { flowInput(label, k === "skip" ? "skip" : v); }, rnd(250, 450)); } return; }
     if (k === "nav") { goTo(v); return; }
+    if (k === "cmok") { var CMM = window.MIGCHATMEDIA; if (CMM) CMM.okSet("b"); cmOpen(); return; } /* 📎 the notice's «تمام، اختار صورة»: the picker in the same tap */
+    if (k === "cmno") { show({ segs: [ln("flow.cancel")], acts: pageActs() }); return; }
+    if (k === "cmf" || k === "cmm") { logT("u", label); startSearch(k === "cmf" ? "factories" : "market", v || "", ""); return; }
     if (k === "it") { var it = null; try { it = JSON.parse(v); } catch (x) {} if (it && KIND_AR[it.kind]) { logT("u", label); goItem(it.kind, it.name, it.href, it.pend); } return; }
     if (k === "qr") { showQR(); return; }
     if (k === "fcancel") { cancelFlow(); return; }

@@ -25,7 +25,7 @@
     var REPO = /^[\w.-]+\/[\w.-]+$/.test(str(CFGD.repo)) ? str(CFGD.repo) : "kw0106144-tech/madeinegyptgate";
     var ACCOUNT = /^[0-9a-f]{32}$/.test(str(CFGD.account)) ? str(CFGD.account) : "88c77c2b7595dd0ce510270175f69143";
     var PAGES_PROJECT = "madeinegyptgate";
-    var API = { review: "/admin/cc/dev/review", features: "/admin/cc/dev/features", deploys: "/admin/cc/dev/deploys", rollback: "/admin/cc/dev/deploys/rollback", health: "/admin/cc/dev/health", audit: "/admin/cc/dev/audit", keys: "/admin/cc/keys" };
+    var API = { vision: "/admin/cc/dev/vision", review: "/admin/cc/dev/review", features: "/admin/cc/dev/features", deploys: "/admin/cc/dev/deploys", rollback: "/admin/cc/dev/deploys/rollback", health: "/admin/cc/dev/health", audit: "/admin/cc/dev/audit", keys: "/admin/cc/keys" };
     var SLOT = "cloudflare.dev_token";       /* «مفاتيح الخدمات» slot «Cloudflare — لوحة المطوّر» */
     var CONFIRM = "ارجع";                    /* the typed confirmation of a rollback (sent as is; the Worker checks it again) */
     var OWNER = function () { var f = X.features(); return X.role() === "owner" && (X.can("dev.manage") || f.dev === true); };
@@ -129,8 +129,8 @@
         body(c, '<div class="info">' + h(T("كل مفتاح بيشغّل أو بيوقف ميزة حقيقية: اللي في السيرفر بيتطبّق خلال 30 ثانية، واللي في صفحات الموقع بيظهر أو يختفي خلال دقايق. الميزة المتوقفة السيرفر بيرفض طلباتها برسالة واضحة، والتشغيل تاني بيرجّعها زي ما كانت.", "Each switch turns a real feature on or off: on the server within 30 seconds, on the site's pages within minutes. The server refuses requests for a stopped feature with a clear message; switching it on again brings it back as it was.")) + "</div>"
           + (j.updated_at ? '<p class="mut sm">' + h(T("آخر تغيير في المزايا: ", "Last change to the features: ")) + when(j.updated_at) + (j.updated_by ? ' <bdi dir="ltr">' + h(j.updated_by) + "</bdi>" : "") + "</p>" : "")
           + (fs.length ? '<div class="dv-fs">' + fs.map(featH).join("") + "</div>" : '<div class="cd"><div class="in mut">' + h(T("السيرفر مارجّعش أي مزايا.", "The server returned no features.")) + "</div></div>")
-          + policyH(j.policies || j.policy) + '<div id="dvRev"></div>');
-        review(c);
+          + policyH(j.policies || j.policy) + '<div id="dvRev"></div><div id="dvVis"></div>');
+        review(c); vision(c);
       };
       var take = function (j) { j = j || {}; c.st.j = j; c.st.fs = arr(j.features).map(nFeat).filter(function (f) { return f.key; }); };
       var load = function () { X.GET(API.features).then(function (j) { if (!X.alive(c)) return; take(j); paint(); }, function (e) { body(c, X.errH(e)); }); };
@@ -205,6 +205,56 @@
         });
       };
       load();
+    }
+
+    /* «🔎 تجربة قراءة صورة» (worker/src/acc-dev.js POST /dev/vision → worker/src/chat-media.js, design phase 1A): the owner tries the photo
+       reading of Janna's and Bassem's calls on his own test photos BEFORE he switches chat_photos on — the photo is redrawn here exactly like
+       in a call (data/chat-media.js photoPrep: a JPEG ≤ 1,280 px, EXIF dropped), read once, and nothing is stored; 20 a day inside the reading
+       budget; each test is in «السجل» (dev.vision: model, size, kind, reason — never the photo or its text). No coding session can call Workers AI. */
+    var VIS_MODELS = [["", "CHAT_VISION_MODEL"], ["@cf/meta/llama-4-scout-17b-16e-instruct", "Llama 4 Scout"], ["@cf/google/gemma-4-26b-a4b-it", "Gemma 4 26B"]];
+    var VIS_AGENTS = [["janna-ar", "جنة (عربي)", "Janna (Arabic)"], ["janna-en", "جنة (إنجليزي)", "Janna (English)"], ["bassem", "باسم", "Bassem"]];
+    function cmLib(cb) {
+      if (W.MIGCHATMEDIA && W.MIGCHATMEDIA.photoPrep) { cb(W.MIGCHATMEDIA); return; }
+      var me = document.querySelector('script[src*="data/acc-dev.js"]'), m = me && /[?&]v=([\w.-]+)/.exec(me.src), sc = document.createElement("script");
+      sc.src = "data/chat-media.js" + (W.MIGVER_CM || (m ? "?v=" + m[1] : "")); sc.charset = "utf-8"; sc.async = true;
+      sc.onload = function () { cb(W.MIGCHATMEDIA || null); }; sc.onerror = function () { cb(null); };
+      document.head.appendChild(sc);
+    }
+    function vision(c) {
+      if (!$("#dvVis")) return;
+      var st = c.st.vis || (c.st.vis = { agent: "janna-ar", model: "", detail: "high", res: null, msg: null });
+      var opt = function (list, cur, lab) { return list.map(function (o) { return '<option value="' + h(o[0]) + '"' + (o[0] === cur ? " selected" : "") + ">" + h(lab(o)) + "</option>"; }).join(""); };
+      var paint = function () {
+        if (!X.alive(c) || !$("#dvVis")) return;
+        var r = st.res, who = st.agent === "bassem" ? T("اللي باسم كان هيوصله", "What Bassem would receive") : T("اللي جنة كانت هتوصلها", "What Janna would receive");
+        $("#dvVis").innerHTML = X.cardH(T("🔎 تجربة قراءة صورة", "🔎 Test a photo reading"),
+          '<p class="sm" dir="auto">' + h(T("اختار صورة تجربة — مابتتحفظش وبتتحسب من حد اليوم", "Choose a test photo — it is not kept and counts toward the daily cap")) + "</p>"
+          + '<div class="fr"><label>' + h(T("جنة أو باسم", "Janna or Bassem")) + '<select data-vs="agent">' + opt(VIS_AGENTS, st.agent, function (o) { return T(o[1], o[2]); }) + "</select></label>"
+          + '<label>' + h(T("الموديل", "Model")) + '<select data-vs="model" dir="ltr">' + opt(VIS_MODELS, st.model, function (o) { return o[1]; }) + "</select></label>"
+          + '<label>' + h(T("دقة الصورة (Gemma)", "Image detail (Gemma)")) + '<select data-vs="detail" dir="ltr">' + opt([["high", "high"], ["low", "low"]], st.detail, function (o) { return o[1]; }) + "</select></label></div>"
+          + '<div class="acts2"><input type="file" accept="image/jpeg,image/png,image/webp" data-vf aria-label="' + h(T("🔎 تجربة قراءة صورة", "🔎 Test a photo reading")) + '"></div>' + msgH(st.msg)
+          + (r ? '<p class="sm"><bdi dir="ltr">' + h(str(r.model)) + "</bdi> · " + h(dur(r.ms)) + " · " + h(r.width + "×" + r.height) + (r.seen ? " · " + chip(str(r.seen.kind) + " / " + str(r.seen.confidence), "ok") : " · " + chip(str(r.reason || "—"), "p"))
+            + (arr(r.flags).length ? " · " + chip(arr(r.flags).join(", "), "x") : "") + "</p>"
+            + "<p><b>" + h(who) + '</b></p><pre class="dv-pre" dir="auto" style="white-space:pre-wrap;max-height:340px;overflow:auto">' + h(str(r.context)) + "</pre>"
+            + '<details class="dv-tech"><summary>' + h(T("القراءة بعد الفلتر والرد الخام من الموديل", "The reading after the guard and the model's raw answer")) + '</summary><pre dir="ltr" style="white-space:pre-wrap;max-height:340px;overflow:auto">'
+            + h(JSON.stringify(r.seen, null, 2) + "\n\n" + str(r.raw) + (r.error ? "\n\n" + str(r.error) : "")) + "</pre></details>" : ""));
+        [].forEach.call($("#dvVis").querySelectorAll("[data-vs]"), function (sel) { sel.onchange = function () { st[sel.getAttribute("data-vs")] = sel.value; }; });
+        var fi = $("#dvVis [data-vf]");
+        if (fi) fi.onchange = function () {
+          var f = fi.files && fi.files[0]; if (!f) return;
+          fi.disabled = true; st.msg = { ok: true, t: T("🔎 المنصة بتقرا الصورة…", "🔎 The platform is reading the photo…") }; paint();
+          cmLib(function (M) {
+            if (!M) { st.msg = { ok: false, t: X.errText({ code: "offline" }) }; paint(); return; }
+            M.photoPrep(f, function (e, p) {
+              if (e) { st.msg = { ok: false, t: M.tx(e, X.EN()) || e }; paint(); return; }
+              var ag = st.agent === "bassem" ? "bassem" : "janna", q = X.qs({ agent: ag, lang: st.agent === "janna-en" ? "en" : "ar", model: st.model, detail: st.detail });
+              X.POST(API.vision + q, undefined, { bin: p.blob, type: "image/jpeg", timeout: 60000 }).then(function (j) { st.res = j || null; st.msg = null; paint(); },
+                function (er) { st.msg = { ok: false, t: errFull(er), e: er }; paint(); });
+            });
+          });
+        };
+      };
+      paint();
     }
 
     /* ---------------------------------------------------------------- 2) deploys ---------------------------------------------------------------- */

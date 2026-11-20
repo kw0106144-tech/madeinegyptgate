@@ -210,6 +210,10 @@ const LANGS = /^(ar|en|fr|zh|es|de|tr|ru|pt|it)$/; // bassem_draft_email's 10 la
 /* ---------- validation ---------- */
 const callIdOf = v => (v == null || v === "" ? "" : typeof v === "string" && CALL_RX.test(v) ? v : null);
 const ROLE = { user: "user", member: "user", human: "user", persona: "persona", assistant: "persona", bassem: "persona", ai: "persona" };
+/* 📎 the platform's own notes to the persona (src/chat-media.js blocks, data/chat-media.js page notes — addContext) are never the person's
+   words: a "user" row that starts with one of their markers is dropped here too, so an old cached page (data/bassem-memory.js) cannot
+   store one either (Janna's memory writes through the same writeMemory: visitor.js) */
+export const PLATFORM_MARK_RX = /^[\s\u200e\u200f]*\[\s*(?:بداي[ةه]\s+نتيج[ةه]\s+قراء[ةه]|ملاحظ[ةه]\s+من\s+المنص[ةه]|START\s+OF\s+THE\s+READING|PLATFORM\s+NOTE)/i;
 function turnsOf(arr, cors) {
   if (!Array.isArray(arr)) return { err: bad("turns", cors, "array required") };
   if (arr.length > LIM.turns) return { err: bad("turns", cors, "at most " + LIM.turns + " turns per request") };
@@ -218,7 +222,9 @@ function turnsOf(arr, cors) {
     if (!t || typeof t !== "object" || Array.isArray(t)) return { err: bad("turns", cors, "objects only") };
     const role = ROLE[String(t.role || "").toLowerCase()];
     if (!role) return { err: bad("turns.role", cors, "user | persona") };
-    const text = clean(t.text != null ? t.text : t.content, LIM.turn);
+    const raw = t.text != null ? t.text : t.content;
+    if (role === "user" && typeof raw === "string" && PLATFORM_MARK_RX.test(raw)) continue;
+    const text = clean(raw, LIM.turn);
     const seq = Number.isInteger(t.seq) && t.seq >= 0 && t.seq <= 1e6 ? t.seq : null;
     if (text) rows.push({ role, text, seq });
   }

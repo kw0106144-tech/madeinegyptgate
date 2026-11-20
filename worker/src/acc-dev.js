@@ -20,6 +20,12 @@
                                    never a staff account (422 staff_account) or a customer's (422 not_review_account)
      DELETE /dev/review            the address + code removed, audited dev.review, and the reviewer's sessions ended — the code itself is never
                                    answered
+     POST /dev/vision?agent=janna|bassem&lang=ar|en&model=&detail=high|low   «🔎 تجربة قراءة صورة»: ONE test photo (raw JPEG / PNG / WebP,
+                                   Content-Length required, ≤ 3 MB, ≤ 2,048 px — the page resizes it like the call does) read by Workers AI
+                                   exactly like a photo of a call (src/chat-media.js) → {raw, seen, reason, flags, context, model, ms}. Nothing is
+                                   stored; it works while chat_photos is off (the owner tests the model BEFORE switching on — no coding session
+                                   can call Workers AI); 20 a Cairo day, counted in the reading budget; audited dev.vision (never the photo or
+                                   its text: model, size, kind, reason, flags, ms)
    Nothing secret is ever answered: the token is read by cf-api.js only; Cloudflare messages are cut and scrubbed. */
 import DATA from "./data.json";
 import { now, iso, line, rateOk, site, hmac, safeEq, b64url, unb64url, enc, secretOf } from "./common.js";
@@ -27,6 +33,7 @@ import { fail, all, first, needTables, batch, body as readBody, txt1, validator,
 import { reviewView, reviewSave, reviewClear, reviewSwitchedOff } from "./review-signin.js"; // «دخول مراجعي المتاجر» (store_review_signin): the address + code
 import { FEATURES, FEATURES_KEY, featureDef, isPolicy, featuresView, parseStore, storeJson, stateOf, forgetFeatures, valueOf, loadFeatures } from "./flags.js";
 import * as CF from "./cf-api.js";
+import * as VISION from "./chat-media.js";        // «🔎 تجربة قراءة صورة»: the same reading, guard and persona block as a call's photo
 
 export const CONFIRM_WORD = "ارجع";
 export const DEV_LIMITS = Object.freeze({ deploys_per_10min: 30, rollbacks_per_hour: 3, rollbacks_per_day: 10, health_per_10min: 12, probe_ms: 6000, ack_ttl_s: 600 });
@@ -81,6 +88,29 @@ export async function putFeatures(req, env, ctx, adm) {
   // «دخول مراجعي المتاجر» switched off: the reviewer's sessions end with it (review-signin.js, audited review.sessions_revoke)
   if (after.store_review_signin === false) await reviewSwitchedOff(env, adm, REVIEW_H);
   return { body: { ok: true, changed, ...(await featuresView(env, { fresh: false })) } };
+}
+
+/* ---------- «🔎 تجربة قراءة صورة» — the owner's model test (design phase 1A: before chat_photos goes on) ---------- */
+export async function postVision(req, env, ctx, adm, url) {
+  if (!VISION.aiOn(env)) fail(503, "ai_off", "الـ Worker لسه مالوش ربط بالذكاء الاصطناعي (AI) — بيتضاف مع النشر الجاي / the Worker has no AI binding yet — it comes with the next deploy");
+  const agent = url.searchParams.get("agent") === "bassem" ? "bassem" : "janna", lang = agent === "janna" && url.searchParams.get("lang") === "en" ? "en" : "ar";
+  const qm = line(url.searchParams.get("model"), 120), model = qm || VISION.visionModel(env), detail = url.searchParams.get("detail") === "low" ? "low" : "high";
+  if (qm && !VISION.PROBE_MODELS.includes(qm)) fail(400, "invalid_model", "الموديلات المتاحة للتجربة: " + VISION.PROBE_MODELS.join(" · ") + " / the models to try: " + VISION.PROBE_MODELS.join(" · "), { models: [...VISION.PROBE_MODELS] });
+  await needTables(env, "cc_audit");
+  const im = await VISION.readImage(req);
+  if (im.err) fail(im.err[0], im.err[1], im.err[2], im.err[3]);
+  if (!(await VISION.probeTake(env, Date.now()))) limited("وصلت لحد تجارب قراءة الصور النهارده (" + VISION.LIM.probeDay + ") — جرّب بكرة / today's photo-reading tests are used up (" + VISION.LIM.probeDay + ") — try tomorrow", 3600, { limit: VISION.LIM.probeDay });
+  const base = { model, detail, agent, lang, width: im.img.w, height: im.img.h, bytes: im.raw.length };
+  const auditId = await adm.audit("dev.vision", "vision", model, null, { ...base, status: "reading" }, `vision probe ${model} (${im.img.w}×${im.img.h})`);
+  const t0 = Date.now();
+  const r = (await VISION.aiTake(env, Date.now())) ? await VISION.lookImage(env, im.img.bytes, im.mime, { model, detail }) : { model, shape: VISION.shapeOf(model), ms: 0, reason: "ai_cap", reading: null, raw: null };
+  const s = r.reading ? VISION.sanitiseSeen(r.reading) : { seen: null, reason: r.reason || "unclear", flags: [] };
+  const context = VISION.contextBlock(s.seen, { agent, lang, ref: "P1", reason: s.reason, keepOn: false, prodOn: agent === "bassem" });
+  await adm.auditDone(auditId, { after: { ...base, status: "done", kind: s.seen ? s.seen.kind : null, reason: s.reason || null, flags: s.flags, ms: r.ms },
+    summary: `vision probe ${model}: ${s.seen ? s.seen.kind : s.reason} (${r.ms} ms)` });
+  let raw = ""; try { raw = r.raw == null ? "" : typeof r.raw === "string" ? r.raw : JSON.stringify(r.raw); } catch (e) { raw = ""; }
+  return { ok: true, model, shape: r.shape || VISION.shapeOf(model), detail, agent, lang, ms: r.ms, total_ms: Date.now() - t0, raw: raw.slice(0, 6000), error: r.error || "", seen: s.seen, reason: s.reason || null, flags: s.flags,
+    context, width: im.img.w, height: im.img.h, bytes: im.raw.length, models: [...VISION.PROBE_MODELS], default_model: VISION.visionModel(env), stored: false };
 }
 
 /* ---------- «دخول مراجعي المتاجر» (review-signin.js): the one review address + the owner's code ---------- */

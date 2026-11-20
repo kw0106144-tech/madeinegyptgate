@@ -8,7 +8,8 @@
      /api/index.php*           → handleOldApi     (transparent proxy to the old PHP API; built, not routed in deploy 2)
    /api/admin/cc/keys*: «مفاتيح الخدمات» (owner only, acc-keys.js) — respond.io token + channel, Anam key, the WhatsApp live switch;
      POST /keys/websearch/connect = «🔗 وصّل البحث بباسم» (acc-wsconnect.js: creates / updates the Anam tool bassem_web_search, attaches it to Bassem).
-   /api/admin/cc/dev/*: «🛠️ المطوّر» (owner only, dev.manage, acc-dev.js) — feature switches (flags.js), deploys + rollback, health, audit.
+   /api/admin/cc/dev/*: «🛠️ المطوّر» (owner only, dev.manage, acc-dev.js) — feature switches (flags.js), deploys + rollback, health, audit,
+     the owner's photo-reading test (POST /dev/vision, src/chat-media.js).
    /api/admin/cc/meetings*: «📞 اجتماعات باسم» (owner + admin, meetings.bassem; the daily cap: owner only, meetings.cap — bassem-meetings.js)
      — Bassem (Anam) joins a Google Meet / Zoom / Teams call of the platform's team; Anam's list of his invites; cancel.
    ccBoot(env, CC) applies the plans matrix (≤ 1 D1 read per isolate per 60 s), the mail config and the service keys (service-keys.js);
@@ -212,6 +213,7 @@ const ROUTES = [
   R("GET", P("/dev/review"), "dev.manage", (q, e) => DEV.getReview(e)),
   R("PUT", P("/dev/review"), "dev.manage", (q, e, c, a) => DEV.putReview(q, e, c, a)),
   R("DELETE", P("/dev/review"), "dev.manage", (q, e, c, a) => DEV.deleteReview(q, e, c, a)),
+  R("POST", P("/dev/vision"), "dev.manage", (q, e, c, a, u) => DEV.postVision(q, e, c, a, u)), // «🔎 تجربة قراءة صورة» (src/chat-media.js; nothing stored)
   // «📞 اجتماعات باسم» (meetings.bassem: owner + admin; the cap: meetings.cap ∈ OWNER_ONLY) — every invite uses paid Anam minutes
   R("GET", P("/meetings"), "meetings.bassem", (q, e, c, a, u) => BMEET.listMeetings(q, e, c, a, u)),
   R("POST", P("/meetings"), "meetings.bassem", (q, e, c, a) => BMEET.createMeeting(q, e, c, a)),

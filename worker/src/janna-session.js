@@ -4,7 +4,7 @@
    token) — the page shows its OWN AI label on the video instead («جنة · مساعِدة بالذكاء الاصطناعي» / "Janna · AI assistant").
 
    POST /api/janna/session  {agent: "janna" | "bassem", lang: "ar" | "en"}
-     200 {sessionToken, agent, lang, expires_in, max_session_sec}  + header Server-Timing (boot / checks / ctx / persona / wait / token /
+     200 {sessionToken, agent, lang, expires_in, max_session_sec[, media_ticket]}  + header Server-Timing (boot / checks / ctx / persona / wait / token /
                                           total, ms; also on the 502s) — where the wait before «بنوصّلك…» went (serverTiming below)
      503 {error: "anam_not_configured"}   no ANAM_API_KEY secret (nor the Control Center's sealed "anam.api_key" slot) → the page keeps
                                           the widget, exactly as before
@@ -60,7 +60,7 @@
      app_buy_<platform> off: the session from THAT app gets one fixed line (APP_NO_PRICES) at the end of the persona's prompt through the
                             same ephemeral copy as the member / visitor context (no line when the persona cannot be copied: today's request).
    The key is never logged, echoed or sent to the browser; errors log the upstream HTTP status only (never the member's data). */
-import { readJson, ipHash, rateOk, isBlocked, planCan, isAdmin, site, cairoDay, jparse } from "./common.js";
+import { readJson, ipHash, rateOk, isBlocked, planCan, isAdmin, site, cairoDay, jparse, secretOf } from "./common.js";
 import { authUser, bearer, isV2, isLinkSession } from "./auth.js";
 import { verifyToken } from "./advisor.js";
 import { getSecret } from "./crypto.js";
@@ -74,6 +74,7 @@ import { jannaSessionContext, visitorContextOn } from "./visitor.js"; // 0009: J
 import { featureOn, offMessage } from "./flags.js"; // «🛠️ المطوّر»: janna_live / bassem_live (owner switches, 503 feature_off)
 import { svc } from "./service-keys.js";            // the panel's Anam key as ccBoot already read it for this request (memo ≤ 60 s)
 import { appOf } from "./app-ua.js";                // the platform's own apps (MIGApp user agent): the store-rule switches below
+import { mediaTicket } from "./chat-ticket.js";      // 📎 the photo ticket of Janna's call (src/chat-media.js, switch chat_photos)
 
 export const ANAM_TOKEN_URL = "https://api.anam.ai/v1/auth/session-token";
 export const ANAM_PERSONA_URL = "https://api.anam.ai/v1/personas/"; // + a persona id from PERSONAS (read-only GET, Bassem's member context)
@@ -150,8 +151,8 @@ async function isStaff(env, m) {
   } catch (e) { return false; }
 }
 /* Bassem: the plan is checked HERE on the server (never trusted from the page); {m} = a member whose plan has Bassem, {m, staff} =
-   allowed only as staff, {no: [status, code]} = refused */
-async function bassemCaller(req, env) {
+   allowed only as staff, {no: [status, code]} = refused — exported for the photos of his call (src/chat-media.js: the same rule as the call) */
+export async function bassemCaller(req, env) {
   const t = bearer(req);
   if (!t) return { no: [401, "login_required"] };
   let m = null;
@@ -334,7 +335,11 @@ export async function handleJannaSession(req, env, execCtx, opt) {
       console.error("janna session: anam refused", r.status);
       return fail(502, "upstream", cors, { upstream_status: r.status }, th());
     }
-    return out({ sessionToken, agent, lang, expires_in: TOKEN_TTL_SEC, max_session_sec: MAX_SESSION_SEC, ...(rotateVisitor ? { rotate_visitor: true } : {}),
+    /* 📎 photos in Janna's call (owner 2026-11-20; src/chat-media.js): her token answer carries the call's photo ticket while «🛠️ المطوّر» →
+       chat_photos is on, the Worker has its AI binding and a signing secret. Bound to nothing of the visitor (the page may rotate its visitor
+       id after this answer: rotate_visitor) — the ticket's own limits do the work. Bassem's photos go with his sign-in instead. */
+    const mt = agent === "janna" && env.AI && typeof env.AI.run === "function" && secretOf(env) && (await featureOn(env, "chat_photos")) ? await mediaTicket(env, "j", MAX_SESSION_SEC + 900) : "";
+    return out({ sessionToken, agent, lang, expires_in: TOKEN_TTL_SEC, max_session_sec: MAX_SESSION_SEC, ...(rotateVisitor ? { rotate_visitor: true } : {}), ...(mt ? { media_ticket: mt } : {}),
       ...(personal && agent === "bassem" && !ctx.app_only ? { member_context: true, ...(ctx.memory ? { memory: true } : {}), ...(ctx.continued ? { continued: true } : {}) } : {}),
       ...(personal && agent === "janna" && !ctx.app_only ? { visitor_context: true, ...(ctx.memory ? { memory: true } : {}), ...(ctx.knowledge ? { knowledge: true } : {}) } : {}),
       ...(personal && ctx.app_rules ? { app_rules: true } : {}) }, 200, cors, th());
