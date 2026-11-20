@@ -10,7 +10,7 @@
 //    Capacitor's, and every path of ../deploy/legacy-live.txt kept out of the app (MigLinks)
 //  - iOS: python3 tools/ios_project.py --check (purpose texts, InfoPlist.strings ar + en, entitlements, project file)
 //  - store texts: the length limits of Google Play and the App Store
-//  - well-known templates: valid JSON, placeholders still marked (they are filled when the owner has the keys)
+//  - well-known templates: valid JSON, placeholders still marked, the same relations / iOS path rules as the site build (../seo_app.part.py)
 import { readFileSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -148,11 +148,25 @@ for (const loc of locales.ios) {
   need(b <= 100, `${f}: ${b} bytes (limit 100)`);
 }
 
-// well-known templates
+// well-known templates (the site build writes the real files from seo/config.json "app": ../seo_app.part.py; these show the format)
 const al = JSON.parse(read("well-known/assetlinks.json"));
 need(al[0]?.target?.package_name === "com.madeinegyptgate.app", "assetlinks.json package_name");
+need(JSON.stringify(al[0]?.relation) === JSON.stringify(["delegate_permission/common.handle_all_urls", "delegate_permission/common.get_login_creds"]), "assetlinks.json relation: handle_all_urls + get_login_creds (as the site build writes it)");
 const aasa = JSON.parse(read("well-known/apple-app-site-association"));
 need(Array.isArray(aasa?.applinks?.details) && aasa.applinks.details.every((d) => (d.appIDs || []).every((x) => x.endsWith(".com.madeinegyptgate.app"))), "apple-app-site-association appIDs");
+// the API, payment pages, files and the old system stay in the browser, then every other page opens in the app (the first match wins)
+const AASA_OUT = ["/api/*", "/pay*", "/media/*", "/panel.html", "/login.html"];
+const comps = aasa?.applinks?.details?.[0]?.components || [];
+need(JSON.stringify(comps.map((c) => [c["/"], c.exclude === true])) === JSON.stringify(AASA_OUT.map((p) => [p, true]).concat([["/*", false]])), "apple-app-site-association components: " + AASA_OUT.join(", ") + " excluded (the browser), then /* (app-links-live)");
+need((aasa?.webcredentials?.apps || []).length === 1 && aasa.webcredentials.apps[0].endsWith(".com.madeinegyptgate.app"), "apple-app-site-association webcredentials.apps (saved passwords of the old-account form)");
+const seoApp = join(APP, "..", "seo_app.part.py");
+if (existsSync(seoApp)) {
+  const py = readFileSync(seoApp, "utf8");
+  const m = /AASA_BROWSER = \(([\s\S]*?)\)\n\n/.exec(py);
+  const gen = m ? [...m[1].matchAll(/\('([^']+)',/g)].map((x) => x[1]) : [];
+  need(JSON.stringify(gen) === JSON.stringify(AASA_OUT), "../seo_app.part.py AASA_BROWSER must list exactly " + AASA_OUT.join(", ") + " (the template and the site build agree)");
+  need(py.includes("'delegate_permission/common.get_login_creds'"), "../seo_app.part.py assetlinks(): the get_login_creds relation");
+} else notes.push("../seo_app.part.py not found: the app-links templates were not compared with the site build");
 
 for (const n of notes) console.log("note: " + n);
 if (errors.length) {

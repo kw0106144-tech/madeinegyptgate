@@ -4,9 +4,17 @@
       {
         "appIDs": ["REPLACE_WITH_APPLE_TEAM_ID.com.madeinegyptgate.app"],
         "components": [
-          { "/": "/*", "comment": "every page of madeinegyptgate.com opens in the app when it is installed" }
+          { "/": "/api/*", "exclude": true, "comment": "the API: never a page of the app" },
+          { "/": "/pay*", "exclude": true, "comment": "a payment link opens the gateway in the browser" },
+          { "/": "/media/*", "exclude": true, "comment": "files, not pages" },
+          { "/": "/panel.html", "exclude": true, "comment": "the owner's old system (deploy/legacy-live.txt)" },
+          { "/": "/login.html", "exclude": true, "comment": "the owner's old system (deploy/legacy-live.txt)" },
+          { "/": "/*", "comment": "every other page of madeinegyptgate.com opens in the app when it is installed" }
         ]
       }
     ]
+  },
+  "webcredentials": {
+    "apps": ["REPLACE_WITH_APPLE_TEAM_ID.com.madeinegyptgate.app"]
   }
 }

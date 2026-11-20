@@ -50,8 +50,18 @@ Made by `app/tools/make_assets.py` from `img/logo-site.png` (about 200 px: upsca
   (1320 × 2868) or 6.5″ (1284 × 2778), and iPad 13″ (2064 × 2752) because the app supports iPad. Take them from the test APK and
   the TestFlight build: home, marketplace, a factory profile, tenders, Janna's live call, Arabic and English.
 - **Content rating** questionnaire (both stores): business / reference app, no violence, users can communicate with the platform's team.
-- **Google Play Data safety** and **App Store App Privacy**: account and company details, requests and messages, the voice of a live
-  call (sent to Anam while the call lasts), approximate usage; data encrypted in transit; how to ask for deletion (see app/README.md,
-  "Before submitting").
-- **App Store review notes**: a test member account the reviewer can sign in with (the sign-in is an e-mailed code, so give the
-  reviewer a mailbox or a demo path the team controls), and a line that Janna's live call needs the microphone.
+- **Google Play Data safety** and **App Store App Privacy**, from the same list as the privacy policy (app/README.md, "Before
+  submitting"; the proposed policy text is a draft for the owner in `docs/app/OWNER-APPROVAL-AR.md` section 4): contact info (e-mail,
+  phone), user content (the voice of a live call, which goes to Anam for AI processing, possibly outside Egypt; messages and price
+  requests; uploaded photos), identifiers (member id, Janna's random visitor id), usage data, purchases (invoices). A **summary of
+  every call is kept** as the assistants' memory (Bassem per member, Janna per visitor id) until the person asks for its deletion —
+  not only the voice "while the call lasts", as an earlier draft here said. No advertising tracking in the iPhone app (`data/seo.js`).
+  Data encrypted in transit. Deletion: «طلب حذف الحساب» in the dashboard and **Delete account URL**
+  `https://madeinegyptgate.com/delete-account/` (switch `account_delete`, after migration `0010_delete_requests.sql`).
+- **App Store review notes** and **Google Play «App access»**: the sign-in is an e-mailed code, so the owner prepares a review
+  account: a member with a real plan activated for the review, its address and a 6-digit code saved in the Control Center
+  «🛠️ المطوّر» (card «دخول مراجعي المتاجر — الإيميل والكود», at most 30 days, never a staff account), and the switch
+  `store_review_signin` on during the review only, off after the approval. The note for the reviewers (English, with an Arabic twin
+  for the owner) is a draft in `docs/app/OWNER-APPROVAL-AR.md` section 2; it also says that Janna's live call needs the microphone.
+- **Prices**: the texts here name no plan price and no "register and pay", so they stay true whether the owner keeps the switches
+  `app_buy_ios` / `app_buy_android` on (prices and payment like the website) or turns them off for the review (app/README.md).

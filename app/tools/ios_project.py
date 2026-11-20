@@ -10,7 +10,9 @@ It keeps in place:
     InfoPlist.strings), the languages ar + en, ITSAppUsesNonExemptEncryption = NO (only the HTTPS / WebRTC encryption that iOS
     itself provides);
   * App/en.lproj/InfoPlist.strings, App/ar.lproj/InfoPlist.strings: the home-screen name and the purpose texts per language;
-  * App/App.entitlements: Associated Domains applinks:madeinegyptgate.com (Universal Links; the App ID needs the capability);
+  * App/App.entitlements: Associated Domains applinks:madeinegyptgate.com (Universal Links) and webcredentials:madeinegyptgate.com
+    (saved passwords of the old-account form shared with the site); the App ID needs the capability, the site serves the file
+    (seo/config.json app.ios_team_id, app/well-known/README.md);
   * App.xcodeproj/project.pbxproj: MainViewController.swift in the build, the InfoPlist.strings variant group, knownRegions ar,
     CODE_SIGN_ENTITLEMENTS, MARKETING_VERSION 1.0.0.
 --check also verifies what the app's own Swift code must keep (MainViewController.swift: new windows as sheets, the back swipe,
@@ -49,7 +51,7 @@ PURPOSE = {
         "NSSpeechRecognitionUsageDescription": "يُستخدم التعرّف على الكلام لتحويل ما تقوله لجنة إلى نص عندما تضغط على زر الميكروفون في محادثتها.",
     },
 }
-ASSOCIATED = ["applinks:madeinegyptgate.com"]
+ASSOCIATED = ["applinks:madeinegyptgate.com", "webcredentials:madeinegyptgate.com"]
 # What MainViewController.swift must keep, so that the app behaves like the site in Safari (app/README.md "What the app does")
 SWIFT_NEEDS = [
     ("createWebViewWith", "the site's new windows (target=_blank, window.open) as a sheet over the page, never Safari"),
@@ -85,7 +87,7 @@ def strings_file(lang):
 ENTITLEMENTS = ('<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
                 '<plist version="1.0">\n<dict>\n'
-                '\t<!-- Universal Links: the site must serve /.well-known/apple-app-site-association (app/well-known/) -->\n'
+                '\t<!-- Universal Links + shared web credentials: the site must serve /.well-known/apple-app-site-association (app/well-known/) -->\n'
                 '\t<key>com.apple.developer.associated-domains</key>\n\t<array>\n'
                 + "".join("\t\t<string>%s</string>\n" % d for d in ASSOCIATED) +
                 '\t</array>\n</dict>\n</plist>\n')

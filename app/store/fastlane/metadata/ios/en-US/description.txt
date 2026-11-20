@@ -14,7 +14,7 @@ In the app:
 • Register your company and manage its profile from the member dashboard.
 
 Permissions:
-• The app asks for the microphone only when you start a live call with Janna or Bassem, and for the camera or photos only when you choose to upload a picture or document.
+• The app asks for the microphone only when you start a live call with Janna or Bassem or tap the microphone button in Janna's chat (with speech recognition, to turn what you say into text), and for the camera or photos only when you choose to upload a picture or document.
 
 Owner: Egypt Industrial Development Association
 A non-profit association registered under No. 6189 of 2017 (Ministry of Social Solidarity).

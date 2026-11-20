@@ -293,6 +293,12 @@ switch wait for the owner's word-for-word approval: `docs/app/OWNER-APPROVAL-AR.
   `get_login_creds`) always; `/.well-known/apple-app-site-association` only once `app.ios_team_id` holds the owner's Apple Team ID
   (empty today: no file, because a wrong one is worse than none; a malformed value stops the build). It sends `/api/*`, `/pay*`,
   `/media/*`, `/panel.html` and `/login.html` to the browser and every other path to the app, plus `webcredentials` for the same app.
+  The templates in `app/well-known/` and `app/tools/check-app.mjs` follow the same rules (`npm run check` compares them);
+- what the apps do natively like a browser tab (a same-site new window opens OVER the page and a live call goes on under it; Back,
+  other sites and incoming links during a call; downloads, print, pull to reload, dialogs, restore …) is in `app/` (`app/README.md`
+  «What the app does»): it reaches phones only with a new app build (`tools/publish_apk.py` for `/app/`, 5.7, or the stores), never
+  with a site deploy. The site code above relies on it: the user agent suffix, `window.opener` / `window.close()` in those windows,
+  the `app-settings:` link, and Capacitor's Browser and Share plugins in the app's main page only (never in its page windows).
 
 ---
 

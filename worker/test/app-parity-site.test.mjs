@@ -179,6 +179,7 @@ describe("the app's words and switches in the browser files", () => {
     assert.match(LIVE, /اسمح للتطبيق يستخدم الميكروفون علشان تتكلم مع /);
     assert.match(LIVE, /الإعدادات ← صنع في مصر ← الميكروفون/); assert.match(LIVE, /إعدادات الموبايل ← التطبيقات ← صنع في مصر ← الأذونات ← الميكروفون/);
     assert.match(LIVE, /al\.href = "app-settings:"/);
+    assert.match(LIVE, /var stl = INAPP && sdkBox\(\) \?/, "the «افتح الإعدادات» link in both apps (the Android app opens its own settings page for app-settings: too)");
     assert.match(LIVE, /INAPP === "android" \? 60000 : 15000/);
     assert.match(LIVE, /if \(!ms && INAPP === "android" && \(me\.micDenied \|\| me\.micErr === "NotAllowedError"\)\) \{ ms = silentMic\(\);/);
     assert.match(LIVE, /if \(!ov && aiNeed\(\) && !o\.__aiok\) \{ aiCard\(p, function \(\) \{ o\.__aiok = 1; open\(o\); \}\); return; \}/);
@@ -200,6 +201,9 @@ describe("the app's words and switches in the browser files", () => {
   test("pay.js: the app opens the gateway in the in-app browser and confirms only when it is closed; buying off → the invoice only", () => {
     assert.match(PAY, /if \(inApp\(u, b, er\)\) return;/);
     assert.match(PAY, /BR\.addListener\("browserFinished"/);
+    /* an app window without the bridge (a page opened over another one): the gateway goes to the phone's browser, this page stays and confirms on return */
+    assert.match(PAY, /if \(APPUA\) away\(b, er, false\);/);
+    assert.match(PAY, /T\("كمّل الدفع في صفحة بوابة الدفع الآمنة — لما ترجع هنا هنأكد الدفع", "Finish the payment on the secure payment gateway page — when you come back here, we will confirm the payment"\)/);
     assert.match(PAY, /if \(buyOff\(\)\) \{ box\(card\(i\) \+ msg\("info", "ℹ️", T\("الدفع مش متاح جوه التطبيق\."/);
   });
 });

@@ -101,8 +101,17 @@ Play Console ← App content ← App access؛ (5) بعد الموافقة: اق�
 | الأزرار | موافق، ابدأ · لا، شكراً | OK, start · No, thanks |
 | بعد «لا، شكراً» | تمام — تقدر تكلّم ‹جنة/باسم› كتابة من غير مكالمة. | OK — you can still write to ‹Janna/Bassem› without a call. |
 
-مع الموافقة: يتحدّث كمان نص إذن الميكروفون في الآيفون (`NSMicrophoneUsageDescription`) علشان يذكر مزوّد الذكاء الاصطناعي — ده عند
-مهندس الآيفون (`app/tools/ios_project.py`).
+مع الموافقة: يتحدّث كمان نص إذن الميكروفون في الآيفون (`NSMicrophoneUsageDescription`) علشان يذكر مزوّد الذكاء الاصطناعي. ده النص اللي
+الآيفون بيعرضه في رسالة إذن الميكروفون قبل أول مكالمة (بالفصحى زي باقي نصوص الأذونات)، ومحتاج موافقة حضرتك برضه — ومحتاج **تحديث
+للتطبيق** (مش بيتغيّر من لوحة التحكم):
+
+| فين | عربي | English |
+|---|---|---|
+| رسالة إذن الميكروفون في الآيفون (`app/tools/ios_project.py` PURPOSE ← `Info.plist` + `ar.lproj` / `en.lproj` `InfoPlist.strings`) | يُستخدم الميكروفون فقط عندما تبدأ مكالمة مباشرة مع جنة أو باسم، مساعدَي المنصة بالذكاء الاصطناعي؛ ويُرسَل صوتك أثناء المكالمة إلى مزوّد المحادثة المرئية (Anam) ليُعالَج ويُرَد عليك. | The microphone is used only when you start a live call with Janna or Bassem, the platform's AI assistants; during the call your voice is sent to the video-conversation provider (Anam) to be processed and answered. |
+| النص الحالي (لحد الموافقة) | يُستخدم الميكروفون فقط عندما تبدأ مكالمة مباشرة مع جنة أو باسم، مساعدَي المنصة، ليسمعا صوتك. | The microphone is used only when you start a live call with Janna or Bassem, the platform's assistants, so they can hear you. |
+
+بعد الموافقة: يتعدّل نص `NSMicrophoneUsageDescription` في `PURPOSE` (العربي والإنجليزي) في `app/tools/ios_project.py`، ويتشغّل
+`python3 app/tools/ios_project.py`، وتتعمل commit للسكربت وللـ 3 ملفات اللي بيكتبها (`Info.plist` والـ `InfoPlist.strings` العربي والإنجليزي)، وبعدين نسخة جديدة من تطبيق الآيفون.
 
 ---
 
@@ -129,8 +138,8 @@ Play Console ← App content ← App access؛ (5) بعد الموافقة: اق�
 
 **نماذج المتاجر (App Privacy / Data safety)** — تتملّى من نفس القائمة: بيانات التواصل (الإيميل، الموبايل)، محتوى المستخدم (صوت
 المكالمة، الرسائل وطلبات الأسعار، الصور المرفوعة)، المعرّفات (رقم العضو، رقم الزائر العشوائي)، بيانات الاستخدام، المشتريات
-(الفواتير). كله مشفّر أثناء النقل. طريقة الحذف: `/delete-account/`. ملحوظة: `app/store/README.md` بيقول إن الصوت «while the call lasts»
-بس — والصح إن ملخص الكلام بيتحفظ (التصحيح عند مهندس التطبيق).
+(الفواتير). كله مشفّر أثناء النقل. طريقة الحذف: `/delete-account/`. (`app/store/README.md` كان بيقول إن الصوت «while the call lasts» بس — اتصحّح: ملخص الكلام
+بيتحفظ.)
 
 ---
 

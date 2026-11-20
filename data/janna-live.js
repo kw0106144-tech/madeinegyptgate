@@ -1016,8 +1016,8 @@
     if (why === "mic") {
       sdkUi("error", INAPP ? T("الميكروفون مقفول للتطبيق — افتحه من ", "The microphone is off for the app — turn it on in ") + micWhereTx() + T(" وجرّب تاني، أو كمّل كتابة.", " and try again, or continue by typing.")
         : T("الميكروفون مقفول للموقع ده. اسمح بيه من إعدادات المتصفح وجرّب تاني، أو كمّل كتابة.", "The microphone is blocked for this site. Allow it in your browser settings and try again, or continue by typing."), { go: T("جرّب تاني", "Try again"), typing: true });
-      /* iPhone app: the app's own page in the phone's Settings (app-settings: leaves the page for Settings) */
-      var stl = INAPP === "ios" && sdkBox() ? sdkBox().querySelector(".jv-st") : null;
+      /* the app: its own page in the phone's Settings (app-settings: — iOS opens it, and the Android app opens its own page there too) */
+      var stl = INAPP && sdkBox() ? sdkBox().querySelector(".jv-st") : null;
       if (stl) { var al = document.createElement("a"); al.href = "app-settings:"; al.textContent = " " + T("افتح الإعدادات", "Open Settings"); al.style.cssText = "color:inherit;text-decoration:underline;font-weight:800"; stl.appendChild(al); }
       return;
     }

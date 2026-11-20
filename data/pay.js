@@ -11,7 +11,8 @@
      there as in the browser; the provider's return lands on /pay/#…&r=1 inside it, which needs no session). The button comes back with
      «كمّل الدفع في صفحة بوابة الدفع الآمنة — لما تقفلها هنأكد الدفع هنا», and the usual confirmation (waiting + polling, POLL_MAX) starts
      only when that browser is closed ("browserFinished") or this page is shown again — never while the member is still typing his card.
-     A window without the app's bridge keeps the browser path (location.assign);
+     A window without the app's bridge (a page opened over another one) hands the gateway to the phone's browser (location.assign, which
+     the app sends out) and stays: the button comes back and the confirmation starts when the member is back on this page;
    - app_buy_ios / app_buy_android off (data/flags.js MIGFLAGS.buyOff, the store rules): the invoice and its status only — no «ادفع الآن»,
      no transfer details, no link out: «الدفع مش متاح جوه التطبيق». */
 (function () {
@@ -117,6 +118,7 @@
       var u = String(j && j.redirect_url || "");
       if (!/^https:\/\/[^\s"'<>`\\]+$/i.test(u)) throw { code: "provider_error" };
       if (inApp(u, b, er)) return;   /* the app: the gateway in the phone's secure in-app browser (pay-handoff) */
+      if (APPUA) away(b, er, false); /* an app window without the bridge (a page opened over another): the gateway opens in the phone's browser and this page stays — coming back confirms */
       (W.MIGPAYGO || function (x) { location.assign(x); })(u);   /* MIGPAYGO: test seam (the browser tests capture the hand-off) */
     }).catch(function (e) {
       b.disabled = false; b.innerHTML = "💳 " + T("ادفع الآن", "Pay now");
@@ -145,9 +147,15 @@
       AWAY = true;
       if (op && op.then) op.then(null, function () { location.assign(u); }); /* no in-app browser: the system's own (coming back confirms) */
     } catch (e) { return false; }
-    b.disabled = false; b.innerHTML = "💳 " + T("ادفع الآن", "Pay now");
-    if (er) er.innerHTML = '<span class="payst info" style="display:block">' + esc(T("كمّل الدفع في صفحة بوابة الدفع الآمنة — لما تقفلها هنأكد الدفع هنا", "Finish the payment on the secure payment gateway page — when you close it, we will confirm the payment here")) + "</span>";
+    away(b, er, true);
     return true;
+  }
+  /* the gateway is open outside this page (the in-app browser, or the phone's own browser): the button again, the confirmation when the member is back */
+  function away(b, er, tab) {
+    AWAY = true;
+    b.disabled = false; b.innerHTML = "💳 " + T("ادفع الآن", "Pay now");
+    if (er) er.innerHTML = '<span class="payst info" style="display:block">' + esc(tab ? T("كمّل الدفع في صفحة بوابة الدفع الآمنة — لما تقفلها هنأكد الدفع هنا", "Finish the payment on the secure payment gateway page — when you close it, we will confirm the payment here")
+      : T("كمّل الدفع في صفحة بوابة الدفع الآمنة — لما ترجع هنا هنأكد الدفع", "Finish the payment on the secure payment gateway page — when you come back here, we will confirm the payment")) + "</span>";
   }
   document.addEventListener("visibilitychange", function () { if (!document.hidden && AWAY) setTimeout(confirmLater, 600); });
   /* the owner's switch arrived after the invoice was drawn (data/flags.js answers after this page's first paint): draw it again */
