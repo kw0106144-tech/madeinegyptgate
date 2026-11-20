@@ -296,3 +296,17 @@ appear outside that block, so a change to the plans must update these by hand:
 round's output. Rebuild that round only from the copies at `78959c9`.
 
 After a write, replace the file with the new live text and update its row above.
+
+## Bassem's LLM, switched on 2026-11-20 (owner: «باسم بياخد وقت كبير في الرد علي اي سؤال سرها رد فعله», then «تمام»)
+
+| UTC | Write | Fields sent | `updatedAt` before → after |
+|---|---|---|---|
+| 12:58:55 | Bassem, `anam_persona_update` | `llmId` only: GPT 6 Luna `661ce597-279d-46a3-bfd9-19d2d8bac757` → Google Gemini 3.5 Flash Lite `058aba1a-b097-4beb-abc8-51c74835f5e8` (Anam global, reasoning minimal) | `2026-11-20T12:47:51.016Z` → `2026-11-20T12:58:55.267Z` |
+
+- **Why.** The owner's test call `5ec5ba4b` (12:42-12:49 UTC, before this switch): first audio 6.2 s on average, of which the LLM's time
+  to first output was 5.5 s (worst turn 17.7 s); transcription and TTS took about 0.2 s each.
+- **Checked.** The reply shows the new `llmId`, the prompt total of 30,616 UTF-16 units (unchanged), directorNotes warm 0.5, avatarModel
+  cara-4.1-express, the same voice and toolIds. Bassem's calls copy `llmId` from the saved persona (worker/src/bassem-context.js), so the
+  next call uses it; a call already running keeps its own copy.
+- **Rollback.** `llmId` = `661ce597-279d-46a3-bfd9-19d2d8bac757`. Second choice if the dialect or tool calls get worse: GPT 4.1
+  `b4f89001-9638-4879-a9c3-02cc9f9f2004` (no reasoning). Janna AR / EN stay on GPT 6 Luna until the owner has compared.
