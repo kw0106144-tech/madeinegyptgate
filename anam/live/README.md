@@ -5,12 +5,17 @@ Each `*.systemPrompt.md` here is a persona's system prompt **exactly as it is li
 that a commit here does not start a site deploy. They are also the rollback copies for the next change: to undo a write, send the
 previous text back (the version of the file before that write, in git history).
 
+`janna_lookup.tool.json` holds the `description` and `config` sent to Janna's `janna_lookup` tool, exactly as sent. A read shows its
+`section` enum masked (••••). Unlike the `.md` files, this file starts a site deploy when it reaches `main`: `anam/**` is not in the
+`paths-ignore` of `deploy-site.yml`.
+
 | File | Persona / tool | `updatedAt` (live since) | sha256 | Characters |
 |---|---|---|---|---|
-| `janna-ar.systemPrompt.md` | Janna AR `5f06d835-22cc-4460-b412-84cefa9e565b` | `2026-11-20T08:27:33.716Z` | `34453d59217ecdc297b3cc8dfb38ee376220f5f44285293c5bc321198eb327f1` | 21,796 |
-| `janna-en.systemPrompt.md` | Janna EN `e5101653-65b4-44a6-85e5-ec2e78f82685` | `2026-11-20T08:29:54.663Z` | `f2cbd0c36fc8891da136099cd92bae98d5370fca8014ff651e85fd482d6da680` | 25,357 |
-| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-20T08:57:54.635Z` | `fadcad2a6fec3f8cd6f165e40dcfe0425a7c5e3b46cedcf10e722c9a4f802b15` | 26,459 (the API says 26,460: see Bassem) |
+| `janna-ar.systemPrompt.md` | Janna AR `5f06d835-22cc-4460-b412-84cefa9e565b` | `2026-11-20T12:27:47.252Z` | `58ca004ed8542ddea43ad62dbe6b13bae45404813dde00913b649d851df8ac8a` | 26,336 |
+| `janna-en.systemPrompt.md` | Janna EN `e5101653-65b4-44a6-85e5-ec2e78f82685` | `2026-11-20T12:32:29.328Z` | `59715d3e6ff495840c97f8262246dbac9f671ebf64fb3f9ce4bf47c7c629a5fa` | 30,787 (a read says 30,788: see Janna AR and Janna EN) |
+| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-20T12:47:51.016Z` | `ffe1d26871abb25fff9345084282be904eff05c1353128d370f88336180298ae` | 30,615 (the API says 30,616: see Bassem) |
 | `bassem_save_profile.description.md` | tool `bassem_save_profile` `4c3b35f3-0590-44d7-85d1-321eeb21c79e` | `2026-11-20T08:37:02.665Z` | `41eaa3ade439de9372710286ac29e0594d4f884b1ac0478777e5a068b829c55a` | 894 |
+| `janna_lookup.tool.json` | tool `janna_lookup` `29fd5087-5eff-4919-afb2-3d01b8cc70de` (Janna AR and Janna EN) | `2026-11-20T12:49:00.983Z` | `9d52be6431fcf1dcd9ecd39b301e4758b20553adba47a7956de9a8aac7f0f0b5` (the file) | description 909 |
 
 ## The «calls» round, applied on 2026-11-20
 
@@ -93,9 +98,103 @@ The tool can stay as it is: the page and the Worker accept a note without `ids`.
 Rolling back the «calls» round for Bassem (to `85c27cbe…`) removes these lines too. That older text is the one `prompt-changes.json` was
 first built against, so the three lines can be put back on top of it.
 
+## The expressions + usefulness round, applied on 2026-11-20
+
+The owner asked for both on 2026-11-20:
+
+- «تعابير وشها عايزه تتظبط مع سياق الكلام»: Janna's face must follow what she says.
+- «خليها تفيد العملاء صح»: Janna and Bassem must be really useful to factories like Al-Atlal.
+
+Two rounds were designed and reviewed adversarially, then combined into one text per persona:
+
+- **Expressions.** An emotion-tag guide of five tags, plus the director notes.
+- **Usefulness.** A seller's buyers and customers, honest pivots when nothing is found, and no promise without a tool call.
+
+On top of them, Janna's `janna_lookup` description changed. The design material is in `anam/rounds/2026-11-20-expressions-useful/`; its
+README says what was left out of those copies and why.
+
+| UTC | Write | Fields sent | `updatedAt` before → after |
+|---|---|---|---|
+| 12:27 | Janna AR, `anam_persona_update` | `systemPrompt` + `directorNotes` `{"presetStyle":"warm","expressivity":0.5}` | `2026-11-20T09:30:52.047Z` → `2026-11-20T12:27:47.252Z` |
+| 12:32 | Janna EN, `anam_persona_update` | the same two fields | `2026-11-20T09:30:55.090Z` → `2026-11-20T12:32:29.328Z` |
+| 12:47 | Bassem, `anam_persona_update` | the same two fields | `2026-11-20T09:30:58.146Z` → `2026-11-20T12:47:51.016Z` |
+| 12:49 | `janna_lookup` `29fd5087`, `anam_tool_update` | `name` (unchanged), `description`, `config`, `disableInterruptions` false | `2026-11-18T09:51:13.805Z` → `2026-11-20T12:49:00.983Z` |
+
+About the `config` sent to the tool: it has the same `url` and `method`, the 3 properties `query`, `section` and `governorate`, and the
+`section` enum in clear (7 values). It does **not** have `page`, `limit` or `market`: the round's README says why.
+
+**The `updatedAt` values before this round** are those of the 09:30 UTC writes, which set `avatarModel` to `cara-4.1-express` on all
+three. Those writes are not in the tables above. The reads before this round showed:
+
+- `cara-4.1-express` on all three;
+- director notes `warm` 0.7 / 0.7 / 0.55;
+- prompts byte-identical to the copies here.
+
+How each write was checked:
+
+- **Calls in progress.** `anam_session_list active=true` was run right before each write and found no call of these personas; before
+  Bassem's write that took a wait, described below. Two calls still overlapped writes. Each started after the check that came before
+  the write, and both were ephemeral copies. An ephemeral session carries its own copy of the config.
+  - `ef38d12b`, Janna AR, 12:29:39–12:38:26 UTC. It started after the Janna AR write, so it ran on her new text. It was active during
+    the Janna EN write, which is another persona. Bassem's write waited for it: it was seen at 12:33:37 and checked about every minute
+    until it ended. The write was sent after the check at 12:38:32, about 5 minutes later.
+  - `5ec5ba4b`, Bassem, 12:42:28–12:49:36 UTC. It started after that check, so it was active when his write landed at 12:47:51; it
+    ran on his previous text. It ended 1 min 45 s after that write, with `CLOSED_BY_ENGINE`. That status also covers a normal hang-up,
+    so the records cannot tell whether the write played a part. It was still active when the tool was written; Bassem does not use
+    `29fd5087`, he has his own lookup tool `b23b3762`.
+
+  Before the Janna AR write, the check ran at 11:54 UTC. Her long text took until 12:27 to send, and no call ran in between.
+- **Before.** Each persona was read just before its write, and its `updatedAt` was the expected one.
+  - The Jannas' prompts had the sha256 of the previous copies here (`34453d59…`, `f2cbd0c3…`), computed from this session's own record
+    of the reads.
+  - Bassem's read showed a trim total of 26,460 units. Its visible part (10,045 units) was byte-identical to the start of the previous
+    copy.
+  - The tool's read showed `updatedAt` `2026-11-18T09:51:13.805Z`, no headers, the same URL and method, 3 properties and `usageCount` 2.
+- **The write.** Each write carried `expectedUpdatedAt`, and none got a 409.
+  - Only `systemPrompt` and `directorNotes` were sent: no `dynamicDirectorNotes`, `toolIds`, voice, avatar or LLM.
+  - The text sent, taken from this session's own record of each call, is byte-identical to the new file (sha256 in the table at the
+    top).
+  - The tool got exactly `anam/rounds/2026-11-20-expressions-useful/tool-update.json`.
+- **After.** The reply and a fresh read were checked:
+  - **Janna AR:** the whole prompt came back, with the file's sha256.
+  - **Janna EN:** her read is now trimmed: 24,366 of 30,788 UTF-16 units are shown. The total equals the file's 30,788 units (30,787
+    characters + 1 for 🌐), and the visible part is byte-identical to the start of the file.
+  - **Bassem:** a trim total of 30,616 units (30,615 + 1), equal to the file. The visible part (10,022 units) is byte-identical to the
+    start of the file.
+  - Director notes are `{"presetStyle":"warm","expressivity":0.5}` on all three.
+  - Every other field is unchanged on all three, compared field by field across the read before, the reply and the read after: name,
+    description, avatar and avatar model, voice, LLM, `languageCode`, the greeting, `toolIds` and the tool definitions,
+    `voiceDetectionOptions`, `dynamicDirectorNotes` (true), the widget, `skipGreeting`, `uninterruptibleGreeting`,
+    `enableAudioPassthrough`, `zeroDataRetention`, `maxSessionLengthSeconds` and the share links.
+  - The tool: the reply and a fresh read show the new description and config, with the `section` enum masked (7 values), the properties
+    `query`, `section` and `governorate` only, `awaitResponse` true, `disableInterruptions` false and `usageCount` 2.
+- **Afterwards.** An `anam_session_search` for «[» over the calls since 12:27 UTC found no persona message with a bracket. The design's
+  own test gate was not run: an owner's test call on desktop Chrome with the `DIRECTOR_NOTE_CUE_APPLIED` cue log, which the design had
+  planned between the Janna AR write and the other two (the round's README).
+
+**Rollback of this round.**
+
+- **The prompts.** The previous texts are these files at `639f2d5`, for example
+  `git show 639f2d5:anam/live/janna-ar.systemPrompt.md`. Their sha256 values are `34453d59…eb327f1`, `f2cbd0c3…2da680` and
+  `fadcad2a…802b15`. Send each one with:
+  - `directorNotes` `{"presetStyle":"warm","expressivity":0.7}` for Janna AR and Janna EN;
+  - `directorNotes` `{"presetStyle":"warm","expressivity":0.55}` for Bassem;
+  - `expectedUpdatedAt` = its `updatedAt` in the table above, or whatever is live by then.
+- **The tool.** `anam/rounds/2026-11-20-expressions-useful/tool-rollback.json` holds its previous `description` and the 3-property
+  `config`. In it, `governorate` goes back to «Optional Egyptian governorate or industrial city in Arabic, e.g. الشرقية or العاشر من
+  رمضان». Its `section` enum is •••• there, which keeps the stored values when sent back. Use `expectedUpdatedAt`
+  `2026-11-20T12:49:00.983Z`, or whatever is live by then.
+
+  Roll the tool back together with the two Jannas: its new description repeats their new search rules.
+- **The older rollbacks.** The «calls» and «ابعتلي» rollbacks above send texts without this round, so they remove it as well.
+
 ## Janna AR and Janna EN
 
-Both were read again on 2026-11-20 right after their writes (`anam_persona_get`). The API returns both prompts whole, not trimmed.
+Both were read again on 2026-11-20 right after their writes (`anam_persona_get`).
+
+- The API returns Janna AR's prompt whole.
+- Since the expressions + usefulness round, Janna EN's read is trimmed: 24,366 of 30,788 units are shown. The notice counts UTF-16
+  units, so 30,788 is the file's 30,787 characters + 1 for 🌐. For her, as for Bassem, the sha256 cannot be checked from a read.
 
 Their other settings, from the same reads (none of them is in these files):
 
@@ -104,6 +203,9 @@ Their other settings, from the same reads (none of them is in these files):
 | `languageCode` | `ar` | `en` |
 | `voiceDetectionOptions` | `sttProvider` `anam`, 0.45 / 1 / 30 / 180 | `sttProvider` `anam`, 0.45 / 1 / 30 / 180 (since 2026-11-20 08:29 UTC; before it: no `sttProvider`, the platform default) |
 | `toolIds` | 15 | 15 (the same) |
+| `avatarModel` | `cara-4.1-express` (since 2026-11-20 09:30 UTC) | the same |
+| `directorNotes` | `warm`, expressivity 0.5 (since 12:27 UTC; before it: 0.7) | `warm`, 0.5 (since 12:32 UTC; before it: 0.7) |
+| `dynamicDirectorNotes` | true | true |
 
 The four numbers are `endOfSpeechSensitivity` / `speechEnhancementLevel` / `silenceBeforeSkipTurnSeconds` /
 `silenceBeforeSessionEndSeconds`. For all three personas, `uninterruptibleGreeting`, `skipGreeting` and `enableAudioPassthrough` are false.
@@ -121,8 +223,11 @@ writes, and are **not** what is live.
 
 ## Bassem
 
-**Since 2026-11-20 08:57 UTC** his prompt is `anam/calls/bassem.new.md` of the «calls» round (live 08:36–08:57 UTC, sha256 `6fc8ae24…`),
-plus the three «ابعتلي» lines of `anam/bassem-notify/prompt-changes.json` (section above). The «calls» text is the previous live text
+**Since 2026-11-20 12:47 UTC** his prompt is the expressions + usefulness text (section above). His director notes are `warm` 0.5
+(before them: 0.55), and his avatar model has been `cara-4.1-express` since 09:30 UTC.
+
+That text is built on his text of 08:57–12:47 UTC (sha256 `fadcad2a…`). That one is `anam/calls/bassem.new.md` of the «calls» round
+(live 08:36–08:57 UTC, sha256 `6fc8ae24…`), plus the three «ابعتلي» lines of `anam/bassem-notify/prompt-changes.json` (section above). The «calls» text is the previous live text
 (sha256 `85c27cbe…`, `updatedAt` `2026-11-19T22:36:03.393Z`) plus these changes:
 
 - LANGUAGE B1–B5.
@@ -133,11 +238,13 @@ plus the three «ابعتلي» lines of `anam/bassem-notify/prompt-changes.json
 B3 («وفي نفس الخطوة دوّر بيه») ships with the new `bassem_save_profile` description (SPEED T6). The two always go together, in a rollback
 too. `anam/bassem-notify/prompt-changes.json` is applied on top of it since 08:57 UTC (three lines; section above).
 
-**His length in a read.** The API trims Bassem's prompt in a read. Its trim notice counts UTF-16 units, so it shows **26,460**: the file's
-26,459 characters plus one, because 🌐 takes two units. The 2026-11-19 text had no such character, so its 24,736 matched both ways.
+**His length in a read.** The API trims Bassem's prompt in a read. Its trim notice counts UTF-16 units, so it shows **30,616**: the file's
+30,615 characters plus one, because 🌐 takes two units. For the text of 08:57–12:47 UTC it showed 26,460 (26,459 characters). The
+2026-11-19 text had no such character, so its 24,736 matched both ways.
 
 - After the «calls» write (08:36), the reply showed 10,068 units (10,067 characters) and a fresh read showed 10,048.
 - After the «ابعتلي» write (08:57), the reply and a fresh read both showed 10,048 units (10,047 characters).
+- After the expressions + usefulness write (12:47), the reply and a fresh read both showed 10,022 units (10,021 characters).
 
 Every visible part was byte-identical to the start of the file live at that time.
 
@@ -166,14 +273,24 @@ The tool itself is attached to the persona by «🔗 وصّل البحث ببا�
 Read the persona first (`anam_persona_get`) and compare its prompt's sha256 with the one above. Then build the change on the text that is
 really live, not on an older file in this repository. Send it with `expectedUpdatedAt` set to the `updatedAt` you read.
 
-The API trims Bassem's prompt, so its sha256 cannot be checked from a read. For him, check three things against the file:
+The API trims Bassem's and Janna EN's prompts, so their sha256 cannot be checked from a read. For them, check three things against the
+file:
 
 - the `updatedAt`;
-- the total in the trim notice, which counts UTF-16 units: today 26,460 for the file's 26,459 characters;
+- the total in the trim notice, which counts UTF-16 units: today 30,616 for Bassem's 30,615 characters and 30,788 for Janna EN's 30,787;
 - the part that is shown.
 
-The Worker's price sync (`worker/src/acc-plans.js` `personaSync`, after a plans change, retried hourly) can rewrite his price section by
-itself. If his `updatedAt` is not the one above, take his full text from the Lab or from the sync's «after»; never take it from a read.
+The Worker's price sync (`worker/src/acc-plans.js` `personaSync`, after a plans change, retried hourly) can rewrite each persona's price
+section by itself. If Bassem's or Janna EN's `updatedAt` is not the one above, take the full text from the Lab or from the sync's
+«after»; never take it from a read.
+
+The sync changes only the tokens inside each persona's anchored price block. Since the expressions + usefulness round, some plan rules also
+appear outside that block, so a change to the plans must update these by hand:
+
+- Janna AR: «(من الأساسية وطالع)» (the customers bullet and the platform-value bullet) and «(من الأساسية وطالع، والمميزة الأول)»
+  (the nothing-found bullet).
+- Janna EN: "(Basic and up)" (twice) and "(Basic and up, Premium first)".
+- Bassem: «بتوصله تلقائي وبأولوية».
 
 `anam/calls/build.py` checks the live copies against its `LIVE` table, so since this commit it stops by design: `anam/live` now holds the
 round's output. Rebuild that round only from the copies at `78959c9`.

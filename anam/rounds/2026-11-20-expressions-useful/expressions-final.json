@@ -1,0 +1,186 @@
+{
+ "round": "Facial expressions follow the words (Janna AR, Janna EN, Bassem): final design after the anam, language and regression reviews, 2026-11-20. Nothing written to Anam, the repository or the live site.",
+ "personas": {
+  "janna-ar": {
+   "persona": "Janna AR",
+   "id": "5f06d835-22cc-4460-b412-84cefa9e565b",
+   "expectedUpdatedAt": "2026-11-20T09:30:52.047Z",
+   "file": "/tmp/claude-0/-home-user-madeinegyptgate/16f6faf5-3188-59a6-a3eb-9f56f306beda/scratchpad/expr/design/janna-ar.new.md",
+   "old_sha256": "34453d59217ecdc297b3cc8dfb38ee376220f5f44285293c5bc321198eb327f1",
+   "new_sha256": "b286114d09d0016fdc81bff42f047dcdcf01b9afa6f3b531f5c6f7c52542d481",
+   "old_len_cp": 21796,
+   "new_len_cp": 23801,
+   "old_len_utf16": 21797,
+   "new_len_utf16": 23802,
+   "directorNotes": {
+    "presetStyle": "warm",
+    "expressivity": 0.5
+   },
+   "order": 1,
+   "send_fields": [
+    "systemPrompt",
+    "directorNotes",
+    "expectedUpdatedAt"
+   ],
+   "dynamicDirectorNotes": "not sent: stays true",
+   "rollback": {
+    "systemPrompt": "the record anam/live/janna-ar.systemPrompt.md (sha256 34453d59217ecdc297b3cc8dfb38ee376220f5f44285293c5bc321198eb327f1)",
+    "directorNotes": {
+     "presetStyle": "warm",
+     "expressivity": 0.7
+    }
+   }
+  },
+  "janna-en": {
+   "persona": "Janna EN",
+   "id": "e5101653-65b4-44a6-85e5-ec2e78f82685",
+   "expectedUpdatedAt": "2026-11-20T09:30:55.090Z",
+   "file": "/tmp/claude-0/-home-user-madeinegyptgate/16f6faf5-3188-59a6-a3eb-9f56f306beda/scratchpad/expr/design/janna-en.new.md",
+   "old_sha256": "f2cbd0c36fc8891da136099cd92bae98d5370fca8014ff651e85fd482d6da680",
+   "new_sha256": "bc2b2de6f407b6a28fe9dd35ee6ce7dc6e50aa779c29f821941ca456c87e5512",
+   "old_len_cp": 25357,
+   "new_len_cp": 27654,
+   "old_len_utf16": 25358,
+   "new_len_utf16": 27655,
+   "directorNotes": {
+    "presetStyle": "warm",
+    "expressivity": 0.5
+   },
+   "order": 2,
+   "send_fields": [
+    "systemPrompt",
+    "directorNotes",
+    "expectedUpdatedAt"
+   ],
+   "dynamicDirectorNotes": "not sent: stays true",
+   "rollback": {
+    "systemPrompt": "the record anam/live/janna-en.systemPrompt.md (sha256 f2cbd0c36fc8891da136099cd92bae98d5370fca8014ff651e85fd482d6da680)",
+    "directorNotes": {
+     "presetStyle": "warm",
+     "expressivity": 0.7
+    }
+   }
+  },
+  "bassem": {
+   "persona": "Bassem",
+   "id": "19ef9078-5252-42a4-bbdf-9a3c4a38a4be",
+   "expectedUpdatedAt": "2026-11-20T09:30:58.146Z",
+   "file": "/tmp/claude-0/-home-user-madeinegyptgate/16f6faf5-3188-59a6-a3eb-9f56f306beda/scratchpad/expr/design/bassem.new.md",
+   "old_sha256": "fadcad2a6fec3f8cd6f165e40dcfe0425a7c5e3b46cedcf10e722c9a4f802b15",
+   "new_sha256": "1eabb20ff5d7429824676ed83129251984a369ce960c857f8287dda7086650a8",
+   "old_len_cp": 26459,
+   "new_len_cp": 28552,
+   "old_len_utf16": 26460,
+   "new_len_utf16": 28553,
+   "directorNotes": {
+    "presetStyle": "warm",
+    "expressivity": 0.5
+   },
+   "order": 2,
+   "send_fields": [
+    "systemPrompt",
+    "directorNotes",
+    "expectedUpdatedAt"
+   ],
+   "dynamicDirectorNotes": "not sent: stays true",
+   "rollback": {
+    "systemPrompt": "the record anam/live/bassem.systemPrompt.md (sha256 fadcad2a6fec3f8cd6f165e40dcfe0425a7c5e3b46cedcf10e722c9a4f802b15)",
+    "directorNotes": {
+     "presetStyle": "warm",
+     "expressivity": 0.55
+    }
+   }
+  }
+ },
+ "fallback": {
+  "order": "step1 first, step2 only after it; decide on the console cue log (DIRECTOR_NOTE_CUE_APPLIED), not on the look alone",
+  "step1": {
+   "what": "prompt edit: apologies move from [concerned] to [supportive]; [concerned] stays only for sympathy with a visitor or member who says they are upset or tired",
+   "when": "the pained look comes back only on apology sentences, and the cue log shows 'concerned' there",
+   "send": "systemPrompt alone (= the fallback file), expectedUpdatedAt from a fresh read, after the owner's OK, no call running",
+   "patch": "/tmp/claude-0/-home-user-madeinegyptgate/16f6faf5-3188-59a6-a3eb-9f56f306beda/scratchpad/expr/design/fallback-concerned.json",
+   "files": {
+    "janna-ar": {
+     "file": "/tmp/claude-0/-home-user-madeinegyptgate/16f6faf5-3188-59a6-a3eb-9f56f306beda/scratchpad/expr/design/fallback/janna-ar.fallback.md",
+     "applies_to_sha256": "b286114d09d0016fdc81bff42f047dcdcf01b9afa6f3b531f5c6f7c52542d481",
+     "sha256": "350a308c2ddb931da1e036c695c72ae5118b4aa0a901370ca61dacb2186e4107",
+     "len_cp": 23762,
+     "len_utf16": 23763
+    },
+    "janna-en": {
+     "file": "/tmp/claude-0/-home-user-madeinegyptgate/16f6faf5-3188-59a6-a3eb-9f56f306beda/scratchpad/expr/design/fallback/janna-en.fallback.md",
+     "applies_to_sha256": "bc2b2de6f407b6a28fe9dd35ee6ce7dc6e50aa779c29f821941ca456c87e5512",
+     "sha256": "80d6ac4d9235d13940282c21ee3724c267f5a8cfaf3992269d81b89049c21a92",
+     "len_cp": 27605,
+     "len_utf16": 27606
+    },
+    "bassem": {
+     "file": "/tmp/claude-0/-home-user-madeinegyptgate/16f6faf5-3188-59a6-a3eb-9f56f306beda/scratchpad/expr/design/fallback/bassem.fallback.md",
+     "applies_to_sha256": "1eabb20ff5d7429824676ed83129251984a369ce960c857f8287dda7086650a8",
+     "sha256": "c2313de001365780e02ccc4bb83dbd26be10880169a6fd622fd18680a9dd6773",
+     "len_cp": 28526,
+     "len_utf16": 28527
+    }
+   }
+  },
+  "step2": {
+   "directorNotes": {
+    "presetStyle": "warm",
+    "expressivity": 0.4
+   },
+   "when": "the face is still pained, sad or exaggerated (eyes closing, drawn brows) on calm sentences while the cue log shows warm or supportive applied there",
+   "send": "directorNotes alone, per persona that shows it"
+  }
+ },
+ "rejected_review_points": [
+  {
+   "review": "regression",
+   "severity": "should",
+   "point": "stage the round with Janna EN first (no call history), or send dynamicDirectorNotes false in a second write after a check",
+   "decision": "staged, but Janna AR first; no dynamicDirectorNotes write at all",
+   "why": "the flag is no longer changed (review anam, blocker), which removes the risk an EN-first canary guarded against; Janna AR is the persona the owner complained about and will test, and her first-visit calls run on the saved persona, the one path where cue application is confirmed; Janna EN has had no calls, so testing her first would not exercise the complaint"
+  },
+  {
+   "review": "language",
+   "severity": "should",
+   "point": "cap wording «٣ بالكتير قبل الأداة و٣ بالكتير بعد نتيجتها» / \"3 before a tool and 3 after its result\"",
+   "decision": "used the Anam review's wording instead: «٣ بالكتير في الرد، وتاج أول جملة بعد الأداة مش محسوب منهم» / \"the tag on the first sentence after a tool never counts toward that limit\"; the mixed-news rule of the same point is taken",
+   "why": "same effect (the tag after the tool is never dropped), one count per reply, at most 4 face changes instead of 6, and no notion of \"before the tool\" for replies without one"
+  },
+  {
+   "review": "language",
+   "severity": "should",
+   "point": "follow-up Worker pull request: reframe the seven bracket markers without square brackets, and KNOWLEDGE_BLOCK in the feminine «ماتنفّذيش»",
+   "decision": "deferred (listed in rationale.md section 10); the prompt sentence of the same point ships now",
+   "why": "this workflow writes no repository code and deploys nothing; it is a Worker change deployed by deploy-worker"
+  },
+  {
+   "review": "language",
+   "severity": "nit",
+   "point": "«دافئة» (Modern Standard Arabic) vs «دافية»",
+   "decision": "«دافئة» kept for Janna AR; Bassem keeps the Egyptian «دافي»",
+   "why": "the reviewer's own condition: «[دافئة]» is the stray tag the model actually wrote (twice), and the gloss exists to map that word to [warm]; the gloss is never spoken"
+  },
+  {
+   "review": "language",
+   "severity": "nit",
+   "point": "[warm] bullet with «(«يا رب دايماً بخير»)» and «حضرتك ساكت بقالك شوية»",
+   "decision": "partly: «ودعاء» and «ولما يسكت شوية («لسه معايا؟»)» are in; the two extra quoted examples are not",
+   "why": "length (each prompt already grows about 2,000 characters); «ولما يسكت شوية» names the situation of #25, #37 and #51 in her own words, and «ودعاء» removes the 'invitations' reading"
+  },
+  {
+   "review": "language + regression",
+   "severity": "blocker / should",
+   "point": "the exact layout of the split tool-turn example (\"Example style (call the tools right after the first line…)\" / '\"…\" + الأداة، وبعد نتيجتها: \"…\"')",
+   "decision": "taken in substance with another layout: \"A tool turn (the first line and the tool calls in the same reply; the second line only after their result, and only from it):\" followed by one quoted utterance per line",
+   "why": "keeps every example a single quoted utterance that apply_patch.py can check (starts with a tag, at most 3 tags, none at the end)"
+  }
+ ],
+ "write_order": [
+  "janna-ar",
+  "(the owner's test call, cue log on desktop Chrome)",
+  "janna-en",
+  "bassem"
+ ],
+ "test_gate": "Before the next persona and before any later change: in a test call on desktop Chrome, a DIRECTOR_NOTE_CUE_APPLIED event (MIG_LIVE_CLIENT.client.addListener(anam.AnamEvent.DIRECTOR_NOTE_CUE_APPLIED, function (e) { console.log('cue', e.cueTag); })) for every spoken reply, and anam_session_search text '[' over the test window finds no persona message. If the returning-visitor (ephemeral) call shows one of the five tags in its transcript, or no cue events, hold Bassem's write (all his site calls are ephemeral) and raise it with Anam."
+}

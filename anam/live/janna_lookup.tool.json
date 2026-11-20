@@ -1,0 +1,41 @@
+{
+ "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
+ "name": "janna_lookup",
+ "description": "Search the platform's REAL directory and get results you can say aloud: factories & companies (by activity/product and governorate), products, Egyptian tenders, RFQs, retail offers, industrial cities. Use it when the visitor asks which factories / suppliers / tenders / offers exist. A seller's potential customers: section=factories, ONE industry word per call («تغليف», «طباعة»; 2-3 industries = 2-3 calls in one reply, never add the counts up; no صناعات / مواد / معدات), governorate = his governorate, not the city (6th of October = الجيزة). Two or three names of ONE product go in one query («سلندرات درافيل rollers»), no governorate for tenders / RFQs. Say only what the result's `text` and results contain - never invent names, numbers or contacts. Also call janna_search with the query's main word only (the screen matches the whole phrase). Each result has an `id`: all its details with platform_item.",
+ "config": {
+  "url": "https://madeinegyptgate.com/api/janna/lookup",
+  "method": "POST",
+  "parameters": {
+   "type": "object",
+   "required": [
+    "section",
+    "query"
+   ],
+   "properties": {
+    "query": {
+     "type": "string",
+     "description": "What the visitor is looking for (activity, product, company name, city) in Arabic or English, e.g. بلاستيك"
+    },
+    "section": {
+     "enum": [
+      "factories",
+      "suppliers",
+      "products",
+      "tenders",
+      "rfqs",
+      "offers",
+      "cities"
+     ],
+     "type": "string",
+     "description": "What to search: factories, suppliers, products, tenders, rfqs, offers or cities (industrial cities/zones)"
+    },
+    "governorate": {
+     "type": "string",
+     "description": "Optional Egyptian governorate in Arabic, e.g. الشرقية (an industrial city such as العاشر من رمضان keeps only the rows that name the city: give its governorate)"
+    }
+   }
+  },
+  "awaitResponse": true
+ },
+ "disableInterruptions": false
+}
