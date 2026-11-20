@@ -180,6 +180,8 @@ describe("janna_lookup on the real directory (the investigation's queries)", () 
     assert.equal(search("factories", "الشركة المتحدة المصرية").results[0].name, "الشركة المتحدة المصرية للتجارة والتنمية", "the name asked for leads");
     const w = search("factories", "مصنع أكياس بلاستيك للتعبئة والتغليف في مدينة العاشر من رمضان", "", 10);
     assert.equal(w.widened_to, "الشرقية"); assert.ok(w.count_all >= 1 && w.results.every(x => x.match !== "related"), w.text);
+    const pr = search("factories", "مطابع", "الجيزة", 10); // Al-Atlal's customers: printing houses («مطبعة», «طباعة»), not «same field only»
+    assert.ok(pr.count_all >= 20, String(pr.count_all)); for (const x of pr.results) assert.equal(x.match, "all", x.name);
   });
   test("places are whole words: «قناطر» is not قنا, «السويسرية» is not السويس", () => {
     assert.equal(search("factories", "قناطر").governorate, null);

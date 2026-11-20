@@ -145,6 +145,8 @@ const EQUIV = [
   ["chemicals", "كيماويات|كيماوي|كيميائي|chemical|chemicals|chimique|produits chimiques"],
   ["paints", "دهانات|بويات|طلاء|paint|paints|peinture"],
   ["inks", "احبار|حبر|ink|inks|encre"],
+  /* printing houses (Al-Atlal's customers: «مطابع» found no «مطبعة» / «طباعة», only the same field) */
+  ["printing", "مطابع|مطبعه|طباعه|printing|imprimerie"],
   ["adhesives", "غراء|لواصق|مواد لاصقه|adhesive|adhesives|glue|colle"],
   ["detergents", "منظفات|مواد تنظيف|detergent|detergents|cleaning products|cleaning materials|détergent"],
   ["soap", "صابون|soap|savon"],
