@@ -10,10 +10,10 @@
    "used_by": [
     "bassem"
    ],
-   "why": "Owner 2026-11-19: the «ابعتلي» e-mail had no data, no attachment and no working link. With ids the platform adds each opportunity's details, links and official file itself; Bassem never promises the attachment. Without ids the page picks the opportunities from the call's own tool results and screen (data/janna-live.js notifyRefs).",
-   "description_length": 809,
+   "why": "Owner 2026-11-19: the «ابعتلي» e-mail had no data, no attachment and no working link. With ids the platform adds each opportunity's details, links and official file itself; Bassem never promises any of it (review R3). Without ids the page picks the opportunities from the call's own tool results and screen (data/janna-live.js notifyRefs).",
+   "description_length": 847,
    "body": {
-    "description": "Send the member HIMSELF a short note on his registered WhatsApp and/or e-mail («ابعتلي», «على إيميلي»): what you did together, an opportunity, a reply, a deadline. When the note is about opportunities your tools returned in THIS call, put their ids in `ids` exactly as returned (a bassem_intel id like rw0000000a1, or the platform tender id from janna_lookup / platform_item), at most 3: the platform adds each one's details from its own data, its page on the platform, its official link and, when the source allows a download, the official file to the e-mail by itself. Never write links, amounts or dates in `message` that are not in the results. Tell him you are sending it and that the details and links are in the e-mail; never say the file is attached: the e-mail itself says whether it was and why not.",
+    "description": "Send the member HIMSELF a short note on his registered WhatsApp and/or e-mail («ابعتلي», «على إيميلي»): what you did together, an opportunity, a reply, a deadline. When the note is about opportunities your tools returned in THIS call, put the id of each one in `ids` exactly as returned (a bassem_intel id like rw0000000a1, or the platform tender id from janna_lookup / platform_item), at most 3; an opportunity from an earlier call: fetch it again with its tool by the id in your memory first. The platform then adds what it can from its own data: details, links and, when the source allows a download, the official file. Never write links, amounts or dates in `message` that are not in the results. Tell him you are sending it; do not promise details, links or files — the e-mail itself says what it carries, and you hear the outcome afterwards.",
     "config": {
      "awaitResult": false,
      "parameters": {
@@ -36,7 +36,7 @@
        },
        "ids": {
         "type": "string",
-        "description": "Ids of the opportunities this note is about, exactly as this call's tools returned them, comma-separated, at most 3 (e.g. rw0000000a1,eg-tnd-003). Empty for a general note."
+        "description": "Ids of the opportunities this note is about, exactly as this call's tools returned them, comma-separated (an id may contain spaces), at most 3 (e.g. rw0000000a1,eg-tnd-003). Empty for a general note."
        }
       }
      }

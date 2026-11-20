@@ -325,25 +325,70 @@ describe("«ابعتلي» with the opportunities of the call (notifyRefs, notif
   const OPP = (k, title, entity, ref) => ({ k, o: { title, entity: entity || "", ref: ref || "" }, alt: "" });
   const L = [OPP("intel:rw0000000a1", "Supply and delivery of water treatment chemicals", "Rand Water"), OPP("item:eg-tnd-003", "تصنيع وتوريد وتركيب منشآت معدنية لصوامع قمح", "شركة مطاحن مصر العليا", "6/2026/2027"),
     OPP("intel:gh0000000b2", "Supply of laboratory equipment for the university", "Kwame Nkrumah University")];
-  test("Bassem's ids count only when this call's tools returned them or the screen shows them; never a URL", () => {
-    assert.deepEqual([...P.notifyRefs(L, "", "x", "rw0000000a1, eg-tnd-003, zz0000000zz, item:evil", "")], ["intel:rw0000000a1", "item:eg-tnd-003"]);
+  /* the real items.json tenders the review found the old picker mixing up (titles that all start «دعوة لتقديم العطاءات لتوريد», refs ending /2026/2027) */
+  const ITEMS = JSON.parse(readFileSync(new URL("../src/items.json", import.meta.url), "utf8"));
+  const real = ids => ids.map(id => ITEMS.t.find(t => t.id === id)).map(t => OPP("item:" + t.id, t.title, t.entity || "", String(t.ref || t.id)));
+  test("Bassem's ids count only when this call's tools returned them or the screen shows them; never a URL; the others come back as unused (review R2)", () => {
+    const r = P.notifyRefs(L, "", "x", "rw0000000a1, eg-tnd-003, zz0000000zz, item:evil", "");
+    assert.deepEqual([...r], ["intel:rw0000000a1", "item:eg-tnd-003"]); assert.deepEqual([...r.unused], ["zz0000000zz", "evil"]);
     assert.deepEqual([...P.notifyRefs(L, "", "x", "intel:RW0000000A1", "")], ["intel:rw0000000a1"], "an id in another case");
     assert.deepEqual([...P.notifyRefs(L, "intel:ab0000000cd", "x", "ab0000000cd", "")], ["intel:ab0000000cd"], "the screen's item");
-    assert.deepEqual([...P.notifyRefs(L, "", "x", "https://evil.example/x.pdf ab0000000cd", "")], [], "nothing the call did not show");
+    const n = P.notifyRefs(L, "", "x", "https://evil.example/x.pdf, ab0000000cd", "");
+    assert.deepEqual([...n], [], "nothing the call did not show"); assert.deepEqual([...n.unused], ["https://evil.example/x.pdf", "ab0000000cd"]);
+    /* an earlier call's id with an Arabic note about nothing on the screen: no ref, the id reported (Bassem fetches it first) */
+    const m = P.notifyRefs([], "", "دي المناقصة اللي كلمتك عنها امبارح", "rw0000000a1,eg-tnd-003", "ابعتلي المناقصة بتاعة امبارح");
+    assert.deepEqual([[...m], [...m.unused]], [[], ["rw0000000a1", "eg-tnd-003"]]);
   });
-  test("the opportunities named in the note (2+ of their words), best first; the screen's one with 1 word; never more than 3", () => {
+  test("review F2: an id with spaces (22 international tenders) is one id — Bassem's ids are split on commas only", () => {
+    const I = [OPP("item:intl-558/2026/BTB (BE2630001388)", "Supply of electrical equipment", "Banque de Tunisie"), OPP("item:intl-ET-CE BOA -541070-GO-RFQ", "Procurement of vehicles", "Ethiopian Ministry")];
+    assert.deepEqual([...P.notifyRefs(I, "", "x", "intl-558/2026/BTB (BE2630001388), item:intl-ET-CE BOA -541070-GO-RFQ", "")], ["item:intl-558/2026/BTB (BE2630001388)", "item:intl-ET-CE BOA -541070-GO-RFQ"]);
+    assert.deepEqual([...P.notifyRefs(I, "", "x", " intl-558/2026/BTB (BE2630001388) ;intl-ET-CE BOA -541070-GO-RFQ", "")].length, 2);
+  });
+  test("the opportunities named in the note (2+ of their own words), best first; the screen's one with 1 word; never more than 3", () => {
     const note = "ابعتلي تفاصيل مناقصة مطاحن مصر العليا ومناقصة water treatment chemicals";
     assert.deepEqual([...P.notifyRefs(L, "", note, "", "")], ["intel:rw0000000a1", "item:eg-tnd-003"]);
     assert.deepEqual([...P.notifyRefs(L, "intel:gh0000000b2", "the laboratory one", "", "")], ["intel:gh0000000b2"], "one word + the screen's bonus");
     assert.deepEqual([...P.notifyRefs(L, "", "the laboratory one", "", "")], [], "one word alone is not enough");
-    const many = [1, 2, 3, 4, 5].map(i => OPP("intel:ab000000" + i + "00", "Supply of steel pipes lot " + i, "Water Board"));
-    assert.equal(P.notifyRefs(many, "", "steel pipes water board", "", "").length, 3);
+    /* review F1: five distinctly named items, the note names four of them → the first three by score */
+    const many = [OPP("intel:ab00000a100", "Supply of steel pipes", "Lagos Water Board"), OPP("intel:ab00000a200", "Supply of diesel generators", "Kenya Power"), OPP("intel:ab00000a300", "Construction of rural roads", "Ghana Highways Authority"),
+      OPP("intel:ab00000a400", "Laboratory reagents", "Ministry of Health Uganda"), OPP("intel:ab00000a500", "School furniture", "Rwanda Education Board")];
+    const r = P.notifyRefs(many, "", "steel pipes lagos, diesel generators kenya power, rural roads ghana highways, laboratory reagents uganda", "", "");
+    assert.deepEqual([...r], ["intel:ab00000a200", "intel:ab00000a300", "intel:ab00000a100"], "the cap: 3, by score");
+  });
+  test("review F1: the boilerplate every tender shares and the year fragments of a number name nothing — the real items.json notes pick the one tender named", () => {
+    const R = real(["20/2026/2027", "23/2026/2027", "31/2026/2027"]);
+    assert.ok(R.every(x => /^دعوة لتقديم العطاءات لتوريد/.test(x.o.title)), "the three real titles share the boilerplate");
+    assert.deepEqual([...P.notifyRefs(R, "", "1) دعوة لتقديم العطاءات لتوريد حمض الهيدروكلوريك — آخر ميعاد 30 نوفمبر", "", "")], ["item:31/2026/2027"]);
+    assert.deepEqual([...P.notifyRefs(R, "", "ابعتلك تفاصيل المناقصة رقم 23/2026/2027 زي ما اتفقنا", "", "")], ["item:23/2026/2027"]);
+    assert.deepEqual([...P.notifyRefs(R, "", "ابعتلك تفاصيل المناقصة رقم ٢٣/٢٠٢٦/٢٠٢٧", "", "")], ["item:23/2026/2027"], "Arabic-Indic digits");
+    assert.deepEqual([...P.notifyRefs(R, "", "المناقصة 123/2026/2027 وكمان 2026 و2027", "", "")], [], "a number inside a longer one, or the year alone, names nothing");
+    assert.deepEqual([...P.notifyRefs(R, "", "دعوة لتقديم العطاءات لتوريد — آخر ميعاد 2026/2027", "", "")], [], "the shared boilerplate names nothing");
+  });
+  test("a list of three: a long title quoted in full beside two short ones — all three kept (each well covered by the note), an unrelated item with a coincidental word is not", () => {
+    const R = real(["eg-tnd-003", "eg-tnd-045", "eg-tnd-059", "20/2026/2027"]);
+    const note = "1) " + R[0].o.title + " — " + R[0].o.entity + "\n2) " + R[1].o.title + "\n3) " + R[2].o.title + " — " + R[2].o.entity;
+    assert.deepEqual([...P.notifyRefs(R, "", note, "", "")].sort(), ["item:eg-tnd-003", "item:eg-tnd-045", "item:eg-tnd-059"]);
+    assert.deepEqual([...P.notifyRefs(R, "", note + " (والتبريد)", "", "")].sort(), ["item:eg-tnd-003", "item:eg-tnd-045", "item:eg-tnd-059"], "one coincidental word of a fourth tender adds nothing");
   });
   test("a note about nothing named: the screen's opportunity only when the member's own last words asked to send it", () => {
     assert.deepEqual([...P.notifyRefs(L, "intel:gh0000000b2", "ملخص مكالمة النهارده", "", "طيب ابعتلي ده على الإيميل")], ["intel:gh0000000b2"]);
     assert.deepEqual([...P.notifyRefs(L, "intel:gh0000000b2", "ملخص مكالمة النهارده", "", "send it to my e-mail please")], ["intel:gh0000000b2"]);
     assert.deepEqual([...P.notifyRefs(L, "intel:gh0000000b2", "ملخص مكالمة النهارده", "", "تمام شكراً")], []);
     assert.deepEqual([...P.notifyRefs(L, "", "ملخص مكالمة النهارده", "", "ابعتلي")], [], "no screen item: nothing");
+  });
+  test("review F3 / R4: a tender page's list key beside the same tender from janna_lookup → the tool's own id, the screen's copy out of the list; alone, the list key stays", () => {
+    const src = LIVE.slice(LIVE.indexOf("  /* the shared screen's opportunity. A platform tender page"), LIVE.indexOf("  function notifyGo("));
+    const T3 = "تصنيع وتوريد وتركيب منشآت معدنية لصوامع (شون) قمح مغطاة بسعة إجمالية 60 ألف طن بمدينة طيبة الجديدة";
+    const mk = (oppc, ctx) => { const sb = { OPPC: oppc, mwords: P.mwords, screenOppKey: () => "item:" + ctx.id, screenCtx: () => ctx }; vm.createContext(sb); vm.runInContext(src, sb); return sb; };
+    const ctx = { type: "tender", id: "OFF:6/2026/2027", title: T3 };
+    let sb = mk([OPP("item:OFF:6/2026/2027", T3, "", "OFF:6/2026/2027"), OPP("item:eg-tnd-003", T3, "شركة مطاحن مصر العليا", "6/2026/2027")], ctx);
+    assert.equal(sb.notifyScreenKey(), "item:eg-tnd-003");
+    assert.deepEqual(sb.OPPC.map(o => o.k), ["item:eg-tnd-003"], "one entry per tender");
+    assert.deepEqual([...P.notifyRefs(sb.OPPC, "item:eg-tnd-003", "مناقصة صوامع القمح في طيبة الجديدة لشركة مطاحن مصر العليا", "", "")], ["item:eg-tnd-003"]);
+    sb = mk([OPP("item:OFF:6/2026/2027", T3, "", "OFF:6/2026/2027")], ctx);
+    assert.equal(sb.notifyScreenKey(), "item:OFF:6/2026/2027", "no tool result: the list key (the platform picks by the title sent with it)");
+    sb = mk([OPP("item:eg-tnd-003", T3, "")], { type: "factory", id: "x", title: T3 });
+    assert.equal(sb.notifyScreenKey(), "", "a factory page is no opportunity");
   });
   test("inflWait: «ابعتلي» waits for the server tools still running (≥ 0.6 s, ≤ max), a call older than 8 s no longer counts", async () => {
     const src = LIVE.slice(LIVE.indexOf("  var INFL = {}"), LIVE.indexOf("  /* the call's DOM events → its handlers"));
@@ -362,36 +407,60 @@ describe("«ابعتلي» with the opportunities of the call (notifyRefs, notif
     const said = [], told = [], outs = [];
     const sb = { T: (ar, en) => ar, sayAny: m => said.push(m), done: n => outs.push([n, "ok"]), outcome: (n, s) => outs.push([n, s]), refuse: (n, s, m) => { said.push(m); outs.push([n, s]); }, errMsg: e => String(e.code), tellBassem: t => told.push(t) };
     vm.createContext(sb); vm.runInContext(src, sb);
-    const ok = (j, status = 200) => { said.length = told.length = outs.length = 0; sb.notifyDone("bassem_notify_member", { status, j }); return { s: said[0], t: told[0], o: outs[0] }; };
+    const ok = (j, status = 200, unused) => { said.length = told.length = outs.length = 0; sb.notifyDone("bassem_notify_member", { status, j }, unused); return { s: said[0], t: told[0], o: outs[0] }; };
     let r = ok({ ok: true, sent: { email: true, whatsapp: false }, pending: { whatsapp: false }, attached: 1, items: [{ ref: "intel:rw0000000a1", found: true, title: "توريد كيماويات", file: { attached: true, name: "a.pdf", size: 1 } }] });
-    assert.equal(r.s, "✅ اتبعتت على الإيميل — ومعاها الملف الرسمي مرفق"); assert.deepEqual(r.o, ["bassem_notify_member", "ok"]);
+    assert.equal(r.s, "✅ اتبعتت على الإيميل — والملف الرسمي مرفق في الإيميل"); assert.deepEqual(r.o, ["bassem_notify_member", "ok"]);
     assert.match(r.t, /^نتيجة «ابعتلي»: اتبعتت على الإيميل؛ "توريد كيماويات": تفاصيلها ولينكاتها والملف الرسمي اترفق في الإيميل\. قول للعضو اللي حصل ده بس\.$/);
     r = ok({ ok: true, sent: { email: true, whatsapp: false }, pending: {}, attached: 2, items: [] });
-    assert.equal(r.s, "✅ اتبعتت على الإيميل — ومعاها الملفين الرسميين مرفقين");
+    assert.equal(r.s, "✅ اتبعتت على الإيميل — والملفين الرسميين مرفقين في الإيميل");
+    r = ok({ ok: true, sent: { email: true, whatsapp: true }, pending: {}, attached: 1, items: [] });
+    assert.equal(r.s, "✅ اتبعتت على الإيميل والواتساب — والملف الرسمي مرفق في الإيميل", "review R9: never «with it» when WhatsApp went too");
     r = ok({ ok: true, sent: { email: true, whatsapp: false }, pending: {}, attached: 0, items: [{ found: true, title: "صوامع", file: { attached: false, reason: "platform_listing", why: { ar: "ده إعلان من بيانات المنصة نفسها", en: "x" } } }] });
     assert.equal(r.s, "✅ اتبعتت على الإيميل — بالتفاصيل واللينكات؛ الملف الرسمي مااترفقش: ده إعلان من بيانات المنصة نفسها"); assert.doesNotMatch(r.s, /مرفق$/);
     assert.match(r.t, /"صوامع": تفاصيلها ولينكاتها، والملف مااترفقش \(ده إعلان من بيانات المنصة نفسها\)/);
+    /* review R9: different reasons → no one reason for all; links never reach Bassem; a long title cut at a word */
+    r = ok({ ok: true, sent: { email: true, whatsapp: false }, pending: {}, attached: 0, items: [{ found: true, title: "توريد وتسليم كيماويات معالجة المياه (كبريتات الألومنيوم) لمدة 24 شهراً", file: { attached: false, reason: "platform_listing", why: { ar: "ده إعلان من بيانات المنصة نفسها", en: "x" } } },
+      { found: true, title: "ب", file: { attached: false, reason: "timeout", why: { ar: "موقع الجهة ماردّش في الوقت", en: "y" } } }, { found: false, reason: "unavailable", why: { ar: "ماقدرتش أوصل لمركز المعلومات — جرّب صفحتها بعد شوية: https://madeinegyptgate.com/intel/tenders/rw0000000a1/", en: "z" } }] });
+    assert.equal(r.s, "✅ اتبعتت على الإيميل — بالتفاصيل واللينكات؛ الملفات الرسمية مااترفقتش — سبب كل واحد مكتوب في الإيميل");
+    assert.doesNotMatch(r.t, /https?:\/\//); assert.ok(r.t.includes('"توريد وتسليم كيماويات معالجة المياه (كبريتات…"'), "cut at a word, never inside one: " + r.t);
+    assert.match(r.t, /الفرصة 3: مااتبعتش تفاصيلها \(ماقدرتش أوصل لمركز المعلومات — جرّب صفحتها بعد شوية\)/);
+    /* review R9: nothing went → no «its details and links» for any opportunity */
+    r = ok({ ok: false, sent: { email: false, whatsapp: false }, pending: { whatsapp: false }, attached: 0, items: [{ found: true, title: "توريد كيماويات", file: { attached: false, reason: "email_not_sent", why: { ar: "الإيميل نفسه مااتبعتش", en: "x" } } }] });
+    assert.deepEqual([r.s, r.o], ["⚠️ الرسالة مااتبعتتش على أي قناة.", ["bassem_notify_member", "failed"]]);
+    assert.equal(r.t, "نتيجة «ابعتلي»: مااتبعتتش على أي قناة. قول للعضو اللي حصل ده بس.");
+    /* review R1: the notice came, the document did not */
+    r = ok({ ok: true, sent: { email: true, whatsapp: false }, pending: {}, attached: 1, items: [{ found: true, title: "كابلات كينيا", file: { attached: true, name: "n.pdf", size: 1, label: { ar: "إعلان المناقصة (Tender Notice)", en: "Tender Notice" },
+      skipped: { label: { ar: "كراسة الشروط (Tender Document)", en: "Tender Document" }, reason: "too_large", why: { ar: "الملف كبير (9.4 ميجا) على الإيميل", en: "the file is too large for e-mail (9.4 MB)" } } } }] });
+    assert.equal(r.s, "✅ اتبعتت على الإيميل — وفيه ملف مرفق في الإيميل، وفيه ملفات مااترفقتش — السبب مكتوب في الإيميل");
+    assert.match(r.t, /"كابلات كينيا": تفاصيلها ولينكاتها، واترفق إعلان المناقصة \(Tender Notice\) بس — وكراسة الشروط \(Tender Document\) مااترفقش \(الملف كبير \(9\.4 ميجا\) على الإيميل، واللينك بتاعه في الإيميل\)/);
+    /* review R2: Bassem's ids from an earlier call */
+    r = ok({ ok: true, sent: { email: true, whatsapp: false }, pending: {} }, 200, ["rw0000000a1"]);
+    assert.equal(r.s, "✅ اتبعتت على الإيميل — من غير تفاصيل فرصة مش من نتايج المكالمة دي");
+    assert.match(r.t, /الـ id «rw0000000a1» مش من نتايج المكالمة دي، فالإيميل راح من غير تفاصيلها — لو عايز تبعتها، هاتها الأول بأداتها بالـ id ده \(bassem_intel بـ action item، أو platform_item\) وبعدين ابعت تاني/);
     r = ok({ ok: true, sent: { email: true, whatsapp: false }, pending: {} });
     assert.equal(r.s, "✅ اتبعتت على الإيميل", "no items: today's words");
-    r = ok({ ok: false, sent: { email: false, whatsapp: false }, pending: { whatsapp: false }, attached: 0, items: [] });
-    assert.deepEqual([r.s, r.o], ["⚠️ الرسالة مااتبعتتش على أي قناة.", ["bassem_notify_member", "failed"]]);
     r = ok({ code: "timeout" }, 0);
     assert.match(r.s, /^⏳ مش متأكد إنها اتبعتت/); assert.match(r.t, /مش متأكد إنها اتبعتت.*وماتبعتهاش تاني/); assert.deepEqual(r.o, ["bassem_notify_member", "failed"]);
+    r = ok({ code: "notify_busy", retry_after: 5 }, 429);
+    assert.match(r.s, /^⏳ مااتبعتتش: رسالة قبلها لسه بتتبعت/); assert.match(r.t, /وابعتها تاني بـ bassem_notify_member بعد دقيقة/);
     r = ok({ code: "rate_limited", error: "daily notify limit reached" }, 429);
     assert.equal(r.s, "⚠️ مااتبعتتش: rate_limited"); assert.match(r.t, /مااتبعتتش \(rate_limited\)/);
     assert.ok(told.every(t => !/["«»]\s*[\[{<]/.test(t)));
   });
-  test("wiring (source checks): the notify branch → notifyGo → sendPost(…, \"/advisor/notify\", 45000) after inflWait; the three inflMark listeners; no MIGAPI.notify left; notifyDone tells Bassem", () => {
+  test("wiring (source checks): the notify branch → notifyGo → sendPost(body, \"/advisor/notify\", 60000) after inflWait, sent again on notify_busy; the screen's tender with its title; the three inflMark listeners; no MIGAPI.notify left; notifyDone tells Bassem", () => {
     assert.match(LIVE, /if \(name === "bassem_notify_member"\) \{ notifyGo\(name, a\); return; \}/);
     const go = LIVE.slice(LIVE.indexOf("  function notifyGo("), LIVE.indexOf("  function nFiles("));
-    assert.ok(go.indexOf("inflWait(4000).then(") > 0 && go.indexOf("inflWait(4000).then(") < go.indexOf("sendPost("), "inflWait first");
-    assert.match(go, /sendPost\(refs\.length \? \{ message: msg, channel: chn, items: refs \} : \{ message: msg, channel: chn \}, "\/advisor\/notify", 45000\)/);
-    assert.match(go, /notifyRefs\(OPPC, notifyScreenKey\(\), msg, a\.ids, heardTexts\(\)\.slice\(-2\)\.join\(" "\)\)/);
+    assert.ok(go.indexOf("inflWait(4000).then(") > 0 && go.indexOf("inflWait(4000).then(") < go.indexOf("return send(0);"), "inflWait first");
+    assert.match(go, /sendPost\(body, "\/advisor\/notify", 60000\)/);
+    assert.match(go, /x\.j\.code === "notify_busy"\) \|\| n >= 6 \|\| Date\.now\(\) - t0 > 40000\) return x;/);
+    assert.match(go, /notifyRefs\(OPPC, sk, msg, a\.ids, heardTexts\(\)\.slice\(-2\)\.join\(" "\)\)/);
+    assert.match(go, /items: refs\.map\(function \(r\) \{ return r === sk && st \? \{ ref: r, title: st \} : r; \}\)/);
+    assert.match(go, /notifyDone\(name, x, refs\.unused\)/);
     const wire = LIVE.slice(LIVE.indexOf("  function wire(el) {"), LIVE.indexOf("  function widgetHtml("));
     for (const ev of ['"anam-agent:tool-call-started", function (e) { inflMark(e.detail, 1); }', '"anam-agent:tool-call-completed", function (e) { inflMark(e.detail, 0); }', '"anam-agent:tool-call-failed", function (e) { inflMark(e.detail, 0); }']) assert.ok(wire.includes(ev), ev);
     assert.ok(wire.indexOf("harvest(e.detail || {})") < wire.indexOf("inflMark(e.detail, 0)"), "the results are kept before the tool counts as done");
     assert.doesNotMatch(LIVE, /A\.notify|MIGAPI\.notify/);
-    assert.match(LIVE.slice(LIVE.indexOf("  function notifyDone("), LIVE.indexOf("  function notifyWords(")), /tellBassem\(notifyWords\(x\)\);/);
+    assert.match(LIVE.slice(LIVE.indexOf("  function notifyDone("), LIVE.indexOf("  function notifyWords(")), /tellBassem\(notifyWords\(x, un\)\);/);
     assert.match(LIVE, /function sendPost\(body, path, ms\) \{/);
   });
 });

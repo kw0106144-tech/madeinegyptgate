@@ -1,12 +1,12 @@
 {
  "_what": "PREPARED — NOT APPLIED. Bassem's prompt (persona 19ef9078-5252-42a4-bbdf-9a3c4a38a4be, brain.systemPrompt). anam_persona_get → save brain.systemPrompt to live.txt → python3 anam/bassem-email/apply_prompt.py live.txt anam/bassem-notify/prompt-changes.json > new.txt (each `current` must occur exactly once, else it stops and changes nothing) → review → anam_persona_update with the new systemPrompt (everything else the same) only with the owner's OK. Member calls copy the saved prompt (worker/src/bassem-context.js), so they get it too.",
  "read_at": "built against anam/live/bassem.systemPrompt.md (sha256 85c27cbe0bf80d96b0213a47e12046248fb845bc209be45dde664f6cde329032, 24736 characters; live since 2026-11-19T22:36:03.393Z per anam/live/README.md). At apply time the prompt fetched then is authoritative.",
- "order": "replace[0] any time (it only stops the early «بعته» and any promise of the attachment); replace[1] and replace[2] only after tools.update.json (they name the ids parameter).",
+ "order": "replace[0] any time, alone if wanted (it only makes him say «I am sending it» and promise nothing about details, links or files); replace[1] and replace[2] only after tools.update.json (they name the ids parameter).",
  "replace": [
   {
-   "why": "Line 79: he announced «بعته» before any result and could promise the attachment; the e-mail itself now says what was attached and why not, and the page tells him the real outcome on his next turn",
+   "why": "Line 79: he announced «بعته» before any result, and the first draft of this line still promised what the e-mail would carry (review R3: it carries cards only when the page found the opportunities; never for one of an earlier call, nor on WhatsApp alone, nor when the e-mail failed). Now: he says he is sending it and promises nothing about details, links or files — the e-mail itself says what it carries, and the page tells him the real outcome on his next turn",
    "current": "ابعتله ملخص على الواتساب والإيميل (bassem_notify_member) وقوله إنك بعته.",
-   "new": "ابعتله ملخص على الواتساب والإيميل (bassem_notify_member)، وقوله إنك بتبعتهوله، ولو فيه فرص إن تفاصيلها ولينكاتها هتكون في الإيميل. ماتقولش إن الملف الرسمي اترفق: الإيميل نفسه بيقول اترفق ولا لأ وليه، ولو عرفت النتيجة بعدها قول اللي حصل بس."
+   "new": "ابعتله ملخص على الواتساب والإيميل (bassem_notify_member)، وقوله إنك بتبعتهوله. ماتوعدش إن تفاصيل فرصة أو لينكاتها أو ملفها هيكونوا في الإيميل، وماتقولش إن الملف الرسمي اترفق: الإيميل نفسه بيقول اللي فيه، ولما تعرف النتيجة بعدها قول اللي حصل بس."
   },
   {
    "why": "Line 17: the list he sends after a search carries the ids",
@@ -14,9 +14,9 @@
    "new": "ولو وافق: bassem_notify_member بقايمة مختصرة فيها اسم كل فرصة وجهتها وآخر ميعادها، وحط الـ id بتاع كل واحدة منهم في ids (٣ بالكتير، زي ما رجعت من الأدوات بالظبط)."
   },
   {
-   "why": "Line 100: «ابعتلي» about results carries their ids",
+   "why": "Line 100: «ابعتلي» about results carries the id of EACH one; an opportunity from an earlier call is fetched again first (review R2: the page sends only what this call's tools returned or the screen shows, and tells him which ids it could not use)",
    "current": "«ابعتلي» أو «على إيميلي» يعني يوصله هو: bassem_notify_member.",
-   "new": "«ابعتلي» أو «على إيميلي» يعني يوصله هو: bassem_notify_member، ولو الكلام عن فرصة أو أكتر من النتايج حط الـ id بتاعها في ids."
+   "new": "«ابعتلي» أو «على إيميلي» يعني يوصله هو: bassem_notify_member، ولو الكلام عن فرص من نتايج أدواتك في المكالمة دي حط الـ id بتاع كل واحدة في ids؛ ولو الفرصة من مكالمة فاتت هاتها الأول بأداتها بالـ id اللي في الذاكرة وبعدين ابعت."
   }
  ],
  "add": []

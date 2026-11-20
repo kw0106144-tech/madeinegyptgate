@@ -45,18 +45,47 @@ export function robotsAllows(parsed, pathAndQuery) {
   }
   return best < 0 ? true : allow;
 }
-export async function robotsFor(url, env, fetchFn = fetch) {
+/* robots.txt is read up to ROBOTS_MAX bytes (Google's limit, 500 KiB): rules after it are ignored, a huge or endless body is never held */
+export const ROBOTS_MAX = 500 * 1024;
+async function robotsText(r, cap) {
+  if (!r.body || typeof r.body.getReader !== "function") return String(await r.text()).slice(0, cap);
+  const rd = r.body.getReader(), chunks = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await rd.read();
+    if (done) break;
+    const v = value instanceof Uint8Array ? value : new Uint8Array(value), k = Math.min(v.length, cap - n);
+    if (k > 0) { chunks.push(v.subarray(0, k)); n += k; }
+    if (n >= cap) { try { await rd.cancel(); } catch (e) {} break; }
+  }
+  const all = new Uint8Array(n); let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
+  return new TextDecoder("utf-8").decode(all);
+}
+const dropBody = async r => { try { if (r && r.body && r.body.cancel) await r.body.cancel(); } catch (e) {} };
+/* o.hop (the «ابعتلي» file / document reader, doc.js robotsOk): redirects are followed by hand, at most 5 (RFC 9309), and every target
+   must pass o.hop(url) → {url} | {error} (doc.js checkUrl: https, a public host…). A refused target = unreachable (disallow), more than
+   5 = unavailable (allow); neither is cached, so the daily runs (which let fetch follow the redirects) never read such an answer */
+export async function robotsFor(url, env, fetchFn = fetch, o = {}) {
   const u = new URL(url), key = "robots:" + u.host;
   const kv = env.KV;
   if (kv) { try { const c = await kv.get(key, "json"); if (c) return c; } catch (e) {} }
-  let out;
+  let out = null, cache = true;
+  const init = () => ({ headers: { "User-Agent": UA }, redirect: o.hop ? "manual" : "follow", signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined });
   try {
-    const r = await fetchFn(u.origin + "/robots.txt", { headers: { "User-Agent": UA }, redirect: "follow", signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined });
-    if (r.status >= 200 && r.status < 300) { const p = parseRobots(await r.text()); out = { status: r.status, rules: p.rules, delay: p.delay }; }
-    else if (r.status >= 400 && r.status < 500) out = { status: r.status, rules: [], delay: null };          // unavailable → allowed
-    else out = { status: r.status, rules: [[false, "/"]], delay: null, unreachable: true };                  // 5xx → assume disallow
+    let at = u.origin + "/robots.txt", r = await fetchFn(at, init()), hops = 0;
+    while (o.hop && r.status >= 300 && r.status < 400 && r.status !== 304) {
+      const loc = r.headers.get("location"); await dropBody(r);
+      if (!loc || ++hops > 5) { out = { status: r.status, rules: [], delay: null }; cache = false; break; }   // too many → unavailable
+      let c; try { c = o.hop(new URL(loc, at).toString()); } catch (e) { c = null; }
+      if (!c || c.error || !c.url) { out = { status: 0, rules: [[false, "/"]], delay: null, unreachable: true }; cache = false; break; }
+      at = c.url.toString(); r = await fetchFn(at, init());
+    }
+    if (out) { /* decided by a redirect above */ }
+    else if (r.status >= 200 && r.status < 300) { const p = parseRobots(await robotsText(r, ROBOTS_MAX)); out = { status: r.status, rules: p.rules, delay: p.delay }; }
+    else if (r.status >= 400 && r.status < 500) { await dropBody(r); out = { status: r.status, rules: [], delay: null }; }          // unavailable → allowed
+    else { await dropBody(r); out = { status: r.status, rules: [[false, "/"]], delay: null, unreachable: true }; }                  // 5xx → assume disallow
   } catch (e) { out = { status: 0, rules: [[false, "/"]], delay: null, unreachable: true }; }
-  if (kv) { try { await kv.put(key, JSON.stringify(out), { expirationTtl: out.unreachable ? 3600 : 86400 }); } catch (e) {} }
+  if (kv && cache) { try { await kv.put(key, JSON.stringify(out), { expirationTtl: out.unreachable ? 3600 : 86400 }); } catch (e) {} }
   return out;
 }
 
