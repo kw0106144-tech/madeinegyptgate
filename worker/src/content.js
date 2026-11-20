@@ -1052,14 +1052,15 @@ export function inspectImage(mime, b) {
   if (!r) throw new BadImage("unsupported");
   return r;
 }
-function dimsProblem(w, h, purpose) {
+/* exported for src/chat-media.js (the photos of Janna's and Bassem's calls apply the identical rules and Arabic reasons) */
+export function dimsProblem(w, h, purpose) {
   if (w < 64 || h < 64) return "too_small";
   if (w > 6000 || h > 6000) return "too_large_dimensions";
   if (w * h > 36000000) return "too_many_pixels";
   const min = PURPOSE_MIN[purpose]; if (min && (w < min[0] || h < min[1])) return "too_small_for_" + purpose;
   return "";
 }
-const WHY_AR = { too_small: "الصورة صغيرة (أقل من 64×64)", too_large_dimensions: "أبعاد الصورة أكبر من 6000×6000", too_many_pixels: "الصورة أكبر من 36 ميجابكسل", corrupt: "الملف مش صورة سليمة", no_dimensions: "مش قادرين نقرا أبعاد الصورة", empty: "الملف فاضي", too_small_for_banner: "صورة البانر لازم تكون 1120×200 على الأقل", too_small_for_logo: "اللوجو لازم يكون 96×96 على الأقل", too_small_for_product: "صورة المنتج لازم تكون 300×300 على الأقل" };
+export const WHY_AR = { too_small: "الصورة صغيرة (أقل من 64×64)", too_large_dimensions: "أبعاد الصورة أكبر من 6000×6000", too_many_pixels: "الصورة أكبر من 36 ميجابكسل", corrupt: "الملف مش صورة سليمة", no_dimensions: "مش قادرين نقرا أبعاد الصورة", empty: "الملف فاضي", too_small_for_banner: "صورة البانر لازم تكون 1120×200 على الأقل", too_small_for_logo: "اللوجو لازم يكون 96×96 على الأقل", too_small_for_product: "صورة المنتج لازم تكون 300×300 على الأقل" };
 const publicPath = row => "/media/" + row.r2_key;
 async function mediaSig(env, id, e) { const s = secretOf(env); return s ? (await hmac(s, "media|" + id + "|" + e)).slice(0, 32) : ""; }
 async function previewUrl(env, row) { const e = Math.floor(Date.now() / 1000) + PREVIEW_S, s = await mediaSig(env, row.id, e); return s ? publicPath(row) + "?e=" + e + "&s=" + s : ""; }

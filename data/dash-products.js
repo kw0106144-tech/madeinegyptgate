@@ -183,11 +183,21 @@
       + (x.state === "draft" || x.state === "rejected" ? '<button class="btn btn-sm btn-green" type="button" data-mp-submit="' + esc(x.id) + '">📤 ' + T("إرسال للمراجعة", "Send for review") + "</button>" : "")
       + '<button class="btn btn-sm btn-line" type="button" data-mp-del="' + esc(x.id) + '" style="color:#B42318">🗑 ' + T("حذف", "Delete") + "</button></div></div>";
   }
+  /* 📎 a photo Bassem's call put in the member's own product photos (data/chat-media.js «🏭 ضيفها لمنتجاتي», POST /api/me/media: pending until
+     the team approves) → the new-product form opens with it, once; the server checks again at save that the image is his own upload */
+  function fromCall() {
+    var o = null; try { o = JSON.parse(W.sessionStorage.getItem("mig-prod-img") || "null"); } catch (e) { o = null; }
+    if (!o) return null;
+    try { W.sessionStorage.removeItem("mig-prod-img"); } catch (e) {}
+    if (!/^[2-9a-hjkmnp-z]{16}$/.test(String(o.id || ""))) return null;
+    return { fields: {}, images: [{ id: String(o.id), url: String(o.url || ""), w: +o.width || 0, h: +o.height || 0 }], call: 1 };
+  }
   function field(name, label, inner, hint, full) { return '<label class="f' + (full ? " full" : "") + '" data-mp-f="' + name + '">' + label + inner + (hint ? "<small>" + hint + "</small>" : "") + '<span class="fe" role="alert"></span></label>'; }
   function form(j) {
     var x = PS.form || {}, f = x.fields || {}, max = j && j.images_per_product != null ? +j.images_per_product : (ACC && ACC.limits && ACC.limits.images_per_product != null ? +ACC.limits.images_per_product : 1);
     var imgs = x.images || [], cs = cats();
     return '<form class="dcard mp-f" id="mpF" novalidate><h2>' + (x.id ? T("تعديل المنتج", "Edit product") : T("منتج جديد", "New product")) + "</h2>"
+      + (x.call ? '<p class="okbox" role="status">' + T("الصورة من مكالمة باسم — اكتب اسم المنتج وتصنيفه واحفظه", "The photo from your call with Bassem — add the product's name and category and save it") + "</p>" : "")
       + '<div class="fg">'
       + field("name", T("اسم المنتج (عربي) *", "Product name (Arabic) *"), '<input name="name" maxlength="120" required dir="auto" value="' + esc(f.name || "") + '">')
       + field("name_en", T("اسم المنتج (إنجليزي)", "Product name (English)"), '<input name="name_en" maxlength="120" dir="ltr" value="' + esc(f.name_en || "") + '">')
@@ -210,6 +220,7 @@
     if (!j) return head(T("المنتج بيظهر في السوق بعد موافقة فريق المنصة.", "A product shows in the market after the platform team approves it.")) + '<div class="dcard"><p class="note">⏳ ' + T("جارٍ التحميل…", "Loading…") + "</p></div>";
     if (j.err) return head("") + '<div class="' + (j.err.code === "offline" ? "mig-off" : "erbox") + '" role="alert">' + esc(X.errText(j.err)) + '</div><div class="tools"><button class="btn btn-line" type="button" data-mp-reload>↻ ' + T("حاول تاني", "Try again") + "</button></div>";
     if (j.need === "plan" || lim(j) === 0) return head("") + (P ? P.lockHTML("products", lockMsg) : "");
+    if (!PS.form && j.can_add !== false && j.need !== "link") { var fc = fromCall(); if (fc) { PS.form = fc; PS.msg = ""; } }
     if (PS.form) return head(counter(j)) + form(j);
     var items = (j.items || []).filter(function (x) { return x.state !== "deleted"; }), can = j.can_add !== false && j.need !== "link";
     return head(T("المنتج بيظهر في السوق بعد موافقة فريق المنصة. ", "A product shows in the market after the platform team approves it. ") + counter(j),

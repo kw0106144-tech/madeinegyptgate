@@ -8,6 +8,8 @@
    - GET|POST /api/janna/item {section, id|ref|title}  → the full public record of ONE item + a spoken summary (src/janna-item.js)
    - GET  /api/janna/health
    - POST /api/janna/timing   the live-call page's start timing beacon → 204 + one log line of numbers (src/live-timing.js)
+   - POST /api/janna/media/look · /api/janna/media/ticket · /api/advisor/media/look  📎 a photo of Janna's / Bassem's chat, read once by
+     Workers AI and never stored → the guarded text block the page gives the persona (src/chat-media.js, switch chat_photos)
    The webhook routes, the health check and the timing beacon skip ccBoot (BARE below): they read only the bundled data or their own tables.
    Security: if the secret JANNA_KEY is set (wrangler secret put JANNA_KEY), requests must send header X-Janna-Key with it
    (the Anam tool sends it). No API keys are stored in the code. Data = worker/src/data.json (public directory only; no phones). */
@@ -37,9 +39,11 @@ import { dailyJobs, newCountFor } from "./digest.js";
 import { cairoDay, addDays, toolSoftError } from "./common.js";
 // ---- Bassem web search (src/websearch.js): POST /api/advisor/web — Anam SERVER_WEBHOOK bassem_web_search (X-MIG-Tool header) ----
 import { handleWebSearch } from "./websearch.js";
+// ---- 📎 photos in Janna's and Bassem's chats (src/chat-media.js, switch chat_photos): read once by Workers AI, never stored ----
+import * as CHATMEDIA from "./chat-media.js";
 // Admin Control Center (docs/janna/ACC-CONTRACT.md §0.2): one CC object handed to every new handler (no cross-area imports)
 import * as ACC from "./acc.js"; import * as CONTENT from "./content.js"; import * as PAY from "./payments.js"; import * as MAILC from "./email-center.js";
-export const CC = { acc: ACC, content: CONTENT, payments: PAY, email: MAILC };   // Control Center (ACC-CONTRACT §0.2)
+export const CC = { acc: ACC, content: CONTENT, payments: PAY, email: MAILC, chatMedia: CHATMEDIA };   // Control Center (ACC-CONTRACT §0.2)
 
 /* tender status from the deadline at request time — the honest 4-value rule (data/oldtend.js §2): deadline passed → منتهية,
    within 7 days → تنتهي قريباً, later → سارية, no deadline in the data → غير محدد الموعد (never «سارية» by default) */
@@ -367,6 +371,7 @@ const WORKER = {
     // ---- Bassem web search (src/websearch.js) — before the /api/advisor family, which would swallow it ----
     if (/^\/api\/advisor\/web\/?$/.test(url.pathname)) return handleWebSearch(req, env, ctx);
     if (/^\/api\/advisor\/memory(\/|$)/.test(url.pathname)) return handleMemory(req, env, ctx); // before the advisor family (memory.js)
+    if (/^\/api\/advisor\/media(\/|$)/.test(url.pathname)) return CHATMEDIA.handleAdvisorMedia(req, env, ctx); // 📎 Bassem's call photos — before the advisor family
     if (/^\/api\/advisor(\/|$)/.test(url.pathname)) return handleAdvisor(req, env, ctx);
     if (/^\/api\/meetings(\/|$)/.test(url.pathname)) return handleMeetings(req, env, ctx);
     if (/^\/api\/auth(\/|$)/.test(url.pathname)) return handleAuth(req, env, ctx);
@@ -382,6 +387,7 @@ const WORKER = {
     if (/^\/api\/janna\/memory(\/|$)/.test(url.pathname)) return handleVisitorMemory(req, env, ctx); // 0009, visitor.js
     if (/^\/api\/janna\/knowledge\/?$/.test(url.pathname)) return handleKnowledge(req, env, ctx); // 0009, knowledge.js
     if (/^\/api\/janna\/timing\/?$/.test(url.pathname)) return handleTiming(req, env, ctx); // live-timing.js (same-origin beacon: no CORS)
+    if (/^\/api\/janna\/media(\/|$)/.test(url.pathname)) return CHATMEDIA.handleJannaMedia(req, env, ctx); // 📎 photos of Janna's call + the «اكتبلي» bubble (chat-media.js)
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
     if (/^\/api\/janna\/health\/?$/.test(url.pathname)) return json({ ok: true, data: DATA.v, factories: DATA.f.length, products: DATA.p.length, tenders: DATA.t.length, rfqs: DATA.q.length, offers: DATA.o.length, zones: DATA.z.length, items: (DATA.i || []).length });
     if (!/^\/api\/janna\/lookup\/?$/.test(url.pathname)) return json({ error: "not found" }, 404);

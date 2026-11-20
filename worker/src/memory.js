@@ -213,6 +213,10 @@ const ROLE = { user: "user", member: "user", human: "user", persona: "persona", 
 /* the persona's words without a stray cue tag (text.js stripCues), cleaned AGAIN when one went: a tag inside a phone number or a spoken
    address («0100 [warm] 1234567») hid it from clean()'s mask, and taking the tag out joins the pieces (masked BEFORE storage, above) */
 const personaText = (s, max) => { const t = stripCues(s); return t === s ? s : clean(t, max); };
+/* 📎 the platform's own notes to the persona (src/chat-media.js blocks, data/chat-media.js page notes — addContext) are never the person's
+   words: a "user" row that starts with one of their markers is dropped here too, so an old cached page (data/bassem-memory.js) cannot
+   store one either (Janna's memory writes through the same writeMemory: visitor.js) */
+export const PLATFORM_MARK_RX = /^[\s\u200e\u200f]*\[\s*(?:بداي[ةه]\s+نتيج[ةه]\s+قراء[ةه]|ملاحظ[ةه]\s+من\s+المنص[ةه]|START\s+OF\s+THE\s+READING|PLATFORM\s+NOTE)/i;
 function turnsOf(arr, cors) {
   if (!Array.isArray(arr)) return { err: bad("turns", cors, "array required") };
   if (arr.length > LIM.turns) return { err: bad("turns", cors, "at most " + LIM.turns + " turns per request") };
@@ -221,7 +225,9 @@ function turnsOf(arr, cors) {
     if (!t || typeof t !== "object" || Array.isArray(t)) return { err: bad("turns", cors, "objects only") };
     const role = ROLE[String(t.role || "").toLowerCase()];
     if (!role) return { err: bad("turns.role", cors, "user | persona") };
-    const raw = clean(t.text != null ? t.text : t.content, LIM.turn), text = role === "persona" ? personaText(raw, LIM.turn) : raw; // the persona's stray cue tags («[صاف]») are never stored
+    const src = t.text != null ? t.text : t.content;
+    if (role === "user" && typeof src === "string" && PLATFORM_MARK_RX.test(src)) continue; // 📎 a platform note is never the person's words
+    const raw = clean(src, LIM.turn), text = role === "persona" ? personaText(raw, LIM.turn) : raw; // the persona's stray cue tags («[صاف]») are never stored
     const seq = Number.isInteger(t.seq) && t.seq >= 0 && t.seq <= 1e6 ? t.seq : null;
     if (text) rows.push({ role, text, seq });
   }

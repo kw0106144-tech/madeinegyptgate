@@ -15,6 +15,9 @@
      whatsapp_send             whatsapp.js       waLive() false → every send is a dry run: an extra OFF on top of «مفاتيح الخدمات»
                                acc-keys.js       POST /keys/wa-test (the owner's test message) → 409 feature_off; can_send_test false
      bassem_web_search         websearch.js      POST /api/advisor/web → 503 feature_off
+     chat_photos               chat-media.js     POST /api/janna/media/look, /api/janna/media/ticket, /api/advisor/media/look → 503
+                                                 feature_off; janna-session.js gives Janna's call no photo ticket (OFF by default; LOCKED
+                                                 while the Worker has no AI binding: featureOn ignores locks, so the endpoints check env.AI too)
    The platform's own apps (user agent «MIGApp/<v> (ios|android)», app-ua.js; app parity plan 2026-11-20 — the defaults keep the apps
    exactly like the website, the texts of the OFF rows wait for the owner's approval: docs/app/OWNER-APPROVAL-AR.md):
      app_buy_ios / app_buy_android  payments.js + acc-me.js  POST /api/pay/checkout, POST /api/me/invoices from THAT app → 403 app_buy_off
@@ -26,7 +29,8 @@
      call_consent_app / _web   janna-session.js  POST /api/janna/session without consent: true from the app / a browser → 400 consent_required
      app_janna_autovoice       (site only)       data/janna-welcome.js: Janna's voice waits for a tap in the app unless this is on
    Two rows are LOCKED (effective off, cannot be switched ON from here; OFF is always allowed) while what they need is missing, both in
-   «مفاتيح الخدمات»: whatsapp_send until the respond.io token test passed; bassem_web_search until a web-search key + tool secret exist.
+   «مفاتيح الخدمات»: whatsapp_send until the respond.io token test passed; bassem_web_search until a web-search key + tool secret exist;
+   chat_photos while the Worker has no AI binding (env.AI).
    The two privacy rules are PERMANENT POLICY (POLICIES): shown, never switches.
    Reader: loadFeatures(env) — ≤ 1 D1 read per isolate per 30 s (memo per env.DB; acc.js ccBoot warms it at the start of every request /
    cron run), featureOn(env, key) async, featureSync(env, key) from the memo (the default before the first load). No 0006 tables → the
@@ -113,6 +117,15 @@ export const FEATURES = Object.freeze([
     desc_en: "Bassem searches the web (not only the platform's data) and says the result comes from the web. Needs a web-search key and «Bassem's tool secret» in «Service keys».",
     lock_rule_ar: "مقفول لحد ما يتحط مفتاح بحث الإنترنت في «مفاتيح الخدمات»", lock_rule_en: "Locked until a web-search key is saved in «Service keys»",
     enforced_by: ["POST /api/advisor/web → 503 feature_off"] },
+  /* 📎 photos in the chats of Janna and Bassem (owner 2026-11-20: «مفيش في شاشه الشات بتاعت جنة او باسم مكان العميل يحطلهم في صوره»).
+     Phase 1A + 1A+: the photo is read once by Workers AI and never stored; the texts behind the switch wait for the owner's word-for-word
+     approval (docs/app/OWNER-APPROVAL-AR.md §8). Locked until the Worker is deployed with its [ai] binding (worker/wrangler.toml). */
+  { key: "chat_photos", default: false, scope: "both",
+    label_ar: "صور في مكالمات جنة وباسم و«اكتبلي» (📎)", label_en: "Photos in Janna and Bassem calls and «Write to me» (📎)",
+    desc_ar: "زرار 📎 في خانة الكتابة في مكالمة جنة أو باسم وفي فقاعة «اكتبلي»: الزائر أو العضو يصوّر أو يختار صورة، والمنصة بتقراها بالذكاء الاصطناعي (Cloudflare Workers AI) وبتقول لجنة أو باسم وصفها علشان يدوّروا عليها قدامه. جنة وباسم مش بيشوفوا الصورة نفسها، والصورة مابتتحفظش — وصفها المكتوب بيبقى جزء من كلام المكالمة وذاكرتها. شغّله بعد ما توافق على النصوص (docs/app/OWNER-APPROVAL-AR.md القسم 8) وتجرّب «🔎 تجربة قراءة صورة».",
+    desc_en: "The 📎 button in the text box of Janna's and Bassem's calls and in the «Write to me» bubble: a visitor or member takes or picks a photo; the platform reads it with AI (Cloudflare Workers AI) and tells Janna or Bassem what it shows so they search for it on screen. Janna and Bassem do not see the photo itself, and it is not stored — its written description becomes part of the call and its memory. Switch it on after you approve the texts (docs/app/OWNER-APPROVAL-AR.md section 8) and try «🔎 Test a photo reading».",
+    lock_rule_ar: "مقفول لحد ما الـ Worker يتنشر بربط الذكاء الاصطناعي (AI)", lock_rule_en: "Locked until the Worker is deployed with its AI binding",
+    enforced_by: ["POST /api/janna/media/look, /api/janna/media/ticket, /api/advisor/media/look → 503 feature_off", "POST /api/janna/session (agent janna): no media_ticket", "site"] },
   /* ---- the platform's own apps (app/: Android + iPhone, user agent «MIGApp/<v> (ios|android)», app-ua.js) and the store rules (app parity
      plan 2026-11-20). The defaults keep the apps EXACTLY like the website; the texts behind the rows that ship OFF wait for the owner's
      word-for-word approval (docs/app/OWNER-APPROVAL-AR.md). ---- */
@@ -266,6 +279,8 @@ export async function stateOf(env, d) {
       if (c.cap <= 0) return { locked: null, needs: T("cap_zero", "الحد اليومي للبحث = 0 في «مفاتيح الخدمات»", "The daily search cap is 0 in «Service keys»"), ready: false };
       return NONE;
     }
+    // 📎 photos: the Worker's Workers AI binding ([ai] in worker/wrangler.toml) — without it nothing can read a photo
+    if (d.key === "chat_photos") return env && env.AI && typeof env.AI.run === "function" ? NONE : { locked: T("no_ai", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
     // the app's store rows: the deletion requests need their table (migration 0010); the reviewer sign-in needs its address + code, unexpired
     if (d.key === "account_delete" || d.key === "visitor_erase_request") {
       return (await deleteStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };

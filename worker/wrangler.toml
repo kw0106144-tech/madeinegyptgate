@@ -102,6 +102,13 @@ binding = "CF_VERSION_METADATA"
 binding = "INTEL"
 service = "migate-intel"
 
+# Workers AI for reading the photos sent in Janna's and Bassem's chats (src/chat-media.js: one reading per photo, nothing stored, never
+# through an AI Gateway; the owner's switch «🛠️ المطوّر» → chat_photos stays LOCKED without this binding). No secret: the account already
+# has Workers Paid (docs/janna/BACKLOG.md). `wrangler dev --local` still starts with it (an [ai] binding is never local), but env.AI calls fail
+# there: the local integration run must not call /api/janna/media/look.
+[ai]
+binding = "AI"
+
 # ---- non-secret settings ----
 # Secrets (npx wrangler secret put <NAME>; README "Secrets"): ADVISOR_SECRET · MEETINGS_SECRET · WA_WEBHOOK_SECRET · PLATFORM_KEY ·
 #   RESEND_API_KEY · ANAM_API_KEY · RESPONDIO_TOKEN (both may instead be saved by the owner in the Control Center «مفاتيح الخدمات»;
@@ -128,6 +135,9 @@ LEGACY_ORIGIN = "https://mindful-mediumslateblue-okapi-21.hostingersite.com/egyp
 MAX_EMAILS_PER_DAY = "30"                      # Bassem deal emails per member, rolling 24 h
 MAX_NEW_RECIPIENTS_PER_DAY = "10"              # per member, rolling 24 h: addresses never emailed before (cold-mail brake)
 MAX_INBOUND_PER_DEAL_DAY = "20"                # replies accepted per deal address per 24 h (only with INBOUND_REPLY_ENABLED=1)
+CHAT_VISION_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct" # 📎 the photo-reading model (src/chat-media.js; Gemma 4 gets its own request shape)
+CHAT_VISION_DAILY = "300"                      # photo readings per Cairo day for the whole site (the owner's tests included); "0" = no reading
+CHAT_VISION_TIMEOUT_MS = "12000"               # one reading's time limit (then: «the platform couldn't read the photo»)
 DEV_PANEL = "1"                                # MARKER, keep it: a version WITH this var has the developer panel «🛠️ المطوّر» and honours its
                                                # feature switches. src/cf-api.js reads it from each version's bindings: a rollback to a
                                                # version WITHOUT it (older than the panel) needs the owner's extra, server-checked confirmation

@@ -236,6 +236,9 @@
 
   /* ---------- the conversation ---------- */
   var GREET = /^(أهلا|اهلا|أهلًا|مرحب|يا هلا|hello|hi\b|welcome)/i;
+  /* 📎 the platform's own notes to the persona (data/chat-media.js, worker/src/chat-media.js — addContext): never stored as the person's
+     words, should Anam ever list them in the message history (worker/src/memory.js drops them on the server too) */
+  var PLAT = /^[\s\u200e\u200f]*\[\s*(?:بداي[ةه]\s+نتيج[ةه]\s+قراء[ةه]|ملاحظ[ةه]\s+من\s+المنص[ةه]|START\s+OF\s+THE\s+READING|PLATFORM\s+NOTE)/i;
   function history(part, msgs) {
     var C = part.call; if (!C || C.ended || !msgs || !msgs.length) return;
     C.last = now();
@@ -245,6 +248,7 @@
       var text = clip(m.content, 600); if (!text) continue;
       var key = part.n + ":" + i, r = C.by[key];
       if (!r) {
+        if (role === "user" && PLAT.test(text)) { C.by[key] = { skip: 1 }; continue; }
         /* the next session of a chained call starts with its own greeting, cut at its first words: not part of the conversation */
         if (part.n > 1 && role === "persona" && !part.greeted && now() - part.t0 < 20000 && (GREET.test(text) || text.length < 25)) { part.greeted = true; C.by[key] = { skip: 1 }; continue; }
         if (role === "persona") part.greeted = true;

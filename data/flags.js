@@ -38,6 +38,7 @@
   var SK = "mig-flags", TTL = 180000, WAIT = 2500;
   DEF.call_languages = true; /* the 🌐 speaking-language button of Janna's and Bassem's calls (data/janna-live.js reads MIGFLAGS.on) */
   DEF.call_holo = true; /* the search cards on the call video (data/call-holo.js reads MIGFLAGS.on) */
+  DEF.chat_photos = false; /* 📎 photos in Janna's / Bassem's calls and the «اكتبلي» bubble: OFF until the owner switches it on (never fail-open) */
   var F = null, FROM = "", CBS = [], DONE = false, BUSY = false;
   var own = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
   function en() { return W.MIGLANG === "en" || (D.documentElement.getAttribute("lang") || "").slice(0, 2) === "en"; }

@@ -663,6 +663,7 @@ OWNER_ONLY (admin / editor / support / `X-Platform-Key` → 403 `owner_only`, se
 | POST | `/api/admin/cc/dev/deploys/rollback` | `{target: pages\|janna-lookup\|migate-intel, id, confirm:"ارجع", reason?, force?, ack?}` | `{ok, target, id, previous_id, result, pre_panel?, note_ar, note_en}` · 400 `confirm_required` (a string, exactly «ارجع») · 404 `not_found` · 409 `already_current` / `not_production` / `no_token` / `token_unreadable` / `pre_panel` / `secrets_changed` / `ack_required` / `confirm_expired` · 502 `upstream` · 429 `rate_limited` (3 per rolling hour, 10 per rolling day; `retry_s` = the real wait) |
 | GET | `/api/admin/cc/dev/health` | — | `{ok, checked_at, ms, checks:[{id, group, label_ar, label_en, url, ok, status, ms, detail}], tables:[{name, rows, ok}], worker}` — 12 / 10 min |
 | GET | `/api/admin/cc/dev/audit?limit=&before=` | — | `{items:[{id, at, actor_email, actor_role, action, target_type, target_id, summary, before, after}], next_before}` (dev.* + the `cloudflare.dev_token` key rows) |
+| POST | `/api/admin/cc/dev/vision?agent=janna\|bassem&lang=ar\|en&model=&detail=high\|low` | the photo's bytes (image/jpeg · png · webp, `Content-Length`) | «🔎 تجربة قراءة صورة» (📎 below): `{ok, model, shape, detail, agent, lang, ms, total_ms, raw (≤ 6,000 chars), error (the model's own refusal, ≤ 300 chars — only here, never in a visitor's answer), seen, reason, flags, context, width, height, bytes, models, default_model, stored:false}` · 503 `ai_off` · 400 `invalid_model` (only `PROBE_MODELS`) · 429 `rate_limited` (20 a Cairo day) · audited `dev.vision` (metadata only) BEFORE the AI call |
 **Feature switches** (registry `FEATURES` in src/flags.js — the panel renders it from the API): stored in `cc_settings` k=`features` (scope
 `system`, JSON `{v:1, values:{key:bool}, changed:{key:{at,by}}}`, compare-and-swap writes, audit `dev.features` in the same batch; the name and
 `dev.*` / `cloudflare.*` are reserved — never a custom setting). A key without a stored value = its default; setting a value equal to the current
@@ -680,6 +681,7 @@ one stores nothing. Reader `loadFeatures` (ccBoot, memo per `env.DB`, 30 s; no t
 | `bassem_web_search` | on | server | `POST /api/advisor/web` → 503 `feature_off` (after the tool-secret check) — LOCKED without a web-search key / tool secret |
 | `call_languages` | on | client | the 🌐 speaking-language button of Janna's and Bassem's calls (data/janna-live.js, `MIGFLAGS.on`): off → no button, no suggestions, every call hears as before (Arabic; English Janna: English); typed text in any language still gets an answer in it |
 | `call_holo` | on | client | the search cards on the call video (data/call-holo.js, `MIGFLAGS.on`): off → no cards on the video; the searches show on the shared screen as before (data/holo.js and bassem-intel-view.js take them back) |
+| `chat_photos` | **off** | both | 📎 photos in Janna's / Bassem's calls and the «اكتبلي» bubble: `POST /api/janna/media/look`, `/api/janna/media/ticket`, `/api/advisor/media/look` → 503 `feature_off`; no `media_ticket` in the session answer; the site shows no 📎 (data/flags.js default false, never fail-open) — LOCKED (cannot be switched on) while the Worker has no Workers AI binding (`[ai]`) |
 Permanent policies (shown, never switches): `visitor_links_signed_in`, `knowledge_team_approved`. Public: `GET /api/settings` →
 `features` (scope client / both, effective values) + `features_v`; the overlay does not carry them. The public `feature_off` answer:
 `503 {error:"feature_off", code:"feature_off", feature, message}`.
@@ -707,6 +709,43 @@ and this probe; no secret — migate-intel answers /api/intel/mailpack only on t
 `POST /api/janna/session` with the switch off: 503 `{error:"feature_off", code:"feature_off"}` for pages that send `ff:1` (data/janna-live.js);
 older pages (cached, or a Pages rollback) get `code:"daily_cap"`, which they show WITHOUT falling back to Anam's public widget.
 Tests: `test/dev-panel.test.mjs` (Cloudflare API, probes and D1 stubbed).
+
+## 📎 Photos in the chats of Janna and Bassem — src/chat-media.js, src/chat-ticket.js (owner request 2026-11-20; phase 1A + 1A+)
+Anam takes only TEXT from the page (`addContext` / `sendUserMessage`), so Janna and Bassem never see the photo: this Worker reads it ONCE with
+Workers AI (binding `AI`, `[ai]` in wrangler.toml), keeps nothing, guards the answer and returns the text block that data/chat-media.js gives
+the persona with `addContext()`. Behind the owner's switch `chat_photos` (OFF, LOCKED without the binding). **Stored: nothing** but the `rl`
+counters — no R2 object, no D1 row, no text in the logs (one line `chat-media {a, k, r, ms}`).
+| Method | Path | Caller | Returns |
+|---|---|---|---|
+| POST | `/api/janna/media/look` | a visitor: `X-MIG-Ticket` = the call's ticket (`cm1.j…`, the `media_ticket` of the `POST /api/janna/session` answer — Janna only, while the switch is on and the binding exists) or the bubble's (`cm1.b…`) | `{ok, seen, reason, context, seal, keep:false, ms}` |
+| POST | `/api/janna/media/ticket` | the «اكتبلي» bubble, `{turnstile?}` (6 per network an hour) | `{ok, media_ticket, expires_in:1800, looks:4}` |
+| POST | `/api/advisor/media/look` | a member in Bassem's call: his own sign-in, the same rule as his call (`bassemCaller`: plan with Bassem, staff allowed); `X-MIG-Can: prod` with a full sign-in asks whether «🏭 ضيفها لمنتجاتي» applies | the same + `prod` |
+Body: the photo's bytes; headers `Content-Length` (required), `X-MIG-Ref` (P1–P99, else "P"), `X-MIG-Lang` (ar | en). The page sends a canvas JPEG of at
+most 1,280 px (EXIF and GPS dropped by the redraw). The look, in this order: OPTIONS 204 / POST only (405) · the site's Origin (403
+`origin_not_allowed`) · the switch (503 `feature_off`; `X-MIG-Frames: 3` = a video's frames, phase 2 → 503 `feature_off` `chat_video`) · the binding
+(503 `ai_off`), D1 (503 `store_off`), the signing secret (503 `auth_off`) · the ticket (403 `ticket_invalid`) or Bassem's sign-in (401 / 403
+`full_login_required` / `plan`) · the block list (403 `blocked`) · the limits (per ticket j 8 / b 4, per network 12 an hour + 40 a day, per member 10 an hour +
+40 a day → 429 `rate_limited` + `retry_after`) · `Content-Length` (411 `length_required`) ≤ 3 MB (413 `too_large`) before a byte is read, then a capped
+reader · the declared type jpeg | png | webp = the sniffed type (415 `unsupported_type`, `why` type / type_mismatch / not_an_image) · the image's own
+structure and 64–2,048 px (422 `invalid_image`, `why` … / `resize_needed`) · the site-wide day counter `cmaiday|<Cairo day>` (one row, like
+janna-session.js countDay; `CHAT_VISION_DAILY`, default 300, "0" = no reading) → 200 `reason:"ai_cap"` without an AI call · ONE `env.AI.run(model,
+input)` (two arguments: never an AI Gateway option, whose logs would keep the image), raced against `CHAT_VISION_TIMEOUT_MS` (12,000) → `ai_timeout` /
+`ai_error` / `unclear` · the guard (`sanitiseSeen`: contacts — the platform's own numbers allowed —, links, @handles, 9+ digits, addresses, orders,
+the platform's own note / reading markers, instruction-like text, numbers not in the kept text, the wrong script, leaks of dropped tokens; a label /
+document / screenshot with any of them, or two kinds at once, drops the whole reading; barcodes are not phones; an ID card, passport, licence or bank
+card the model did not call `id_document` is refused like one) · `contextBlock` (Janna AR / EN, Bassem AR: the reading marked as data that may be
+wrong, «she / he does not see the photo», janna_search's real sections, the «are you looking for it or making it?» question) · `seal` (`s1.<sha16>.<code>.
+<exp36>.<sig22>`, 6 h: what this Worker read of these bytes, for phase 1B — not used yet). Every answer: `no-store`, `nosniff`, `Server-Timing ai;dur, total;dur`.
+Model (`CHAT_VISION_MODEL`, default `@cf/meta/llama-4-scout-17b-16e-instruct`): Workers-AI-native shape `{messages, max_tokens, temperature,
+response_format:{type:"json_schema", json_schema: VISION_SCHEMA}}` → `{response}`; chat-completions models (Gemma 4 …) `{…, response_format:{type:
+"json_schema", json_schema:{name, schema, strict:true}}, chat_template_kwargs:{enable_thinking:false}}`, `image_url.detail` → `choices[0].message.content`;
+the image always as a data URI. The owner compares the models with «🛠️ المطوّر» → «🔎 تجربة قراءة صورة» (`POST /api/admin/cc/dev/vision`, above) before
+changing the var. Session ticket: `POST /api/janna/session` adds `media_ticket` (Janna, switch on, binding there; valid for the call + 15 min) —
+it is never sent to Anam and carries no id of a person. memory.js / knowledge.js / data/bassem-memory.js skip the platform's own notes in transcripts
+(`PLATFORM_MARK_RX`; a typed text that starts like one is quoted by the page, `markSafe`). Workers AI bindings always run on Cloudflare, even under
+`wrangler dev --local` (wrangler warns; it needs a Cloudflare login and is real AI use): the tests mock `env.AI`, test/wrangler.integration.toml has no `[ai]`. Not built here: keeping a
+photo with a request or a message (phase 1B, its own migration later), video (phase 2), any Anam persona change (phase 3).
+Tests: `test/chat-media.test.mjs` (env.AI mocked) and `functions/_tests/chat-media-site.test.mjs` (data/chat-media.js and the page hooks in a fake DOM).
 
 ## Bassem's meetings «📞 اجتماعات باسم» — src/bassem-meetings.js (owner request 2026-11-19)
 The Control Center sends Bassem (the Anam persona `19ef9078-5252-42a4-bbdf-9a3c4a38a4be`) into a **Google Meet / Zoom / Microsoft Teams** call of the

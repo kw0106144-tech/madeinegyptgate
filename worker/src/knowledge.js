@@ -176,11 +176,14 @@ const sentencesQ = s => { const out = [], rx = /[^.!?؟\n]+[.!?؟]?/g; let m; wh
    Urdu letters are in the Arabic block too) and plain-ASCII turns (English, Egyptian Franco «ana 3ayez …») are captured exactly as before. */
 const OTHER_LETTER = /[^\P{L}A-Za-z\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/u;
 export const otherScript = s => OTHER_LETTER.test(String(s == null ? "" : s).normalize("NFKC"));
+/* 📎 a photo turn (its caption starts with 📎) means nothing without its photo, and the platform's own notes (src/chat-media.js) are no
+   client words — neither is captured (the reading block ends with a question mark that would otherwise read as a question) */
+const PHOTO_TURN = /^[\s\u200e\u200f]*(?:📎|\[\s*(?:بداي[ةه]\s+نتيج[ةه]\s+قراء[ةه]|ملاحظ[ةه]\s+من\s+المنص[ةه]|START\s+OF\s+THE\s+READING|PLATFORM\s+NOTE))/i;
 /* turns: [{role, text, seq?}] in order; tools: [{name, outcome, s?}] → [{question, answer, source, rank, status, intent, words}] */
 export function questionsOf({ turns = [], tools = [], known = new Set() } = {}) {
   const out = [], seen = new Set(), list = turns.filter(t => t && t.text && (t.role === "user" || t.role === "persona"));
   for (let i = 0; i < list.length && out.length < KB.perCall; i++) {
-    const t = list[i]; if (t.role !== "user" || otherScript(t.text)) continue;
+    const t = list[i]; if (t.role !== "user" || otherScript(t.text) || PHOTO_TURN.test(t.text)) continue;
     for (const raw of sentencesQ(t.text)) {
       const n = norm(raw);
       if (!(/[?؟]\s*$/.test(raw) || Q_WORD.test(n)) || RECALL_Q.test(n) || SMALLTALK.test(n) || instructionLike(raw, { money: false })) continue;

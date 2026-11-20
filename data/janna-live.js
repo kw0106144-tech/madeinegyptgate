@@ -454,7 +454,8 @@
       + '<div class="jv-acts"><button type="button" class="jv-go"><i aria-hidden="true"></i><span>' + esc(T("ابدأ الكلام مع ", "Start talking to ") + name) + '</span></button>'
       + '<button type="button" class="jv-go2" hidden>⌨️ ' + esc(T("كمّل كتابة من غير ميكروفون", "Continue by typing (no microphone)")) + '</button><button type="button" class="jv-lgo" hidden title="' + esc(lgh) + '" aria-label="' + esc(lgh) + '">🌐</button></div>'
       + '<div class="jv-ctl" hidden><button type="button" class="jv-mic" aria-pressed="false" title="' + esc(mic) + '" aria-label="' + esc(mic) + '">🎙️</button><button type="button" class="jv-lang" hidden aria-haspopup="dialog" aria-expanded="false" title="' + esc(lgh) + '" aria-label="' + esc(lgh) + '">🌐</button>'
-      + '<form novalidate><input type="text" maxlength="500" autocomplete="off" enterkeyhint="send" placeholder="' + esc(ph) + '" aria-label="' + esc(ph) + '"><button type="submit" class="jv-snd" title="' + esc(snd) + '" aria-label="' + esc(snd) + '">➤</button></form>'
+      + '<form novalidate><button type="button" class="jv-att" hidden title="' + esc(T("ابعت صورة", "Send a photo")) + '" aria-label="' + esc(T("ابعت صورة", "Send a photo")) + '">📎</button><input type="text" maxlength="500" autocomplete="off" enterkeyhint="send" placeholder="' + esc(ph) + '" aria-label="' + esc(ph) + '"><button type="submit" class="jv-snd" title="' + esc(snd) + '" aria-label="' + esc(snd) + '">➤</button>'
+      + '<input type="file" class="jv-file" accept="image/jpeg,image/png,image/webp" hidden tabindex="-1" aria-hidden="true"></form>'
       + '<button type="button" class="jv-end" title="' + esc(end) + '" aria-label="' + esc(end) + '">✕</button></div></div>';
   }
   function mountSdk() {
@@ -466,7 +467,8 @@
     bx.querySelector(".jv-mic").onclick = sdkMute;
     bx.querySelector(".jv-lang").onclick = bx.querySelector(".jv-lgo").onclick = function () { langMenu(!LG.menu); }; /* 🌐 */
     var f = bx.querySelector(".jv-ctl form"), inp = f.querySelector("input");
-    f.onsubmit = function (e) { if (e && e.preventDefault) e.preventDefault(); var v = inp.value.trim(); if (!v) return; if (sdkSay(v)) inp.value = ""; else say(T("ثانية واحدة — المكالمة لسه بتتوصل", "One moment — the call is still connecting")); };
+    bx.querySelector(".jv-att").onclick = cmTap; /* 📎 (data/chat-media.js) */
+    f.onsubmit = function (e) { if (e && e.preventDefault) e.preventDefault(); var v = inp.value.trim(), cm = cmSend(v); if (cm > 0) { inp.value = ""; return; } if (cm < 0) { say(T("ثانية واحدة — المكالمة لسه بتتوصل", "One moment — the call is still connecting")); return; } if (!v) return; if (sdkSay(v)) inp.value = ""; else say(T("ثانية واحدة — المكالمة لسه بتتوصل", "One moment — the call is still connecting")); };
     var v = bx.querySelector("video");
     v.addEventListener("playing", function () { if (LV && !LV.closed && LV.client) { LV.playing = true; bx.classList.add("on"); } });
     sdkUi("idle");
@@ -492,9 +494,35 @@
     mic.hidden = !!(me && me.textOnly); mic.disabled = !ok || !!(me && me.micDenied); mic.textContent = mu ? "🔇" : "🎙️"; mic.title = ml; mic.setAttribute("aria-label", ml); mic.setAttribute("aria-pressed", mu ? "true" : "false");
     inp.disabled = !txt; snd.disabled = !txt;
     var ph = me && me.micDenied && !me.textOnly ? T("الميكروفون مقفول — اكتب رسالتك هنا…", "Microphone blocked — type your message here…") : inp.clientWidth >= 220 ? T("اكتب رسالتك بأي لغة…", "Type a message in any language…") : T("اكتب بأي لغة…", "Any language…"); /* 🌐 any language; short where the 🌐 button leaves a narrow box (390 px) */
+    var cph = window.MIGCHATMEDIA && MIGCHATMEDIA.ph ? MIGCHATMEDIA.ph(cmHost(true)) : ""; if (cph) ph = cph; /* 📎 a photo waits for its question */
     if (inp.placeholder !== ph) { inp.placeholder = ph; inp.setAttribute("aria-label", ph); }
-    nzChip(); langUi();
+    cmUi(); nzChip(); langUi();
   }
+  /* ---------- 📎 photos in the call (owner 2026-11-20: «مفيش … مكان العميل يحطلهم في صوره»; switch chat_photos) — the logic is data/chat-media.js
+     (loaded with this file's ?v= or window.MIGVER_CM while the switch is on); these are its hooks: the button shows once the call can take a
+     photo (the data channel open, Janna's photo ticket or Bassem's sign-in), never in the widget or the kiosk ---------- */
+  var CM = { load: 0 };
+  function cmOk(me) { var F = window.MIGFLAGS; return !!(window.MIGCHATMEDIA && F && F.on && F.on("chat_photos") === true && sdkBox() && !window.JANNA_KIOSK && me && me.ready && me.dc && !me.closed && (persona === "bassem" ? !!BTOK : !!me.mt)); }
+  function cmLoad() {
+    if (window.MIGCHATMEDIA || CM.load) return; CM.load = 1;
+    var sc = document.createElement("script"); sc.src = LT.base + "data/chat-media.js" + (window.MIGVER_CM || (LT.v ? "?v=" + LT.v : "")); sc.charset = "utf-8"; sc.async = true;
+    sc.onload = function () { updCtl(); }; sc.onerror = function () { CM.load = 0; if (sc.parentNode) sc.parentNode.removeChild(sc); };
+    document.head.appendChild(sc);
+  }
+  function cmHost(ok) {
+    return { persona: persona, en: EN, ok: !!ok, box: sdkBox(), ov: ov, api: String(window.MIG_API_BASE || "/api").replace(/\/+$/, ""),
+      live: function () { var m = LV; return !!(m && m.client && m.ready && m.dc && !m.closed); },
+      ctx: function (t) { var m = LV; if (!m || !m.client || !m.ready || !m.dc || m.closed || !m.client.addContext) return false; try { m.client.addContext(String(t)); return true; } catch (e) { return false; } },
+      say: function (t) { return sdkSay(t, { photo: true }); }, toast: say, ticket: function () { return (LV && LV.mt) || ""; }, btok: function () { return BTOK; }, full: signedTok,
+      chain: function () { return LV ? LV.chain : null; }, relayout: nzPlace, replay: function () { if (LV) sdkPlay(LV); }, go: function (u) { if (frame) go(u); }, upd: updCtl };
+  }
+  function cmUi() { var bx = sdkBox(), b = bx && bx.querySelector(".jv-att"), F = window.MIGFLAGS, M = window.MIGCHATMEDIA; if (!b) return; if (!M && F && F.on && F.on("chat_photos") === true) cmLoad(); if (M && M.sync) { try { M.sync(cmHost(cmOk(LV))); } catch (e) {} } else b.hidden = true; }
+  function cmTap() { var M = window.MIGCHATMEDIA, bx = sdkBox(); if (M && M.callTap && bx && cmOk(LV)) M.callTap(cmHost(true), bx.querySelector(".jv-file")); }
+  /* ➤ with a photo waiting: 1 = sent with the text as its question · 0 = no photo · -1 = the call cannot take it yet */
+  function cmSend(v) { var M = window.MIGCHATMEDIA; if (!M || !M.pending || !M.pending()) return 0; return M.send(cmHost(cmOk(LV)), v); }
+  /* the noise and 🌐 chips stack above the photo chip (placed first) */
+  function cmTop(t) { var M = window.MIGCHATMEDIA, r = null; try { r = M && M.place ? M.place() : null; } catch (e) { r = null; } return r && r.height ? r.top : t; }
+  window.addEventListener("mig:flags", function () { try { cmUi(); } catch (e) {} }); /* 📎 the owner switched chat_photos on / off */
   /* the pinned SDK, loaded once (SRI; jsDelivr, then the same bytes from unpkg); when neither loads, this page does not try again for
      10 minutes (the next «ابدأ» goes straight to the widget instead of waiting for the CDNs again) */
   function loadSdk() {
@@ -606,7 +634,7 @@
       if (LV !== me) return;
       (tokP || tok()).then(function (j) {
         if (LV !== me || me.stopped) return;
-        me.max = maxOf(j);
+        me.max = maxOf(j); me.mt = typeof j.media_ticket === "string" ? j.media_ticket : ""; /* 📎 the call's photo ticket (Janna) */
         sdkRun(me, A, j.sessionToken);
       }, function (e) { if (LV === me) sdkRefused(me, e || {}); });
     }, function () { if (LV === me) { LV = null; toWidget(true); } });
@@ -836,6 +864,7 @@
     var s = "[CONTINUATION of the same live call — part " + (me.chain.n + 1) + "] The video connection was renewed automatically (one session has a fixed maximum length). The member is still with you and did not hang up. Do NOT greet again, do not introduce yourself, do not mention any reconnection or time limit: continue exactly where the conversation stopped and answer the member's next words in context.";
     if (scr) s += "\nOn the shared screen now: " + scr;
     var lc = langOn() ? langStored() : ""; if (lc) s += "\nLANGUAGE: " + lc + " (" + langRow(lc)[3] + "): continue only in " + langRow(lc)[3] + ".";
+    var pl = ""; try { pl = window.MIGCHATMEDIA && MIGCHATMEDIA.resumeLine ? MIGCHATMEDIA.resumeLine(me.chain) : ""; } catch (e) { pl = ""; } if (pl) s += "\n" + pl; /* 📎 */
     if (r.length) s += "\nThe conversation so far (oldest first):\n" + r.map(function (m) { return (m.role === "user" ? "Member: " : nm + ": ") + m.text; }).join("\n");
     return s.slice(0, 6000);
   }
@@ -845,7 +874,7 @@
     if (me.next) { if (!retry || me.next.st !== "failed" || me.next.retried || contFinal(me.next.err)) return; } /* one more try at max−20 s */
     var nx = me.next = { st: "minting", token: "", max: 0, err: null, want: "", retried: !!retry }, p = persona;
     mint(p)
-      .then(function (j) { nx.st = "ready"; nx.token = j.sessionToken; nx.max = maxOf(j); if (nx.want && LV === me) contGo(me, nx.want); },
+      .then(function (j) { nx.st = "ready"; nx.token = j.sessionToken; nx.max = maxOf(j); nx.mt = typeof j.media_ticket === "string" ? j.media_ticket : ""; if (nx.want && LV === me) contGo(me, nx.want); },
         function (e) {
           nx.st = "failed"; nx.err = e || {};
           if (nx.want && contGo(me, nx.want)) return;
@@ -907,7 +936,7 @@
     try { if (me.client && !me.closed) me.client.muteInputAudio(); } catch (e) {}
     if (v) v.muted = true; /* until the new part's greeting is cut */
     me.chain.n++;
-    var me2 = { gen: ++LVN, st: "connecting", client: null, sid: "", ready: false, dc: false, playing: false, closed: false, stopped: false, stopReason: "", textOnly: me.textOnly, muted: me.muted, micDenied: me.micDenied, seen: {}, msgN: 0, max: nx.max || me.max, timers: [], connT: 0, own: {},
+    var me2 = { gen: ++LVN, st: "connecting", client: null, sid: "", ready: false, dc: false, playing: false, closed: false, stopped: false, stopReason: "", textOnly: me.textOnly, muted: me.muted, micDenied: me.micDenied, seen: {}, msgN: 0, max: nx.max || me.max, timers: [], connT: 0, own: {}, mt: nx.mt || me.mt || "",
       chain: me.chain, cont: { prev: me, why: why, t: Date.now(), greet: "", src: v ? v.srcObject : null } };
     LV = me2;
     loadSdk().then(function (A) { if (LV === me2 && !me2.stopped) sdkRun(me2, A, nx.token); }, function () { if (LV === me2) contFail(me2, { code: "sdk_load" }); });
@@ -1133,12 +1162,13 @@
     if (fromStart) say(T("اضغط «ابدأ الكلام مع " + nm + "» علشان نبدأ", "Press “Start talking to " + nm + "” to begin"));
   }
   /* a message typed in the call (the text box, or the welcome card's «اجتماع» request): only once the session can take it */
-  function sdkSay(text) {
+  function sdkSay(text, opt) {
     var me = LV, t = String(text == null ? "" : text).trim().slice(0, 500);
+    if (window.MIGCHATMEDIA && MIGCHATMEDIA.markSafe) t = MIGCHATMEDIA.markSafe(t); /* 📎 nothing typed can pose as a platform note */
     if (!t || !me || !me.client || !me.ready || !me.dc || me.closed) return false;
     try { me.client.sendUserMessage(t); } catch (e) { return false; }
     NZ.typed.push({ t: Date.now(), x: nzNorm(t) }); if (NZ.typed.length > 6) NZ.typed.shift(); /* a typed turn is never a noise interruption */
-    langTyped(t); /* 🌐 a script only some languages write in: a suggestion, never a switch */
+    if (!(opt && opt.photo)) langTyped(t); /* 🌐 a script only some languages write in: a suggestion, never a switch */
     sdkFire("message-sent", { content: t }); return true;
   }
   function sdkMute() {
@@ -1482,7 +1512,7 @@
     var el = NZ.el, bx = sdkBox(); if (!el || el.hidden) { langPlace(); return; }
     var ctl = bx && bx.querySelector(".jv-ctl"), r = bx ? bx.getBoundingClientRect() : null, cr = ctl && !ctl.hidden ? ctl.getBoundingClientRect() : null, vh = window.innerHeight || document.documentElement.clientHeight;
     if (!r || !r.width || !cr || !cr.height) { el.style.visibility = "hidden"; langPlace(); return; }
-    el.style.visibility = ""; el.style.left = Math.round(r.left + 10) + "px"; el.style.width = Math.max(0, Math.round(r.width - 20)) + "px"; el.style.bottom = Math.round(vh - cr.top + 6) + "px";
+    el.style.visibility = ""; el.style.left = Math.round(r.left + 10) + "px"; el.style.width = Math.max(0, Math.round(r.width - 20)) + "px"; el.style.bottom = Math.round(vh - cmTop(cr.top) + 6) + "px";
     langPlace(); /* the 🌐 chip sits above this one */
   }
   /* ---------- 🌐 the language the person SPEAKS in the call (owner 2026-11-20: «جنة او باسم يتكلموا اي لغه في العالم بناءا علي الشخص اللي
@@ -1663,7 +1693,7 @@
     var ctl = bx && bx.querySelector(".jv-ctl"), r = bx ? bx.getBoundingClientRect() : null, cr = ctl && !ctl.hidden ? ctl.getBoundingClientRect() : null, vh = window.innerHeight || document.documentElement.clientHeight;
     var nz = NZ.el, nr = nz && !nz.hidden && nz.style.visibility !== "hidden" ? nz.getBoundingClientRect() : null;
     if (!r || !r.width || !cr || !cr.height) { el.style.visibility = "hidden"; return; }
-    el.style.visibility = ""; el.style.left = Math.round(r.left + 10) + "px"; el.style.width = Math.max(0, Math.round(r.width - 20)) + "px"; el.style.bottom = Math.round(vh - (nr && nr.height ? nr.top : cr.top) + 6) + "px";
+    el.style.visibility = ""; el.style.left = Math.round(r.left + 10) + "px"; el.style.width = Math.max(0, Math.round(r.width - 20)) + "px"; el.style.bottom = Math.round(vh - (nr && nr.height ? nr.top : cmTop(cr.top)) + 6) + "px";
   }
   function langDrop() { langMenu(false); LG.ask = ""; LG.fail = 0; if (LG.el && LG.el.parentNode) LG.el.parentNode.removeChild(LG.el); LG.el = null; }
   /* review 2026-11-20 F5: «🛠️ المطوّر» turned call_languages off while this call hears another language: the call goes back to the persona's
@@ -1765,6 +1795,7 @@
     if (ov.classList.contains("fs")) fullscreen(false);
     /* the SDK call is ended explicitly (stops the session and its minutes); removing the widget's element ends the widget's session */
     sdkStop("close"); LV = null;
+    try { if (window.MIGCHATMEDIA && MIGCHATMEDIA.drop) MIGCHATMEDIA.drop(); } catch (e) {} /* 📎 */
     langDrop(); micDrop(); nzDbgOff(); NZ.offerUntil = 0; if (NZ.el && NZ.el.parentNode) NZ.el.parentNode.removeChild(NZ.el); NZ.el = null; try { if (NZ.ac) { var acp = NZ.ac.close(); if (acp && acp.then) acp.then(null, function () {}); } } catch (e) {} NZ.ac = null; /* noise guard: microphone + meter released */
     /* the captions box goes back to the page first; the holo cards' timers stop (data/call-holo.js) */
     try { if (window.MIGCAPTIONS && MIGCAPTIONS.place) { ov.hidden = true; MIGCAPTIONS.place(); } } catch (e) {}
