@@ -47,7 +47,7 @@ Cloudflare account `88c77c2b7595dd0ce510270175f69143`, zone `madeinegyptgate.com
 | Part | On Cloudflare | Source here | Deployed by |
 |---|---|---|---|
 | Static site, edge SEO layer, `/api/seo/*` | Pages project `madeinegyptgate` (direct upload, production branch `main`). Bindings in `deploy/wrangler-pages.toml`: KV `SEO_KV`, D1 `DB` (read only, for sign-in checks) | `site.py` + part files + `data/` `img/` `media/` `seo/` → build; `functions/` | `deploy-site` |
-| Platform API: Janna, Bassem, accounts, inquiries, meetings, WhatsApp, Control Center, payments, `/data/overlay.js`, `/media/u/*` | Worker `janna-lookup`. One route per API family on both hosts (`worker/wrangler.toml`), cron `*/15 * * * *`. D1 `migate-db`, R2 `migate-media`, KV `SEO_KV` (writes `acc:*` keys only) | `worker/` | `deploy-worker` |
+| Platform API: Janna, Bassem, accounts, inquiries, meetings, WhatsApp, Control Center, payments, `/data/overlay.js`, `/media/u/*` | Worker `janna-lookup`. One route per API family on both hosts (`worker/wrangler.toml`), cron `*/15 * * * *`. D1 `migate-db`, R2 `migate-media`, KV `SEO_KV` (writes `acc:*` keys only), service binding `INTEL` → `migate-intel` («ابعتلي» mail packs, the developer panel's intel probe; no secret) | `worker/` | `deploy-worker` |
 | Intel centre `/intel/` + `/api/intel/*` | Worker `migate-intel`: D1 `migate-intel`, KV, Workers AI, crons `0 */2 * * *`, `30 */6 * * *`, `15 3 * * *`. Its zone routes were attached outside `worker-intel/wrangler.toml` (the routes block there is commented out on purpose; leave it) | `worker-intel/` | `deploy-intel` |
 | The owner's old admin | Worker `mis-egypt` → Hostinger PHP | not here (read-only copies in `docs/janna/legacy-live/`) | never |
 | WAF block list refresher | Worker `migate-shield` (cron, no routes) | `worker-shield/` | not by CI |
@@ -205,8 +205,10 @@ D1 schema: `worker/schema.sql` is the complete schema for a new database (every 
 
 Daily pipeline of tenders, RFQs, projects and news from official sources (`src/adapters/`, `seeds/sources.json`), enriched with
 Workers AI under a daily cap (`AI_DAILY_LIMIT`), served at `/intel/` (pages take the site's header/footer at runtime,
-`src/siteshell.js`) and `/api/intel/*` (including the Bassem tool `/api/intel/tool`). `site-snippets/intel-live.js` is browser
-JS (ES5). No npm dependencies and no `package-lock.json`.
+`src/siteshell.js`) and `/api/intel/*` (including the Bassem tool `/api/intel/tool`). `POST /api/intel/mailpack` (one item's card, links
+and official PDF / DOCX for the «ابعتلي» e-mail, `src/notify-items.js` in `worker/`) answers ONLY on the hostname `mailpack.binding.invalid`,
+which only `janna-lookup`'s service binding can send: never add a route, a secret or a public caller for it (`worker-intel/INTEGRATION.md`
+§9). `site-snippets/intel-live.js` is browser JS (ES5). No npm dependencies and no `package-lock.json`.
 
 ### 1.8 Admin Control Center («لوحة التحكم», `/admin/`)
 

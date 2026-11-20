@@ -1,0 +1,77 @@
+{
+ "_what": "PREPARED — NOT APPLIED. One anam_tool_update (PUT https://api.anam.ai/v1/tools/{id}) sending `body` exactly ({id, ...body}); `config` REPLACES the whole stored config; expectedUpdatedAt = the tool's updatedAt read on 2026-11-20 → a 409 means someone changed it since: read it again (anam_tool_get) and re-check before retrying. `rollback_body` puts back the definition read on 2026-11-20.",
+ "read_at": "2026-11-20 (anam_tool_get 325b182c-e5e0-42d0-a130-658919faf12f, read-only, by the design step; not re-read by the build step)",
+ "order": "After deploy-site (data/janna-live.js reads a.ids) and deploy-worker (POST /api/advisor/notify accepts items) — before that the page ignores ids. awaitResult stays false, so no page handler is needed and old tabs / the widget are not left waiting.",
+ "tools": [
+  {
+   "id": "325b182c-e5e0-42d0-a130-658919faf12f",
+   "name": "bassem_notify_member",
+   "currentUpdatedAt": "2026-11-17T22:23:46.891Z",
+   "used_by": [
+    "bassem"
+   ],
+   "why": "Owner 2026-11-19: the «ابعتلي» e-mail had no data, no attachment and no working link. With ids the platform adds each opportunity's details, links and official file itself; Bassem never promises any of it (review R3). Without ids the page picks the opportunities from the call's own tool results and screen (data/janna-live.js notifyRefs).",
+   "description_length": 847,
+   "body": {
+    "description": "Send the member HIMSELF a short note on his registered WhatsApp and/or e-mail («ابعتلي», «على إيميلي»): what you did together, an opportunity, a reply, a deadline. When the note is about opportunities your tools returned in THIS call, put the id of each one in `ids` exactly as returned (a bassem_intel id like rw0000000a1, or the platform tender id from janna_lookup / platform_item), at most 3; an opportunity from an earlier call: fetch it again with its tool by the id in your memory first. The platform then adds what it can from its own data: details, links and, when the source allows a download, the official file. Never write links, amounts or dates in `message` that are not in the results. Tell him you are sending it; do not promise details, links or files — the e-mail itself says what it carries, and you hear the outcome afterwards.",
+    "config": {
+     "awaitResult": false,
+     "parameters": {
+      "type": "object",
+      "required": [
+       "message"
+      ],
+      "properties": {
+       "message": {
+        "type": "string",
+        "description": "The summary/alert text in the member's language"
+       },
+       "channel": {
+        "type": "string",
+        "enum": [
+         "whatsapp",
+         "email",
+         "both"
+        ]
+       },
+       "ids": {
+        "type": "string",
+        "description": "Ids of the opportunities this note is about, exactly as this call's tools returned them, comma-separated (an id may contain spaces), at most 3 (e.g. rw0000000a1,eg-tnd-003). Empty for a general note."
+       }
+      }
+     }
+    },
+    "disableInterruptions": false,
+    "expectedUpdatedAt": "2026-11-17T22:23:46.891Z"
+   },
+   "rollback_body": {
+    "description": "Send the member a short summary or alert on their registered WhatsApp and/or email (e.g. what you did together today, a new opportunity, a reply received, a deadline). Tell the member you are sending it.",
+    "config": {
+     "parameters": {
+      "type": "object",
+      "required": [
+       "message"
+      ],
+      "properties": {
+       "channel": {
+        "enum": [
+         "whatsapp",
+         "email",
+         "both"
+        ],
+        "type": "string"
+       },
+       "message": {
+        "type": "string",
+        "description": "The summary/alert text in the member's language"
+       }
+      }
+     },
+     "awaitResult": false
+    },
+    "disableInterruptions": false
+   }
+  }
+ ],
+ "not_changed": "type CLIENT, awaitResult false (an awaited tool would leave Bassem silent in old tabs and the widget until it times out — anam/APPLY.md), the persona's toolIds (worker/test/bassem-meetings.test.mjs keeps notify out of meetings), every other tool."
+}

@@ -112,3 +112,76 @@ dates, IDA tender subjects). Dedupe never folds two notices of the same source b
   `mapping.news_filter: false` turns it off for a source. Already-stored rows: see `newsSweep` (§5).
 - **«خلال 24 ساعة»** on /intel/ counts the rows of the section's own query (same hidden / dup / kind / window), first seen in the
   last 24 hours (`queryItems(..., { freshSince })`), so it is never more than the section total.
+
+## 9. «ابعتلي» mail packs — POST /api/intel/mailpack (binding-only, no secret)
+When a member tells Bassem «ابعتلي …» about Information Center items, janna-lookup (worker/src/notify-items.js) asks this Worker for each
+item's mail pack and builds the e-mail itself: the item's card from the stored data, its page links, its official link and, when it can be
+downloaded, the official PDF / DOCX to attach.
+
+**Who can call it.** The endpoint answers only when the request URL's hostname is `mailpack.binding.invalid` (`PACK_HOST`, src/api.js).
+Any other hostname gets exactly the 404 of an unknown path, before the rate limiter (no KV write). janna-lookup calls it through its
+service binding `INTEL` (`[[services]] binding = "INTEL", service = "migate-intel"` in worker/wrangler.toml) with
+`new Request("https://mailpack.binding.invalid/api/intel/mailpack", …)`. Why that is safe without a secret:
+- a service binding hands this Worker the Request exactly as the caller built it, URL included; only Workers of this Cloudflare account
+  whose own configuration names `migate-intel` in `[[services]]` can do that — the account owner decides that, in reviewed config;
+- public traffic reaches this Worker only through its zone routes (`madeinegyptgate.com` / `www.madeinegyptgate.com`) and its
+  `workers.dev` name; Cloudflare builds `request.url` from the hostname the request was routed by, so it is always one of those;
+- `.invalid` is reserved and never resolves (RFC 6761), and it is no Cloudflare zone, so a request with `Host: mailpack.binding.invalid`
+  (or any `X-Forwarded-Host` trick) is never routed to this Worker; headers are not read for this check at all;
+- other Workers' `fetch("https://mailpack.binding.invalid/…")` fails at DNS; a Worker of another account cannot bind to this one.
+Even so the endpoint takes an item id only (never a URL), returns only public data (contacts and links stripped from summaries) and
+public documents of official sites, and is rate-limited.
+
+**Request** `{"id": "<11 chars>", "file": false}` (the card) or `{"id": "<11 chars>", "file": true, "max_bytes": 8000000, "budget_ms": 20000}`
+(the file) — `file` defaults to true; `max_bytes` is clamped to 100 KB .. 8 MB (janna-lookup sends what its e-mail has left: Resend 8 MB
+in all, Brevo 4 MB a file); `budget_ms` to 2 .. 25 s (default 8 s; janna-lookup sends ≤ 20 s: a real 2.4 MB Kenya PPIP Tender Document took
+12.3 s to its last byte, read from outside Kenya on 2026-11-20). Unknown keys are ignored. janna-lookup asks in two rounds: every card of a
+note at once with `file: false` (this Worker fetches nothing for it), then the files **one after another** (a news item, an opted-out source
+or a duplicate never gets a file request), so one file at a time is in memory and each is sized by what the e-mail has left.
+
+**200, a card or no file** (JSON) `{ok, id (the primary when the id is a duplicate), requested, card, links, file: null, reason, reason_size?}`:
+- `card`: kind, kind_label (+ _en), market, title (+ title_en, title_orig, title_is_original), entity, country, market_name (+ _en), sector (+ _en),
+  published, deadline, status, value, currency, currency_ar, summary (+ summary_en; contacts and URLs stripped), summary_original, source_name (+ _en);
+- `links`: `page` / `page_en` = the short `https://madeinegyptgate.com/intel/<seg>/<id>/` and `/intel/en/…` (the item pages 301 them to the
+  canonical URL, any kind segment works), `source` = the stored official link, `doc` = the file that failed (or null);
+- `reason` with `file: false`: `kind` (news), `source_opt_out`, else `not_requested`.
+
+**200, the file**: the RAW bytes as the body (`Content-Type: application/pdf` or `…wordprocessingml.document`, `Content-Length`, `no-store`)
+— never base64 inside JSON: the bytes are one copy here instead of five (bytes, latin1, base64, JSON, encoded body), and janna-lookup
+base64-encodes once for the e-mail provider. Its facts in the header `X-Mailpack` (JSON, every non-ASCII character escaped):
+`{ok, id, requested, file: {name, type, size, from: known | hint | official | linked, label?}, doc, skipped?}` — `label` = the source's own
+name of the file («Tender Document», «Tender Notice»); `skipped = {label?, flag, size?, url?}` when a candidate ranked before the attached one
+failed (the Kenya Tender Document too large, its Tender Notice attached): the e-mail then names both and gives the document's own link,
+never «the official file» for the notice alone.
+Other answers: 400 `bad id` / `bad json` · 404 `{ok:false, found:false}` · 405 `method` · 410 `{ok:false, found:false, gone:true}` (in
+`intel_gone`, or hidden by an admin; an unlisted news item, hidden=2, still answers) · 429 `rate limited`. Every answer is no-store.
+
+**The file** (src/doc.js `itemFile`, no AI, no text extraction): only for tenders, RFQs and projects (news: `reason: "kind"` — the RSS
+sources' terms allow headline + snippet + link only); never for a source whose `mapping.attach` is false or that is in `NO_FILE_SOURCES`
+(src/api.js: `isdb-tenders`, `isdb-egypt-rss` — IsDB's terms allow a limited extract only; until the owner decides, the link only:
+`source_opt_out`). Candidates, each fetched once and only on the official site of the item's stored link (siteOf) or a host the source names
+in `mapping.doc_hosts` (exact hostnames, for a source that serves its files from a CDN; none is seeded): the doc cache's known PDF / DOCX
+(`doc:v1:…`, Bassem's document reads) → the ingest hints `dochint:<id>` (and of its primary) → the stored link → when that is a notice page /
+an OCDS release, its ONE best document (with > 1.5 s left). Every hop through `fetchDoc`: https only, port 443, a public DNS name (no IP
+literal, no localhost / .local / .internal / …, not this platform's zone, not workers.dev / pages.dev), ≤ 3 redirects each re-checked —
+and never to another host than those (`off_site`: the other host is not asked anything, not even its robots.txt), a sign-in page → `login`,
+robots.txt respected (cached 24 h per host; read ≤ 500 KiB; its own redirects followed by hand through the same address guard, ≤ 5), the
+budget, the size cap (Content-Length first, then while streaming). Only bytes that ARE a PDF or a DOCX (magic bytes) whose final address is
+on those hosts are returned; the name is the source's own when it is plain ASCII, else `document-<id>.pdf|docx`.
+`reason` codes: not_requested, kind, source_opt_out, no_document, page_only, login, forbidden, robots, gone, busy, timeout, unreachable,
+too_large (+ reason_size), unsupported, not_https, unsafe_url, too_many_redirects, off_site.
+
+**Ingest hints** (src/engine.js `storeDocHints`): an adapter record may carry a non-enumerable `doc_urls` [{u, t}] — today Kenya PPIP
+(src/adapters/json.js `keDocs`: documents[] → the Tender Document, then the Tender Notice, https://tenders.go.ke/….pdf|.docx only; reads
+url, type.description and deleted_at, never created_by / updated_by). After each successful run of the source, the stored items' hints go
+to KV `dochint:<id>` = `{"h":[{"u","t"}]}` (60 days; an unchanged value is not written again). They exist for the items the runs after
+this deploy see.
+
+**KV keys**: `dochint:<id>` (above) · `rlp:<CF-Connecting-IP or 0>:<minute>` the limiter (`PACK_RATE_PER_MIN`, default 60; a binding call
+has no CF-Connecting-IP: one shared bucket, and KV's read-then-write is no lock). The real bounds are on janna-lookup's side: one
+statement reserves a member's notify and its files before any pack is asked (one such notify running per member, ≤ 10 files a day), and an
+isolate fetches one notify's files at a time (worker/src/notify-items.js `fileSlot`). No D1 change.
+
+**Deploy order**: any. An older janna-lookup never calls it; with an older migate-intel the pack answers the plain 404 and janna-lookup
+falls back to `GET /api/intel/item/<id>` through the same binding (card + links, «جلب الملفات من مركز المعلومات مش شغال دلوقتي»).
+

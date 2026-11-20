@@ -45,18 +45,47 @@ export function robotsAllows(parsed, pathAndQuery) {
   }
   return best < 0 ? true : allow;
 }
-export async function robotsFor(url, env, fetchFn = fetch) {
+/* robots.txt is read up to ROBOTS_MAX bytes (Google's limit, 500 KiB): rules after it are ignored, a huge or endless body is never held */
+export const ROBOTS_MAX = 500 * 1024;
+async function robotsText(r, cap) {
+  if (!r.body || typeof r.body.getReader !== "function") return String(await r.text()).slice(0, cap);
+  const rd = r.body.getReader(), chunks = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await rd.read();
+    if (done) break;
+    const v = value instanceof Uint8Array ? value : new Uint8Array(value), k = Math.min(v.length, cap - n);
+    if (k > 0) { chunks.push(v.subarray(0, k)); n += k; }
+    if (n >= cap) { try { await rd.cancel(); } catch (e) {} break; }
+  }
+  const all = new Uint8Array(n); let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
+  return new TextDecoder("utf-8").decode(all);
+}
+const dropBody = async r => { try { if (r && r.body && r.body.cancel) await r.body.cancel(); } catch (e) {} };
+/* o.hop (the «ابعتلي» file / document reader, doc.js robotsOk): redirects are followed by hand, at most 5 (RFC 9309), and every target
+   must pass o.hop(url) → {url} | {error} (doc.js checkUrl: https, a public host…). A refused target = unreachable (disallow), more than
+   5 = unavailable (allow); neither is cached, so the daily runs (which let fetch follow the redirects) never read such an answer */
+export async function robotsFor(url, env, fetchFn = fetch, o = {}) {
   const u = new URL(url), key = "robots:" + u.host;
   const kv = env.KV;
   if (kv) { try { const c = await kv.get(key, "json"); if (c) return c; } catch (e) {} }
-  let out;
+  let out = null, cache = true;
+  const init = () => ({ headers: { "User-Agent": UA }, redirect: o.hop ? "manual" : "follow", signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined });
   try {
-    const r = await fetchFn(u.origin + "/robots.txt", { headers: { "User-Agent": UA }, redirect: "follow", signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined });
-    if (r.status >= 200 && r.status < 300) { const p = parseRobots(await r.text()); out = { status: r.status, rules: p.rules, delay: p.delay }; }
-    else if (r.status >= 400 && r.status < 500) out = { status: r.status, rules: [], delay: null };          // unavailable → allowed
-    else out = { status: r.status, rules: [[false, "/"]], delay: null, unreachable: true };                  // 5xx → assume disallow
+    let at = u.origin + "/robots.txt", r = await fetchFn(at, init()), hops = 0;
+    while (o.hop && r.status >= 300 && r.status < 400 && r.status !== 304) {
+      const loc = r.headers.get("location"); await dropBody(r);
+      if (!loc || ++hops > 5) { out = { status: r.status, rules: [], delay: null }; cache = false; break; }   // too many → unavailable
+      let c; try { c = o.hop(new URL(loc, at).toString()); } catch (e) { c = null; }
+      if (!c || c.error || !c.url) { out = { status: 0, rules: [[false, "/"]], delay: null, unreachable: true }; cache = false; break; }
+      at = c.url.toString(); r = await fetchFn(at, init());
+    }
+    if (out) { /* decided by a redirect above */ }
+    else if (r.status >= 200 && r.status < 300) { const p = parseRobots(await robotsText(r, ROBOTS_MAX)); out = { status: r.status, rules: p.rules, delay: p.delay }; }
+    else if (r.status >= 400 && r.status < 500) { await dropBody(r); out = { status: r.status, rules: [], delay: null }; }          // unavailable → allowed
+    else { await dropBody(r); out = { status: r.status, rules: [[false, "/"]], delay: null, unreachable: true }; }                  // 5xx → assume disallow
   } catch (e) { out = { status: 0, rules: [[false, "/"]], delay: null, unreachable: true }; }
-  if (kv) { try { await kv.put(key, JSON.stringify(out), { expirationTtl: out.unreachable ? 3600 : 86400 }); } catch (e) {} }
+  if (kv && cache) { try { await kv.put(key, JSON.stringify(out), { expirationTtl: out.unreachable ? 3600 : 86400 }); } catch (e) {} }
   return out;
 }
 
@@ -331,6 +360,30 @@ export async function storeItems(env, src, items, dedupe, nowIso) {
   if (stmts.length) await db.batch(stmts);
   return { new: uniq.filter(x => !existing.has(x.id)).length, updated: uniq.filter(x => existing.has(x.id)).length, dups };
 }
+/* the notice's own files a source lists (an adapter record's non-enumerable doc_urls [{u, t}] — Kenya PPIP documents[], adapters/json.js
+   keDocs) → KV «dochint:<item id>» {h:[{u, t}]} for 60 days, only for items this run kept. Read by «ابعتلي» (api.js mailPack → doc.js
+   itemFile tries them first, on the item's own official site only). An unchanged value is not written again; never fails a run. */
+export const DOC_HINT_TTL = 60 * 86400;
+export async function storeDocHints(env, src, raw, items) {
+  const kv = env && env.KV;
+  if (!kv) return 0;
+  const kept = new Set((items || []).map(i => i.id));
+  let n = 0;
+  for (const r of raw || []) {
+    if (!r || !Array.isArray(r.doc_urls) || !r.doc_urls.length) continue;
+    const id = itemId(src.id, String(r.ext_id || String(r.url || "").trim()));   // the id normalise() gives the record
+    if (!kept.has(id)) continue;
+    const h = r.doc_urls.filter(x => x && typeof x.u === "string" && /^https:\/\/[^\s]+$/i.test(x.u) && x.u.length <= 2000).slice(0, 2).map(x => ({ u: x.u, t: String(x.t || "").slice(0, 40) }));
+    if (!h.length) continue;
+    const v = JSON.stringify({ h });
+    try {
+      if ((await kv.get("dochint:" + id)) === v) continue;
+      await kv.put("dochint:" + id, v, { expirationTtl: DOC_HINT_TTL });
+      n++;
+    } catch (e) { /* a hint is a nice-to-have: the run goes on */ }
+  }
+  return n;
+}
 
 /* ---------- source selection (rotation) ---------- */
 export function dueSources(sources, groups, nowMs = Date.now(), max = LIMITS.maxSourcesPerRun, force = false) {
@@ -391,6 +444,7 @@ export async function runCycle(env, opts = {}) {
         items = items.filter(it => (it.deadline && it.deadline >= today) || !it.published_at || now - Date.parse(it.published_at) <= maxAge).filter(it => !(it.status === "closed" && mp.skip_closed !== false));
         items = items.slice(0, LIMITS.maxItemsPerSource);
         const w = await storeItems(env, src, items, dedupe, nowIso);
+        if (res.status === "ok") { try { const h = await storeDocHints(env, src, res.items, items); if (h) entry.hints = h; } catch (e) { /* hints never fail a run */ } }
         Object.assign(entry, { parsed: res.items.length, kept: items.length, new: w.new, updated: w.updated, dups: w.dups });
         stats.items_new += w.new; stats.items_updated += w.updated; stats.dups += w.dups;
         if (res.status === "ok") stats.ok++; else stats.not_modified++;

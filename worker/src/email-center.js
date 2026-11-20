@@ -365,6 +365,8 @@ function route(env, cfg) {
 export const mailReady = env => !!(env && ((cfgNow(env) || {}).ready || env.RESEND_API_KEY || (env.SEND_EMAIL && typeof env.SEND_EMAIL.send === "function")));
 /* sync — the provider deliver() would use supports real attachments (Resend, Brevo); the binding path inlines them (meetings.js) */
 export const attachOk = env => { const p = route(env, cfgNow(env)).provider; return p === "resend" || p === "brevo"; };
+/* sync — which of the two would carry them ("resend" | "brevo" | ""): the «ابعتلي» e-mail sizes its official files by it (notify-items.js) */
+export const attachProvider = env => { const p = route(env, cfgNow(env)).provider; return p === "resend" || p === "brevo" ? p : ""; };
 const forget = env => { const db = dbOf(env); if (db) { CFG.delete(db); OVR.delete(db); } };
 /* drop this isolate's memo after writing mail.* settings or cc_mail_templates directly (acc.js import of the old mail config) */
 export const forgetMailCache = env => forget(env);
@@ -482,6 +484,8 @@ function sendOverrides(env, m, t, o) {
 
 /* ---------- delivery (advisor.js sendEmail → deliver, P-W3) ---------- */
 const attList = msg => (Array.isArray(msg.attachments) ? msg.attachments : []).filter(a => a && a.filename);
+/* an attachment's base64: a binary file arrives as {b64} (the «ابعتلي» official file, notify-items.js); a text one as {content} */
+const attContent = a => (typeof a.b64 === "string" ? a.b64 : b64(enc.encode(a.content)));
 async function viaResend(key, msg) { // byte-for-byte the advisor.js request (+ attachments as in meetings.js) — existing tests compare it
   const cc = msg.cc && msg.cc.length ? msg.cc : undefined, atts = attList(msg);
   try {
@@ -489,7 +493,7 @@ async function viaResend(key, msg) { // byte-for-byte the advisor.js request (+ 
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", ...(msg.id ? { "Idempotency-Key": msg.id } : {}) },
       body: JSON.stringify({ from: fmtFrom(msg.from), to: msg.to, cc, reply_to: msg.replyTo || undefined, subject: msg.subject, text: msg.text, html: msg.html, headers: msg.headers || undefined,
-        attachments: atts.length ? atts.map(a => ({ filename: a.filename, content: b64(enc.encode(a.content)), content_type: a.type })) : undefined }),
+        attachments: atts.length ? atts.map(a => ({ filename: a.filename, content: attContent(a), content_type: a.type })) : undefined }),
     });
     let j = {}; try { j = (await r.json()) || {}; } catch (e) { /* empty body */ }
     if (!r.ok) return { sent: false, provider: "resend", error: `resend ${r.status}: ${astr(j.message || j.name || r.statusText, 200)}` };
@@ -503,7 +507,7 @@ async function viaBrevo(key, msg) {
   const hdr = {}; if (msg.headers && typeof msg.headers === "object") for (const [k, v] of Object.entries(msg.headers)) if (/^[A-Za-z0-9-]{1,64}$/.test(k) && /^[\x20-\x7e]{1,900}$/.test(scalar(v))) hdr[k] = scalar(v);
   const body = { sender: { ...(f.name ? { name: line(f.name, 120) } : {}), email: f.email }, to: rcpt(msg.to), ...(msg.cc && msg.cc.length ? { cc: rcpt(msg.cc) } : {}),
     ...(msg.replyTo ? { replyTo: { email: msg.replyTo } } : {}), subject: msg.subject, ...(msg.html ? { htmlContent: msg.html } : {}), ...(msg.text ? { textContent: msg.text } : {}),
-    ...(Object.keys(hdr).length ? { headers: hdr } : {}), ...(atts.length ? { attachment: atts.map(a => ({ name: a.filename, content: b64(enc.encode(a.content)) })) } : {}) };
+    ...(Object.keys(hdr).length ? { headers: hdr } : {}), ...(atts.length ? { attachment: atts.map(a => ({ name: a.filename, content: attContent(a) })) } : {}) };
   try {
     const r = await fetch("https://api.brevo.com/v3/smtp/email", { method: "POST", headers: { "api-key": key, "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body) });
     let j = {}; try { j = (await r.json()) || {}; } catch (e) { /* empty body */ }
@@ -531,8 +535,10 @@ async function sentBefore(env, id, t0) {
   try { return await db.prepare("SELECT provider, provider_id FROM cc_mail_log WHERE msg_id = ? AND status = 'sent' AND at >= ? ORDER BY id DESC LIMIT 1").bind(line(id, LIM.msgId), iso(t0 - LIM.dedupMs)).first(); }
   catch (e) { return null; }
 }
-/* msg = the sendEmail shape {id, from:{email, name}, to:[…], cc?, replyTo?, subject, text, html, headers?, attachments?:[{filename, content, type}], tpl?, list?}
-   → {sent, provider, id?, error?, skipped?, dedup?}. Never throws. */
+/* msg = the sendEmail shape {id, from:{email, name}, to:[…], cc?, replyTo?, subject, text, html, headers?, attachments?:[{filename, content, type,
+   inline?} | {filename, type, b64}], requireAttachments?, tpl?, list?} → {sent, provider, id?, error?, skipped?, dedup?}. Never throws.
+   requireAttachments: the attachments must really go — on a route that cannot carry them (the SEND_EMAIL binding) nothing is sent and
+   the answer is {sent:false, provider, error:"attachments_unsupported"} (the «ابعتلي» e-mail then goes again without them, saying so). */
 export async function deliver(env, msg) {
   const t0 = Date.now();
   msg = msg && typeof msg === "object" ? msg : {};
@@ -551,6 +557,10 @@ export async function deliver(env, msg) {
   }
   if (cfg && cfg.enabled && key !== "deal_email") m = applySender(env, m, cfg);
   const r = route(env, cfg);
+  if (m.requireAttachments && attList(m).length && r.provider && r.provider !== "resend" && r.provider !== "brevo") {
+    await logRow(env, { msg_id: msg.id, template: key, list: listOf(msg), to: tos[0], more, subject: m.subject, provider: r.provider, status: "failed", error: "attachments_unsupported", ms: Date.now() - t0 });
+    return { sent: false, provider: r.provider, error: "attachments_unsupported" };
+  }
   if (r.provider !== "resend" && r.provider !== "brevo" && attList(m).length) { // no real attachments on this path: inline the text ones (as meetings.js does)
     let text = scalar(m.text), extra = "";
     for (const a of attList(m)) if (a.inline) { const blk = `\n\n———— ${a.filename} ————\n` + scalar(a.content).slice(0, 20000); text += blk; extra += blk; }

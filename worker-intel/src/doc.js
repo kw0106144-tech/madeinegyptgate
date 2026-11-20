@@ -16,7 +16,10 @@
    Output: a bounded excerpt (≤ DOC_LIMITS.excerpt characters) of the parts about the requirements — scope / specifications,
    eligibility, documents, bid bond, deadline, submission, briefing — in the document's own words, contacts and links removed, plus
    honest flags (unreachable, timeout, login, forbidden, robots, gone, busy, too_large, unsupported, not_https, unsafe_url,
-   too_many_redirects, scanned, unreadable, encrypted, empty, no_document). */
+   too_many_redirects, scanned, unreadable, encrypted, empty, no_document).
+   itemFile() (the «ابعتلي» e-mail, api.js mailPack): the same guarded reader returns ONE item's official PDF / DOCX as bytes (no AI, no
+   text) — the doc cache's known file, the ingest hints (Kenya documents[]), the stored link, or the one file a notice page links to,
+   all on the item's own official site — under a size cap (fileCap) the caller sets for the e-mail. */
 import { UA, clip, stripContacts, decodeEntities } from "./util.js";
 import { robotsFor, robotsAllows } from "./engine.js";
 import { aiBudget, chargeAi } from "./enrich.js";
@@ -104,15 +107,19 @@ export function sniff(bytes, ct, name = "") {
   if (c === "text/plain") return "text";
   return "";
 }
-/* robots.txt on the request's deadline (engine.js caches it in KV): "ok" | "robots" | "unreachable" */
+/* robots.txt on the request's deadline (engine.js caches it in KV; read ≤ 500 KiB): "ok" | "robots" | "unreachable". Its redirects are
+   followed by hand, each target through the same address guard as the document itself (checkUrl) — never a private or plain-http host */
+const robotsHop = raw => checkUrl(raw, { upgrade: true });
 async function robotsOk(u, env, o) {
-  const left = o.deadline - Date.now();
-  const f = (url, init = {}) => o.fetchFn(url, { ...init, signal: signal(Math.min(4000, left)) });
-  try { const rb = await robotsFor(u.toString(), env, f); return robotsAllows(rb, u.pathname + u.search) ? "ok" : rb.unreachable ? "unreachable" : "robots"; }
+  const f = (url, init = {}) => o.fetchFn(url, { ...init, signal: signal(Math.min(4000, o.deadline - Date.now())) });
+  try { const rb = await robotsFor(u.toString(), env, f, { hop: robotsHop }); return robotsAllows(rb, u.pathname + u.search) ? "ok" : rb.unreachable ? "unreachable" : "robots"; }
   catch (e) { return "unreachable"; }
 }
-/* GET one address → {ok, url, kind, ct, name, bytes} or {flag, url, status?} */
+/* GET one address → {ok, url, kind, ct, name, bytes} or {flag, url, status?}. o.fileCap (itemFile only): a lower cap for PDF / DOCX
+   (the e-mail's attachment size); an answer whose type is not known yet is read up to max(fileCap, the HTML cap). o.hostOk (itemFile
+   only): a redirect to a host it refuses is never followed → {flag: "off_site"} (the file must come from the item's own official site) */
 export async function fetchDoc(start, env, o) {
+  const capOf = k => (o.fileCap > 0 && (k === "pdf" || k === "docx") ? Math.min(DOC_LIMITS.maxBytes[k], o.fileCap) : DOC_LIMITS.maxBytes[k]);
   let u = start, hops = 0;
   for (;;) {
     if (o.deadline - Date.now() < 300) return { flag: "timeout", url: u.toString() };
@@ -130,6 +137,7 @@ export async function fetchDoc(start, env, o) {
       if (LOGIN_PATH.test(next.pathname + next.search)) return { flag: "login", url: next.toString() };
       const c = checkUrl(next.toString());
       if (c.error) return { flag: c.error === "not_https" ? "not_https" : "unsafe_url", url: next.toString() };
+      if (o.hostOk && !o.hostOk(c.url)) return { flag: "off_site", url: next.toString() };
       u = c.url; continue;
     }
     if (r.status === 401 || r.status === 407) { await drop(r); return { flag: "login", url: u.toString(), status: r.status }; }
@@ -139,7 +147,7 @@ export async function fetchDoc(start, env, o) {
     if (!r.ok) { await drop(r); return { flag: "unreachable", url: u.toString(), status: r.status }; }
     const ct = r.headers.get("content-type") || "", name = fileName(r.headers.get("content-disposition"), u), want = promised(ct, name);
     if (!want) { await drop(r); return { flag: "unsupported", url: u.toString(), type: ctOf(ct) }; }
-    const cap = want === "any" ? MAX_ANY : DOC_LIMITS.maxBytes[want];
+    const cap = want === "any" ? (o.fileCap > 0 ? Math.max(o.fileCap, DOC_LIMITS.maxBytes.html) : MAX_ANY) : capOf(want);
     const len = +r.headers.get("content-length") || 0;
     if (len > cap) { await drop(r); return { flag: "too_large", url: u.toString(), size: len }; }
     let body;
@@ -147,7 +155,7 @@ export async function fetchDoc(start, env, o) {
     if (body.tooLarge) return { flag: "too_large", url: u.toString(), size: body.size };
     const kind = sniff(body.bytes, ct, name);
     if (!kind) return { flag: "unsupported", url: u.toString(), type: ctOf(ct) };
-    if (body.bytes.length > DOC_LIMITS.maxBytes[kind]) return { flag: "too_large", url: u.toString(), size: body.bytes.length };
+    if (body.bytes.length > capOf(kind)) return { flag: "too_large", url: u.toString(), size: body.bytes.length };
     return { ok: true, url: u.toString(), final: u, kind, ct: ctOf(ct), name, bytes: body.bytes };
   }
 }
@@ -366,15 +374,18 @@ export async function aiConvert(env, kind, bytes, name, o = {}) {
     return { text: r.data, tokens: +r.tokens || 0 };
   } catch (e) { return { error: clip(String((e && e.message) || e), 160) }; }
 }
+/* a page's text without its password form → {text, login}: a sign-in page = nothing much is left once its password form is taken out;
+   a notice page that carries the portal's login box beside the notice (GHANEPS, eTenders …) is not one */
+function pageText(html) {
+  const pw = PASSWORD.test(html);
+  const text = htmlText(pw ? html.replace(/<form\b[\s\S]*?<\/form\s*>/gi, f => (PASSWORD.test(f) ? " " : f)) : html);
+  return { text, login: pw && (text.replace(/\s+/g, " ").length < 200 || /log ?in|sign ?in|تسجيل الدخول|connexion/i.test((/<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(html) || [])[1] || "")) };
+}
 /* one fetched document → {text, via, pages?, flag?, partial?} */
 async function toText(env, got, o) {
   if (got.kind === "html") {
-    const html = decodeText(got.bytes, got.ct), pw = PASSWORD.test(html);
-    /* a sign-in page = nothing much is left once its password form is taken out; a notice page that carries the portal's login box
-       beside the notice (GHANEPS, eTenders …) is read, without the box */
-    const text = htmlText(pw ? html.replace(/<form\b[\s\S]*?<\/form\s*>/gi, f => (PASSWORD.test(f) ? " " : f)) : html);
-    const login = pw && (text.replace(/\s+/g, " ").length < 200 || /log ?in|sign ?in|تسجيل الدخول|connexion/i.test((/<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(html) || [])[1] || ""));
-    return { text, via: "local", html, flag: login ? "login" : "" };
+    const html = decodeText(got.bytes, got.ct), p = pageText(html);
+    return { text: p.text, via: "local", html, flag: p.login ? "login" : "" };
   }
   if (got.kind === "text") return { text: decodeText(got.bytes, got.ct), via: "local" };
   if (got.kind === "json") return { text: "", via: "local", json: decodeText(got.bytes, got.ct) };
@@ -509,3 +520,79 @@ export async function readItemDoc(env, it, o = {}) {
   return out;
 }
 export const isFatal = f => FATAL.has(f);
+
+/* ---------- one item's official file as bytes: the «ابعتلي» e-mail (api.js mailPack) ---------- */
+/* the attachment's name: the source's own file name when it is plain ASCII (letters, digits, space . _ ( ) -, 1-80 characters, not
+   starting with a dot), with the extension of what the bytes ARE (never the server's word); otherwise «document-<id>.<pdf|docx>» */
+export function safeFileName(name, kind, id) {
+  const base = String(name == null ? "" : name).trim().replace(/\.(?:pdf|docx)$/i, "").trim();
+  const ok = base.length >= 1 && base.length <= 80 && /^[A-Za-z0-9 ._()-]+$/.test(base) && /[A-Za-z0-9]/.test(base) && !/^\./.test(base);
+  return (ok ? base : "document-" + String(id == null ? "" : id).replace(/[^0-9A-Za-z]/g, "").slice(0, 32)) + "." + kind;
+}
+const FILE_URL_FLAGS = new Set(["too_large", "login", "forbidden", "robots", "gone", "busy", "timeout", "unreachable", "off_site"]);
+/* a hint's label as the source names it («Tender Document», «Tender Notice»): plain ASCII words, ≤ 40 characters, else none */
+const hintLabel = t => { const s = String(t == null ? "" : t).replace(/\s+/g, " ").trim(); return /^[A-Za-z][A-Za-z0-9 ()\/&.,-]{0,39}$/.test(s) ? s : ""; };
+/* it: the item row ({id, url}); o: {known: the file the doc cache already read, hints: [≤ 2 ingest hints {u, t} (or URLs)], fileCap,
+   fetchMs (8000), fetch, docHosts: [hostnames a source serves its files from besides its own site — mapping.doc_hosts]}.
+   A candidate is used only on the official site of the item's stored link (siteOf) or a docHosts host, and fetched once, through
+   fetchDoc (https, a public host, ≤ 3 checked redirects that never leave those hosts — «off_site», robots.txt, the request's deadline,
+   the cap); the bytes are kept only when their final address is on those hosts too. Order: known → hints → the stored link → when that
+   is a notice page / an OCDS release, its ONE best document (only with > 1.5 s left). No AI, no text: bytes that ARE a PDF or a DOCX only.
+   → {ok:true, kind, type, name, size, bytes, url, from: "known"|"hint"|"official"|"linked", label?, skipped?}: label = the hint's own
+     name; skipped = {label?, flag, size?, url?} when a candidate ranked before it failed (the Kenya Tender Document too large, its Tender
+     Notice attached): the e-mail names both — the member is never told «the official file» when the main one did not come
+   | {ok:false, flag, size?, fileUrl?}: the first failure of a file candidate (known, hint, linked), else "page_only" (a page or a release
+   without a file), else the stored link's own flag; fileUrl = the file that failed, for the flags a member can act on (FILE_URL_FLAGS) */
+export async function itemFile(env, it, o = {}) {
+  const fetchFn = o.fetch ? (u, i) => o.fetch(u, i) : (u, i) => fetch(u, i);
+  const home = checkUrl(it && it.url, { upgrade: true });
+  if (home.error) return { ok: false, flag: home.error === "bad_url" ? "no_document" : home.error };
+  const site = siteOf(home.url.hostname), seen = new Map();
+  const extra = new Set((Array.isArray(o.docHosts) ? o.docHosts : []).map(h => String(h || "").toLowerCase().replace(/\.$/, "")).filter(h => HOST_RE.test(h)));
+  const hostOk = u => { const h = String(u.hostname || "").toLowerCase().replace(/\.$/, ""); return siteOf(h) === site || extra.has(h); };
+  const ctx = { fetchFn, deadline: Date.now() + (o.fetchMs > 0 ? o.fetchMs : 8000), fileCap: o.fileCap > 0 ? o.fileCap : 0, hostOk };
+  let fail = null;
+  const onSite = raw => { const c = checkUrl(raw); return c.error || !hostOk(c.url) ? null : c.url; };
+  const get = async u => { const k = u.toString(); if (!seen.has(k)) seen.set(k, await fetchDoc(u, env, ctx)); return seen.get(k); };
+  const finalOk = g => { try { return hostOk(new URL(g.url)); } catch (e) { return false; } };
+  const isFile = g => !!(g && g.ok && (g.kind === "pdf" || g.kind === "docx") && finalOk(g));
+  const file = (g, from, label) => ({ ok: true, kind: g.kind, type: MIME[g.kind], name: safeFileName(g.name, g.kind, it.id), size: g.bytes.length, bytes: g.bytes, url: g.url, from,
+    ...(label ? { label } : {}),
+    ...(fail ? { skipped: { ...(fail.label ? { label: fail.label } : {}), flag: fail.flag, ...(fail.size > 0 ? { size: fail.size } : {}), ...(FILE_URL_FLAGS.has(fail.flag) && fail.url ? { url: fail.url } : {}) } } : {}) });
+  const failed = (flag, url, size) => ({ ok: false, flag, ...(size > 0 ? { size } : {}), ...(FILE_URL_FLAGS.has(flag) && url ? { fileUrl: url } : {}) });
+  const note = (g, key, label) => {
+    if (fail) return;
+    if (g.flag) fail = { flag: g.flag, url: key, size: g.size, label };
+    else if (g.ok && !finalOk(g)) fail = { flag: "off_site", url: key, label };
+    else if (g.kind === "html" && pageText(decodeText(g.bytes, g.ct)).login) fail = { flag: "login", url: key, label };
+  };
+  const cands = [[o.known, "known", ""]].concat((Array.isArray(o.hints) ? o.hints : []).slice(0, 2)
+    .map(h => (h && typeof h === "object" ? [h.u, "hint", hintLabel(h.t)] : [h, "hint", ""])));
+  for (const [raw, from, label] of cands) {
+    const u = raw && typeof raw === "string" ? onSite(raw) : null;
+    if (!u || seen.has(u.toString())) continue;
+    const g = await get(u);
+    if (isFile(g)) return file(g, from, label);
+    note(g, u.toString(), label);
+  }
+  /* the stored link (its answer is reused when it was one of the candidates) */
+  const off = home.url.toString(), g = await get(home.url);
+  if (isFile(g)) return file(g, "official", "");
+  if (g.flag) return fail ? failed(fail.flag, fail.url, fail.size) : failed(g.flag, off, g.size);
+  if (g.ok && !finalOk(g)) return fail ? failed(fail.flag, fail.url, fail.size) : failed("off_site", off);
+  /* a notice page (or an OCDS release): its ONE best document on the same official site */
+  let login = false, links = [];
+  if (g.kind === "html") { const html = decodeText(g.bytes, g.ct); login = pageText(html).login; links = docLinks(html, g.url); }
+  else if (g.kind === "json") links = jsonDocs(decodeText(g.bytes, g.ct), g.url);
+  const pick = links.map(l => onSite(l.url)).find(u => u && !seen.has(u.toString()));
+  if (pick) {
+    if (ctx.deadline - Date.now() > 1500) {
+      const g2 = await get(pick);
+      if (isFile(g2)) return file(g2, "linked", "");
+      note(g2, pick.toString(), "");
+    } else if (!fail) fail = { flag: "timeout", url: pick.toString() };
+  }
+  if (fail) return failed(fail.flag, fail.url, fail.size);
+  if (login) return failed("login", off);
+  return { ok: false, flag: "page_only" };
+}

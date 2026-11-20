@@ -5,7 +5,7 @@ import test from "node:test"; import assert from "node:assert/strict";
 import { deflateSync, deflateRawSync, crc32 } from "node:zlib";
 import { fileURLToPath } from "node:url"; import { dirname, join } from "node:path";
 import { tool, itemRef, itemText, moneyAr, handleApi } from "../src/api.js";
-import { checkUrl, siteOf, requirementsExcerpt, pdfText, docxText, readable, htmlText, docLinks, jsonDocs, cleanDocText, DOC_LIMITS, TOPIC_AR } from "../src/doc.js";
+import { checkUrl, siteOf, requirementsExcerpt, pdfText, docxText, readable, htmlText, docLinks, jsonDocs, cleanDocText, DOC_LIMITS, TOPIC_AR, fetchDoc, safeFileName } from "../src/doc.js";
 import { enrichPending, aiBudget } from "../src/enrich.js";
 import { itemHtml } from "../src/pages.js";
 import { makeD1, makeKV } from "./d1.mjs";
@@ -354,4 +354,28 @@ test("the item page keeps the markup Bassem's screen reader uses (data/bassem-li
 test("itemText never invents: no deadline → said; an unknown currency code is kept as written", () => {
   const t = itemText({ ...GH, deadline: null, value: 5000, currency: "XYZ" }, { name: "Ghana – GHANEPS", name_ar: "غانا – منظومة GHANEPS" }, NOW);
   assert.match(t, /ميعاد التقديم مش منشور في المصدر/); assert.match(t, /القيمة التقديرية ٥,٠٠٠ XYZ/); assert.match(t, /المصدر الرسمي: غانا – منظومة GHANEPS/);
+});
+test("fetchDoc fileCap («ابعتلي» attachments): a lower cap for PDF / DOCX only; an untyped answer is read up to max(fileCap, the HTML cap); none → as before", async () => {
+  const env = { KV: makeKV() }, at = (url, res, fileCap) => fetchDoc(new URL(url), env, { fetchFn: net({ [url]: res }).fn, deadline: Date.now() + 5000, ...(fileCap ? { fileCap } : {}) });
+  const U = "https://www.etenders.gov.za/a.pdf", two = new Uint8Array(2_000_000); two.set(Buffer.from("%PDF-1.4\n"));
+  const r1 = await at(U, () => new Response(two, { headers: { "content-type": "application/pdf", "content-length": String(two.length) } }), 1_000_000);
+  assert.deepEqual([r1.flag, r1.size], ["too_large", 2_000_000], "Content-Length over the file cap");
+  const r2 = await at(U, () => new Response(two, { headers: { "content-type": "application/pdf" } }), 1_000_000);
+  assert.deepEqual([r2.flag, r2.size > 1_000_000], ["too_large", true], "streamed over the file cap");
+  const ok = await at(U, () => new Response(two, { headers: { "content-type": "application/pdf" } }));
+  assert.deepEqual([ok.ok, ok.kind, ok.bytes.length], [true, "pdf", 2_000_000], "no fileCap: the 10 MB PDF cap, as before");
+  /* octet-stream with no file name: read up to max(fileCap, 3 MB) — a 2 MB HTML page passes (its own cap), a 2 MB PDF does not */
+  const V = "https://www.etenders.gov.za/home/Download?blobName=0f1e2d3c", page = "<!doctype html><html><body>" + "x".repeat(2_000_000) + "</body></html>";
+  const h = await at(V, () => new Response(page, { headers: { "content-type": "application/octet-stream" } }), 1_000_000);
+  assert.deepEqual([h.ok, h.kind], [true, "html"]);
+  const p = await at(V, () => new Response(two, { headers: { "content-type": "application/octet-stream" } }), 1_000_000);
+  assert.deepEqual([p.flag, p.size], ["too_large", 2_000_000], "sniffed PDF over the file cap");
+  const big = new Uint8Array(DOC_LIMITS.maxBytes.html + 10);
+  const q = await at(V, () => new Response(big, { headers: { "content-type": "application/octet-stream" } }), 1_000_000);
+  assert.equal(q.flag, "too_large", "an untyped answer is never read past max(fileCap, the HTML cap)");
+  /* the attachment's name: the source's own when plain ASCII, the sniffed extension; otherwise document-<id> */
+  assert.equal(safeFileName("RW 01234 RFQ advert.pdf", "pdf", "rw0000000a1"), "RW 01234 RFQ advert.pdf");
+  assert.equal(safeFileName("tender.PDF", "docx", "x"), "tender.docx", "the extension is what the bytes are");
+  for (const bad of ["كراسة الشروط.pdf", "../../etc/passwd", ".hidden.pdf", "a".repeat(81) + ".pdf", "", "a\u0000b.pdf", "x<script>.pdf"])
+    assert.equal(safeFileName(bad, "pdf", "rw0000000a1"), "document-rw0000000a1.pdf", JSON.stringify(bad));
 });

@@ -6,7 +6,7 @@ import test from "node:test"; import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs"; import { gunzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url"; import { dirname, join } from "node:path";
 import { ADAPTERS, ADAPTER_MODULES, adapterFor, parseBody } from "../src/parsers.js";
-import { fetchSource, runCycle, normalise, dueSources, DedupeIndex, applyDetail, LIMITS } from "../src/engine.js";
+import { fetchSource, runCycle, normalise, dueSources, DedupeIndex, applyDetail, LIMITS, DOC_HINT_TTL } from "../src/engine.js";
 import { handleApi } from "../src/api.js";
 import { itemHtml } from "../src/pages.js";
 import { UA, KINDS, itemId } from "../src/util.js";
@@ -214,6 +214,37 @@ test("one cycle over all 19 ready sources from the real seed SQL: stored, tagged
   assert.match((await DB.prepare("SELECT summary_orig FROM intel_items WHERE source_id='ida-news' AND ext_id='337'").first()).summary_orig, /^بشأن التعاقد/);
   const src = await DB.prepare("SELECT fail_count, last_err, items_total FROM intel_sources WHERE id='ebrd-ecepp'").first();
   assert.equal(src.fail_count, 0); assert.equal(src.last_err, null); assert.ok(src.items_total >= 1);
+});
+
+test("Kenya PPIP run: the notices' own files are kept as KV hints «dochint:<id>» (60 days) for the stored items only; an unchanged run writes none", async () => {
+  const DB = makeD1(join(root, "migrations", "0001_init.sql")), KV = makeKV(), puts = [], put0 = KV.put;
+  KV.put = async (k, v, o) => { puts.push({ k, v, o }); return put0(k, v, o); };
+  DB._db.exec(readFileSync(join(root, "seeds", "sources.sql"), "utf8"));
+  const st = await runCycle({ DB, KV }, { trigger: "test", sourceIds: ["ke-ppip"], fetch: fakeNet().fn, now: NOW, gate: noGate, sleep: noSleep, enrich: false, Rewriter: ShimRewriter });
+  const e = st.sources.find(x => x.id === "ke-ppip");
+  assert.equal(e.status, "ok", e.error);
+  const kept = new Set(((await DB.prepare("SELECT id FROM intel_items WHERE source_id='ke-ppip'").all()).results || []).map(r => r.id));
+  const hintPuts = puts.filter(p => p.k.startsWith("dochint:"));
+  assert.ok(hintPuts.length >= 5, "hints written: " + hintPuts.length); assert.equal(e.hints, hintPuts.length, "the run log counts them");
+  for (const p of hintPuts) {
+    const id = p.k.slice("dochint:".length);
+    assert.ok(kept.has(id), "a hint only for an item this run stored: " + id);
+    assert.deepEqual(p.o, { expirationTtl: DOC_HINT_TTL }); assert.equal(DOC_HINT_TTL, 60 * 86400);
+    const v = JSON.parse(p.v);
+    assert.deepEqual(Object.keys(v), ["h"]); assert.ok(v.h.length >= 1 && v.h.length <= 2);
+    for (const x of v.h) { assert.deepEqual(Object.keys(x).sort(), ["t", "u"]); assert.match(x.u, /^https:\/\/tenders\.go\.ke\/storage\/Documents\//); }
+  }
+  /* every stored notice whose record lists a Tender Document / Notice has its hint */
+  const raw = JSON.parse(FXF("json/ke-ppip-active.json")).data;
+  for (const r of raw) {
+    const id = itemId("ke-ppip", String(r.id)), has = (r.documents || []).some(d => !d.deleted_at && /^tender (?:document|notice)$/i.test((d.type || {}).description || ""));
+    if (kept.has(id) && has) assert.ok(await KV.get("dochint:" + id), "hint for " + r.id);
+    if (!kept.has(id)) assert.equal(await KV.get("dochint:" + id), null, "no hint for a notice that was not stored: " + r.id);
+  }
+  /* the same answer again: nothing new to write */
+  const before = puts.length;
+  await runCycle({ DB, KV }, { trigger: "test", sourceIds: ["ke-ppip"], fetch: fakeNet().fn, now: NOW + 3600e3, gate: noGate, sleep: noSleep, enrich: false, Rewriter: ShimRewriter });
+  assert.equal(puts.slice(before).filter(p => p.k.startsWith("dochint:")).length, 0, "an unchanged hint is not written again");
 });
 
 test("fetch hints: retries with backoff on 503/429, a failing later page keeps the pages already read, cursor paging stays on the host", async () => {

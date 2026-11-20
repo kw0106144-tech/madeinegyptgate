@@ -1,14 +1,17 @@
 /* migate-intel — public JSON API (/api/intel/*), Bassem's Anam SERVER_WEBHOOK (/api/intel/tool) and admin endpoints. */
-import { KIND_GROUPS, KINDS, KIND_LABEL, SITE, timingSafeEqual, cairoDay, addDays, fmtDay, fmtCairo, ID_RE, normText, sqlLit, clip, stripUrls, dayOf, canonicalUrl, stripContacts, hash53 } from "./util.js";
-import { readItemDoc, TOPIC_AR } from "./doc.js";
+import { KIND_GROUPS, KINDS, KIND_LABEL, KIND_SEG, SITE, timingSafeEqual, cairoDay, addDays, fmtDay, fmtCairo, ID_RE, normText, sqlLit, clip, stripUrls, dayOf, canonicalUrl, stripContacts, hash53 } from "./util.js";
+import { readItemDoc, itemFile, TOPIC_AR } from "./doc.js";
 import { sectorIndex, sectorName, SECTORS } from "./sectors.js";
 import { marketFilter, marketsFilter, marketName, PLAN_SCOPE } from "./markets.js";
 import { itemPath, shownTitle } from "./pages.js";
-import { runCycle, dailyJobs, newsSweep } from "./engine.js";
+import { runCycle, dailyJobs, newsSweep, mappingOf } from "./engine.js";
 import { enrichPending, translateTitles, aiBudget, sanitise } from "./enrich.js";
 import { parseQuery, resolveMarket, resolveMarkets, resolveSector, resolveKind, matchItem, itemHay, accepts, fullMatch, textPatterns, literalLike, HAY_SQL, spokenDay, countAr, OPP_WORDS, NEWS_COUNT, daysAr, arDigits, MARKET_GROUP_NAME } from "./terms.js";
 
 const ORIGINS = ["https://madeinegyptgate.com", "https://www.madeinegyptgate.com"];
+/* the hostname janna-lookup puts in the Request it sends through its service binding INTEL (worker/src/notify-items.js PACK_HOST):
+   «.invalid» never resolves (RFC 6761) and is no Cloudflare zone, so no public request can carry it */
+export const PACK_HOST = "mailpack.binding.invalid";
 function cors(req) {
   const o = req.headers.get("Origin");
   return { "Access-Control-Allow-Origin": o && (ORIGINS.includes(o) || /^http:\/\/localhost(:\d+)?$/.test(o)) ? o : ORIGINS[0], "Vary": "Origin", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Platform-Key, X-Intel-Key" };
@@ -327,7 +330,7 @@ async function itemTool(env, body, nowMs, action, o = {}) {
       note: "Say only what `text` and `item` contain (a missing field is not published at the source: say so). In Bassem's calls its page opens on the shared screen by itself. Its own official document (requirements, documents, bid bond): bassem_intel action=doc with this id. Never read links aloud." };
   }
   /* action "doc": cached per item and link (12 h; a failure 30 min, a timeout / an unreachable site 5 min) */
-  const key = "doc:v1:" + r.id + ":" + hash53(String(r.url || "")).toString(36);
+  const key = docKey(r);
   let d = null;
   if (env.KV && !o.noCache) { try { d = await env.KV.get(key, "json"); } catch (e) { d = null; } }
   if (!d) {
@@ -353,6 +356,79 @@ async function itemTool(env, body, nowMs, action, o = {}) {
   return { ...head, ok: true, flags: d.flags, doc: { type: d.doc.type, pages: pages || null, lang: lang || null, via: d.doc.via, from: d.doc.from, url: d.doc.url },
     sections: { found, missing }, key_lines: d.key_lines, excerpt: d.excerpt, text,
     note: "excerpt / key_lines = the document's own text" + (lang && lang !== "ar" ? " (" + lang + "): explain it in Egyptian Arabic, never word by word" : "") + ". Say ONLY what they contain: the 2-3 points he asked about (scope, eligibility, documents, bid bond, deadline, submission, briefing). Anything not in them: «مالقيتهاش في المستند». Never add a requirement, figure or date; never read links, e-mail addresses or phone numbers aloud." };
+}
+/* the doc cache's key (action "doc" above): per item and stored link */
+const docKey = r => "doc:v1:" + r.id + ":" + hash53(String(r.url || "")).toString(36);
+
+/* ---------- «ابعتلي»: one item's mail pack for janna-lookup (POST /api/intel/mailpack, binding-only — handleApi) ----------
+   b = {id, file?: true, max_bytes?: 8e6 (1e5..8e6), budget_ms?: 8000 (2000..25000; janna-lookup sends ≤ 20000: a 2.4 MB Kenya PPIP file
+   took 12 s to download from outside Kenya)} — an id only: no URL, title or address is ever taken. janna-lookup asks twice: first
+   {file:false} for every item of a note (the cards: no third-party fetch), then {file:true} for the files, one after another.
+   → {status, body, bytes?}: 200 {ok, id (the primary), requested, card (the item's stored facts in both languages, contacts and links out
+   of its summaries), links {page, page_en (short /intel/<seg>/<id>/ links the item pages 301 to their canonical URL), source (the stored
+   official link), doc (the file attached or the one that failed)}, file {name, type, size, from, label?} | null, skipped?, reason (why no
+   file: with file:false "kind" / "source_opt_out" / "not_requested"), reason_size?} + bytes = the file itself, which handleApi sends as
+   the raw body (mailFileResponse: never base64 inside JSON — the memory of one copy, not five) · 400 bad id · 404 unknown · 410 removed /
+   hidden. A file only for tenders, RFQs and projects (news: the RSS terms allow headline + snippet + link only), never for a source whose
+   mapping says attach:false or that is in NO_FILE_SOURCES; doc.js itemFile reads it (no AI, no text). */
+const PACK_KINDS = new Set(["tender_gov", "tender_semi", "tender_private", "rfq", "project"]);
+/* sources whose terms allow only a limited extract with attribution (IsDB: isdb.org/terms-conditions, seeds/sources.json terms_note):
+   their documents are never forwarded, whatever their D1 mapping says (a mapping changes only by a manual seed run). Owner's decision
+   pending (spec open question 6): until then, the link only */
+export const NO_FILE_SOURCES = new Set(["isdb-tenders", "isdb-egypt-rss"]);
+const clampNum = (v, def, lo, hi) => { const n = +v; return Math.min(hi, Math.max(lo, Number.isFinite(n) && n > 0 ? n : def)); };
+async function kvJson(env, key) { if (!env.KV) return null; try { return await env.KV.get(key, "json"); } catch (e) { return null; } }
+/* the file answer: the bytes as the body, its facts in one header (ASCII JSON: every non-ASCII character escaped) */
+const asciiJson = o => JSON.stringify(o).replace(/[^\x20-\x7e]/g, c => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+export function mailFileResponse(req, out) {
+  const b = out.body, meta = { ok: true, id: b.id, requested: b.requested, file: b.file, doc: b.links.doc, ...(b.skipped ? { skipped: b.skipped } : {}) };
+  return new Response(out.bytes, { status: 200, headers: { "Content-Type": b.file.type, "Content-Length": String(out.bytes.length), "Cache-Control": "no-store", "X-Mailpack": asciiJson(meta), ...cors(req) } });
+}
+export async function mailPack(env, b = {}, o = {}) {
+  const id = String(b && b.id != null ? b.id : "").trim().toLowerCase();
+  if (!ID_RE.test(id)) return { status: 400, body: { error: "bad id" } };
+  const db = env.DB;
+  const row = await db.prepare("SELECT id FROM intel_items WHERE id=?").bind(id).first();
+  if (!row) {
+    const g = await db.prepare("SELECT id FROM intel_gone WHERE id=?").bind(id).first();
+    return g ? { status: 410, body: { ok: false, found: false, gone: true } } : { status: 404, body: { ok: false, found: false } };
+  }
+  const r = await findItem(db, { id });   // follows dup_of; an item an admin hid is gone
+  if (!r) return { status: 410, body: { ok: false, found: false, gone: true } };
+  const src = await db.prepare("SELECT id, name, name_ar, mapping FROM intel_sources WHERE id=?").bind(r.source_id).first();
+  const it = itemFull(r, src), seg = KIND_SEG[r.kind] || "news", cur = it.currency ? String(it.currency).toUpperCase() : null;
+  const card = {
+    kind: r.kind, kind_label: it.kind_label, kind_label_en: KIND_LABEL[r.kind] ? KIND_LABEL[r.kind][1] : r.kind, market: r.market,
+    title: it.title, title_en: r.title_en || null, title_orig: r.title_orig, title_is_original: shownTitle(r, "ar").orig,
+    entity: it.entity, country: it.country, market_name: it.market_name, market_name_en: marketName(r.market, "en"),
+    sector: it.sector, sector_en: r.sector != null ? sectorName(r.sector, "en") || null : null,
+    published: it.published, deadline: it.deadline, status: r.status,
+    value: it.value, currency: cur, currency_ar: cur ? CUR_AR[cur] || null : null,
+    summary: it.summary, summary_en: r.summary_en ? stripContacts(stripUrls(r.summary_en)) || null : null, summary_original: it.summary_original,
+    source_name: it.source, source_name_en: src ? src.name || null : null,
+  };
+  const links = { page: SITE + "/intel/" + seg + "/" + r.id + "/", page_en: SITE + "/intel/en/" + seg + "/" + r.id + "/", source: r.url || null, doc: null };
+  const out = { ok: true, id: r.id, requested: id, card, links, file: null, reason: null };
+  const mp = mappingOf(src), noFile = !PACK_KINDS.has(r.kind) ? "kind" : mp.attach === false || NO_FILE_SOURCES.has(String(r.source_id || "")) ? "source_opt_out" : "";
+  if (b.file === false || noFile) { out.reason = noFile || "not_requested"; return { status: 200, body: out }; }
+  const maxBytes = clampNum(b.max_bytes, 8e6, 1e5, 8e6), budget = clampNum(b.budget_ms, 8000, 2000, 25000);
+  /* what the doc cache already read (a scanned PDF too), then the ingest hints of this id and of its primary (with their labels) */
+  const d = await kvJson(env, docKey(r));
+  const known = d && d.doc && (d.doc.type === "pdf" || d.doc.type === "docx") && typeof d.doc.url === "string" ? d.doc.url : "";
+  const hints = [];
+  for (const k of new Set([id, r.id])) {
+    const h = await kvJson(env, "dochint:" + k);
+    for (const x of (h && Array.isArray(h.h) ? h.h : [])) if (x && typeof x.u === "string" && !hints.some(y => y.u === x.u)) hints.push({ u: x.u, t: typeof x.t === "string" ? x.t.slice(0, 40) : "" });
+  }
+  const docHosts = Array.isArray(mp.doc_hosts) ? mp.doc_hosts.filter(h => typeof h === "string").slice(0, 5) : [];
+  const f = await itemFile(env, r, { known, hints: hints.slice(0, 2), fileCap: maxBytes, fetchMs: budget - 500, fetch: o.fetch, docHosts });
+  if (f.ok) {
+    out.file = { name: f.name, type: f.type, size: f.size, from: f.from, ...(f.label ? { label: f.label } : {}) }; links.doc = f.url;
+    if (f.skipped) out.skipped = f.skipped;
+    return { status: 200, body: out, bytes: f.bytes };
+  }
+  out.reason = f.flag; if (f.size > 0) out.reason_size = f.size; links.doc = f.fileUrl || null;
+  return { status: 200, body: out };
 }
 
 export async function tool(env, body = {}, nowMs = Date.now(), o = {}) {
@@ -491,6 +567,18 @@ export async function handleApi(req, env, ctx) {
         db.prepare("SELECT COUNT(*) AS items, SUM(CASE WHEN ai=1 THEN 1 ELSE 0 END) AS ai_done, SUM(CASE WHEN ai=0 THEN 1 ELSE 0 END) AS ai_pending, SUM(CASE WHEN ai=3 THEN 1 ELSE 0 END) AS ai_titles_only, SUM(CASE WHEN hidden=2 THEN 1 ELSE 0 END) AS news_unlisted FROM intel_items"),
       ]);
       return json(req, { ok: true, runs: runs.results, failing_sources: failing.results, stale_sources_2d: stale.results, totals: counts.results[0], ai: await aiBudget(env) });
+    }
+    /* «ابعتلي» mail packs: ONLY on the binding-only hostname (janna-lookup's service binding INTEL sends its own Request URL; public
+       traffic always arrives on madeinegyptgate.com / www / the workers.dev name and gets the plain 404 of an unknown path) —
+       INTEGRATION.md §9. The rate limit runs after that check, so outside requests never write to KV. */
+    if (path === "/api/intel/mailpack") {
+      if (url.hostname !== PACK_HOST) return json(req, { error: "not found" }, 404);
+      if (req.method !== "POST") return json(req, { error: "method" }, 405);
+      if (await rateLimited(env, req, +(env.PACK_RATE_PER_MIN || 60), "rlp:")) return json(req, { error: "rate limited" }, 429);
+      let b; try { b = await req.json(); } catch (e) { return json(req, { error: "bad json" }, 400); }
+      if (!b || typeof b !== "object" || Array.isArray(b)) return json(req, { error: "bad json" }, 400);
+      const out = await mailPack(env, b);
+      return out.bytes ? mailFileResponse(req, out) : json(req, out.body, out.status);
     }
     if (path === "/api/intel/tool") {
       if (req.method !== "POST" && req.method !== "GET") return json(req, { error: "method" }, 405);
