@@ -195,3 +195,21 @@ describe("calls-review: no false alarm on a good call", () => {
     assert.deepEqual([pl("المناقصة مطروحة من أسبوع"), pl("وصلنا بدري"), pl("مصنعنا بالقاهرة"), pl("إحنا في مطروح")], ["", "", "القاهرة", "مطروح"]);
   });
 });
+
+describe("calls-review: a concrete answer names a result", () => {
+  const lk = (query, names) => ({ name: "janna_lookup", args: { section: "suppliers", query }, result: { count: names.length, results: names.map(n => ({ name: n })) } });
+  const call = (ask, title, said) => conv([{ i: 0, persona: "أهلاً بيك! أنا جنة.", t: 1, engine: true }, { i: 1, user: ask, persona: "تمام، هدوّر لك.", t: 10, tools: [lk("علب كرتون", [title])] },
+    { i: 2, user: "تمام", persona: said, t: 25 }, { i: 3, user: "لا متشكر", persona: "العفو!", t: 40 }]);
+  test("«شركة الأمل» said word for word and «مصنع النموذج» for «مصنع النموذج للتغليف» are concrete («جزئياً» without a next step, not «مافادتش»)", () => {
+    for (const [title, said] of [["شركة الأمل", "لقيت شركة الأمل، تحب أبعتلها طلب؟"], ["مصنع النموذج للتغليف", "لقيت مصنع النموذج، تحب أبعتله طلب؟"]]) {
+      const r = reviewConversation(call("أنا محتاج مورد علب كرتون", title, said));
+      assert.deepEqual([r.concrete, r.verdict], [true, "partial"], title);
+    }
+  });
+  test("an echo of the caller's own request («مصنع حديد» for «عايز مصنع حديد تسليح») is still no concrete answer", () => {
+    const r = reviewConversation(conv([{ i: 0, persona: "أهلاً!", t: 1, engine: true },
+      { i: 1, user: "عايز مصنع حديد تسليح", persona: "تمام، بدور على مصنع حديد دلوقتي.", t: 10, tools: [lk("حديد تسليح", ["مصنع حديد تسليح المتحدة"])] },
+      { i: 2, user: "ها؟", persona: "فيه نتايج كتير، تحب نشوف؟", t: 25 }]));
+    assert.deepEqual([r.concrete, r.verdict], [false, "not_useful"]);
+  });
+});

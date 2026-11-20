@@ -226,9 +226,14 @@ export function reviewConversation(c) {
   const qs = uniq(tools.filter(x => /^(janna_lookup|janna_search)$/.test(x.name) && (!argOf(x, "section") || FACTORY_SECTIONS.test(argOf(x, "section")) || /^(tenders|rfqs)$/.test(argOf(x, "section")))).map(x => argOf(x, "query")).filter(Boolean));
   out.productWords = qs.map((qq, k) => ({ qq, k, n: words(qq).filter(w => said.has(w)).length })).sort((a, b) => b.n - a.n || a.k - b.k).map(x => x.qq).slice(0, 3);
 
-  /* concrete answer: the persona said ≥ 2 consecutive words of a title or name a non-empty result returned */
+  /* concrete answer: the persona said ≥ 2 consecutive tokens of a title or name a non-empty result returned — two content words, or a stop
+     word + a content word («شركة الأمل», «مصنع النموذج») when that word names the result: the title's only content word, or one the caller
+     never said (no echo of his own request, «مصنع حديد»). Review 2026-11-20: «شركة الأمل» said word for word was never concrete */
   const personaN = turns.map(t => " " + words(t.persona).join(" ") + " ").join(" ");
-  out.concrete = allTitles.some(tt => { const w = words(tt); for (let i = 0; i + 1 < w.length; i++) if (personaN.includes(" " + w[i] + " " + w[i + 1] + " ")) return true; return false; });
+  const toks = t => N(t).split(" ").filter(w => w.length > 1).map(w => w.replace(/^و(?=\S{3,})/, "").replace(/^ال(?=\S{3,})/, "")), isC = w => !STOP.has(w);
+  const personaT = turns.map(t => " " + toks(t.persona).join(" ") + " ").join(" ");
+  out.concrete = allTitles.some(tt => { const w = words(tt); for (let i = 0; i + 1 < w.length; i++) if (personaN.includes(" " + w[i] + " " + w[i + 1] + " ")) return true; return false; })
+    || allTitles.some(tt => { const w = toks(tt), nC = w.filter(isC).length; for (let i = 0; i + 1 < w.length; i++) { const c = [w[i], w[i + 1]].filter(isC); if (c.length === 1 && c[0].length >= 3 && (nC === 1 || !said.has(c[0])) && personaT.includes(" " + w[i] + " " + w[i + 1] + " ")) return true; } return false; });
 
   /* R1 promise_no_tool + R18 nudge_after_promise */
   if (!na.has("promise_no_tool")) {
