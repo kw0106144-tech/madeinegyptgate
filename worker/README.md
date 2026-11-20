@@ -730,8 +730,9 @@ structure and 64–2,048 px (422 `invalid_image`, `why` … / `resize_needed`) �
 janna-session.js countDay; `CHAT_VISION_DAILY`, default 300, "0" = no reading) → 200 `reason:"ai_cap"` without an AI call · ONE `env.AI.run(model,
 input)` (two arguments: never an AI Gateway option, whose logs would keep the image), raced against `CHAT_VISION_TIMEOUT_MS` (12,000) → `ai_timeout` /
 `ai_error` / `unclear` · the guard (`sanitiseSeen`: contacts — the platform's own numbers allowed —, links, @handles, 9+ digits, addresses, orders,
-instruction-like text, numbers not in the kept text, the wrong script, leaks of dropped tokens; a label / document / screenshot with any of them, or
-two kinds at once, drops the whole reading; barcodes are not phones) · `contextBlock` (Janna AR / EN, Bassem AR: the reading marked as data that may be
+the platform's own note / reading markers, instruction-like text, numbers not in the kept text, the wrong script, leaks of dropped tokens; a label /
+document / screenshot with any of them, or two kinds at once, drops the whole reading; barcodes are not phones; an ID card, passport, licence or bank
+card the model did not call `id_document` is refused like one) · `contextBlock` (Janna AR / EN, Bassem AR: the reading marked as data that may be
 wrong, «she / he does not see the photo», janna_search's real sections, the «are you looking for it or making it?» question) · `seal` (`s1.<sha16>.<code>.
 <exp36>.<sig22>`, 6 h: what this Worker read of these bytes, for phase 1B — not used yet). Every answer: `no-store`, `nosniff`, `Server-Timing ai;dur, total;dur`.
 Model (`CHAT_VISION_MODEL`, default `@cf/meta/llama-4-scout-17b-16e-instruct`): Workers-AI-native shape `{messages, max_tokens, temperature,

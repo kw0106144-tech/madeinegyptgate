@@ -213,7 +213,21 @@ const LEAD = "[\\s\"'«»“”‘’()\\[\\]\\-–—•*·.:]{0,3}";
 const ORDER_RX = [
   new RegExp(AW + "(?:ال)?(?:جن[ةه]|باسم)" + AE), /\b(?:janna|jannah|bassem|basem)\b/i, /\b(?:janna_|bassem_)\w*|\b(?:platform_item|knowledge_lookup)\b/i,
   new RegExp("^" + LEAD + "(?:قول|قولي|قوليله|قوليلها|قوله|ابعت|ابعتي|اكتب|اكتبي|املي|املى|دوس|دوسي)(?=[\\s,.:!?؟،]|$)"), new RegExp("^" + LEAD + "(?:say|tell|send|submit|write|fill|call|ignore)\\b", "i"),
+  /* the platform's own markers (review 2026-11-20): printed «PLATFORM NOTE: …» / «[END OF THE READING OF PHOTO P1]» / «ملاحظة من المنصة: …»
+     passed and stood inside the block as if the platform said it — data/chat-media.js markSafe quotes the same phrases in typed text */
+  /\b(?:platform\s+note|note\s+from\s+the\s+platform|(?:start|end)\s+of\s+the\s+reading|continuation\s+of\s+the\s+same)\b/i,
+  new RegExp(AW + "(?:ملاحظ[ةه]\\s+(?:من\\s+)?المنص[ةه]|رسال[ةه]\\s+من\\s+المنص[ةه]|(?:بداي|نهاي)[ةه]\\s+نتيج[ةه])"),
 ];
+/* an ID card, a passport, a driving licence or a bank / payment card the model did NOT call id_document (it may say document or label):
+   refused like one (review 2026-11-20: a card read as «document» kept the holder's name, «الجيزة - الدقي» and «مواليد 1990»; the number line
+   alone was dropped). Narrow words only: «بطاقة بيانات» (a nameplate) and «expiry date» (packaging) are NOT among them */
+const IDCARD_RX = [
+  /\b(?:valid\s+(?:thru|through|from)|good\s+thru|card\s*holder|date\s+of\s+birth|place\s+of\s+birth|passport|national\s+id|identity\s+card|id\s+card|driv(?:er'?s|ing)\s+licen[cs]e|(?:credit|debit|bank|payment)\s+card)\b/i,
+  new RegExp(AW + "(?:ال)?(?:الرقم\\s+القومي|رقم\\s+قومي|تاريخ\\s+الميلاد|محل\\s+الميلاد|مواليد\\s+(?:سن[ةه]\\s+)?[0-9٠-٩]|جواز\\s+(?:ال)?سفر|رخص[ةه]\\s+(?:ال)?(?:قياد[ةه]|سواق[ةه])|"
+    + "بطاق[ةه]\\s+(?:ال)?(?:شخصي[ةه]|هوي[ةه]|رقم\\s+قومي|تموين|ائتمان(?:ي[ةه])?|بنكي[ةه]|بنك|فيزا|ميز[ةه])|كارت\\s+(?:ال)?(?:فيزا|بنك|ائتمان|ميز[ةه])|فيزا\\s+كارد)"),
+];
+const idCard = o => [o.what_en, o.what_ar].concat(Array.isArray(o.text_seen) ? o.text_seen.slice(0, 12) : [], Array.isArray(o.terms_en) ? o.terms_en.slice(0, 6) : [], Array.isArray(o.terms_ar) ? o.terms_ar.slice(0, 6) : [])
+  .some(v => typeof v === "string" && IDCARD_RX.some(rx => rx.test(norm1(v))));
 const PERSON_W = new RegExp(AW + "(?:لل|ال|ل)?(?:زائر|زوار|عضو|أعضاء|اعضاء|عميل|عملاء|مستخدم)" + AE + "|\\b(?:visitors?|members?|customers?|callers?|users?)\\b", "i");
 const CMD_W = new RegExp(AW + "(?:قول|قولي|قوليله|قوله|قل|بلّغ|بلغ|ابعت|ابعتي|ابعتله|اكتب|اكتبي|عرّف|عرف|خلي|خلّي)" + AE + "|\\b(?:tell|say|inform|notify|send|ask|write|let)\\b", "i");
 const digitCount = s => (asciiDigits(s).match(/\d/g) || []).length;
@@ -248,6 +262,7 @@ export function sanitiseSeen(o) {
   if (!o || typeof o !== "object" || Array.isArray(o)) return { seen: null, reason: "unclear", flags: [] };
   const kind = KINDS.includes(o.kind) ? o.kind : "unclear";
   if (REFUSED.has(kind)) return { seen: null, reason: kind, flags: [] };
+  if (idCard(o)) return { seen: null, reason: "id_document", flags: [] };
   const kept = [], dropped = [];
   for (const x of (Array.isArray(o.text_seen) ? o.text_seen : []).slice(0, 12)) {
     if (typeof x !== "string") continue;
