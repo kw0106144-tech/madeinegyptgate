@@ -52,6 +52,12 @@ describe("U18: the greeting is no topic", () => {
     const old = buildSummary({ callId: "jc-greet-0004", turns: [{ role: "user", text: "أنا كريم من الصعيد", seq: 1 }], searches: [], tools: [{ name: "janna_lookup", args: { query: "زجاج" } }] });
     assert.ok(old.topics.some(t => /صعيد/.test(t)), old.topics.join("، "));
   });
+  test("review: a short turn before the first tool call that talks business stays — «عندي مصنع كسوة سلندرات» is what the seller makes", () => {
+    const s = buildSummary({ callId: "jc-greet-0005", turns: [{ role: "persona", text: GREET, seq: 0 }, { role: "user", text: "أهلاً، عندي مصنع كسوة سلندرات", seq: 1 }, { role: "user", text: "عايز مطابع", seq: 2 }],
+      searches: [{ tool: "janna_lookup", query: "مطابع", count: 37, results: [{ title: "x" }] }], tools: [{ name: "janna_lookup", args: { section: "customers", query: "مطابع" }, outcome: "ok", s: 3 }], final: true });
+    assert.ok(s.topics.some(t => /سلندر/.test(t)) && s.topics.some(t => /كسو/.test(t)), s.topics.join("، "));
+    assert.ok(!s.topics.some(t => /اهلا|أهلاً/.test(t)), s.topics.join("، "));
+  });
 });
 
 describe("U18: a call where the visitor said nothing is no visit", () => {

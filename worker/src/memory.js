@@ -207,6 +207,12 @@ const FILLER = new Set(["يعني", "كده", "كدا", "طيب", "ايوه", "�
   "زهقان", "زهقانه", "مضايق", "مضايقه", "مدايق", "مدايقه", "متضايق", "متضايقه", "منور", "منوره", "نورت", "نورتي", "نورتنا", "شرفت", "شرفتي", "شرفتنا", "اتشرفنا", "يسعدني",
   "بيك", "بيكي", "بيكم", "حبيبي", "حبيبتي", "يافندم", "جنه", "جنتي", "بسام", "مسؤوله", "مسئوله", "مسؤول", "مسئول", "janna", "bassem", "hi", "hey", "welcome", "fine", "morning", "evening",
   "ok", "okay", "yes", "no", "hello", "thanks", "thank", "yeah", "well", "just", "like", "know", "want", "also", "very", "good", "great", "sure", "right", "this", "that", "what"].map(w => stem(w)));
+/* U18 review: a turn with one of these words talks business (what the client makes, sells or needs) — never left out as greeting chatter
+   (buildSummary `opening`); matched on the normalised words, one attached و / ف / ب / ل or the article allowed (text.js STOP holds «مصنع») */
+const BIZ_W = new Set(["مصنع", "مصانع", "مصنعي", "مصنعنا", "شركه", "شركتي", "شركتنا", "ورشه", "بنعمل", "بعمل", "نعمل", "بنصنع", "بصنع", "نصنع", "تصنيع", "صناعه",
+  "انتاج", "بننتج", "بنتج", "منتج", "منتجات", "بنبيع", "ببيع", "نبيع", "بنورد", "بورد", "نورد", "توريد", "تاجر", "بتاجر", "بنتاجر", "تجاره", "مورد", "موردين", "مستورد",
+  "استيراد", "تصدير", "مصدر", "عميل", "عملاء", "عملائي", "زباين", "عايز", "عاوز", "محتاج", "بدور", "بندور", "مطلوب"].map(w => norm(w)));
+const bizTurn = text => norm(String(text || "")).split(" ").some(w => BIZ_W.has(w) || (/^[وفبل]/.test(w) && BIZ_W.has(w.slice(1))) || BIZ_W.has(w.replace(/^[وفبل]?ال/, "")));
 const TOOL_AR = { janna_lookup: "دليل المنصة", janna_search: "بحث المنصة", bassem_intel: "مركز المعلومات", bassem_web_search: "بحث الإنترنت", web_search: "بحث الإنترنت",
   janna_item: "تفاصيل من المنصة", platform_item: "تفاصيل من المنصة", bassem_open_item: "اتفتح على الشاشة", bassem_open_opportunity: "اتفتح على الشاشة" };
 const toolAr = t => TOOL_AR[t] || (/web/.test(t) ? "بحث الإنترنت" : /intel/.test(t) ? "مركز المعلومات" : isItemTool(t) ? "اتفتح على الشاشة" : "بحث");
@@ -383,7 +389,8 @@ export function buildSummary({ callId, turns, searches, tools, nowMs = Date.now(
   /* U18: the visitor's short turns before the first tool call (the greeting and the «how are you» that follows it) are no topics: the first
      tool call (its turn number s, data/bassem-memory.js) is where the talk about his business starts. Products / markets still count. */
   const firstTool = (tools || []).reduce((m, x) => (x && Number.isInteger(x.s) && (m < 0 || x.s < m) ? x.s : m), -1);
-  const opening = t => firstTool >= 0 && Number.isInteger(t.seq) && t.seq < firstTool && String(t.text).split(/\s+/).filter(Boolean).length <= 5;
+  /* review: … unless the turn talks business (BIZ_W): «عندي مصنع كسوة سلندرات» before the first search is what the seller makes */
+  const opening = t => firstTool >= 0 && Number.isInteger(t.seq) && t.seq < firstTool && String(t.text).split(/\s+/).filter(Boolean).length <= 5 && !bizTurn(t.text);
   for (const t of turns) { const txt = plain(t.text); if (t.role === "user") { if (!opening(t)) count(txt, 2); scan(txt); } else count(txt, 1); }
   for (const s of realSearches) { count(s.query, 3); scan(s.query); if (s.market && marketAr(s.market)) pushU(markets, marketAr(s.market), 6, 40); }
   for (const x of [...products, ...markets]) mtokens(x, 4).forEach(y => used.add(y));
