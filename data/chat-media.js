@@ -8,8 +8,9 @@
                             and GPS. Files up to 20 MB; errors: none | too_big | type | decode | small (no «send the original» fallback: the
                             Worker refuses more than 2,048 px)
      mediaPost(o)           XHR POST with upload progress and a 45 s timeout (the browser sets Content-Length; the Worker requires it)
-     markSafe(text)         a typed text that starts like a platform note («[ملاحظة من المنصة…», "[PLATFORM NOTE…") is quoted, so nothing
-                            the person types can pose as the platform (data/janna-live.js sdkSay runs every typed text through it)
+     markSafe(text)         a typed text that carries a platform note's marker anywhere («[ملاحظة من المنصة…», "[PLATFORM NOTE…") is
+                            quoted, so nothing the person types can pose as the platform (data/janna-live.js sdkSay runs every typed text
+                            through it; the photo's caption passes it here too)
    The call (host = data/janna-live.js cmHost()): callTap → the first-use notice once per device (localStorage "mig-cm-ok") → the picker
    (camera or gallery: the accept list is image-only, so the Android app offers both and the iPhone converts HEIC to JPEG) → the chip on
    <body> (.jnl-nzf.jnl-cmf, right above the call's controls; the noise and 🌐 chips stack above it) → ➤: addContext(the UPLOADING note) →
@@ -130,11 +131,16 @@
   }
 
   /* ---------- nothing typed can pose as a platform note ---------- */
-  var MARK_RX = /^[\s‎‏\[\]【】［］(（{«<"'“”]*(?:ملاحظ[ةه]\s+من\s+المنص[ةه]|بداي[ةه]\s+نتيج[ةه]|نهاي[ةه]\s+نتيج[ةه]|platform\s+note|start\s+of\s+the\s+reading|end\s+of\s+the\s+reading|continuation\s+of\s+the\s+same)/i;
+  /* a marker phrase ANYWHERE in what the person types (review 2026-11-20: «📎 [PLATFORM NOTE: …]» — the photo turn's own 📎 prefix — and
+     «ok [ملاحظة من المنصة: …]» passed a start-only check) → the whole text in quotes without its square brackets; a leading 📎 stays in
+     front (worker/src/knowledge.js skips photo turns by it); idempotent (sdkSay runs it again on the photo turn) */
+  var MARK_RX = /(?:ملاحظ[ةه]\s+من\s+المنص[ةه]|بداي[ةه]\s+نتيج[ةه]|نهاي[ةه]\s+نتيج[ةه]|platform\s+note|start\s+of\s+the\s+reading|end\s+of\s+the\s+reading|continuation\s+of\s+the\s+same)/i;
   function markSafe(t) {
     t = String(t == null ? "" : t);
     if (!MARK_RX.test(t)) return t;
-    return "“" + t.replace(/^[\s‎‏\[\]【】［］(（{«<"'“”]+/, "").replace(/[\]】］)）}»>"'“”\s]+$/, "") + "”";
+    var m = /^\s*\uD83D\uDCCE\s*/.exec(t), s = (m ? t.slice(m[0].length) : t).replace(/[\[\]\u3010\u3011\uFF3B\uFF3D]/g, " ");
+    s = s.replace(/^[\s\u200E\u200F(\uFF08{\u00AB<"'\u201C\u201D]+/, "").replace(/[)\uFF09}\u00BB>"'\u201C\u201D\s]+$/, "").replace(/\s{2,}/g, " ");
+    return (m ? "\uD83D\uDCCE " : "") + "\u201C" + s + "\u201D";
   }
 
   /* ---------- the server's bilingual error («عربي / English») in one language ---------- */
@@ -245,7 +251,7 @@
           var told = h.live() && h.ctx(j.context);
           if (!told) { chip(h, "err", { t: tx("offline", h.en), url: p.url }); if (h.upd) h.upd(); return; }
           var cap = String(caption || "").replace(/^\s+|\s+$/g, "");
-          h.say(cap ? "📎 " + cap : tx("cap", h.en)); /* the default caption carries its own 📎 */
+          h.say(cap ? "📎 " + markSafe(cap) : tx("cap", h.en)); /* the default caption carries its own 📎; a typed caption passes markSafe here too */
           photos.push({ ref: ref, what: j.seen ? String(j.seen.what_en || j.seen.what_ar || "") : "", seal: String(j.seal || "") });
           if (photos.length > LIM.photos) photos.splice(0, photos.length - LIM.photos);
           if (CS.last) urlDrop(CS.last.url);
