@@ -664,6 +664,6 @@
     flush: function (final) { return final ? endCall(false) : flush(false); },
     /* no forget(): the owner's memory policy keeps Bassem's memory (see the header) */
     outcome: function (tool, st) { return outcome(String(tool || ""), String(st || "")); },
-    _t: { parse: parse, item: item, textItems: textItems, abs: abs, queryOf: queryOf, scal: scal, chunks: function () { return CALL ? chunks(CALL).map(function (ch) { return ch.length; }) : []; }, mem: MEM, vmem: VMEM, vid: vid }
+    _t: { parse: parse, item: item, textItems: textItems, abs: abs, queryOf: queryOf, scal: scal, args: args, huntQuery: huntQuery, chunks: function () { return CALL ? chunks(CALL).map(function (ch) { return ch.length; }) : []; }, mem: MEM, vmem: VMEM, vid: vid }
   };
 })();

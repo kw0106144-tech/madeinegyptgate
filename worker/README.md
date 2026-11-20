@@ -446,7 +446,8 @@ missing `X-MIG-Tool` (401) and a wrong method (405) keep their status.
 - **Switches** (src/flags.js): `bassem_web_search` (Bassem's two endpoints), `janna_web_search` (Janna's two), `web_leads` (the store) —
   each LOCKED or showing what it needs (no key, no tool secret, no provider, cap 0 / Janna's share 0, not connected, migration 0011).
 - Tests: `test/websearch.test.mjs`, `test/web-hunt.test.mjs`, `test/web-leads.test.mjs`, `test/web-tools-memory.test.mjs`,
-  `test/websearch-connect.test.mjs`, `test/dev-panel.test.mjs` (no network: every provider and Anam call is a mocked `fetch`).
+  `test/websearch-connect.test.mjs`, `test/dev-panel.test.mjs`, `test/bassem-memory-web.test.mjs` (the call page's `data/bassem-memory.js`
+  in a vm sandbox: Anam's nested `{bodyParams}` arguments, review S12) — no network: every provider and Anam call is a mocked `fetch`.
 
 # Platform API — accounts, automatic inquiry routing, follows, notifications, metrics, WhatsApp
 
