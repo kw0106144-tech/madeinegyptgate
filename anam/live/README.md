@@ -26,6 +26,11 @@ Their other settings, read at the same time (none of them is in these files):
 The four numbers are `endOfSpeechSensitivity` / `speechEnhancementLevel` / `silenceBeforeSkipTurnSeconds` /
 `silenceBeforeSessionEndSeconds`. For all three personas, `uninterruptibleGreeting`, `skipGreeting` and `enableAudioPassthrough` are false.
 
+**Pending, prepared in `anam/calls/` (NOT APPLIED):** the «calls» round gives Janna EN `sttProvider` `anam` (her four numbers unchanged),
+in the same write as her new prompt. Once that write is made, this row changes to `sttProvider` `anam`, 0.45 / 1 / 30 / 180 — update it
+(and `anam/APPLY.md` §6) in the same commit as the new live copies. After it, never "restore" the row without `sttProvider`: it would
+silently break the 🌐 switch to Arabic on the English pages.
+
 `anam/personas/janna-ar.systemPrompt.new.txt` and `janna-en.systemPrompt.new.txt` are older proposals, committed before those writes,
 and are **not** what is live.
 

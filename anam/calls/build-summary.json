@@ -1,0 +1,393 @@
+{
+ "built_from": {
+  "janna-ar": {
+   "file": "anam/live/janna-ar.systemPrompt.md",
+   "sha256": "e27aaddaf72dc9eb7db291b3c36e2e24c588721966aab09442491c7a404f19ab",
+   "chars": 19130,
+   "tokens_o200k": 6599,
+   "updatedAt": "2026-11-19T20:06:09.022Z"
+  },
+  "janna-en": {
+   "file": "anam/live/janna-en.systemPrompt.md",
+   "sha256": "ec6f60564cae740043b7853145bc40ac067e2fc2288aecadb059c4fffa100a5a",
+   "chars": 21944,
+   "tokens_o200k": 4837,
+   "updatedAt": "2026-11-19T20:07:36.925Z"
+  },
+  "bassem": {
+   "file": "anam/live/bassem.systemPrompt.md",
+   "sha256": "85c27cbe0bf80d96b0213a47e12046248fb845bc209be45dde664f6cde329032",
+   "chars": 24736,
+   "tokens_o200k": 8684,
+   "updatedAt": "2026-11-19T22:36:03.393Z"
+  }
+ },
+ "personas": {
+  "janna-ar": {
+   "edits": [
+    {
+     "id": "LANG-JA1",
+     "what": "LANGUAGE prompt_changes[0]: new «# لغة الكلام» section before «# اللهجة» [review CP-1] [review CP-2]",
+     "find_chars": 19,
+     "replace_chars": 1347,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "LANG-JA2",
+     "what": "LANGUAGE prompt_changes[1]: the English-reply line → any language",
+     "find_chars": 57,
+     "replace_chars": 109,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "BARGE-P2a",
+     "what": "BARGE-IN PROMPT-2 FIND 1: the noise section → «لما الزائر يتكلم…» + a shorter noise section",
+     "find_chars": 567,
+     "replace_chars": 1497,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "BARGE-P2b",
+     "what": "BARGE-IN PROMPT-2 FIND 2: a strange sentence is the visitor's turn",
+     "find_chars": 201,
+     "replace_chars": 247,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "BARGE-P4",
+     "what": "BARGE-IN PROMPT-4 (Janna AR): detail across short turns of 2-3 sentences",
+     "find_chars": 225,
+     "replace_chars": 274,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "SPEED-J1",
+     "what": "SPEED change 4 J1: say a short line first, all tools at once",
+     "find_chars": 58,
+     "replace_chars": 319,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    }
+   ],
+   "variant_without_PROMPT_4": {
+    "file": "anam/calls/janna-ar.no-prompt4.new.md",
+    "sha256": "1497ba1ad05b14a9d22bab77bcc3ab1e8a5d19a4ed8312305dd11eb869414008",
+    "chars": 21747,
+    "tokens_o200k": 7539
+   },
+   "file": "anam/calls/janna-ar.new.md",
+   "sha256": "34453d59217ecdc297b3cc8dfb38ee376220f5f44285293c5bc321198eb327f1",
+   "chars": 21796,
+   "tokens_o200k": 7559,
+   "delta_chars": 2666,
+   "delta_tokens": 960
+  },
+  "janna-en": {
+   "edits": [
+    {
+     "id": "LANG-JE1",
+     "what": "LANGUAGE prompt_changes[2]: new # LANGUAGE section before # WHO WE ARE [review CP-1] [review CP-2] [review CP-4]",
+     "find_chars": 65,
+     "replace_chars": 1902,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "LANG-JE2",
+     "what": "LANGUAGE prompt_changes[3]: Arabic line → any other language too",
+     "find_chars": 62,
+     "replace_chars": 136,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "BARGE-P3",
+     "what": "BARGE-IN PROMPT-3: the noise section → WHEN THE VISITOR SPEAKS… + a shorter noise section",
+     "find_chars": 755,
+     "replace_chars": 1862,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "BARGE-P4",
+     "what": "BARGE-IN PROMPT-4 (Janna EN): detail across short turns of 2-3 sentences",
+     "find_chars": 174,
+     "replace_chars": 284,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "SPEED-E1",
+     "what": "SPEED change 4 E1: say a short line first, all tools at once",
+     "find_chars": 81,
+     "replace_chars": 366,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    }
+   ],
+   "variant_without_PROMPT_4": {
+    "file": "anam/calls/janna-en.no-prompt4.new.md",
+    "sha256": "1d7b5136a6362e3a5d589c17eda72c251ce9f823c21fa0ac4cdbb617723421e7",
+    "chars": 25247,
+    "tokens_o200k": 5617
+   },
+   "file": "anam/calls/janna-en.new.md",
+   "sha256": "f2cbd0c36fc8891da136099cd92bae98d5370fca8014ff651e85fd482d6da680",
+   "chars": 25357,
+   "tokens_o200k": 5644,
+   "delta_chars": 3413,
+   "delta_tokens": 807
+  },
+  "bassem": {
+   "edits": [
+    {
+     "id": "LANG-B1",
+     "what": "LANGUAGE prompt_changes[4]: new «# لغة الكلام» section before «# أهم القواعد» [review CP-1] [review CP-2]",
+     "find_chars": 33,
+     "replace_chars": 1270,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "LANG-B2",
+     "what": "LANGUAGE prompt_changes[5]: rule 1, the e-mail summary in his language",
+     "find_chars": 57,
+     "replace_chars": 80,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "LANG-B3",
+     "what": "LANGUAGE prompt_changes[6]: rule 1, the meaning in his language",
+     "find_chars": 49,
+     "replace_chars": 47,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "LANG-B4",
+     "what": "LANGUAGE prompt_changes[7]: rule 3, Egyptian with anyone who speaks Arabic",
+     "find_chars": 64,
+     "replace_chars": 85,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "LANG-B5",
+     "what": "LANGUAGE prompt_changes[8]: the English-reply line → any language",
+     "find_chars": 36,
+     "replace_chars": 87,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "BARGE-P1a",
+     "what": "BARGE-IN PROMPT-1 FIND 1: the noise section → «لما العميل يتكلم…» + a shorter noise section",
+     "find_chars": 544,
+     "replace_chars": 1489,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "BARGE-P1b",
+     "what": "BARGE-IN PROMPT-1 FIND 2: a strange sentence is his turn",
+     "find_chars": 176,
+     "replace_chars": 140,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "BARGE-P1c",
+     "what": "BARGE-IN PROMPT-1 FIND 3: «بس» alone = «يا باسم» or «استنى»",
+     "find_chars": 56,
+     "replace_chars": 131,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "SPEED-B0",
+     "what": "SPEED change 4 B0: the contradicting «دوّر الأول وبعدين اتكلم» → short line first (rule 9)",
+     "find_chars": 52,
+     "replace_chars": 66,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "SPEED-B0b",
+     "what": "SPEED change 4 B0b: rule 9, all tools in the same reply; no «ثواني» without the tool",
+     "find_chars": 77,
+     "replace_chars": 130,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "SPEED-B3",
+     "what": "SPEED change 4 B3: profile save in the same step as its search (ships with tool T6)",
+     "find_chars": 372,
+     "replace_chars": 331,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    }
+   ],
+   "trim_sections": {
+    "SPEED6-B5": "# الشغل (إنت اللي بتعمله بنفسك)",
+    "SPEED6-B6c": "# الشاشة قدامه (افتح وامشي معاه)",
+    "SPEED6-B7a": "# مركز المعلومات اليومي (bassem_intel)",
+    "SPEED6-B4": "# لما يرجّعك لحاجة فاتت (bassem_recall)",
+    "SPEED6-B9": "# الشغل (إنت اللي بتعمله بنفسك)",
+    "SPEED6-B7c": "# مركز المعلومات اليومي (bassem_intel)"
+   },
+   "trims": [
+    {
+     "id": "SPEED6-B5",
+     "what": "SPEED change 6 optional trim B5: work: two bullets that repeat rules 4-5",
+     "find_chars": 188,
+     "replace_chars": 0,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "SPEED6-B6c",
+     "what": "SPEED change 6 optional trim B6c: screen: bullet that repeats rule 5 and the tool descriptions",
+     "find_chars": 184,
+     "replace_chars": 0,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "SPEED6-B7a",
+     "what": "SPEED change 6 optional trim B7a: intel: bullet that repeats the honesty section",
+     "find_chars": 160,
+     "replace_chars": 0,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "SPEED6-B4",
+     "what": "SPEED change 6 optional trim B4: recall: two bullets into one",
+     "find_chars": 359,
+     "replace_chars": 258,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "SPEED6-B9",
+     "what": "SPEED change 6 optional trim B9: tasks bullet (the bassem_tasks description already holds done/cancel/due)",
+     "find_chars": 446,
+     "replace_chars": 229,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    },
+    {
+     "id": "SPEED6-B7c",
+     "what": "SPEED change 6 optional trim B7c: intel: the document",
+     "find_chars": 409,
+     "replace_chars": 226,
+     "find_count_live": 1,
+     "find_count_at_apply": 1
+    }
+   ],
+   "variant_without_cuts": {
+    "file": "anam/calls/bassem.nocuts.new.md",
+    "sha256": "fd94d17b3a710ad8d44495cac392ac0844e27697d7ad95154a90459a73c0fd2f",
+    "chars": 27076,
+    "tokens_o200k": 9541
+   },
+   "file": "anam/calls/bassem.new.md",
+   "sha256": "6fc8ae24ef69195d9ba3db11af8820219affbedd6dee8a69071c5651fbda3ac8",
+   "chars": 26043,
+   "tokens_o200k": 9187,
+   "delta_chars": 1307,
+   "delta_tokens": 503
+  }
+ },
+ "trims_offered": {
+  "B5": "work: two bullets that repeat rules 4-5",
+  "B6c": "screen: bullet that repeats rule 5 and the tool descriptions",
+  "B7a": "intel: bullet that repeats the honesty section",
+  "B4": "recall: two bullets into one",
+  "B9": "tasks bullet (the bassem_tasks description already holds done/cancel/due)",
+  "B8": "web search: four bullets into two (the tool is not attached yet)",
+  "B7c": "intel: the document",
+  "B7b": "intel: open a result (one step, no second tool)"
+ },
+ "trims_applied": [
+  "B5",
+  "B6c",
+  "B7a",
+  "B4",
+  "B9",
+  "B7c"
+ ],
+ "review_fixes": [
+  {
+   "persona": "janna-ar",
+   "edit": "LANG-JA1",
+   "finding": "CP-1",
+   "from": "يدوس 🌐 جنب المايك لو ظاهر",
+   "to": "يدوس زرار الكرة الأرضية اللي جنب المايك لو ظاهر"
+  },
+  {
+   "persona": "janna-ar",
+   "edit": "LANG-JA1",
+   "finding": "CP-2",
+   "from": "ولو رحّبتي بلغة تانية رحّبي تاني بجملة قصيرة بلغته",
+   "to": "ولو ده أول ردك بعد الترحيب وكنتي رحّبتي بلغة تانية، رحّبي تاني بجملة قصيرة بلغته"
+  },
+  {
+   "persona": "bassem",
+   "edit": "LANG-B1",
+   "finding": "CP-1",
+   "from": "يدوس 🌐 جنب المايك لو ظاهر",
+   "to": "يدوس زرار الكرة الأرضية اللي جنب المايك لو ظاهر"
+  },
+  {
+   "persona": "bassem",
+   "edit": "LANG-B1",
+   "finding": "CP-2",
+   "from": "ولو رحّبت بلغة تانية رحّب تاني بجملة قصيرة بلغته",
+   "to": "ولو ده أول ردك بعد الترحيب وكنت رحّبت بلغة تانية، رحّب تاني بجملة قصيرة بلغته"
+  },
+  {
+   "persona": "janna-en",
+   "edit": "LANG-JE1",
+   "finding": "CP-1",
+   "from": "to tap 🌐 next to the microphone",
+   "to": "to tap the globe button next to the microphone"
+  },
+  {
+   "persona": "janna-en",
+   "edit": "LANG-JE1",
+   "finding": "CP-2",
+   "from": "and if you greeted them in another language, greet them again",
+   "to": "and if this is your first reply after your greeting and you greeted them in another language, greet them again"
+  },
+  {
+   "persona": "janna-en",
+   "edit": "LANG-JE1",
+   "finding": "CP-4",
+   "from": "do not make it English.",
+   "to": "do not make it English. Likewise one or two Arabic words inside English speech («اه», «تمام», «استنى», \"yalla\") do not make it Arabic."
+  }
+ ],
+ "bassem_notify_on_top": {
+  "applies": true,
+  "replaced": 3,
+  "chars": 26459,
+  "tokens_o200k": 9325,
+  "sha256": "fadcad2a6fec3f8cd6f165e40dcfe0425a7c5e3b46cedcf10e722c9a4f802b15",
+  "with_B7b": {
+   "chars": 26145,
+   "tokens_o200k": 9236
+  }
+ },
+ "T6": {
+  "new_description": "Save what the member just told you about HIS OWN factory to his platform profile («ملف مصنعك»): products, specs/sizes, capacity, target markets, certifications, export experience, notes. Call it as soon as he states any of these, in the SAME step as the search it leads to (janna_lookup inside Egypt, bassem_intel outside Egypt), not before it, with ONLY what he said, in his own words: never guess, add or rename anything (bars stay bars, never plates). Send only the fields you learned now; lists are added to what is already saved (nothing is deleted). WAIT for the result and say only what it says, in one short sentence: it starts with «اتسجّل» → say you recorded it in his factory profile; «ماتسجّلش» → say it was NOT saved and the reason it gives; «مش متأكد» → say it is not confirmed yet. Never say it was saved unless the result says «اتسجّل», and never read the saved data back aloud.",
+  "chars": 894
+ }
+}
