@@ -485,7 +485,7 @@ function customers(query, governorate, m, MX) {
 /* a query with letters and not one Arabic letter (acier, Stahl, сталь, 钢铁 — or English the EN map does not know): the platform's data is
    Arabic + English, so a 0-result answer must not read as «none exist» — the model translates the word and searches again (any-language
    plan 2026-11-20). Arabic queries keep today's text byte for byte. */
-const ARABIC_LETTER = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/;
+const ARABIC_LETTER = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 export const foreignQuery = q => /\p{L}/u.test(String(q || "")) && !ARABIC_LETTER.test(String(q || ""));
 /* the lists of the new sections are named for what they are (not «دليل المنصة», the directory) */
 const LIST_NAME = { news: "أخبار المنصة", events: "أجندة معارض المنصة", projects: "مشروعات المنصة", awards: "ترسيات المنصة" };
