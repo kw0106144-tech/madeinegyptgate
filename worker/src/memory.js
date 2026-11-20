@@ -200,6 +200,12 @@ const FILLER = new Set(["يعني", "كده", "كدا", "طيب", "ايوه", "�
   "هشوفلك", "هفتحلك", "دورلي", "شوفلي", "افتحلي", "قولتلك", "عارف", "فاهم", "اكيد", "طبعا", "حلو", "جميل", "ممتاز", "اتفضل", "لحظه", "ثانيه", "دقيقه", "وقت", "النهار",
   "تابعلي", "ابعتلي", "اكتبلي", "فكرني", "بلغني", "عرفني", "وريني", "هاتلي", "جيبلي", "محجوب", "الموضوع", "موضوع", "الحاجه", "الكلام",
   "فاكر", "فاكره", "دورنا", "دورت", "عليه", "عليها", "جديد", "امبارح", "مبارح", "المره", "فاتت",   // recall words (blocker B) are no topics either
+  /* U18 (685cdbfb opened with «سأل عن: مدايق؛ عاملين؛ زيكي؛ جنه»): greetings, «how are you» and its answers, the persona names and the
+     words of their own greeting are no topics */
+  "اهلا", "اهلين", "مرحبا", "مرحب", "هلا", "سلام", "السلام", "عليكم", "وعليكم", "صباح", "مساء", "الخير", "النور", "الفل", "ازيك", "ازيكي", "ازيكم", "ازي", "زيك", "زيكي",
+  "زيكم", "عامل", "عامله", "عاملين", "اخبارك", "اخباركم", "كويس", "كويسه", "كويسين", "الحمد", "الحمدلله", "لله", "بخير", "مبسوط", "مبسوطه", "تعبان", "تعبانه",
+  "زهقان", "زهقانه", "مضايق", "مضايقه", "مدايق", "مدايقه", "متضايق", "متضايقه", "منور", "منوره", "نورت", "نورتي", "نورتنا", "شرفت", "شرفتي", "شرفتنا", "اتشرفنا", "يسعدني",
+  "بيك", "بيكي", "بيكم", "حبيبي", "حبيبتي", "يافندم", "جنه", "جنتي", "بسام", "مسؤوله", "مسئوله", "مسؤول", "مسئول", "janna", "bassem", "hi", "hey", "welcome", "fine", "morning", "evening",
   "ok", "okay", "yes", "no", "hello", "thanks", "thank", "yeah", "well", "just", "like", "know", "want", "also", "very", "good", "great", "sure", "right", "this", "that", "what"].map(w => stem(w)));
 const TOOL_AR = { janna_lookup: "دليل المنصة", janna_search: "بحث المنصة", bassem_intel: "مركز المعلومات", bassem_web_search: "بحث الإنترنت", web_search: "بحث الإنترنت",
   janna_item: "تفاصيل من المنصة", platform_item: "تفاصيل من المنصة", bassem_open_item: "اتفتح على الشاشة", bassem_open_opportunity: "اتفتح على الشاشة" };
@@ -374,7 +380,11 @@ export function buildSummary({ callId, turns, searches, tools, nowMs = Date.now(
   for (const s of searches || []) if (isItemTool(s.tool)) open((s.results && s.results[0] && s.results[0].title) || s.query, (s.results && s.results[0] && s.results[0].ref) || "");
   /* a sentence that reads like an instruction to the model is no topic / product / market either (0009 hardening) */
   const plain = text => sentences(text).filter(x => !instructionLike(x, { money: false })).join(". ");
-  for (const t of turns) { const txt = plain(t.text); if (t.role === "user") { count(txt, 2); scan(txt); } else count(txt, 1); }
+  /* U18: the visitor's short turns before the first tool call (the greeting and the «how are you» that follows it) are no topics: the first
+     tool call (its turn number s, data/bassem-memory.js) is where the talk about his business starts. Products / markets still count. */
+  const firstTool = (tools || []).reduce((m, x) => (x && Number.isInteger(x.s) && (m < 0 || x.s < m) ? x.s : m), -1);
+  const opening = t => firstTool >= 0 && Number.isInteger(t.seq) && t.seq < firstTool && String(t.text).split(/\s+/).filter(Boolean).length <= 5;
+  for (const t of turns) { const txt = plain(t.text); if (t.role === "user") { if (!opening(t)) count(txt, 2); scan(txt); } else count(txt, 1); }
   for (const s of realSearches) { count(s.query, 3); scan(s.query); if (s.market && marketAr(s.market)) pushU(markets, marketAr(s.market), 6, 40); }
   for (const x of [...products, ...markets]) mtokens(x, 4).forEach(y => used.add(y));
   [...freq.entries()].filter(([t, n]) => n >= 2 && !used.has(t)).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1)).slice(0, 6).forEach(([t]) => pushU(topics, surface.get(t) || t, 6, 30));
@@ -432,6 +442,10 @@ export async function rebuildSummary(env, memberId, callId, { tools: newTools = 
   const turnCount = Number(await env.DB.prepare("SELECT COUNT(*) AS n FROM advisor_memory WHERE member_id = ? AND call_id = ? AND kind = 'turn'").bind(memberId, callId).first("n")) || turns.length;
   const searches = ((await env.DB.prepare("SELECT data_json FROM advisor_memory WHERE member_id = ? AND call_id = ? AND kind = 'search' ORDER BY id LIMIT 30").bind(memberId, callId).all()).results || [])
     .map(r => jparse(r.data_json, {})).filter(s => s && s.query).map(s => ({ ...s, results: Array.isArray(s.results) ? s.results : [] }));
+  /* U18: a call in which the client said nothing (only the persona's greeting), searched nothing and no tool ran is no visit — no summary
+     (so the next call is not greeted «أهلاً بيك تاني» and nothing is counted); its turns stay stored as they are. A summary kept from
+     before this rule is rebuilt as before. */
+  if (!prev && !turns.some(x => x.role === "user") && !searches.length && !tools.length) return { data: null, text: "", tasks: null, empty: true };
   let follows;
   try { follows = ((await env.DB.prepare("SELECT label, ref_id FROM follows WHERE user_id = ?").bind(memberId).all()).results || []).flatMap(r => [r.label, r.ref_id]); } catch (e) { follows = []; }
   const sum = buildSummary({ callId, turns, searches, tools, nowMs: atMs, startedAt: startedAt || pd.started_at || "", final: final || !!pd.final, turnCount, follows });
@@ -747,6 +761,7 @@ export async function writeMemory(env, id, b, { nowMs = Date.now(), cors = "", a
     if (kind === "turns") return out({ ok: true, kind: "turns", stored: tr.rows.length }, 201, cors);
     const startedAt = typeof b.started_at === "string" && Number.isFinite(Date.parse(b.started_at)) ? iso(Date.parse(b.started_at)) : "";
     const s = await rebuildSummary(env, id, callId, { tools: toolsOf(b.tools), final: b.final === true, startedAt, nowMs, agent, lang });
+    if (s.empty) return out({ ok: true, kind: "summary", summary: null, skipped: "no_client_words", text: "" }, 201, cors); // U18: no visit
     return out({ ok: true, kind: "summary", summary: { ...s.data, tools: undefined }, text: llm(s.text, 600), ...(s.tasks ? { tasks: s.tasks } : {}) }, 201, cors);
   }
   return bad("kind", cors, "search | turns | fact | summary");
@@ -789,14 +804,14 @@ export async function consolidateDay(env, nowMs = Date.now(), { max = TICK.rebui
       (SELECT CASE WHEN json_valid(s.data_json) THEN json_extract(s.data_json, '$.final') END FROM advisor_memory s WHERE s.member_id = t.member_id AND s.hash = 'summary|' || t.call_id) AS fin
     FROM advisor_memory t WHERE t.kind = 'turn' AND t.call_id != '' AND t.at >= ? GROUP BY t.member_id, t.call_id ORDER BY last DESC LIMIT ?`)
     .bind(iso(nowMs - LIM.consolidateDays * 86400000), LIM.consolidate * 4).all()).results || [];
-  let rebuilt = 0, live = 0, done = 0, left = 0;
+  let rebuilt = 0, live = 0, done = 0, left = 0, empty = 0;
   for (const c of calls) {
     const lastMs = Date.parse(c.last);
     if (!Number.isFinite(lastMs) || lastMs > nowMs - 3600000) { live++; continue; }
     if (c.fin === 1 || c.fin === true || c.fin === "true") { done++; continue; }
     if (rebuilt >= max || budgetLeft(env) < TICK.rebuild) { left++; continue; } // the next tick
-    await rebuildSummary(env, c.member_id, c.call_id, { final: true, consolidated: true, nowMs, atMs: lastMs, agent: c.agent === "janna" ? "janna" : "bassem" }); // 0009: Janna's visitor calls too
-    rebuilt++;
+    const r = await rebuildSummary(env, c.member_id, c.call_id, { final: true, consolidated: true, nowMs, atMs: lastMs, agent: c.agent === "janna" ? "janna" : "bassem" }); // 0009: Janna's visitor calls too
+    rebuilt++; if (r && r.empty) empty++; // U18: the client said nothing — no summary (counted against the tick like any rebuild)
   }
-  return { calls: calls.length, rebuilt, live, done, left };
+  return { calls: calls.length, rebuilt, live, done, left, empty };
 }

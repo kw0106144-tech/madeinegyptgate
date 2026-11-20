@@ -32,7 +32,12 @@ const hashOf = u => { const m = /#(.+)$/.exec(String(u || "")); return m ? m[1] 
 const listKey = t => (t && t.market === "local" ? String(t.key || "").split("|")[0] : "");
 const up = s => String(s || "").trim().toUpperCase();
 const SECTIONS = { tenders: "tenders", tender: "tenders", rfqs: "rfqs", rfq: "rfqs", factories: "factories", factory: "factories", suppliers: "factories", companies: "factories", company: "factories",
-  products: "products", product: "products", market: "products", offers: "offers", offer: "offers", cities: "cities", city: "cities", zones: "cities", awards: "awards", award: "awards", winners: "awards", projects: "projects", project: "projects" };
+  products: "products", product: "products", market: "products", offers: "offers", offer: "offers", cities: "cities", city: "cities", zones: "cities", awards: "awards", award: "awards", winners: "awards", projects: "projects", project: "projects",
+  news: "news", article: "news", articles: "news", events: "events", event: "events", exhibitions: "events", exhibition: "events" };
+/* U15: news and events are data.json i rows (worker/build-index.js): [kind, id, date, sector, governorate, title, page, deadline, market,
+   source / organiser or venue, source url, aliases] */
+const I_ROWS = DATA.i || [], NEWS = I_ROWS.filter(x => x && x[0] === "news"), EVENTS = I_ROWS.filter(x => x && x[0] === "event");
+export const ITEM_SECTIONS = ["tenders", "rfqs", "factories", "products", "offers", "cities", "awards", "projects", "news", "events"];
 export const sectionOf = s => SECTIONS[String(s || "").toLowerCase().trim()] || "";
 
 /* ---------- spoken Arabic helpers (Egyptian) ---------- */
@@ -64,6 +69,7 @@ const CONTACT = {
   products: "السعر عند الطلب: من زر «اطلب عرض سعر» في صفحة المنتج أو المصنع على المنصة.",
   offers: "العرض من صفحة المحل الرسمية (documents_url)؛ الأسعار ممكن تتغير بعد آخر مراجعة.",
   cities: "البيانات من المصادر الرسمية المفتوحة للمنطقة.", awards: "بيانات الترسية منقولة من مصدرها المنشور (documents_url).", projects: "بيانات المشروع من مصدره المنشور (documents_url)؛ التواصل مع الجهة المالكة مش من خلال المنصة.",
+  news: "الخبر منقول من مصدره المنشور (documents_url)؛ التفاصيل عند المصدر نفسه.", events: "مواعيد المعرض وتفاصيله والتسجيل من موقعه الرسمي (documents_url)؛ المنصة مش الجهة المنظمة.",
 };
 
 /* ---------- records ---------- */
@@ -103,18 +109,23 @@ function rfqRecord(q, nowMs) {
   return rec;
 }
 /* the description as one spoken sentence (lookup-index 2026-11-20: the text said name, place and activity only, so «what does it make?»
-   had no answer): its own words, the company name it starts with taken off, contacts masked and markers removed (text.js forLLM), at
-   most ~160 characters; nothing when it only repeats the products line or reads like an instruction */
+   had no answer): its own words, the company name it starts with taken off, contacts masked and markers removed (text.js forLLM), its
+   FIRST sentence (U12: a description that goes on after a full stop says only the first one, when that one says something), at most
+   140 characters; nothing when it only repeats the products line or reads like an instruction */
 const endDot = s => String(s || "").replace(/[\s.،,;:…]+$/, "");
 function aboutLine(name, desc, products) {
   let d = String(desc || "").trim(); if (!d) return "";
-  const n = String(name || "").trim(), cut = /…$/.test(d) || d.length > 160;
+  const n = String(name || "").trim();
+  let cut = /…$/.test(d) || d.length > 140;
   if (n && d.startsWith(n)) d = d.slice(n.length).replace(/^[\s\-–—:،,|]+/, "");
-  d = endDot(forLLM(d, 170));
+  d = forLLM(d, 170);
+  const s1 = /^(.{24,}?[.!؟?؛])(?:\s|$)/u.exec(d); if (s1 && s1[1].length < d.length - 1) { d = s1[1]; cut = false; }
+  d = endDot(d);
   if (d.length < 12 || instructionLike(d)) return "";
   const nd = norm(d).slice(0, 40), np = norm(products || "");
   if (np && nd && (np.includes(nd) || nd.includes(np.slice(0, 40)))) return "";
-  return "وحسب نبذته على المنصة: " + endDot(short(d, 160)) + (cut ? "…" : ".");
+  if (d.length > 140) cut = true;
+  return "وحسب نبذته على المنصة: " + endDot(short(d, 140)) + (cut ? "…" : ".");
 }
 function factoryRecord(f) {
   const k = hashOf(f[5]), x = F[k] || [];
@@ -170,6 +181,24 @@ function projectRecord(p, nowMs) {
   return rec;
 }
 
+const NO_GOV = "غير محددة";
+function newsRecord(x, nowMs) {
+  const gov = x[4] && x[4] !== NO_GOV ? x[4] : "";
+  const rec = { section: "news", id: x[1], title: x[5], date: x[2] || undefined, category: x[3] || undefined, governorate: gov || undefined, source: x[9] || undefined,
+    documents_url: x[10] || undefined, open_url: absUrl(x[6]), contact: CONTACT.news };
+  rec.text = join(["الخبر ده: " + short(x[5], 200) + ".", x[9] ? "منشور في " + x[9] + (x[2] ? " يوم " + sayDate(x[2], nowMs) : "") + "." : x[2] ? "منشور يوم " + sayDate(x[2], nowMs) + "." : "",
+    "التفاصيل من المصدر نفسه، ومفيش أرقام أو أسعار غير اللي في الخبر."]);
+  return rec;
+}
+function eventRecord(x, nowMs) {
+  const d = /^\d{4}-\d{2}-\d{2}/.test(String(x[2] || "")) ? String(x[2]).slice(0, 10) : "", up = d && d >= cairoDay(nowMs), where = x[4] && x[4] !== NO_GOV ? x[4] : "";
+  const rec = { section: "events", id: x[1], title: x[5], date: d || undefined, status: d ? (up ? "قادم" : "انتهى") : undefined, activity: x[3] || undefined, governorate: where || undefined,
+    host: x[9] || undefined, documents_url: x[10] || undefined, open_url: absUrl(x[6]), contact: CONTACT.events }; // host = the organiser, else the venue (build-index.js)
+  rec.text = join([x[5] + (where ? " في " + where : "") + (x[9] ? " (" + x[9] + ")" : "") + ".", d ? (up ? "ميعاده " + sayDate(d, nowMs) + "." : "كان يوم " + sayDate(d, nowMs) + " وخلص.") : "وميعاده مش منشور في بيانات المنصة.",
+    x[3] ? "مجاله: " + x[3] + "." : "", "التسجيل والتفاصيل من موقع المعرض الرسمي."]);
+  return rec;
+}
+
 /* ---------- finding one item: exact id → exact ref → best title match (others listed) ---------- */
 const nn = s => norm(s);
 function bestByTitle(list, title, get) {
@@ -199,8 +228,10 @@ export function findItem(section, a = {}, nowMs = Date.now()) {
   else if (sec === "cities") { pick(Z, x => Z.find(z => z.id === x) || null, () => false, z => z.name + " " + z.name_en); if (hit) rec = cityRecord(hit); }
   else if (sec === "awards") { pick(A, x => A.find(w => w.id === x) || null, () => false, w => w.title + " " + w.winner); if (hit) rec = awardRecord(hit, nowMs); }
   else if (sec === "projects") { pick(J, x => J.find(p => p.id === x.toLowerCase()) || null, () => false, p => p.name); if (hit) rec = projectRecord(hit, nowMs); }
+  else if (sec === "news") { pick(NEWS, x => NEWS.find(n => n[1] === x) || null, () => false, n => n[5]); if (hit) rec = newsRecord(hit, nowMs); }
+  else if (sec === "events") { pick(EVENTS, x => EVENTS.find(e => e[1] === x || "ev" + (EVENTS.indexOf(e) + 1) === x) || null, () => false, e => e[5]); if (hit) rec = eventRecord(hit, nowMs); }
   if (!rec) return { found: false, section: sec, text: "مش لاقي العنصر ده في بيانات المنصة" + (title ? " («" + short(title, 60) + "»)" : "") + ". متخترعش بيانات؛ دوّر الأول بـ janna_lookup وخد الـ id من النتيجة." };
-  const others = many.filter(x => x !== hit).slice(0, 4).map(x => sec === "factories" ? { id: hashOf(x[5]), title: x[0] } : sec === "products" ? { id: "p" + P.indexOf(x), title: x.name } : { id: x.id, title: x.title || x.name || x.product });
+  const others = many.filter(x => x !== hit).slice(0, 4).map(x => sec === "factories" ? { id: hashOf(x[5]), title: x[0] } : sec === "products" ? { id: "p" + P.indexOf(x), title: x.name } : sec === "news" || sec === "events" ? { id: x[1], title: x[5] } : { id: x.id, title: x.title || x.name || x.product });
   /* review 2026-11-18 #11: a shared number (OFF:1 ×5 …) without a title is NOT one item — say so and name the others */
   if (shared > 1) { rec.ambiguous = true; rec.matches = shared; rec.text += ` تنبيه: الرقم «${short(ref || id, 40)}» مشترك بين ${shared} بنود في بيانات المنصة، والتفاصيل دي لأول واحد بس. التانيين: ` + others.map(o => "«" + short(o.title, 70) + "» (id " + o.id + ")").join("، ") + (shared > others.length + 1 ? " وغيرهم" : "") + ". اسأل العضو يقصد أنهي واحد، وهات تفاصيله بالـ id."; }
   return Object.assign({ found: true }, rec, others.length ? { others } : {});
@@ -232,7 +263,7 @@ const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...CORS } });
 const ITEM_TEXT = {
   bad_json: "طلب التفاصيل وصل ناقص. ابعت section و id من نتيجة janna_lookup تاني مرة واحدة بس؛ ولو فشل تاني قول إن التفاصيل مش متاحة دلوقتي، ومتخترعش بيانات.",
-  no_section: "لازم section (tenders أو rfqs أو factories أو products أو offers أو cities أو awards أو projects) و id من نتيجة janna_lookup. ابعتهم تاني مرة واحدة بس، ومتخترعش بيانات.",
+  no_section: "لازم section (tenders أو rfqs أو factories أو products أو offers أو cities أو awards أو projects أو news أو events) و id من نتيجة janna_lookup. ابعتهم تاني مرة واحدة بس، ومتخترعش بيانات.",
   no_id: "لازم id أو ref أو title للبند. ابعت section و id من نتيجة janna_lookup تاني مرة واحدة بس؛ ولو مفيش نتيجة دوّر الأول بـ janna_lookup، ومتخترعش بيانات.",
 };
 export async function handleItem(req, env, ctx, nowMs = Date.now()) {
@@ -248,7 +279,7 @@ export async function handleItem(req, env, ctx, nowMs = Date.now()) {
     if (b && typeof b === "object") { for (const k of ["arguments", "parameters", "args", "input"]) if (b[k] && typeof b[k] === "object") b = Object.assign({}, b[k], b); a = Object.assign(a, b); }
   }
   const sec = sectionOf(a.section);
-  if (!sec) return soft("section_required", { error: "section required", sections: ["tenders", "rfqs", "factories", "products", "offers", "cities", "awards", "projects"], text: ITEM_TEXT.no_section });
+  if (!sec) return soft("section_required", { error: "section required", sections: ITEM_SECTIONS, text: ITEM_TEXT.no_section });
   if (!a.id && !a.ref && !a.title && !a.query && !a.name) return soft("id_required", { error: "id, ref or title required", text: ITEM_TEXT.no_id });
   const r = findItem(sec, { id: a.id == null ? "" : String(a.id).slice(0, 160), ref: a.ref == null ? "" : String(a.ref).slice(0, 160), title: String(a.title || a.query || a.name || "").slice(0, 300) }, nowMs);
   /* an Anam webhook answer that is not 2xx may never reach the model (holo5 tools.md #4): POST says «not found» with 200; GET keeps 404 */

@@ -82,9 +82,24 @@ numbers or personal data, no API keys in the code.
 | GET | `/api/janna/lookup?section=tenders&query=حاسب` | same | same |
 | GET | `/api/janna/health` | — | `{ok, data, factories, tenders}` |
 
-`section`: `factories` · `suppliers` · `products` · `market` · `tenders` · `rfqs` · `offers` · `cities`.
+`section`: `factories` · `suppliers` · `products` · `market` · `tenders` · `rfqs` · `offers` · `cities` · `customers` · `projects` ·
+`events` · `news` · `awards` (an unknown section is searched as `factories`; `buyers` = `customers`, `event` = `events` …).
 Understands Egyptian Arabic and English («plastic manufacturers in 10th of Ramadan»), industrial cities (widens to the
 governorate when a city has few hits) and the 27 governorates.
+- `customers` (2026-11-20, after the Al-Atlal call): `query` = the industries a SELLER serves, in his own words («ورق، كرتون، سكر،
+  أسمنت»). Each term → the platform's activity labels (`src/lookup-customers.js` CUST_MAP; a term no label knows → the companies that
+  write its words); counted = directory rows of type «مصنع» in the place (a city counts as its governorate), traders apart. Answer:
+  `groups[{industry, terms, factories, others, top[2]: {name, place, id, open_url}}]`, `count` (distinct factories), `others`,
+  `results` (≤ 6), `text` — data only: directory factories, NOT purchase requests, contacts not published, no plan promise;
+  «مالقيتش صناعة اسمها …» for an unknown term.
+- `tenders`: open ones first; an undated legacy row (no deadline, entity «جهة حكومية», no governorate) ranks 3 below an equal match
+  and is said «قديمة من غير ميعاد»; every result says its status; with no open match the text starts «مفيش مناقصة سارية في «…» …».
+- `events` / `news` (data.json `i`), `projects` / `awards` (items.json `j` / `a`): the same matcher; events the next first, news the
+  newest first; each result has the `id` `/api/janna/item` opens (it knows `news` and `events` too).
+- The members' own approved records (`src/lookup-members.js`): approved products (`cc_member_products`, `live_json` only) and approved
+  company create / edit requests (`cc_company_requests`) are read from D1 at most once per isolate per 10 minutes for the directory,
+  product and customers sections, merged tagged «عضو على المنصة» (the bundled row they replace is left out), fail-soft without the
+  tables. They reach `data.json` itself at the next `deploy-worker` run.
 
 ## Deploy (once)
 ```bash
@@ -314,7 +329,7 @@ page with CORS; `boot` = the Control Center boot before the handler, not part of
 **Faster tool answers (owner 2026-11-20 «زود سرعه استجابه باسم وجنه»; tests `test/calls-speed.test.mjs`, `test/janna-item.test.mjs`).**
 - Anam's webhooks `POST /api/janna/lookup` (janna_lookup), `/api/janna/item` (platform_item), `/api/janna/knowledge` (knowledge_lookup),
   `GET /api/janna/health` and `POST /api/janna/timing` skip `ccBoot` (index.js `BARE`): they read only `data.json` / `items.json` or their
-  own tables. The janna health check therefore no longer proves D1 (advisor / auth / inquiries / meetings still do).
+  own tables (the lookup: the two member tables, once per isolate per 10 minutes — `src/lookup-members.js`). The janna health check therefore no longer proves D1 (advisor / auth / inquiries / meetings still do).
 - `ccBoot`'s four loaders (plans, mail, service keys, features) run together, the four sealed slots too (`service-keys.js`); `rateOk`
   is one statement (`INSERT … ON CONFLICT … RETURNING n`, SQLite ≥ 3.35), as is the session's day count.
 - A malformed POST to these webhooks answers **200** with a `text` the model can act on, never results (lookup: `{error, count:0,
