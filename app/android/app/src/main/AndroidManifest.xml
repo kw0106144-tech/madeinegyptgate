@@ -78,6 +78,7 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
     <!-- Android 11+: lets the file chooser of the WebView find the camera app (<input type=file capture>, and the camera next to the
          gallery in MigChromeClient's chooser), and the WebView's speech recognition (Web Speech: the 🎤 of Janna's chat) find the
