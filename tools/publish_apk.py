@@ -197,10 +197,11 @@ def main(argv=None):
         except ValueError:
             refuse.append("%s/latest.json is not valid JSON: fix it by hand first" % CHANNEL)
     if isinstance(cur, dict) and isinstance(cur.get("code"), int):
-        if cur["code"] == code and cur.get("sha256") == sha:
+        same = cur["code"] == code and cur.get("sha256") == sha
+        if same and not refuse:     # (a refusal above, such as aapt2's «debuggable», still refuses the published file)
             print("publish_apk: %s (version %s, build %d) is already the published APK: nothing to do" % (cur.get("file"), cur.get("version"), code))
             return 0
-        if code <= cur["code"]:
+        if code <= cur["code"] and not same:
             refuse.append("versionCode %d is not higher than the published %d (%s): Android installs an update only over a lower "
                           "versionCode — build again with a higher one" % (code, cur["code"], cur.get("file")))
     if refuse:
