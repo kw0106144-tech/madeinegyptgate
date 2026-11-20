@@ -26,6 +26,10 @@
                                    stored; it works while chat_photos is off (the owner tests the model BEFORE switching on — no coding session
                                    can call Workers AI); 20 a Cairo day, counted in the reading budget; audited dev.vision (never the photo or
                                    its text: model, size, kind, reason, flags, ms)
+     GET|PUT /dev/calls-report     «تقرير المكالمات اليومي» (calls-report.js): the recipients, time, detail, team tests, empty days, keep days
+                                   (PUT audited dev.calls_report, recipients masked) + the last 7 runs + the Anam probe
+     POST /dev/calls-report/send   {day} → ≤ 3 per report day, audited calls_report.send · GET /dev/calls-report/preview?day= → ≤ 6 / 10 min,
+                                   audited calls_report.preview (it shows personal data)
    Nothing secret is ever answered: the token is read by cf-api.js only; Cloudflare messages are cut and scrubbed. */
 import DATA from "./data.json";
 import { now, iso, line, rateOk, site, hmac, safeEq, b64url, unb64url, enc, secretOf } from "./common.js";
@@ -34,6 +38,7 @@ import { reviewView, reviewSave, reviewClear, reviewSwitchedOff } from "./review
 import { FEATURES, FEATURES_KEY, featureDef, isPolicy, featuresView, parseStore, storeJson, stateOf, forgetFeatures, valueOf, loadFeatures } from "./flags.js";
 import * as CF from "./cf-api.js";
 import * as VISION from "./chat-media.js";        // «🔎 تجربة قراءة صورة»: the same reading, guard and persona block as a call's photo
+import * as CALLS from "./calls-report.js"; // «تقرير المكالمات اليومي» — the owner's settings, send and preview; the Anam probe of «صحة الموقع»
 
 export const CONFIRM_WORD = "ارجع";
 export const DEV_LIMITS = Object.freeze({ deploys_per_10min: 30, rollbacks_per_hour: 3, rollbacks_per_day: 10, health_per_10min: 12, probe_ms: 6000, ack_ttl_s: 600 });
@@ -118,6 +123,12 @@ const REVIEW_H = { validator, fail, batch, needTables, auditStmt };
 export const getReview = env => reviewView(env);
 export async function putReview(req, env, ctx, adm) { const b = await readBody(req, 4096); return reviewSave(env, adm, b, REVIEW_H); }
 export const deleteReview = (req, env, ctx, adm) => reviewClear(env, adm, REVIEW_H);
+
+/* ---------- «تقرير المكالمات اليومي» (calls-report.js) ---------- */
+export const getCallsReport = env => CALLS.callsReportView(env);
+export const putCallsReport = (req, env, ctx, adm) => CALLS.callsReportPut(req, env, ctx, adm);
+export const sendCallsReport = (req, env, ctx, adm) => CALLS.callsReportSend(req, env, ctx, adm);
+export const previewCallsReport = (req, env, ctx, adm, url) => CALLS.callsReportPreview(req, env, ctx, adm, url);
 
 /* ---------- deploys ---------- */
 const tokenOut = tk => ({ set: !!tk.set, source: tk.source, readable: !!tk.readable });
@@ -300,18 +311,21 @@ export async function getHealth(req, env, ctx, adm) {
   try { dbOk = !!(await env.DB.prepare("SELECT 1 AS x").first()); } catch (e) { dbDetail = "D1 read failed"; }
   const dbCheck = { id: "db:d1", group: "db", label_ar: "قاعدة البيانات D1", label_en: "D1 database", url: "", ok: dbOk, status: dbOk ? 200 : 0, ms: Date.now() - d0, detail: dbDetail };
   const tables = await tableCounts(env);
+  /* can the Anam key read sessions (the calls report)? one read-only GET /v1/sessions?perPage=1 */
+  const ap = await CALLS.anamProbe(env, { fresh: true });
+  const anamCheck = { id: "anam:sessions", group: "anam", label_ar: "Anam: قراءة الجلسات (تقرير المكالمات)", label_en: "Anam: reading sessions (calls report)", url: "", ok: ap.ok, status: ap.status, ms: ap.ms, detail: ap.ok ? "" : ap.detail_ar + " / " + ap.detail_en };
   const vm = env.CF_VERSION_METADATA && typeof env.CF_VERSION_METADATA === "object" ? env.CF_VERSION_METADATA : null;
   const worker = { script: "janna-lookup", version_id: vm ? short(vm.id) : "", version_tag: vm ? short(vm.tag) : "", version_at: vm ? short(vm.timestamp) : "", source: vm ? "binding" : "none", data_v: short(DATA && DATA.v) };
   const verCheck = { id: "worker:version", group: "worker", label_ar: "نسخة الـ Worker", label_en: "Worker version", url: "", ok: true, status: 200, ms: 0,
     detail: vm ? `${worker.version_id}${worker.version_tag ? " (" + worker.version_tag + ")" : ""}` : "مفيش ربط CF_VERSION_METADATA — النسخة ظاهرة في «النشرات» / no CF_VERSION_METADATA binding — see «Deploys»" };
-  const checks = [...(await Promise.all(jobs)), dbCheck, verCheck];
+  const checks = [...(await Promise.all(jobs)), dbCheck, verCheck, anamCheck];
   return { ok: checks.every(c => c.ok) && tables.every(t => t.ok), checked_at: now(), ms: Date.now() - t0, checks, tables, worker };
 }
 
 /* ---------- audit (the developer panel's own actions) ---------- */
 export async function devAudit(env, url) {
   const lim = Math.min(200, Math.max(1, parseInt(url.searchParams.get("limit"), 10) || 50)), before = parseInt(url.searchParams.get("before"), 10);
-  const from = line(url.searchParams.get("from"), 10), where = ["(action LIKE 'dev.%' OR action IN ('review.signin', 'review.sessions_revoke', 'review.sessions_shorten') OR (action IN ('keys.set', 'keys.delete', 'keys.test') AND target_id = ?))"], args = [CF.CF_SLOT];
+  const from = line(url.searchParams.get("from"), 10), where = ["(action LIKE 'dev.%' OR action LIKE 'calls_report.%' OR action IN ('review.signin', 'review.sessions_revoke', 'review.sessions_shorten') OR (action IN ('keys.set', 'keys.delete', 'keys.test') AND target_id = ?))"], args = [CF.CF_SLOT];
   if (Number.isInteger(before) && before > 0) { where.push("id < ?"); args.push(before); }
   if (from && dateOk(from)) { where.push("at >= ?"); args.push(from + "T00:00:00.000Z"); }
   const rows = await all(env, `SELECT id, at, actor_id, actor_email, actor_role, action, target_type, target_id, summary, before_json, after_json FROM cc_audit WHERE ${where.join(" AND ")} ORDER BY id DESC LIMIT ?`, ...args, lim);
