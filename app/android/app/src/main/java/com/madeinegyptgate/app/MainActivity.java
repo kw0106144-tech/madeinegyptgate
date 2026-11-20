@@ -311,6 +311,11 @@ public class MainActivity extends BridgeActivity implements MigWebViewClient.Hos
         if (pull != null) pull.setRefreshing(false);
     }
 
+    @Override
+    public void appSettings() {
+        MigOut.appSettings(this);
+    }
+
     /**
      * Android stopped the page's process (it needed the memory) or it crashed. The WebView cannot be used again: the activity
      * starts again at the same page (onSaveInstanceState → onCreate), instead of Android closing the whole app. A second one

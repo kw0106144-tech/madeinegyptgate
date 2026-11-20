@@ -156,17 +156,22 @@ public class MigLogicTest {
         assertEquals(SITE + "/dashboard/", MigLinks.restoreUrl(SITE + "/login/", SITE + "/dashboard/"));
         assertEquals(SITE + "/login/", MigLinks.restoreUrl(SITE + "/login/", null));
         assertEquals(SITE + "/tenders/#q=cement", MigLinks.restoreUrl(SITE + "/tenders/#q=cement", null));
-        // never an API answer, another site or the offline page
+        // never an API answer or a file, another site or the offline page
         assertNull(MigLinks.restoreUrl(SITE + "/api/meetings/x/ics", null));
         assertNull(MigLinks.restoreUrl(SITE + "/api", null));
+        assertNull(MigLinks.restoreUrl(SITE + "/media/u/x.jpg", null));
+        assertNull(MigLinks.restoreUrl(SITE + "/data/janna.js", null));
         assertNull(MigLinks.restoreUrl("https://evil.com/", null));
         assertNull(MigLinks.restoreUrl(OFF, null));
         // nothing saved → the home page Capacitor loads
         assertNull(MigLinks.restoreUrl(null, null));
-        // coming back never starts a call by itself
-        assertEquals(SITE + "/advisor/#login=x", MigLinks.restoreUrl(SITE + "/advisor/?live=1#login=x&live=1", null));
+        // coming back never starts a call by itself and never reuses a one-time sign-in code (lt=, login=), as the iOS app
+        assertEquals(SITE + "/advisor/", MigLinks.restoreUrl(SITE + "/advisor/?live=1#login=x&live=1", null));
         assertEquals(SITE + "/advisor/?a=1", MigLinks.restoreUrl(SITE + "/advisor/?a=1&live=1", null));
         assertEquals(SITE + "/advisor/", MigLinks.restoreUrl(SITE + "/advisor/#live=1", null));
+        assertEquals(SITE + "/dashboard/#plan", MigLinks.restoreUrl(SITE + "/dashboard/#lt=abc&plan", null));
+        assertEquals(SITE + "/pay/#inv=0123456789abcdef", MigLinks.restoreUrl(SITE + "/pay/#inv=0123456789abcdef", null));
+        assertEquals(SITE + "/media-center/", MigLinks.restoreUrl(SITE + "/media-center/", null));
     }
 
     @Test
@@ -221,6 +226,17 @@ public class MigLogicTest {
         String[] both = { "android.permission.RECORD_AUDIO", "android.permission.CAMERA" };
         assertFalse(MigAsk.allHeld(both, new HashSet<>(Collections.singletonList("android.permission.RECORD_AUDIO"))));
         assertTrue(MigAsk.allHeld(new String[0], new HashSet<>()));
+    }
+
+    @Test
+    public void appSettingsLinksOpenTheAppsSettings() {
+        // mic-blocked-wording: the address iOS uses for an app's settings works on Android too
+        assertTrue(MigOut.isAppSettings("app-settings:"));
+        assertTrue(MigOut.isAppSettings("APP-SETTINGS:root"));
+        assertFalse(MigOut.isAppSettings("https://madeinegyptgate.com/app-settings:"));
+        assertFalse(MigOut.isAppSettings("app-setting:"));
+        assertFalse(MigOut.isAppSettings(null));
+        assertEquals(MigLinks.EXTERNAL_APP, MigLinks.newWindowAction("app-settings:", true));
     }
 
     @Test

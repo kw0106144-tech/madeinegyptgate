@@ -27,6 +27,9 @@ class MigWebViewClient extends BridgeWebViewClient {
 
         /** Android stopped the page's process (memory) or it crashed: true = the app handled it (else Android closes the app) */
         boolean rendererGone(WebView view);
+
+        /** an app-settings: link: this app's page in the phone's settings */
+        void appSettings();
     }
 
     private final Host host;
@@ -43,6 +46,17 @@ class MigWebViewClient extends BridgeWebViewClient {
         if (isUnreachable(error.getErrorCode(), String.valueOf(error.getDescription()))) {
             host.showOffline(view, request.getUrl() != null ? request.getUrl().toString() : null);
         }
+    }
+
+    /** app-settings: → this app's page in the phone's settings (MigOut); everything else as Capacitor decides */
+    @Override
+    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        String url = request != null && request.getUrl() != null ? request.getUrl().toString() : null;
+        if (MigOut.isAppSettings(url)) {
+            host.appSettings();
+            return true;
+        }
+        return super.shouldOverrideUrlLoading(view, request);
     }
 
     @Override

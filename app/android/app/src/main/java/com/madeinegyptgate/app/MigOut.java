@@ -11,6 +11,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -35,6 +36,7 @@ final class MigOut {
 
     /** mail, phone, WhatsApp, another site …: the app that handles it, exactly as Capacitor's Bridge.launchIntent does */
     static boolean external(Activity activity, String url) {
+        if (isAppSettings(url)) return appSettings(activity);
         try {
             activity.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
             return true;
@@ -57,6 +59,24 @@ final class MigOut {
         } catch (ActivityNotFoundException | SecurityException e) {
             // no browser declares itself as one: another site may still open in whatever handles it, never the site itself (a loop)
             if (!MigLinks.isSiteUrl(url)) return external(activity, url);
+            toast(activity, R.string.mig_link_failed);
+            return false;
+        }
+    }
+
+    /**
+     * app-settings: (the address iOS uses for an app's own settings page): this app's page in the phone's settings, where its
+     * microphone permission is (a call whose microphone was refused: «الميكروفون مقفول للتطبيق …», mic-blocked-wording)
+     */
+    static boolean isAppSettings(String url) {
+        return url != null && url.regionMatches(true, 0, "app-settings:", 0, 13);
+    }
+
+    static boolean appSettings(Activity activity) {
+        try {
+            activity.startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", activity.getPackageName(), null)));
+            return true;
+        } catch (ActivityNotFoundException | SecurityException e) {
             toast(activity, R.string.mig_link_failed);
             return false;
         }

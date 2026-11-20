@@ -39,6 +39,10 @@ final class MigLinks {
             "panel\\.html|login\\.html|api/index\\.php.*|data/auth\\.js|data/me\\.js|data/egadm\\.js)$"
     );
     private static final Pattern MEETING = Pattern.compile("^/(en/)?meeting(/.*|\\.html)?$");
+    /** files and data, never a place to come back to (the same list as the iOS app's MIGLinks.restorable) */
+    private static final Pattern NOT_A_PLACE = Pattern.compile("^/(api|media|data|img|assets|_seo|\\.well-known)(/.*)?$");
+    /** one-time parts of an address: live=1 starts a call, lt= / login= are single-use sign-in codes (data/mig-api.js, advisor) */
+    private static final String[] ONCE = { "live", "lt", "login" };
     private static final Pattern SCHEME = Pattern.compile("[a-z][a-z0-9+.-]*");
 
     /** What a new window (a link with target=_blank, window.open) becomes (MigWindows) */
@@ -188,15 +192,14 @@ final class MigLinks {
 
     /**
      * Where the app starts again after Android reclaimed it (MainActivity.onCreate with a saved state): a pending App Link wins,
-     * else the saved page of the site (never an /api/ answer), without live=1 (coming back must not start a call by itself);
-     * null = the home page Capacitor already loads.
+     * else the saved page of the site, never a file or an API answer, and without its one-time parts (live=1 would start a call
+     * by itself, lt= / login= are used up); null = the home page Capacitor already loads. Same rule as the iOS app (MIGPlace).
      */
     static String restoreUrl(String saved, String pendingLink) {
         if (pendingLink != null) return pendingLink;
         Parts p = parse(saved);
         if (p == null || !"https".equals(p.scheme) || !isSiteHost(p.host)) return null;
-        String l = p.path.toLowerCase(Locale.ROOT);
-        if (l.equals("/api") || l.startsWith("/api/")) return null;
+        if (NOT_A_PLACE.matcher(p.path.toLowerCase(Locale.ROOT)).matches()) return null;
         String s = saved.trim();
         int cut = s.length();
         int hash = s.indexOf('#');
@@ -204,23 +207,26 @@ final class MigLinks {
         int q = s.indexOf('?');
         if (q >= 0 && q < cut) cut = q;
         StringBuilder out = new StringBuilder(s.substring(0, cut));
-        String query = withoutParam(p.query, "live", "1");
+        String query = withoutKeys(p.query, ONCE);
         if (query != null) out.append('?').append(query);
-        String fragment = withoutParam(p.fragment, "live", "1");
+        String fragment = withoutKeys(p.fragment, ONCE);
         if (fragment != null) out.append('#').append(fragment);
         return out.toString();
     }
 
-    /** a query / fragment without name=value; null when nothing is left */
-    static String withoutParam(String part, String name, String value) {
+    /** a query / fragment without the parts named `keys` (any value); null when nothing is left */
+    static String withoutKeys(String part, String[] keys) {
         if (part == null) return null;
         List<String> keep = new ArrayList<>();
-        for (String kv : part.split("&", -1)) {
-            if (kv.equals(name + "=" + value)) continue;
-            keep.add(kv);
+        for (String kv : part.split("&")) {
+            if (kv.isEmpty()) continue;
+            int eq = kv.indexOf('=');
+            String key = (eq >= 0 ? kv.substring(0, eq) : kv).toLowerCase(Locale.ROOT);
+            boolean once = false;
+            for (String k : keys) once |= k.equals(key);
+            if (!once) keep.add(kv);
         }
-        String joined = String.join("&", keep);
-        return joined.isEmpty() ? null : joined;
+        return keep.isEmpty() ? null : String.join("&", keep);
     }
 
     static boolean hasParam(String part, String name, String value) {
