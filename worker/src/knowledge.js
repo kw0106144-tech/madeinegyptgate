@@ -114,12 +114,30 @@ function dropIntro(t) {
 /* any-language calls (2026-11-20): a self-introduction in another language inside the question's own clause, and up to 3 name words after
    it (to the end of the clause, or before a joining word: «me llamo Ana y quiero saber…» → «y quiero saber…»). «je suis» also means "I am
    interested…", so it takes only capitalised names («Je suis Jean Dupont»). */
-const NAME_STOP = "(?:y|e|et|und|and|ve|i|o|de|del|della|da|di|du|von|aus|from|of|que|qui|che|was|wie|quel|quelle|cual|cuanto|quanto|combien|how|what|para|pour|per|fur|für)";
+const NAME_STOP_W = ["y", "e", "et", "und", "and", "ve", "i", "o", "de", "del", "della", "da", "di", "du", "von", "aus", "from", "of", "que", "qui", "che", "was", "wie", "quel",
+  "quelle", "cual", "cuanto", "quanto", "combien", "how", "what", "para", "pour", "per", "fur", "für"];
+const NAME_STOP = "(?:" + NAME_STOP_W.join("|") + ")";
 const NAME_W = "[^\\s,،.;:!?¿¡؟]+";
 const FOREIGN_INTRO = new RegExp("(^|[\\s,،.;:!?¿¡«\"(])(?:je\\s+m['’]?\\s?appelle|me\\s+llamo|mi\\s+nombre\\s+es|mi\\s+chiamo|ich\\s+hei(?:ß|ss)e|mein\\s+name\\s+ist|meu\\s+nome\\s+[ée]|benim\\s+ad[ıi]m)"
   + "(?:\\s+(?!" + NAME_STOP + "(?![\\p{L}\\p{N}]))" + NAME_W + "){0,3}[,،.;:!]?", "giu");
 const JE_SUIS = new RegExp("(^|[\\s,،.;:!?¿¡«\"(])[Jj]e\\s+suis(?:\\s+[A-ZÀ-ÖØ-Þ]" + "[^\\s,،.;:!?¿¡؟]*){1,3}[,،.;:!]?", "gu");
-const dropForeignIntro = t => String(t).replace(FOREIGN_INTRO, (m, pre) => pre + " ").replace(JE_SUIS, (m, pre) => pre + " ");
+/* review 2026-11-20 CW-2: the commoner «I am <Name> from <Company>» of other languages — «soy / sono / ich bin / ben / ik ben / sou» at the start
+   of a clause (or after a greeting) + 1–3 capitalised name words + the company after them («de Aceros del Norte», «della ditta Acciai
+   Bianchi», «von Stahlwerk Nord»), to the end of the clause; the Turkish «Kaya Celik firmasından» («from the Kaya Celik firm») too.
+   Case-sensitive on the name: «soy sauce», «soy bean», «sono interessato», «ich bin auf der Suche» stay. A question word is never a name. */
+const ciWord = w => w.replace(/^\p{L}/u, c => "[" + c.toUpperCase() + c.toLowerCase() + "]");
+const CAP_STOP = "(?!(?:" + NAME_STOP_W.concat(["ne", "nasil", "nasıl", "kac", "kaç", "nerede", "hangi", "cuánto", "cuál", "dónde", "donde", "wo", "welche", "quale", "dove"]).map(ciWord).join("|") + ")(?![\\p{L}\\p{N}]))";
+const CAPW = CAP_STOP + "[A-ZÀ-ÖØ-ÞĞİŞ][^\\s,،.;:!?¿¡؟]*";
+const GREET = "(?:" + ["hola", "ciao", "hallo", "merhaba", "olá", "ola", "oi", "buongiorno", "buonasera", "buenas", "buenos días", "buenos dias", "guten tag", "guten morgen",
+  "salve", "selam", "hello", "hi", "hey", "bonjour", "salut", "hoi", "goedendag", "goedemiddag"].map(w => ciWord(w).replace(/ /g, "\\s+")).join("|") + ")";
+const CO_PREP = "(?:de|del|della|dalla|dello|di|da|do|dos|das|von|vom|aus|bei|van|from)";
+const CO_NOUN = "(?:la\\s+|el\\s+|die\\s+|der\\s+)?(?:ditta|azienda|societ[àa]|empresa|compa[ñn][íi]a|companhia|firma|f[áa]brica|fabbrica|fabrik|company|firm|factory)";
+const CO_LINK = "(?:del|de|la|las|los|el|di|della|delle|dei|degli|do|da|dos|das|von|vom|der|den|und|y|e|et|&|and|ve)";
+const FOREIGN_SELF = new RegExp("(^|[,،.;:!?¿¡«\"(]\\s*|" + GREET + "\\s+)(?:[Ss]oy|[Ss]ono|[Ii]ch\\s+bin|[Bb]en|[Ii]k\\s+ben|[Ss]ou)(?:\\s+" + CAPW + "){1,3}"
+  + "(?:\\s+" + CO_PREP + "(?:\\s+" + CO_NOUN + ")?(?:\\s+(?:" + CO_LINK + "\\s+)?" + CAPW + "){1,4}){0,2}[,،.;:!]?", "gu");
+const TR_CO = new RegExp("(^|[\\s,،.;:!?¿¡«\"(])(?:" + CAPW + "\\s+){1,4}(?:firmas[ıi](?:ndan|yla|y[ıi]z)?|[şs]irketi(?:nden|yle|yiz)?|fabrikas[ıi](?:ndan)?)(?![\\p{L}\\p{N}])[,،.;:!]?", "gu");
+const dropForeignIntro = t => String(t).replace(FOREIGN_INTRO, (m, pre) => pre + " ").replace(JE_SUIS, (m, pre) => pre + " ")
+  .replace(FOREIGN_SELF, (m, pre) => pre + " ").replace(TR_CO, (m, pre) => pre + " ");
 export function anonymize(s, known = new Set()) {
   let t = clean(String(s == null ? "" : s), 900).split(MASK_EMAIL).join(" ").split(MASK_PHONE).join(" ");
   t = t.replace(/(?:https?:\/\/|www\.)\S+/gi, " ").replace(ID_RX, " ").replace(/[0-9٠-٩]{6,}/g, " ");

@@ -99,6 +99,24 @@ describe("bassem_intel: the tool's own answer is what the member sees", () => {
     P.runTimers(60000); await tick();
     assert.deepEqual([P.shown.length, P.fetches.length, P.steps[0][1]], [0, 0, "fail"]);
   });
+  /* review 2026-11-20 CW-4: worker-intel now answers a refused POST with 200 {ok:false, flags, text} (no results) instead of a 429 / 400 */
+  test("a refused call (200 ok:false, flags busy / bad_request, no results) → the failure step as before, never the feed list", async () => {
+    const BUSY = { ok: false, error: "rate limited", flags: ["busy"], text: "لحظة واحدة، طلبات كتير ورا بعض. جرّب تاني بعد دقيقة." };
+    const BAD = { ok: false, error: "bad json", flags: ["bad_request"], text: "طلب البحث وصل ناقص. ابعته تاني مرة واحدة بس…" };
+    for (const [i, res] of [[1, JSON.stringify(BUSY)], [2, { result: BAD }], [3, { ...BUSY, action: "doc", error: "rate limited" }]]) {
+      const P = page({ fetchMap: { "/api/intel/feed": { status: 200, body: { total: 1, items: [{ kind: "tender_gov", title: "توريد حديد تسليح", page: "/intel/tenders/t-9/" }] } } } });
+      P.fire("tool-call-started", { toolName: "bassem_intel", toolCallId: "r" + i, arguments: { action: "search", query: "حديد" } });
+      P.fire("tool-call-completed", { toolName: "bassem_intel", toolCallId: "r" + i, result: res });
+      P.runTimers(60000); await tick(); await tick();
+      assert.deepEqual([P.shown.length, P.fetches.length, P.screen.length], [0, 0, 0], "no list, no feed query, the screen stays: case " + i);
+      assert.equal(P.steps[0][1], "fail", "case " + i);
+    }
+    const Q = page({ fetchMap: { "/api/intel/feed": { status: 200, body: { total: 0, items: [] } } } });
+    Q.fire("tool-call-started", { toolName: "bassem_intel", toolCallId: "z1", arguments: { action: "search", query: "حديد" } });
+    Q.fire("tool-call-completed", { toolName: "bassem_intel", toolCallId: "z1", result: { ok: false, flags: ["login"], text: "x" } });
+    await tick(); await tick();
+    assert.equal(Q.fetches.length, 1, "another unreadable answer keeps the labelled feed fallback");
+  });
   test("a screen that holds work is not replaced: the card offers the page in a new tab (desktop too)", async () => {
     const P = page({ busy: true });
     P.V.toolResult({ toolName: "bassem_intel", result: TOOL });

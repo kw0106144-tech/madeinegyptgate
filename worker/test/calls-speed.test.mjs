@@ -179,6 +179,22 @@ describe("11 POST /api/janna/timing: the call page's start timing — 204 and on
     assert.equal(timingLine({ persona: "janna", voice: 1, reasoning: many }).reasoning.length, 20);
     assert.equal(timingLine({ persona: "janna", voice: 1, reasoning: [[5, 2], ["x", 3], 7] }).reasoning, undefined, "first ≤ last, numbers only");
   });
+  /* review 2026-11-20 CW-1: exactly what data/janna-live.js sends (tmBeacon at «voice», tmTurnsSend at the call's end) — one line each */
+  test("the call page's own bodies: k start {p, lang, relay, region, ms, srv} and k turns {p, lang, region, turns [[r0, r1, words]], -1 = none}", async () => {
+    const start = { k: "start", p: "janna", lang: "en", relay: 0, region: "eu-west-1", ms: { token: 812, sdk: 1020, mic: 1300, stream: 1400, connected: 2900, ready: 3100, video: 3300, play: 3350, voice: 4100 },
+      srv: { boot: 9, checks: 30, ctx: 120, persona: 400, wait: 0, token: 900, total: 1500 } };
+    const turns = { k: "turns", p: "bassem", lang: "ar", region: "eu-west-1", turns: [[640, 1900, 2300], [-1, -1, 1800], [-1, -1, -1], [700, 300, 900], ["x", 1, 2], [5, 9, 12, 4]] };
+    for (const b of [start, turns]) assert.equal((await worker.fetch(beacon(b), {}, {})).status, 204);
+    assert.equal(lines().length, 2, "one line per beacon");
+    assert.deepEqual(JSON.parse(lines()[0].slice(12)), { persona: "janna", lang: "en", k: "start", token: 812, sdk: 1020, mic: 1300, stream: 1400, connected: 2900, ready: 3100, video: 3300, play: 3350, voice: 4100,
+      server: { boot: 9, checks: 30, ctx: 120, persona: 400, wait: 0, token: 900, total: 1500 }, region: "eu-west-1" });
+    assert.deepEqual(JSON.parse(lines()[1].slice(12)), { persona: "bassem", lang: "ar", k: "turns", region: "eu-west-1", turns: [[640, 1900, 2300], [-1, -1, 1800]] },
+      "a row with no value, a first chunk after the last, a non-number or more than 3 values is dropped");
+    assert.equal(timingLine({ k: "turns", p: "janna", turns: [[-1, -1, -1]] }), null, "no mark and no turn: no line");
+    assert.equal(timingLine({ k: "turns", p: "janna", turns: Array.from({ length: 30 }, (_, i) => [i, i + 1, i + 2]) }).turns.length, 20);
+    assert.equal(timingLine({ k: "start", p: "admin", ms: { voice: 1 } }), null, "persona janna | bassem only");
+    assert.equal(timingLine({ k: "other", p: "janna", ms: { voice: 1 } }).k, undefined, "an unknown kind is not logged");
+  });
   test("one isolate logs at most LOG_PER_MIN lines a minute (a flood cannot fill the logs)", async () => {
     const t0 = Date.parse("2031-01-01T00:00:10Z");
     for (let i = 0; i < LOG_PER_MIN + 5; i++) assert.equal((await handleTiming(beacon(GOOD), {}, {}, t0 + i)).status, 204);

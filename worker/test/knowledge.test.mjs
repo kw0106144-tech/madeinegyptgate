@@ -212,4 +212,21 @@ describe("any-language calls (2026-11-20): «بنك المعلومات» stays A
     assert.equal(anonymize("je suis interesse par l acier"), "je suis interesse par l acier", "«je suis» + a lower-case word is not a name");
     assert.equal(anonymize("Ian asked about the plan"), "Ian asked about the plan");
   });
+  /* review 2026-11-20 CW-2: the commoner «I am <Name> from <Company>» form of other languages, as the English and Arabic ones already are */
+  test("«soy / sono / ich bin / ben / ik ben» + a capitalised name and the company after it are dropped; «soy sauce» stays", () => {
+    const turn = (text) => questionsOf({ turns: [{ role: "user", text, seq: 1 }, { role: "persona", text: "Steel prices start from the factory list on the platform.", seq: 2 }], tools: [] }).map(x => x.question);
+    for (const [s, out] of [["Hola, soy Juan Perez de Aceros del Norte, cuanto cuesta el acero?", "Hola, cuanto cuesta el acero?"],
+      ["Ciao, sono Marco Rossi della ditta Acciai Bianchi, quanto costa l'acciaio?", "Ciao, quanto costa l'acciaio?"],
+      ["Hallo, ich bin Hans Schmidt von Stahlwerk Nord, was kostet Stahl?", "Hallo, was kostet Stahl?"],
+      ["Merhaba, ben Ahmet Yilmaz, Kaya Celik firmasindan, celik fiyati ne kadar?", "Merhaba, celik fiyati ne kadar?"],
+      ["Hola soy Juan Perez de Aceros del Norte y quiero saber cuanto cuesta el acero?", "Hola y quiero saber cuanto cuesta el acero?"],
+      ["Ik ben Jan de Vries van Staal Holland, wat kost staal?", "wat kost staal?"]]) {
+      assert.deepEqual(turn(s), [out], s);
+      assert.ok(!/Juan|Perez|Aceros|Norte|Marco|Rossi|Acciai|Bianchi|Hans|Schmidt|Stahlwerk|Nord\b|Ahmet|Yilmaz|Kaya|Celik firm|Vries|Holland/.test(turn(s)[0]), s);
+    }
+    for (const s of ["Do you have soy sauce factories in Egypt?", "Is there any soy bean oil producer in Alexandria?", "Soy sauce producers in Egypt, how many are there?",
+      "Sono interessato all'acciaio, quanto costa?", "Hallo, ich bin auf der Suche nach Stahl, was kostet das?", "Do you have Ben Steel in your list?"])
+      assert.deepEqual(turn(s), [s], "unchanged: " + s);
+    assert.equal(anonymize("Hola soy Juan Cuanto cuesta el acero?"), "Hola Cuanto cuesta el acero?", "a question word is never a name");
+  });
 });

@@ -326,11 +326,14 @@ page with CORS; `boot` = the Control Center boot before the handler, not part of
   −36 … −52 %. `GET` keeps the full shape.
 - `POST /api/janna/session`: the block check, the hourly network limit and Bassem's sign-in / plan check run together (refusals and their
   order unchanged: blocked → limit → sign-in); the panel's Anam key is taken from the keys `ccBoot` already unsealed (no second slot read).
-- `POST /api/janna/timing` (`src/live-timing.js`): the call page's start beacon, sent once per call at «voice» (sendBeacon, same origin;
-  another origin, an oversized body or no mark → dropped). Always 204. **Privacy guard**: ONE console line `live-timing {…}` rebuilt only
-  from `persona`, `lang`, the marks `token sdk mic stream connected ready video play voice` (whole ms, 0–600,000), `server` (the token
-  answer's Server-Timing parts), `relay` (1), `region` (a short code) and `reasoning` ([first, last] ms per turn, ≤ 20) — never a session
-  id, IP, user agent, URL or free text; ≤ 60 lines per isolate per minute. wrangler.toml `[observability]` turns Workers Logs on for the
+- `POST /api/janna/timing` (`src/live-timing.js`): the call page's beacons (data/janna-live.js `tmBeacon` / `tmTurnsSend`; sendBeacon,
+  same origin; another origin, an oversized body or neither a mark nor a turn → dropped). Always 204. The page sends `{k:"start", p, lang,
+  relay, region, ms:{token…voice}, srv:{boot, checks, ctx, persona, wait, token, total}}` once per call at «voice», and `{k:"turns", p,
+  lang, region, turns:[[first reasoning chunk, last reasoning chunk, first words], …]}` (ms after the end of his speech, -1 = none) at the
+  call's end. **Privacy guard**: ONE console line `live-timing {…}` per beacon, rebuilt only from `persona`, `lang`, `k`, the marks
+  `token sdk mic stream connected ready video play voice` (whole ms, 0–600,000), `server` (the token answer's Server-Timing parts),
+  `relay` (1), `region` (a short code) and `turns` (≤ 20 rows; the flat form `persona` / top-level marks / `server` / `reasoning`
+  [first, last] is read too) — never a session id, IP, user agent, URL or free text; ≤ 60 lines per isolate per minute. wrangler.toml `[observability]` turns Workers Logs on for the
   console lines, with `[observability.logs] invocation_logs = false` (no per-request invocation log: its request URL — login links, member
   routes —, headers and client data are not kept). After the first deploy, open one `live-timing` event in Workers Logs and check that it
   carries no request URL.
@@ -341,7 +344,9 @@ queries keep the text byte for byte); memory / knowledge masking also covers spo
 klammeraffe · собака · ایٹ (any dot word), the English "at" with punto · ponto · punkt · nokta · точка · ڈاٹ (never "point": «stop at this
 point» stays), Chinese 艾特 / 点, and the digit words of fr / es / pt / it / de / tr (7 in a row, 4 of them words); «بنك المعلومات» captures
 only Arabic and plain-ASCII client turns (English, Franco) and drops foreign self-introductions with the name after them («je m'appelle
-Jean Dupont», «me llamo Ana», «ich heiße …»). Tests: `test/memory.test.mjs`, `test/knowledge.test.mjs`, `test/janna-item.test.mjs`.
+Jean Dupont», «me llamo Ana», «ich heiße …») and the «I am <Name> from <Company>» form («soy Juan Perez de Aceros del Norte», «sono Marco
+Rossi della ditta …», «ich bin Hans Schmidt von …», «ben Ahmet Yilmaz», «Kaya Celik firmasından»; a capitalised name only, so «soy sauce»
+stays). Tests: `test/memory.test.mjs`, `test/knowledge.test.mjs`, `test/janna-item.test.mjs`.
 
 **Memory policy (owner, 2026-11-18):** Bassem's memory is permanent and only grows — no member-facing deletion, no age-based retention, no
 row cap; the daily cron consolidates (a call whose final summary never arrived gets it rebuilt) and never deletes. The only erasure is

@@ -4,19 +4,21 @@
    (navigator.sendBeacon, same origin). The answer is always 204 with no body (a beacon never reads it).
 
    PRIVACY GUARD — what reaches Workers Logs is ONE console line «live-timing {…}» rebuilt ONLY from the fields below: whole milliseconds, a
-   fixed persona / language, a 0/1 relay flag and a short region code. Never the body as sent, a session id, an IP, a user agent, a URL, a
-   name or any free text. A body from another origin, an oversized or unreadable body, or one without a single mark is dropped without a
-   line; one isolate writes at most LOG_PER_MIN lines a minute (a flood cannot fill the logs). No D1, no KV, no ccBoot (index.js BARE).
+   fixed persona / language / beacon kind, a 0/1 relay flag and a short region code. Never the body as sent, a session id, an IP, a user
+   agent, a URL, a name or any free text. A body from another origin, an oversized or unreadable body, or one without a single mark or turn
+   is dropped without a line; one isolate writes at most LOG_PER_MIN lines a minute (a flood cannot fill the logs). No D1, no KV, no ccBoot (index.js BARE).
    Workers Logs keep console lines only (wrangler.toml [observability.logs] invocation_logs = false): no request URLs or headers.
 
-   Body (JSON, ≤ TIMING_MAX_BODY bytes; text/plain — sendBeacon's default for a string — is fine):
-     persona "janna" | "bassem" (required) · lang "ar" | "en"
-     token, sdk, mic, stream, connected, ready, video, play, voice — the page's marks, ms after the tap (tmMark; at least one)
-     server  the token answer's Server-Timing string ("boot;dur=12, checks;dur=30, …") or {boot, checks, ctx, persona, wait, token, total}
+   Body (JSON, ≤ TIMING_MAX_BODY bytes; text/plain — sendBeacon's default for a string — is fine). What data/janna-live.js sends
+   (tmBeacon / tmTurnsSend):
+     k "start" (once, at «voice») | "turns" (the call's end) · p (= persona) "janna" | "bassem" (required) · lang "ar" | "en"
+     ms {token, sdk, mic, stream, connected, ready, video, play, voice} — the page's marks, ms after the tap (tmMark)
+     srv {boot, checks, ctx, persona, wait, token, total} — the token answer's Server-Timing durations
      relay   1 when the media went through Anam's TURN relay (iceTransportPolicy "relay")
      region  the region Anam served the session from, a short code ("eu-west-1")
-     reasoning [[first, last], …] per user turn: the first / last REASONING_STREAM_EVENT_RECEIVED chunk, ms after USER_SPEECH_ENDED (≤ 20 turns)
-   Anything else in the body is ignored. */
+     turns [[first reasoning chunk, last reasoning chunk, first words], …] per user turn, ms after USER_SPEECH_ENDED, -1 = none (≤ 20)
+   The flat form is read too: persona, the marks at the top level, server (a Server-Timing string "boot;dur=12, …" or the object above),
+   reasoning [[first, last], …]. A line needs at least one mark or one turn. Anything else in the body is ignored. */
 import { originOf, originOk } from "./janna-session.js";
 
 export const MARKS = Object.freeze(["token", "sdk", "mic", "stream", "connected", "ready", "video", "play", "voice"]);
@@ -34,14 +36,26 @@ function serverParts(s) {
   return Object.keys(out).length ? out : null;
 }
 /* the body → the ONLY fields that may be logged (null = nothing worth a line) */
+const plain = o => !!o && typeof o === "object" && !Array.isArray(o);
+/* one turn of the page's "turns": [first reasoning chunk, last reasoning chunk, first words] in ms, -1 = none → null when it is not that */
+function turnRow(t) {
+  if (!Array.isArray(t) || !t.length || t.length > 3) return null;
+  const r = [-1, -1, -1];
+  for (let i = 0; i < t.length; i++) { if (t[i] === -1) continue; const v = ms(t[i]); if (v == null) return null; r[i] = v; }
+  if (r[0] < 0 && r[1] < 0 && r[2] < 0) return null;
+  if (r[0] >= 0 && r[1] >= 0 && r[1] < r[0]) return null;
+  return r;
+}
 export function timingLine(b) {
-  if (!b || typeof b !== "object" || Array.isArray(b)) return null;
-  if (b.persona !== "janna" && b.persona !== "bassem") return null;
-  const o = { persona: b.persona, lang: b.lang === "en" ? "en" : "ar" };
+  if (!plain(b)) return null;
+  const p = b.persona != null ? b.persona : b.p;
+  if (p !== "janna" && p !== "bassem") return null;
+  const o = { persona: p, lang: b.lang === "en" ? "en" : "ar" };
+  if (b.k === "start" || b.k === "turns") o.k = b.k;
+  const marks = plain(b.ms) ? b.ms : b;
   let n = 0;
-  for (const k of MARKS) { const v = ms(b[k]); if (v != null) { o[k] = v; n++; } }
-  if (!n) return null;
-  const sv = serverParts(b.server); if (sv) o.server = sv;
+  for (const k of MARKS) { const v = ms(marks[k]); if (v != null) { o[k] = v; n++; } }
+  const sv = serverParts(b.srv != null ? b.srv : b.server); if (sv) o.server = sv;
   if (b.relay === 1 || b.relay === true || b.relay === "1") o.relay = 1;
   const rg = typeof b.region === "string" ? b.region.trim() : "";
   if (rg && rg.length <= 24 && REGION.test(rg)) o.region = rg.toLowerCase();
@@ -50,7 +64,12 @@ export function timingLine(b) {
     for (const t of b.reasoning.slice(0, MAX_TURNS)) { if (!Array.isArray(t)) continue; const a = ms(t[0]), z = ms(t[1]); if (a != null && z != null && z >= a) rs.push([a, z]); }
     if (rs.length) o.reasoning = rs;
   }
-  return o;
+  if (Array.isArray(b.turns)) {
+    const ts = [];
+    for (const t of b.turns.slice(0, MAX_TURNS)) { const r = turnRow(t); if (r) ts.push(r); }
+    if (ts.length) o.turns = ts;
+  }
+  return n || o.turns ? o : null;
 }
 let WIN = -1, USED = 0; // this isolate's log lines in the current minute
 const done = () => new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
