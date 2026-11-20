@@ -1170,18 +1170,28 @@ final class MIGFiles: NSObject, WKDownloadDelegate {
 }
 
 /// Quick Look for one file (its own Done and share buttons; a calendar file shows Add to Calendar, as in Safari)
-final class MIGPreview: QLPreviewController, QLPreviewControllerDataSource {
+final class MIGPreview: QLPreviewController {
+
+    private let source: MIGPreviewSource // QLPreviewController holds its data source weakly
+
+    init(item: URL) {
+        source = MIGPreviewSource(item: item)
+        super.init(nibName: nil, bundle: nil)
+        dataSource = source
+    }
+
+    required init?(coder: NSCoder) {
+        return nil
+    }
+}
+
+final class MIGPreviewSource: NSObject, QLPreviewControllerDataSource {
 
     private let item: URL
 
     init(item: URL) {
         self.item = item
-        super.init(nibName: nil, bundle: nil)
-        dataSource = self
-    }
-
-    required init?(coder: NSCoder) {
-        return nil
+        super.init()
     }
 
     @objc(numberOfPreviewItemsInPreviewController:)
