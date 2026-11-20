@@ -1,0 +1,42 @@
+{
+ "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
+ "name": "janna_lookup",
+ "description": "Search the platform's REAL directory and get results you can say aloud: factories & companies (by activity/product and governorate or city), products, tenders, RFQs, retail offers, industrial cities. Use it whenever the visitor asks which factories/suppliers/tenders/offers exist (e.g. «مصانع بلاستيك في الشرقية», \"steel factories in Giza\"). Say only what the result's `text` and results contain — never invent names, numbers or contacts. Also call janna_search with the same words so the results appear on screen.",
+ "config": {
+  "url": "https://madeinegyptgate.com/api/janna/lookup",
+  "method": "POST",
+  "parameters": {
+   "type": "object",
+   "required": [
+    "section",
+    "query"
+   ],
+   "properties": {
+    "query": {
+     "type": "string",
+     "description": "What the visitor is looking for (activity, product, company name, city) in Arabic or English, e.g. بلاستيك"
+    },
+    "section": {
+     "enum": [
+      "••••",
+      "••••",
+      "••••",
+      "••••",
+      "••••",
+      "••••",
+      "••••"
+     ],
+     "type": "string",
+     "description": "What to search: factories, suppliers, products, tenders, rfqs, offers or cities (industrial cities/zones)"
+    },
+    "governorate": {
+     "type": "string",
+     "description": "Optional Egyptian governorate or industrial city in Arabic, e.g. الشرقية or العاشر من رمضان"
+    }
+   }
+  },
+  "awaitResponse": true
+ },
+ "disableInterruptions": false,
+ "expectedUpdatedAt": "<the updatedAt the update returns>"
+}

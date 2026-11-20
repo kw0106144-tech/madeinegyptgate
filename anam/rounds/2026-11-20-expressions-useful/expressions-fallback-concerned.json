@@ -1,0 +1,218 @@
+{
+ "what": "fallback step 1: apologies -> [supportive], [concerned] for sympathy only; send as systemPrompt alone, with expectedUpdatedAt from a fresh read, only after the owner's OK and with no call running",
+ "personas": {
+  "janna-ar": {
+   "applies_to": "design/janna-ar.new.md",
+   "applies_to_sha256": "b286114d09d0016fdc81bff42f047dcdcf01b9afa6f3b531f5c6f7c52542d481",
+   "file": "design/fallback/janna-ar.fallback.md",
+   "sha256": "350a308c2ddb931da1e036c695c72ae5118b4aa0a901370ca61dacb2186e4107",
+   "code_points": 23762,
+   "utf16_units": 23763,
+   "net_vs_new_code_points": -39,
+   "replacements": [
+    {
+     "id": "AR-F1",
+     "old": "(اعتذار ← شرح ← سؤال)",
+     "new": "(تعاطف ← شرح ← سؤال)"
+    },
+    {
+     "id": "AR-F2",
+     "old": "والرد على شكوى أو زعل من النتايج («معاك حق تسأل»، «فاهمة قصدك»)،",
+     "new": "والرد على شكوى أو زعل من النتايج («معاك حق تسأل»، «فاهمة قصدك»)، وجملة الاعتذار («حقك عليّ يا فندم.»)،"
+    },
+    {
+     "id": "AR-F3",
+     "old": "  - [concerned] (متعاطفة ومعتذرة): جملة الاعتذار نفسها، قصيرة ولوحدها («حقك عليّ يا فندم.»)، أو «ألف سلامة عليك… إيه اللي مزعلك؟» لزائر قال إنه متضايق أو تعبان.",
+     "new": "  - [concerned] (متعاطفة): «ألف سلامة عليك… إيه اللي مزعلك؟» لزائر قال إنه متضايق أو تعبان، وبس."
+    },
+    {
+     "id": "AR-F4",
+     "old": "\"[concerned] حقك عليّ يا فندم، فهمت طلبك غلط. [supportive] حضرتك بتصنّع المنتج ده، مش بتشتريه. [curious] كده صح؟\"",
+     "new": "\"[supportive] حقك عليّ يا فندم، فهمت طلبك غلط. حضرتك بتصنّع المنتج ده، مش بتشتريه. [curious] كده صح؟\""
+    }
+   ],
+   "checks": {
+    "frames_identical": true,
+    "frame_segments": 5,
+    "line_diff_only_in_spans": true,
+    "lines_changed_old": 4,
+    "lines_changed_new": 4,
+    "bracket_tokens_only_tags": true,
+    "examples": [
+     {
+      "tags": [
+       "[warm]"
+      ],
+      "n": 1
+     },
+     {
+      "tags": [
+       "[supportive]",
+       "[curious]"
+      ],
+      "n": 2
+     },
+     {
+      "tags": [
+       "[happy]",
+       "[curious]"
+      ],
+      "n": 2
+     },
+     {
+      "tags": [
+       "[supportive]",
+       "[curious]"
+      ],
+      "n": 2
+     }
+    ],
+    "banned_named_once": true,
+    "old_cue_text_gone": true
+   }
+  },
+  "janna-en": {
+   "applies_to": "design/janna-en.new.md",
+   "applies_to_sha256": "bc2b2de6f407b6a28fe9dd35ee6ce7dc6e50aa779c29f821941ca456c87e5512",
+   "file": "design/fallback/janna-en.fallback.md",
+   "sha256": "80d6ac4d9235d13940282c21ee3724c267f5a8cfaf3992269d81b89049c21a92",
+   "code_points": 27605,
+   "utf16_units": 27606,
+   "net_vs_new_code_points": -49,
+   "replacements": [
+    {
+     "id": "EN-F1",
+     "old": "(apology → explanation → question)",
+     "new": "(sympathy → explanation → question)"
+    },
+    {
+     "id": "EN-F2",
+     "old": "answering a complaint (\"You're right to ask\", \"I understand\"),",
+     "new": "answering a complaint (\"You're right to ask\", \"I understand\"), an apology (\"I'm sorry about that.\"),"
+    },
+    {
+     "id": "EN-F3",
+     "old": "  - [concerned]: only the apology itself, as its own short sentence (\"I'm sorry about that.\"), or the sympathy for a visitor who says they are upset or tired;",
+     "new": "  - [concerned]: only the sympathy for a visitor who says they are upset or tired;"
+    },
+    {
+     "id": "EN-F4",
+     "old": "\"[concerned] I'm sorry, I got that wrong. [supportive] You make this product; you aren't buying it. [curious] Is that right?\"",
+     "new": "\"[supportive] I'm sorry, I got that wrong. You make this product; you aren't buying it. [curious] Is that right?\""
+    }
+   ],
+   "checks": {
+    "frames_identical": true,
+    "frame_segments": 5,
+    "line_diff_only_in_spans": true,
+    "lines_changed_old": 4,
+    "lines_changed_new": 4,
+    "bracket_tokens_only_tags": true,
+    "examples": [
+     {
+      "tags": [
+       "[warm]"
+      ],
+      "n": 1
+     },
+     {
+      "tags": [
+       "[supportive]",
+       "[curious]"
+      ],
+      "n": 2
+     },
+     {
+      "tags": [
+       "[happy]",
+       "[curious]"
+      ],
+      "n": 2
+     },
+     {
+      "tags": [
+       "[supportive]",
+       "[curious]"
+      ],
+      "n": 2
+     },
+     {
+      "tags": [
+       "[supportive]",
+       "[curious]"
+      ],
+      "n": 2
+     }
+    ],
+    "banned_named_once": true,
+    "old_cue_text_gone": true
+   }
+  },
+  "bassem": {
+   "applies_to": "design/bassem.new.md",
+   "applies_to_sha256": "1eabb20ff5d7429824676ed83129251984a369ce960c857f8287dda7086650a8",
+   "file": "design/fallback/bassem.fallback.md",
+   "sha256": "c2313de001365780e02ccc4bb83dbd26be10880169a6fd622fd18680a9dd6773",
+   "code_points": 28526,
+   "utf16_units": 28527,
+   "net_vs_new_code_points": -26,
+   "replacements": [
+    {
+     "id": "BA-F1",
+     "old": "(اعتذار ← شرح ← سؤال)",
+     "new": "(تعاطف ← شرح ← سؤال)"
+    },
+    {
+     "id": "BA-F2",
+     "old": "والرد على شكوى أو زعل من النتايج («معاك حق»، «فاهم قصدك»)،",
+     "new": "والرد على شكوى أو زعل من النتايج («معاك حق»، «فاهم قصدك»)، وجملة الاعتذار («حقك عليّ يا فندم.»)،"
+    },
+    {
+     "id": "BA-F3",
+     "old": "  - [concerned] (متعاطف ومعتذر): جملة الاعتذار نفسها، قصيرة ولوحدها («حقك عليّ يا فندم.»)، أو «ألف سلامة عليك… إيه اللي مزعلك؟» لعميل قال إنه متضايق أو تعبان.",
+     "new": "  - [concerned] (متعاطف): «ألف سلامة عليك… إيه اللي مزعلك؟» لعميل قال إنه متضايق أو تعبان، وبس."
+    }
+   ],
+   "checks": {
+    "frames_identical": true,
+    "frame_segments": 4,
+    "line_diff_only_in_spans": true,
+    "lines_changed_old": 3,
+    "lines_changed_new": 3,
+    "bracket_tokens_only_tags": true,
+    "examples": [
+     {
+      "tags": [
+       "[warm]"
+      ],
+      "n": 1
+     },
+     {
+      "tags": [
+       "[supportive]",
+       "[curious]"
+      ],
+      "n": 2
+     },
+     {
+      "tags": [
+       "[happy]",
+       "[curious]"
+      ],
+      "n": 2
+     },
+     {
+      "tags": [
+       "[concerned]",
+       "[supportive]",
+       "[curious]"
+      ],
+      "n": 3
+     }
+    ],
+    "banned_named_once": true,
+    "old_cue_text_gone": true
+   }
+  }
+ }
+}

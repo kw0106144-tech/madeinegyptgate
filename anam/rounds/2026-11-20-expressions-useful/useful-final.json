@@ -1,0 +1,587 @@
+{
+ "folder": "/tmp/claude-0/-home-user-madeinegyptgate/16f6faf5-3188-59a6-a3eb-9f56f306beda/scratchpad/useful/design",
+ "personas": {
+  "janna-ar": {
+   "id": "5f06d835-22cc-4460-b412-84cefa9e565b",
+   "file": "janna-ar.new.md",
+   "old_sha256": "34453d59217ecdc297b3cc8dfb38ee376220f5f44285293c5bc321198eb327f1",
+   "new_sha256": "b3249e612946b41ad4d4489de6c48c2aea3cc9a650a37a9922d78bbde9351c7a",
+   "old_len_cp": 21796,
+   "new_len_cp": 24466,
+   "old_len_utf16": 21797,
+   "new_len_utf16": 24467,
+   "net_cp": 2670,
+   "updatedAt_read": "2026-11-20T09:30:52.047Z",
+   "replacement_count": 13,
+   "replacements": [
+    {
+     "id": "JA1",
+     "old_lines": [
+      36,
+      36
+     ],
+     "delta_cp": 92,
+     "why": "d + review conv (closed list): no promise to search or open without the tool in the same reply; a «yes» to «أدوّرلك؟» is the call"
+    },
+    {
+     "id": "JA10",
+     "old_lines": [
+      37,
+      37
+     ],
+     "delta_cp": 53,
+     "why": "review blocker (screen): the list pages match the whole phrase, so several names of a product or industry put only the main word on the screen"
+    },
+    {
+     "id": "JA2",
+     "old_lines": [
+      40,
+      40
+     ],
+     "delta_cp": 212,
+     "why": "g + review conv/exact: the Information Center without market covers Egypt and abroad, in the SAME reply as janna_lookup (no second Arabic round); the platform's foreign tenders by janna_lookup market, never with a governorate"
+    },
+    {
+     "id": "JA3",
+     "old_lines": [
+      46,
+      46
+     ],
+     "delta_cp": 44,
+     "why": "a4 + review honesty/conv: the tour shows a seller his customers (one industry word on the screen); the profile has no founding year and no contacts, and its quote button is for buyers"
+    },
+    {
+     "id": "JA9",
+     "old_lines": [
+      47,
+      47
+     ],
+     "delta_cp": 52,
+     "why": "review conv (tour step 2): the product's 2–3 names in one query, no governorate, the main name on the screen (the quote «دي مناقصات … في مصر» after it belongs to the expressions round and is not touched)"
+    },
+    {
+     "id": "JA4",
+     "old_lines": [
+      47,
+      47
+     ],
+     "delta_cp": -114,
+     "why": "room + review conv: the repeated DATA rules go; a tour with no tender for his product says so in one sentence and goes on"
+    },
+    {
+     "id": "JA5",
+     "old_lines": [
+      53,
+      54
+     ],
+     "delta_cp": 2565,
+     "why": "a, b, c, e, f + all three reviews: search as soon as he says what he sells; a seller's buyers in ONE reply with ONE industry word per janna_lookup (works on main and on fix/lookup-index); exporter branch; honest per-industry counts, never summed, never «all on the screen»; no contacts, the RFQ and its button are for buyers; no word-follows for Janna; RFQ routing as the facts say; skip «أقرب النتائج» that are not his product"
+    },
+    {
+     "id": "JA6",
+     "old_lines": [
+      55,
+      55
+     ],
+     "delta_cp": -70,
+     "why": "c / room + review honesty (nit): the value list after his own numbers; opportunities «updated daily» with the plan qualifier, no promise of work all year"
+    },
+    {
+     "id": "JA7",
+     "old_lines": [
+      81,
+      81
+     ],
+     "delta_cp": -132,
+     "why": "room: duplicate of the DATA screen rule; «open the section you talk about» moves to the janna_navigate line (JA13)"
+    },
+    {
+     "id": "JA11",
+     "old_lines": [
+      85,
+      85
+     ],
+     "delta_cp": 16,
+     "why": "review conv (nit): the meeting offer comes after his first results, not before any value"
+    },
+    {
+     "id": "JA12",
+     "old_lines": [
+      106,
+      106
+     ],
+     "delta_cp": 19,
+     "why": "review conv (nit): «مش متأكد» → his own numbers, not a hunt for opportunities that may not exist"
+    },
+    {
+     "id": "JA8",
+     "old_lines": [
+      109,
+      111
+     ],
+     "delta_cp": -85,
+     "why": "i / room: the three «زي ما فوق» tool lines in one, with page"
+    },
+    {
+     "id": "JA13",
+     "old_lines": [
+      114,
+      114
+     ],
+     "delta_cp": 18,
+     "why": "review exact (nit): keeps the meaning of the deleted JA7 outside lookups: open on the screen any section she talks about"
+    }
+   ],
+   "checks": {
+    "every_old_once": true,
+    "no_overlap": true,
+    "only_replaced_spans_differ": true,
+    "diff_hunks_inside_replacements": true,
+    "protected_spans_untouched": true,
+    "protected_spans_old_lines": [
+     {
+      "what": "tags",
+      "lines": [
+       134,
+       147
+      ]
+     },
+     {
+      "what": "AR-G (old)",
+      "lines": [
+       134,
+       136
+      ]
+     },
+     {
+      "what": "AR-C (old)",
+      "lines": [
+       137,
+       147
+      ]
+     },
+     {
+      "what": "AR-S (old)",
+      "lines": [
+       47,
+       47
+      ]
+     }
+    ],
+    "facts_block_identical": "# حقائق الباقات والدفع",
+    "price_sync_ok": true,
+    "no_new_brackets": true,
+    "final_newline_kept": true
+   }
+  },
+  "janna-en": {
+   "id": "e5101653-65b4-44a6-85e5-ec2e78f82685",
+   "file": "janna-en.new.md",
+   "old_sha256": "f2cbd0c36fc8891da136099cd92bae98d5370fca8014ff651e85fd482d6da680",
+   "new_sha256": "464f6a36e64f36e3073a231bf2494543cda53e6ae9e107ebd4292f95c246e79c",
+   "old_len_cp": 25357,
+   "new_len_cp": 28581,
+   "old_len_utf16": 25358,
+   "new_len_utf16": 28582,
+   "net_cp": 3224,
+   "updatedAt_read": "2026-11-20T09:30:55.090Z",
+   "replacement_count": 13,
+   "replacements": [
+    {
+     "id": "JE1",
+     "old_lines": [
+      30,
+      30
+     ],
+     "delta_cp": 134,
+     "why": "d + review conv: no promise to search or open without the tool in the same reply; a yes to «shall I look» is the call"
+    },
+    {
+     "id": "JE10",
+     "old_lines": [
+      31,
+      31
+     ],
+     "delta_cp": 75,
+     "why": "review blocker (screen): several names of a product or industry put only the main word on the screen"
+    },
+    {
+     "id": "JE2",
+     "old_lines": [
+      34,
+      34
+     ],
+     "delta_cp": 194,
+     "why": "g + review conv/exact: the Information Center without market covers Egypt and abroad, in the same reply as janna_lookup; retry once with the Arabic word (not a broader one); foreign platform tenders by market, no governorate"
+    },
+    {
+     "id": "JE3",
+     "old_lines": [
+      41,
+      41
+     ],
+     "delta_cp": 63,
+     "why": "a4 + review honesty/conv: customers on the screen (one Arabic industry word); no founding year, contacts or «how to reach it» in the profile script; the quote button is for buyers"
+    },
+    {
+     "id": "JE9",
+     "old_lines": [
+      42,
+      42
+     ],
+     "delta_cp": 47,
+     "why": "review conv (tour step 2): 2–3 names in one query, no governorate, the main name on the screen (the quote after it belongs to the expressions round)"
+    },
+    {
+     "id": "JE4",
+     "old_lines": [
+      42,
+      42
+     ],
+     "delta_cp": -163,
+     "why": "room + review conv: the repeated DATA rules go; no tender → one sentence, then step 3"
+    },
+    {
+     "id": "JE5",
+     "old_lines": [
+      48,
+      49
+     ],
+     "delta_cp": 3005,
+     "why": "a, b, c, e, f + all three reviews, in English (the twin of JA5)"
+    },
+    {
+     "id": "JE6",
+     "old_lines": [
+      50,
+      50
+     ],
+     "delta_cp": -55,
+     "why": "c / room + review honesty (nit): value after their numbers; opportunities updated daily (Basic and up)"
+    },
+    {
+     "id": "JE7",
+     "old_lines": [
+      69,
+      69
+     ],
+     "delta_cp": -163,
+     "why": "room: duplicate of the DATA screen rule; «open the section you talk about» moves to the janna_navigate entry (JE13)"
+    },
+    {
+     "id": "JE11",
+     "old_lines": [
+      72,
+      72
+     ],
+     "delta_cp": 33,
+     "why": "review conv (nit): the meeting offer after their first results"
+    },
+    {
+     "id": "JE12",
+     "old_lines": [
+      83,
+      83
+     ],
+     "delta_cp": 30,
+     "why": "review conv (nit): «not sure» → their own numbers"
+    },
+    {
+     "id": "JE8",
+     "old_lines": [
+      86,
+      86
+     ],
+     "delta_cp": -5,
+     "why": "g: bassem_intel is the Information Center, not only international"
+    },
+    {
+     "id": "JE13",
+     "old_lines": [
+      86,
+      86
+     ],
+     "delta_cp": 29,
+     "why": "review exact (nit): keeps the meaning of the deleted JE7: open on the screen any section she talks about"
+    }
+   ],
+   "checks": {
+    "every_old_once": true,
+    "no_overlap": true,
+    "only_replaced_spans_differ": true,
+    "diff_hunks_inside_replacements": true,
+    "protected_spans_untouched": true,
+    "protected_spans_old_lines": [
+     {
+      "what": "tags",
+      "lines": [
+       99,
+       112
+      ]
+     },
+     {
+      "what": "EN-G (old)",
+      "lines": [
+       99,
+       101
+      ]
+     },
+     {
+      "what": "EN-C (old)",
+      "lines": [
+       102,
+       112
+      ]
+     },
+     {
+      "what": "EN-S (old)",
+      "lines": [
+       42,
+       42
+      ]
+     }
+    ],
+    "facts_block_identical": "# PLANS & PAYMENT",
+    "price_sync_ok": true,
+    "no_new_brackets": true,
+    "final_newline_kept": true
+   }
+  },
+  "bassem": {
+   "id": "19ef9078-5252-42a4-bbdf-9a3c4a38a4be",
+   "file": "bassem.new.md",
+   "old_sha256": "fadcad2a6fec3f8cd6f165e40dcfe0425a7c5e3b46cedcf10e722c9a4f802b15",
+   "new_sha256": "9ab370aae834445d39161e792cfa56b2228062f6849308d863efcfe4641ff99b",
+   "old_len_cp": 26459,
+   "new_len_cp": 28522,
+   "old_len_utf16": 26460,
+   "new_len_utf16": 28523,
+   "net_cp": 2063,
+   "updatedAt_read": "2026-11-20T09:30:58.146Z",
+   "replacement_count": 3,
+   "replacements": [
+    {
+     "id": "B1",
+     "old_lines": [
+      19,
+      19
+     ],
+     "delta_cp": 92,
+     "why": "d + review conv: no promise to search or open without the tool in the same reply; a «yes» to «أدوّرلك؟» is the call"
+    },
+    {
+     "id": "B2",
+     "old_lines": [
+      24,
+      24
+     ],
+     "delta_cp": 1807,
+     "why": "h + a, b, c, e, f (the former B3 merged in) + all three reviews: first-call search in one step (tenders + rfqs with no governorate, 2–3 names or his sector, intel, customers with ONE industry word per call, one word on the screen); ids only of tenders / RFQs / intel results (factory ids are not notify items); the seller rules for the whole call; the intel view's first result named when unrelated"
+    },
+    {
+     "id": "B4",
+     "old_lines": [
+      100,
+      100
+     ],
+     "delta_cp": 164,
+     "why": "b + review conv/exact: all names in one query, tenders and rfqs together in the same step, the main name on the screen; nothing → one sentence and what exists"
+    }
+   ],
+   "checks": {
+    "every_old_once": true,
+    "no_overlap": true,
+    "only_replaced_spans_differ": true,
+    "diff_hunks_inside_replacements": true,
+    "protected_spans_untouched": true,
+    "protected_spans_old_lines": [
+     {
+      "what": "tags",
+      "lines": [
+       31,
+       31
+      ]
+     },
+     {
+      "what": "tags",
+      "lines": [
+       159,
+       170
+      ]
+     },
+     {
+      "what": "BA-G (old)",
+      "lines": [
+       31,
+       32
+      ]
+     },
+     {
+      "what": "BA-C (old)",
+      "lines": [
+       160,
+       170
+      ]
+     },
+     {
+      "what": "BA-S (old)",
+      "lines": [
+       129,
+       129
+      ]
+     }
+    ],
+    "facts_block_identical": "# حقائق",
+    "price_sync_ok": true,
+    "no_new_brackets": true,
+    "final_newline_kept": true
+   },
+   "note": "API reads trim his prompt: check the trim total (UTF-16 units) and the visible start, not a sha256"
+  }
+ },
+ "tool_update": {
+  "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
+  "file": "tool-update.json",
+  "rollback_file": "tool-rollback.json",
+  "read_file": "tool-29fd5087.read.json",
+  "expectedUpdatedAt": "2026-11-18T09:51:13.805Z",
+  "description_chars": 1010,
+  "added": [
+   "page",
+   "limit",
+   "market"
+  ],
+  "changed": [
+   "governorate.description"
+  ],
+  "apply_first": true
+ },
+ "combined_with_expressions_round": {
+  "note": "snapshot: that round's replacements.json was still being revised during this run; rebuild with apply_patch.py --live <its texts> (or --selftest) when both are final",
+  "expressions_replacements": {
+   "file": "/tmp/claude-0/-home-user-madeinegyptgate/16f6faf5-3188-59a6-a3eb-9f56f306beda/scratchpad/expr/design/replacements.json",
+   "sha256": "d8fb641be1a605ded16886bcfc7422a1b4fa5920860325332cb38c23489f0691"
+  },
+  "texts": {
+   "janna-ar": {
+    "sha256": "f5c16bdc576c8f5b5488e9128c62ba74312e642e3df8303cac9f390795b615c8",
+    "code_points": 26471,
+    "utf16_units": 26472
+   },
+   "janna-en": {
+    "sha256": "dd6b354e172172adeae555d8ded1377e7039eecaf8f51dc0580079d28a656a7e",
+    "code_points": 30878,
+    "utf16_units": 30879
+   },
+   "bassem": {
+    "sha256": "ffe1d26871abb25fff9345084282be904eff05c1353128d370f88336180298ae",
+    "code_points": 30615,
+    "utf16_units": 30616
+   }
+  },
+  "both_orders_identical": true,
+  "its_own_script_passes_on_these_outputs": true
+ },
+ "rejected_review_points": [
+  {
+   "review": "exactness",
+   "point": "blocker 3, option (a): a match:any parameter on fix/lookup-index plus this tool",
+   "reason": "option (b) taken: ONE industry word per janna_lookup call (2–3 calls in one reply) works on main and on the branch (Giza تغليف 78/85, طباعة 17/30, بلاستيك 26/51) with no Worker change on another branch and no second tool change"
+  },
+  {
+   "review": "honesty",
+   "point": "blockers 1–2 wording for a multi-word customer query («بأسماء الصناعات بس…», «several industries: the main one») and review-honesty/tool-description.proposed.txt",
+   "reason": "superseded by one industry per call; the concerns (inflated counts, the empty screen) are fixed in the texts and the tool description"
+  },
+  {
+   "review": "conversation",
+   "point": "should: rewrite tour step 2 including the quote «دي مناقصات [منتجه] في مصر» / \"These are the [product] tenders in Egypt\"",
+   "reason": "the quote is the expressions round's span (AR-S / EN-S) and stays untouched; the text before it (2–3 names, no governorate, main name on the screen) and after it (the zero branch) changed (JA9 / JA4, JE9 / JE4)"
+  },
+  {
+   "review": "conversation",
+   "point": "should: governorate «for an Egyptian seller only, never for a buyer or a visitor from abroad»",
+   "reason": "applied to ASKING only; a buyer who gives his governorate still has it used to filter his search"
+  },
+  {
+   "review": "conversation",
+   "point": "should (exporter branch): «market سوقه» for the USA",
+   "reason": "bassem_intel has no US market code (eg, gcc, arab, africa, asia, eu, intl), so the USA is searched without market"
+  },
+  {
+   "review": "conversation",
+   "point": "should («أوصلهم إزاي؟»): «والمنصة بتوصّله بيهم لما يدوّروا على خدمته ويلاقوا ملفه…»",
+   "reason": "rephrased without a promise: buyers reach him after he registers, through his profile and matching RFQs once his subscription is active (Basic and up)"
+  },
+  {
+   "review": "honesty / conversation / exactness",
+   "point": "the durable page fixes (pages.part.py and oldlists.part.py any-word, lookupDone main word, showIntel title) and the Worker text fixes (neutral zero-result text, factories contact clause, paged persona hint)",
+   "reason": "site and Worker code with their own deploys, outside this Anam-only patch; listed as follow-ups in rationale.md §5"
+  },
+  {
+   "review": "exactness",
+   "point": "nit on B4: «جرّب القسم التاني مرة (tenders ↔ rfqs)»",
+   "reason": "applied as both sections in the SAME step; a sequential retry would break the speed rule"
+  }
+ ],
+ "review_points": {
+  "honesty": {
+   "B1 customer count unreliable": "fixed: one bare industry word per call, never صناعات/مواد/معدات/منتجات; a count only if the top results are that industry, else names; never summed (JA5, JE5, B2, tool description)",
+   "B2 screen cannot show multi-word queries": "fixed: janna_search with ONE word everywhere (JA10/JE10 DATA rule, JA5/JE5, JA3/JA9, JE3/JE9, B2, B4, tool); never «all on the screen»",
+   "B3 «متابعاتي» on Janna's fallback": "fixed: removed from JA5/JE5; Bassem's label follow kept",
+   "S RFQ / quote button sends sellers to the buyer channel": "fixed: «وطلب عرض السعر وزراره للمشتري مش ليه» (JA5/JE5/B2), tool-hint parenthetical, tour step 1 rewritten (JA3/JE3)",
+   "S governorate leaks into tenders": "fixed: «من غير governorate» for rfqs/tenders and the foreign market (JA5/JE5, JA2/JE2, JA9/JE9, B2, tool market/governorate descriptions)",
+   "S RFQ routing overstated": "fixed: «بتتبعتله تلقائي بعد تفعيل اشتراكه (من الأساسية وطالع، والمميزة الأول)»",
+   "N value bullet qualifiers": "fixed: «الفرص اللي بتتحدّث كل يوم (من الأساسية وطالع)» (JA6/JE6)",
+   "N «باسم خدماته»": "fixed: «وملفه بخدماته في الدليل وجوجل»",
+   "N Bassem ids": "fixed: ids only of tenders, RFQs and bassem_intel results, never factories (B2)",
+   "N plan facts outside anchors": "documented: final.json plan_facts_outside_anchored_blocks and rationale.md §5, for the anam/live/README row"
+  },
+  "conversation": {
+   "B1 screen": "fixed (as honesty B2)",
+   "B2 follows": "fixed (as honesty B3)",
+   "S search before the governorate / name": "fixed: search as soon as he says what he sells, then name, governorate (Egyptian sellers), capacity (JA5/JE5 bullet 1)",
+   "S «مين إحنا» before value": "fixed: one sentence after the first results, unless he asks or in the meeting (JA5/JE5 bullet 1)",
+   "S exporter branch": "fixed: new bullet (intel with his market, export-markets page, EUR.1 / pesticide residues / FDA, one question)",
+   "S generic industry words": "fixed (as honesty B1)",
+   "S tour step 1 contacts": "fixed, plus the false founding year / «how long it has been operating» removed (JA3/JE3)",
+   "S «أوصلهم إزاي؟»": "fixed: contacts not published, official website if any, buyers reach him after registration (Janna); intro e-mail to an address the member dictates, rule 2 (Bassem)",
+   "S sequential intel round": "fixed: no market = Egypt and abroad, same reply as janna_lookup; no second round for sellers (JA2/JE2, JA5/JE5)",
+   "S Bassem intel view": "fixed: unrelated first result named in half a sentence (B2)",
+   "S tour step 2": "partly: see rejected_review_points",
+   "S closed list of promise words": "fixed: «أي وعد ببحث أو فتح», and a yes to «أدوّرلك؟» = the call (JA1/JE1/B1)",
+   "S JE5 «What will I get?» parity": "fixed",
+   "N one or two items per reply": "fixed",
+   "N skip-rule wording": "fixed: «مناقصة أو طلب سعر مش عن منتجه»",
+   "N meeting / objections": "fixed (JA11/JA12, JE11/JE12)",
+   "N EN cylinders / box under the video / JE2 retry": "fixed (also «الخانة اللي تحت الفيديو» in AR and Bassem)",
+   "N governorate property description": "fixed in tool-update.json (the one changed existing field)"
+  },
+  "exactness": {
+   "B1 screen": "fixed (as honesty B2)",
+   "B2 «[محافظته]» brackets": "fixed: no square bracket in any new text; the script refuses one",
+   "B3 fix/lookup-index changes counts": "fixed with option (b); re-run on the branch in local-lookups.md; «أقرب النتائج» lines skipped when not his product",
+   "S apply_patch.py": "fixed: renamed headings, Bassem's indented sub-bullets, the expressions round's spans protected in old or new state, selftest both orders with its real replacements.json and its own script",
+   "S «متابعاتي»": "fixed (as honesty B3)",
+   "N JA7/JE7 meaning lost": "fixed: JA13/JE13 janna_navigate lines",
+   "N B2 «أو قطاعه» and ids": "fixed",
+   "N B4 retry": "applied in the same step (see rejected_review_points)",
+   "N Arabic word to bassem_intel": "resolved: the market=eg Arabic route is gone; only the original one-time Arabic retry remains",
+   "N B3 first-call only": "fixed: «في أي وقت في المكالمة»",
+   "N tooling and APPLY.md": "fixed: tool read saved and compared, expectedUpdatedAt, rollback and protected-string counts checked; APPLY.md §2 and anam/live/README to update after the writes"
+  }
+ },
+ "plan_facts_outside_anchored_blocks": [
+  "Janna AR JA5: «(من الأساسية وطالع)» (customers bullet) and «(من الأساسية وطالع، والمميزة الأول)» (nothing-found bullet)",
+  "Janna AR JA6: «(من الأساسية وطالع)»",
+  "Janna EN JE5: \"(Basic and up)\", \"(Basic and up, Premium first)\"; JE6: \"(Basic and up)\"",
+  "Bassem B2: «بتوصله تلقائي وبأولوية»"
+ ],
+ "coordination": [
+  "Apply the janna_lookup update before the prompts; if anam_changes.md write 1 (U3) is applied too, send ONE merged body (with U2 live: the full real enum in clear plus customers; U3's sentence folded into this description, ≤ 1,024 characters).",
+  "anam_changes.md writes 3–5 (U4/U5/U13) edit the same prompt lines as this patch: apply one of the two; U13's rule-6 tariff line and line-121 web-search line are not covered here and can be rebased on these texts.",
+  "Expressions round: its AR-C/AR-G examples «تحب أجرّب بكلمة تانية؟» / «تحب أجرّب؟», EN-C \"Shall I try another word?\" and BA-C «حتى بعد ما جرّبت بكلمة تانية» model what the seller rules forbid; a seller-neutral example would remove the conflict (its spans, not changed here).",
+  "fix/lookup-index: the final rules were checked on main and on 8467d3b; re-run final-lk/lk.mjs if single-word matching changes again.",
+  "Writes: systemPrompt only, expectedUpdatedAt from a fresh read; afterwards update anam/live/*.systemPrompt.md, its README (with plan_facts_outside_anchored_blocks) and anam/APPLY.md §2 (page/market for Janna now on)."
+ ]
+}
