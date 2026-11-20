@@ -175,6 +175,54 @@ describe("deliver(): byte-identical to today's requests (seeded config = enabled
   });
 });
 
+describe("binary attachments ({filename, type, b64}) and requireAttachments («ابعتلي», notify-items.js)", () => {
+  const FILE = { filename: "a.pdf", type: "application/pdf", b64: "JVBERi0xLjQK" };
+  const putKey = (env, slot, v) => putSecret(env, slot, v, "owner@mig.test");
+  test("Resend: the b64 goes as is (content + content_type); requireAttachments never reaches the provider; the result keeps today's fields", async () => {
+    handler = resendOk;
+    const env = mkEnv({ RESEND_API_KEY: "re_worker_secret_key" });
+    const r = await EC.deliver(env, { ...MSG, id: "nt-b64-1", attachments: [FILE], requireAttachments: true });
+    assert.deepEqual(r, { sent: true, provider: "resend", id: "re_1" });
+    const b = JSON.parse(calls[0].init.body);
+    assert.deepEqual(b.attachments, [{ filename: "a.pdf", content: "JVBERi0xLjQK", content_type: "application/pdf" }]);
+    assert.ok(!("requireAttachments" in b) && !JSON.stringify(b).includes("requireAttachments"));
+    /* a text attachment next to it keeps today's encoding */
+    calls.length = 0;
+    await EC.deliver(env, { ...MSG, id: "nt-b64-2", attachments: [FILE, { filename: "t.txt", content: "مرحبا", type: "text/plain" }] });
+    assert.deepEqual(JSON.parse(calls[0].init.body).attachments.map(a => a.content), ["JVBERi0xLjQK", Buffer.from("مرحبا").toString("base64")]);
+  });
+  test("Brevo: attachment [{name, content: b64}]", async () => {
+    handler = brevoOk;
+    const env = mkEnv(); await putKey(env, "mail.brevo.api_key", "xkeysib-cc-brevo-key-0123456789"); setMail(env, { "mail.enabled": "1", "mail.provider": "brevo" });
+    const r = await EC.deliver(env, { ...MSG, id: "nt-b64-3", attachments: [FILE], requireAttachments: true });
+    assert.deepEqual(r, { sent: true, provider: "brevo", id: "<b1@smtp-relay.brevo.com>" });
+    assert.deepEqual(JSON.parse(calls[0].init.body).attachment, [{ name: "a.pdf", content: "JVBERi0xLjQK" }]);
+  });
+  test("the SEND_EMAIL binding cannot carry files: with requireAttachments nothing is sent ({sent:false, provider:'cloudflare', error:'attachments_unsupported'}, one failed log row); without it the file is dropped as today", async () => {
+    const got = [], env = mkEnv({ SEND_EMAIL: { async send(x) { got.push(x); return { messageId: "cf-" + got.length }; } } });
+    const r = await EC.deliver(env, { ...MSG, id: "nt-bind-1", attachments: [FILE], requireAttachments: true });
+    assert.deepEqual(r, { sent: false, provider: "cloudflare", error: "attachments_unsupported" });
+    assert.equal(got.length, 0, "no send() call");
+    assert.deepEqual(rows(env, "SELECT msg_id, template, provider, status, error FROM cc_mail_log"), [{ msg_id: "nt-bind-1", template: "bassem_note", provider: "cloudflare", status: "failed", error: "attachments_unsupported" }]);
+    const ok = await EC.deliver(env, { ...MSG, id: "nt-bind-2", attachments: [FILE] });
+    assert.deepEqual(ok, { sent: true, provider: "cloudflare", id: "cf-1" });
+    assert.ok(!("attachments" in got[0]) && got[0].text === MSG.text, "the binary file is not inlined and not sent (as before)");
+    /* nothing configured: today's «email not configured», not attachments_unsupported */
+    assert.deepEqual(await EC.deliver(mkEnv(), { ...MSG, id: "nt-none", attachments: [FILE], requireAttachments: true }), { sent: false, provider: "", error: "email not configured" });
+  });
+  test("attachProvider() truth table (next to attachOk)", async () => {
+    const bind = { SEND_EMAIL: { send() {} } };
+    assert.deepEqual([EC.attachProvider({}), EC.attachProvider({ RESEND_API_KEY: "re_x" }), EC.attachProvider(bind)], ["", "resend", ""]);
+    const env = mkEnv({ ...bind }); await putKey(env, "mail.brevo.api_key", "xkeysib-cc-brevo-key-0123456789"); setMail(env, { "mail.enabled": "1", "mail.provider": "brevo" });
+    assert.equal(EC.attachProvider(env), "", "sync: memo not loaded yet → binding");
+    await EC.loadMailConfig(env);
+    assert.deepEqual([EC.attachProvider(env), EC.attachOk(env)], ["brevo", true]);
+    const both = mkEnv({ RESEND_API_KEY: "re_x" }); await putKey(both, "mail.brevo.api_key", "xkeysib-cc-brevo-key-0123456789"); setMail(both, { "mail.enabled": "1", "mail.provider": "brevo" }); await EC.loadMailConfig(both);
+    assert.equal(EC.attachProvider(both), "brevo", "the Control Center's provider wins over RESEND_API_KEY, as deliver() routes");
+    for (const e of [{}, { RESEND_API_KEY: "re_x" }, bind, env, both]) assert.equal(EC.attachOk(e), EC.attachProvider(e) !== "");
+  });
+});
+
 describe("provider order, Brevo, sender settings", () => {
   const putKey = (env, slot, v) => putSecret(env, slot, v, "owner@mig.test");
   test("(a) Control Center config → (b) RESEND_API_KEY → (c) binding → (d) email not configured", async () => {

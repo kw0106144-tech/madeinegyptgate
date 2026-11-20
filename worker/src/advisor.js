@@ -31,7 +31,8 @@ import { authUser, isV2, isLinkSession } from "./auth.js"; // one platform login
 import { sendToMember, waOn } from "./whatsapp.js";
 import { effPlan } from "./common.js";
 import { rematchForMember } from "./inquiries.js";
-import { deliver, mailReady } from "./email-center.js"; // e-mail center: provider, sender, idempotency, delivery log
+import { deliver, mailReady, attachProvider, loadMailConfig } from "./email-center.js"; // e-mail center: provider, sender, idempotency, delivery log
+import { parseRefs, resolveNotifyItems, notifyMail, notifyWa, dropFiles, replyItems, whyMap, NOTIFY_LIM } from "./notify-items.js"; // «ابعتلي» with the opportunities
 
 export const STAGES = ["discover", "contact", "offer", "negotiation", "contract", "delivery", "won", "lost"];
 export const MARKETS = ["local", "gulf", "africa", "asia", "europe"];
@@ -199,7 +200,7 @@ export async function handleAdvisor(req, env, ctx) {
     if (member === FORBIDDEN) return err(403, "plan not eligible", { code: "plan", eligible: ELIGIBLE });
     if (member === LINK_ONLY) return err(403, "sign in with an e-mail code to open Bassem", { code: "full_login_required", login: "code" });
     if (!member) return err(401, "unauthorized", env.PLATFORM_KEY || env.ADVISOR_OPEN_MODE !== "1" ? { login: "activation" } : undefined);
-    if (path === "/notify") return req.method === "POST" ? await notifyMember(req, env, member) : err(405, "method not allowed");
+    if (path === "/notify") return req.method === "POST" ? await notifyMember(req, env, member, ctx) : err(405, "method not allowed");
     if (path === "/send") return req.method === "POST" ? await sendFromCall(req, env, member) : err(405, "method not allowed");
     if (path === "/refresh") return req.method === "POST" ? (isV2((req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "")) ? err(400, "platform sessions are renewed by signing in again", { code: "platform_session" }) : json(await issue(env, member))) : err(405, "method not allowed");
     if (path === "/deals") {
@@ -661,17 +662,27 @@ async function sendFromCall(req, env, member) {
   return json({ ...(await mailOut(env, member, d, m, room.ext, audit)), deal_created: created });
 }
 
-/* POST /notify {message, channel: whatsapp|email|both} — Bassem tells the member something (his own address / number only).
-   WhatsApp: free text inside the 24 h window, otherwise the approved template bassem_update; never a made-up "sent". */
-async function notifyMember(req, env, member) {
+/* POST /notify {message, channel: whatsapp|email|both, items?} — Bassem tells the member something (his own address / number only; body.to
+   is never read). WhatsApp: free text inside the 24 h window, otherwise the approved template bassem_update; never a made-up "sent".
+   items (optional, ≤ 3 refs "intel:<id>" / "item:<platform tender id>", notify-items.js parseRefs; anything else is ignored): the e-mail
+   then carries each opportunity's details from the platform's own data, its page on the platform, its official link and, when it could
+   be downloaded, its official file attached (≤ NOTIFY_LIM.filesPerDay files a member per rolling 24 h, counted from events.data.files);
+   the reply adds {items, attached}. Without a valid ref the request and the e-mail are exactly as before. */
+async function notifyMember(req, env, member, ctx) {
   const b = await readJson(req);
   if (b.tooLarge) return err(413, "request too large");
   if (b.bad) return err(400, "bad json");
   const message = scalar(b.message).replace(/\u0000/g, "").trim().slice(0, 2000), channel = ["whatsapp", "email", "both"].includes(b.channel) ? b.channel : "both";
   if (!message) return err(400, "message required", { code: "message_required" });
   const since = new Date(Date.now() - 86400000).toISOString();
-  const c = await env.DB.prepare("SELECT COUNT(*) AS n FROM events WHERE member_id = ? AND type = 'notify' AND at >= ?").bind(member.id, since).first();
+  const c = await env.DB.prepare("SELECT COUNT(*) AS n, COALESCE(SUM(CASE WHEN json_valid(data) THEN json_extract(data, '$.files') END), 0) AS f FROM events WHERE member_id = ? AND type = 'notify' AND at >= ?").bind(member.id, since).first();
   if (c && c.n >= 20) return err(429, "daily notify limit reached", { code: "rate_limited" });
+  const refs = parseRefs(b.items);
+  if (refs.length) {
+    const job = notifyItems(env, member, message, channel, refs, +(c && c.f) || 0);
+    if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(job.then(() => {}, () => {})); // the e-mail still goes if the page closes
+    return json(await job);
+  }
   const sent = { email: false, whatsapp: false }, errors = {};
   if (channel !== "whatsapp") {
     if (isEmail(member.email) && emailConfigured(env)) { const r = await sendEmail(env, { id: "nt-" + hex(8), from: { email: mailFrom(env), name: "باسم — " + sender(env).name }, to: [member.email], subject: "رسالة من باسم / A note from Bassem", text: message + "\n\n—\n" + site(env) + "advisor.html", html: toHtml(message + "\n\n—\n" + site(env) + "advisor.html") }); sent.email = !!r.sent; if (!r.sent) errors.email = r.error; }
@@ -693,6 +704,47 @@ async function notifyMember(req, env, member) {
   }
   await event(env, "", member.id, "notify", { channel, sent, pending });
   return json({ ok: sent.email || sent.whatsapp || pending.whatsapp, sent, pending, ...(Object.keys(errors).length ? { errors } : {}) });
+}
+/* notify with opportunities (notify-items.js): resolve the refs (only when a channel can go), one e-mail with the cards and the files
+   (requireAttachments: «مرفق» only for files Resend / Brevo really carried — a route or a provider that refuses them → the same e-mail
+   once more without them, saying why), the same cards as WhatsApp text, one events row (refs + reason codes + the files count; never the
+   message). → {ok, sent, pending, errors?, items, attached} */
+async function notifyItems(env, member, message, channel, refs, filesToday) {
+  const sent = { email: false, whatsapp: false }, errors = {}, pending = { whatsapp: false };
+  const mailOk = channel !== "whatsapp" && isEmail(member.email) && emailConfigured(env), waWanted = channel !== "email" && waOn(env);
+  let items = [], attached = 0;
+  if (mailOk || waWanted) {
+    try { await loadMailConfig(env); } catch (e) { /* the memo of this request stays */ }
+    try { items = await resolveNotifyItems(env, refs, { channel, mailOk, provider: mailOk ? attachProvider(env) : "", filesLeft: Math.max(0, NOTIFY_LIM.filesPerDay - filesToday) }); }
+    catch (e) { console.error("notify items", (e && e.message) || e); items = refs.map(ref => ({ ref, type: ref.startsWith("intel:") ? "intel" : "item", id: ref.replace(/^[a-z]+:/, ""), found: false, reason: "unavailable" })); } // the note still goes, saying so
+  }
+  if (channel !== "whatsapp") {
+    if (mailOk) {
+      const from = { email: mailFrom(env), name: "باسم — " + sender(env).name };
+      let mail = notifyMail(env, message, items);
+      let r = await sendEmail(env, { id: "nt-" + hex(8), from, to: [member.email], subject: mail.subject, text: mail.text, html: mail.html, attachments: mail.attachments, requireAttachments: mail.attachments.length > 0 });
+      if (!r.sent && mail.attachments.length && (r.error === "attachments_unsupported" || /^(?:resend|brevo) (?:400|413|422)\b/.test(String(r.error || "")))) {
+        dropFiles(items, r.error === "attachments_unsupported" ? "no_attach_provider" : "provider_refused");
+        mail = notifyMail(env, message, items);
+        r = await sendEmail(env, { id: "nt-" + hex(8), from, to: [member.email], subject: mail.subject, text: mail.text, html: mail.html });
+      }
+      sent.email = !!r.sent;
+      if (r.sent) attached = mail.attachments.length;
+      else { errors.email = r.error; dropFiles(items, "email_not_sent"); }
+    } else errors.email = isEmail(member.email) ? "email not configured" : "no email";
+  }
+  if (channel !== "email") {
+    if (!waOn(env)) errors.whatsapp = "whatsapp not configured";
+    else {
+      const full = await env.DB.prepare("SELECT * FROM members WHERE id = ?").bind(member.id).first();
+      const r = await sendToMember(env, full, { text: notifyWa(message, items, { emailSent: sent.email, attached }), template: "bassem_update", queueText: true });
+      sent.whatsapp = !!(r.sent && r.via === "text");
+      pending.whatsapp = !!(r.sent && r.via === "template" && r.queued);
+      if (!sent.whatsapp) errors.whatsapp = pending.whatsapp ? "outside_24h_window: a notification template was sent; the message is delivered when the member replies on WhatsApp" : r.error;
+    }
+  }
+  await event(env, "", member.id, "notify", { channel, sent, pending, items: refs, files: attached, why: whyMap(items) });
+  return { ok: sent.email || sent.whatsapp || pending.whatsapp, sent, pending, ...(Object.keys(errors).length ? { errors } : {}), items: replyItems(items), attached };
 }
 
 /* ---------- inbound sender check ----------

@@ -320,3 +320,78 @@ describe("the signature of the e-mails: title + FULL name + company from the mem
     for (const [n, f] of cases) assert.equal(fullName(n), f, n);
   });
 });
+
+describe("«ابعتلي» with the opportunities of the call (notifyRefs, notifyGo, notifyDone — worker/src/notify-items.js does the rest)", () => {
+  const OPP = (k, title, entity, ref) => ({ k, o: { title, entity: entity || "", ref: ref || "" }, alt: "" });
+  const L = [OPP("intel:rw0000000a1", "Supply and delivery of water treatment chemicals", "Rand Water"), OPP("item:eg-tnd-003", "تصنيع وتوريد وتركيب منشآت معدنية لصوامع قمح", "شركة مطاحن مصر العليا", "6/2026/2027"),
+    OPP("intel:gh0000000b2", "Supply of laboratory equipment for the university", "Kwame Nkrumah University")];
+  test("Bassem's ids count only when this call's tools returned them or the screen shows them; never a URL", () => {
+    assert.deepEqual([...P.notifyRefs(L, "", "x", "rw0000000a1, eg-tnd-003, zz0000000zz, item:evil", "")], ["intel:rw0000000a1", "item:eg-tnd-003"]);
+    assert.deepEqual([...P.notifyRefs(L, "", "x", "intel:RW0000000A1", "")], ["intel:rw0000000a1"], "an id in another case");
+    assert.deepEqual([...P.notifyRefs(L, "intel:ab0000000cd", "x", "ab0000000cd", "")], ["intel:ab0000000cd"], "the screen's item");
+    assert.deepEqual([...P.notifyRefs(L, "", "x", "https://evil.example/x.pdf ab0000000cd", "")], [], "nothing the call did not show");
+  });
+  test("the opportunities named in the note (2+ of their words), best first; the screen's one with 1 word; never more than 3", () => {
+    const note = "ابعتلي تفاصيل مناقصة مطاحن مصر العليا ومناقصة water treatment chemicals";
+    assert.deepEqual([...P.notifyRefs(L, "", note, "", "")], ["intel:rw0000000a1", "item:eg-tnd-003"]);
+    assert.deepEqual([...P.notifyRefs(L, "intel:gh0000000b2", "the laboratory one", "", "")], ["intel:gh0000000b2"], "one word + the screen's bonus");
+    assert.deepEqual([...P.notifyRefs(L, "", "the laboratory one", "", "")], [], "one word alone is not enough");
+    const many = [1, 2, 3, 4, 5].map(i => OPP("intel:ab000000" + i + "00", "Supply of steel pipes lot " + i, "Water Board"));
+    assert.equal(P.notifyRefs(many, "", "steel pipes water board", "", "").length, 3);
+  });
+  test("a note about nothing named: the screen's opportunity only when the member's own last words asked to send it", () => {
+    assert.deepEqual([...P.notifyRefs(L, "intel:gh0000000b2", "ملخص مكالمة النهارده", "", "طيب ابعتلي ده على الإيميل")], ["intel:gh0000000b2"]);
+    assert.deepEqual([...P.notifyRefs(L, "intel:gh0000000b2", "ملخص مكالمة النهارده", "", "send it to my e-mail please")], ["intel:gh0000000b2"]);
+    assert.deepEqual([...P.notifyRefs(L, "intel:gh0000000b2", "ملخص مكالمة النهارده", "", "تمام شكراً")], []);
+    assert.deepEqual([...P.notifyRefs(L, "", "ملخص مكالمة النهارده", "", "ابعتلي")], [], "no screen item: nothing");
+  });
+  test("inflWait: «ابعتلي» waits for the server tools still running (≥ 0.6 s, ≤ max), a call older than 8 s no longer counts", async () => {
+    const src = LIVE.slice(LIVE.indexOf("  var INFL = {}"), LIVE.indexOf("  /* the call's DOM events → its handlers"));
+    const sb = { Promise, setTimeout, Date }; vm.createContext(sb); vm.runInContext(src, sb);
+    let t0 = Date.now(); await sb.inflWait(4000); const idle = Date.now() - t0;
+    assert.ok(idle >= 590 && idle < 1000, "nothing running: ~0.6 s, " + idle);
+    sb.inflMark({ toolName: "bassem_intel", toolCallId: "c1" }, 1); sb.inflMark({ toolName: "janna_navigate", toolCallId: "c2" }, 1);
+    setTimeout(() => sb.inflMark({ toolName: "bassem_intel", toolCallId: "c1" }, 0), 900);
+    t0 = Date.now(); await sb.inflWait(4000); const busy = Date.now() - t0;
+    assert.ok(busy >= 880 && busy < 1400, "until bassem_intel completed (a client tool is not waited for): " + busy);
+    sb.inflMark({ toolName: "platform_item" }, 1);
+    t0 = Date.now(); await sb.inflWait(700); assert.ok(Date.now() - t0 < 1000, "never past max");
+  });
+  test("what the member reads and what Bassem is told: «مرفق» only when the platform attached it; the reason when it did not; a timeout is «not sure»", () => {
+    const src = LIVE.slice(LIVE.indexOf("  function nFiles("), LIVE.indexOf("  function bassemTool("));
+    const said = [], told = [], outs = [];
+    const sb = { T: (ar, en) => ar, sayAny: m => said.push(m), done: n => outs.push([n, "ok"]), outcome: (n, s) => outs.push([n, s]), refuse: (n, s, m) => { said.push(m); outs.push([n, s]); }, errMsg: e => String(e.code), tellBassem: t => told.push(t) };
+    vm.createContext(sb); vm.runInContext(src, sb);
+    const ok = (j, status = 200) => { said.length = told.length = outs.length = 0; sb.notifyDone("bassem_notify_member", { status, j }); return { s: said[0], t: told[0], o: outs[0] }; };
+    let r = ok({ ok: true, sent: { email: true, whatsapp: false }, pending: { whatsapp: false }, attached: 1, items: [{ ref: "intel:rw0000000a1", found: true, title: "توريد كيماويات", file: { attached: true, name: "a.pdf", size: 1 } }] });
+    assert.equal(r.s, "✅ اتبعتت على الإيميل — ومعاها الملف الرسمي مرفق"); assert.deepEqual(r.o, ["bassem_notify_member", "ok"]);
+    assert.match(r.t, /^نتيجة «ابعتلي»: اتبعتت على الإيميل؛ "توريد كيماويات": تفاصيلها ولينكاتها والملف الرسمي اترفق في الإيميل\. قول للعضو اللي حصل ده بس\.$/);
+    r = ok({ ok: true, sent: { email: true, whatsapp: false }, pending: {}, attached: 2, items: [] });
+    assert.equal(r.s, "✅ اتبعتت على الإيميل — ومعاها الملفين الرسميين مرفقين");
+    r = ok({ ok: true, sent: { email: true, whatsapp: false }, pending: {}, attached: 0, items: [{ found: true, title: "صوامع", file: { attached: false, reason: "platform_listing", why: { ar: "ده إعلان من بيانات المنصة نفسها", en: "x" } } }] });
+    assert.equal(r.s, "✅ اتبعتت على الإيميل — بالتفاصيل واللينكات؛ الملف الرسمي مااترفقش: ده إعلان من بيانات المنصة نفسها"); assert.doesNotMatch(r.s, /مرفق$/);
+    assert.match(r.t, /"صوامع": تفاصيلها ولينكاتها، والملف مااترفقش \(ده إعلان من بيانات المنصة نفسها\)/);
+    r = ok({ ok: true, sent: { email: true, whatsapp: false }, pending: {} });
+    assert.equal(r.s, "✅ اتبعتت على الإيميل", "no items: today's words");
+    r = ok({ ok: false, sent: { email: false, whatsapp: false }, pending: { whatsapp: false }, attached: 0, items: [] });
+    assert.deepEqual([r.s, r.o], ["⚠️ الرسالة مااتبعتتش على أي قناة.", ["bassem_notify_member", "failed"]]);
+    r = ok({ code: "timeout" }, 0);
+    assert.match(r.s, /^⏳ مش متأكد إنها اتبعتت/); assert.match(r.t, /مش متأكد إنها اتبعتت.*وماتبعتهاش تاني/); assert.deepEqual(r.o, ["bassem_notify_member", "failed"]);
+    r = ok({ code: "rate_limited", error: "daily notify limit reached" }, 429);
+    assert.equal(r.s, "⚠️ مااتبعتتش: rate_limited"); assert.match(r.t, /مااتبعتتش \(rate_limited\)/);
+    assert.ok(told.every(t => !/["«»]\s*[\[{<]/.test(t)));
+  });
+  test("wiring (source checks): the notify branch → notifyGo → sendPost(…, \"/advisor/notify\", 45000) after inflWait; the three inflMark listeners; no MIGAPI.notify left; notifyDone tells Bassem", () => {
+    assert.match(LIVE, /if \(name === "bassem_notify_member"\) \{ notifyGo\(name, a\); return; \}/);
+    const go = LIVE.slice(LIVE.indexOf("  function notifyGo("), LIVE.indexOf("  function nFiles("));
+    assert.ok(go.indexOf("inflWait(4000).then(") > 0 && go.indexOf("inflWait(4000).then(") < go.indexOf("sendPost("), "inflWait first");
+    assert.match(go, /sendPost\(refs\.length \? \{ message: msg, channel: chn, items: refs \} : \{ message: msg, channel: chn \}, "\/advisor\/notify", 45000\)/);
+    assert.match(go, /notifyRefs\(OPPC, notifyScreenKey\(\), msg, a\.ids, heardTexts\(\)\.slice\(-2\)\.join\(" "\)\)/);
+    const wire = LIVE.slice(LIVE.indexOf("  function wire(el) {"), LIVE.indexOf("  function widgetHtml("));
+    for (const ev of ['"anam-agent:tool-call-started", function (e) { inflMark(e.detail, 1); }', '"anam-agent:tool-call-completed", function (e) { inflMark(e.detail, 0); }', '"anam-agent:tool-call-failed", function (e) { inflMark(e.detail, 0); }']) assert.ok(wire.includes(ev), ev);
+    assert.ok(wire.indexOf("harvest(e.detail || {})") < wire.indexOf("inflMark(e.detail, 0)"), "the results are kept before the tool counts as done");
+    assert.doesNotMatch(LIVE, /A\.notify|MIGAPI\.notify/);
+    assert.match(LIVE.slice(LIVE.indexOf("  function notifyDone("), LIVE.indexOf("  function notifyWords(")), /tellBassem\(notifyWords\(x\)\);/);
+    assert.match(LIVE, /function sendPost\(body, path, ms\) \{/);
+  });
+});

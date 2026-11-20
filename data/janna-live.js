@@ -27,7 +27,8 @@
      bassem_draft_email, bassem_send_email (only after the member said yes; FROM THE PLATFORM — the deal room's button, or POST
      /api/advisor/send, which starts the opportunity's deal; both answer Bassem in the SDK call: «e-mails from the call» below),
      bassem_update_deal, bassem_open_guide; plus
-     bassem_notify_member → MIGAPI.notify (POST /api/advisor/notify) and bassem_set_work_time → MIGAPI.prefs (POST /api/me/prefs).
+     bassem_notify_member → POST /api/advisor/notify through sendPost with the call's own sign-in and up to 3 opportunities of the call, whose
+     details, links and official file the platform adds to the e-mail (notifyGo) · bassem_set_work_time → MIGAPI.prefs (POST /api/me/prefs).
      When neither Bassem's screen nor advisor.html is open, the page navigates to advisor.html#bcmd=<json> and runs it there.
    - every tool call is also shown on the holographic workspace: MIGHOLO.act(tool, args, {who}).
    - JANNA_LIVE.open({intent:"meeting"}) opens Janna with the meeting card (JANNA_LIVE.intents = ["meeting"]).
@@ -362,6 +363,27 @@
     HT.sec[best] = 1; HT.t = now;
     run("janna_navigate", { page: best }, { topic: 1 }); /* he only TALKS about it: the screen changes, the «الشاشة» button pings — the call never scrolls away from him (review 2026-11-19 #16) */
   }
+  /* the platform's server tools still running in this call (bassem_intel, platform_item, janna_lookup): «ابعتلي» waits for them (notifyGo),
+     so the opportunities Bassem fetched in the same turn are known before the note goes out (his rule 9: every tool at once) */
+  var INFL = {}, INFL_TOOLS = /^(bassem_intel|platform_item|janna_lookup)$/;
+  function inflMark(d, on) {
+    d = d || {}; var n = String(d.toolName || d.name || ""), k;
+    if (!INFL_TOOLS.test(n)) return;
+    k = String(d.toolCallId || "") || n;
+    if (on) INFL[k] = Date.now(); else { delete INFL[k]; delete INFL[n]; }
+  }
+  /* resolves once none of them is running (after at least 0.6 s) or after max ms; a call older than 8 s no longer counts */
+  function inflWait(max) {
+    var t0 = Date.now();
+    return new Promise(function (res) {
+      (function tick() {
+        var now = Date.now(), busy = false, k;
+        for (k in INFL) if (INFL.hasOwnProperty(k)) { if (now - INFL[k] > 8000) delete INFL[k]; else busy = true; }
+        if ((!busy && now - t0 >= 600) || now - t0 >= max) { res(); return; }
+        setTimeout(tick, 150);
+      })();
+    });
+  }
   /* the call's DOM events → its handlers: the widget's own events, or the same events re-dispatched by the SDK call (sdkFire) */
   function wire(el) {
     el.addEventListener("anam-agent:tool-call-started", function (e) { var d = e.detail || {}; HT.tool = Date.now(); cmpGive(d.toolName); if (d.toolType && d.toolType !== "client") { holoTool(d.toolName, d.arguments || {}); return; } run(d.toolName, d.arguments || {}); });
@@ -370,6 +392,10 @@
     el.addEventListener("anam-agent:message-received", function (e) { onMessage(e.detail || {}); });
     /* what the platform's server tools returned: the opportunities and any e-mail address in their data (the recipient of a draft) */
     el.addEventListener("anam-agent:tool-call-completed", function (e) { try { harvest(e.detail || {}); } catch (x) {} });
+    /* «ابعتلي» waits for the server tools still running (inflWait); registered after harvest, so their results are kept first */
+    el.addEventListener("anam-agent:tool-call-started", function (e) { inflMark(e.detail, 1); });
+    el.addEventListener("anam-agent:tool-call-completed", function (e) { inflMark(e.detail, 0); });
+    el.addEventListener("anam-agent:tool-call-failed", function (e) { inflMark(e.detail, 0); });
     el.addEventListener("anam-agent:error", function (e) { var m = (e.detail && e.detail.message) || ""; say(/origin/i.test(m) ? T("الفيديو المباشر بيشتغل على موقع المنصة الرسمي", "Live video works on the official site") : T("حصلت مشكلة في الاتصال، جرّب تاني", "Connection problem, please try again")); });
   }
   function widgetHtml(name) { return '<anam-agent agent-id="' + AGENTS[persona] + '" layout="inline" ui-text-input="true" ui-mute-button="true" call-to-action="' + esc(T("ابدأ الكلام مع ", "Start talking to ") + name) + '" agent-name="' + esc(name) + '"></anam-agent>'; }
@@ -1901,6 +1927,36 @@
     }
     return bs >= 2 ? best : null;
   }
+  /* «ابعتلي»: which opportunities of THIS call the note is about → ≤ 3 refs ("intel:<id>" / "item:<id>") for POST /api/advisor/notify; the
+     platform then adds each one's details, links and official file from its own data (worker/src/notify-items.js). Only what the call's
+     tools returned (list = OPPC) or the screen shows (screenKey) — never a link or a title from the text. given = Bassem's `ids` (kept only
+     when they are one of those); else every one with 2+ of its words in the note (the screen's one with 1 + its bonus), best first; else,
+     for a note about nothing named, the screen's one when the member's own last words asked to send («ابعتلي», «إيميل» …) */
+  var SENDW = /ابعت|ابعث|ابعاد|بعتلي|ايميل|إيميل|واتس|send|e-?mail|whats ?app/i;
+  function notifyRefs(list, screenKey, text, given, heard) {
+    var out = [], i, j, k, o, sc, w, seen, ws = {}, ids, cand = [];
+    list = list || [];
+    function inList(key) { for (var q = 0; q < list.length; q++) if (list[q].k === key) return true; return false; }
+    function add(key) { if (key && out.indexOf(key) < 0 && out.length < 3) out.push(key); }
+    ids = String(given == null ? "" : given).split(/[\s,;،]+/);
+    for (i = 0; i < ids.length; i++) {
+      k = ids[i].replace(/^(?:intel|item):/i, ""); if (!k) continue;
+      if (/^[0-9a-z]{11}$/i.test(k) && (inList("intel:" + k.toLowerCase()) || screenKey === "intel:" + k.toLowerCase())) add("intel:" + k.toLowerCase());
+      else if (inList("item:" + k) || screenKey === "item:" + k) add("item:" + k);
+    }
+    if (out.length) return out;
+    mwords(text).forEach(function (x) { ws[x] = 1; });
+    for (i = 0; i < list.length; i++) {
+      o = list[i]; sc = 0; seen = {}; w = mwords([o.o.title, o.o.entity, o.o.ref, o.alt || ""].join(" "));
+      for (j = 0; j < w.length; j++) if (ws[w[j]] && !seen[w[j]]) { seen[w[j]] = 1; sc++; }
+      if (sc && screenKey && o.k === screenKey) sc += 1;
+      if (sc >= 2) cand.push({ k: o.k, s: sc, i: i });
+    }
+    cand.sort(function (a, b) { return b.s - a.s || a.i - b.i; });
+    for (i = 0; i < cand.length; i++) add(cand[i].k);
+    if (!out.length && screenKey && SENDW.test(String(heard || ""))) add(screenKey);
+    return out;
+  }
   /* the body of POST /api/advisor/send (worker/src/advisor.js sendFromCall) */
   var TOSRC = { data: "opportunity", deal: "deal", doc: "document", said: "dictated", typed: "typed", sent: "repeat" };
   function sendBody(st) {
@@ -2098,16 +2154,17 @@
   /* POST /api/advisor/send with the member's platform sign-in (localStorage "mig-tok") → {status, j}; never a guessed success. The sign-in
      the call was opened with (BTOK, mint) — else the call's own order (bassemAuth: the platform session, else the advisor token of an
      activation / WhatsApp call link; review 2026-11-19: with "mig-tok" alone a member whose call came from such a link was told «لازم تسجّل
-     الدخول»), the next one only after signRefused, never after a timeout or any answer of the send itself */
-  function sendPost(body) {
+     الدخول»), the next one only after signRefused, never after a timeout or any answer of the send itself.
+     path / ms (optional): the same for another advisor endpoint — «ابعتلي» posts "/advisor/notify" with 45 s (notifyGo) */
+  function sendPost(body, path, ms) {
     var tks = BTOK ? [BTOK] : bassemAuth();
     function once(tk) {
       return new Promise(function (res) {
         if (!window.fetch) { res({ status: 0, j: { code: "offline" } }); return; }
         var fin = false, h = { "Content-Type": "application/json", Accept: "application/json" }, tm;
         if (tk) h.Authorization = "Bearer " + tk;
-        tm = setTimeout(function () { if (!fin) { fin = true; res({ status: 0, j: { code: "timeout" } }); } }, 20000);
-        fetch(String(window.MIG_API_BASE || "/api").replace(/\/+$/, "") + "/advisor/send", { method: "POST", headers: h, body: JSON.stringify(body), credentials: "same-origin" }).then(function (r) {
+        tm = setTimeout(function () { if (!fin) { fin = true; res({ status: 0, j: { code: "timeout" } }); } }, ms || 20000);
+        fetch(String(window.MIG_API_BASE || "/api").replace(/\/+$/, "") + (path || "/advisor/send"), { method: "POST", headers: h, body: JSON.stringify(body), credentials: "same-origin" }).then(function (r) {
           if ((r.headers.get("content-type") || "").toLowerCase().indexOf("json") < 0) return { status: r.status, j: { code: "offline" } };
           return r.json().then(function (j) { return { status: r.status, j: j || {} }; }, function () { return { status: r.status, j: { code: "offline" } }; });
         }, function () { return { status: 0, j: { code: "offline" } }; }).then(function (x) { if (fin) return; fin = true; clearTimeout(tm); res(x); });
@@ -2467,25 +2524,69 @@
       return T("(الرابط الرسمي موجود على صفحة الفرصة في المنصة)", "(the official link is on the opportunity's page on the platform)") + tail;
     });
   }
+  /* «ابعتلي» (bassem_notify_member — a CLIENT tool, awaitResult off): the note + up to 3 opportunities of THIS call (notifyRefs: the call's
+     tools' results and the shared screen, read once the server tools still running in this turn are done — inflWait) → POST
+     /api/advisor/notify {message, channel, items?} with the call's own sign-in (sendPost, 45 s: an official file can take ~20 s to download
+     from the buyer's site). The platform adds each one's details, its
+     links and its official file from its own data (worker/src/notify-items.js). What really went is shown (notifyDone) and told to Bassem
+     for his next turn (tellBassem, SDK calls) — «مرفق» only when the platform says it attached the file. No opportunity → today's note */
+  function notifyScreenKey() {
+    var k = "", c; try { k = screenOppKey(); } catch (e) { k = ""; }
+    if (k.indexOf("item:") === 0) { c = screenCtx(); if (!c || !/tender/.test(String(c.type || ""))) return ""; } /* a factory page is no opportunity */
+    return k;
+  }
+  function notifyGo(name, a) {
+    var msg = urlsFix(String(a.message || "").trim()), chn = /^(whatsapp|email|both)$/.test(a.channel) ? a.channel : "both";
+    if (!msg) { refuse(name, "refused", T("قولّي الرسالة اللي عايزني أبعتهالك.", "Tell me the message you want me to send you.")); return; }
+    doing(T("ببعتلك الرسالة", "sending you the message"));
+    inflWait(4000).then(function () {
+      var refs = [];
+      try { screenOpp(); } catch (e) {}
+      try { refs = notifyRefs(OPPC, notifyScreenKey(), msg, a.ids, heardTexts().slice(-2).join(" ")); } catch (e) { refs = []; }
+      return sendPost(refs.length ? { message: msg, channel: chn, items: refs } : { message: msg, channel: chn }, "/advisor/notify", 45000);
+    }).then(function (x) { notifyDone(name, x); }, function () { notifyDone(name, { status: 0, j: { code: "offline" } }); });
+  }
+  /* [AR, EN]: «الملف الرسمي مرفق» / «الملفين الرسميين مرفقين» / «3 ملفات رسمية مرفقة» */
+  function nFiles(n) { return n === 1 ? ["الملف الرسمي مرفق", "the official file is attached"] : n === 2 ? ["الملفين الرسميين مرفقين", "the 2 official files are attached"] : [n + " ملفات رسمية مرفقة", "the " + n + " official files are attached"]; }
+  /* the platform's answer {status, j} → what the member reads; the outcome of the tool; what Bassem is told */
+  function notifyDone(name, x) {
+    var j = (x && x.j) || {}, st = x ? x.status : 0, s0 = j.sent || {}, pend = j.pending || {}, its = j.items && j.items.length ? j.items : [], att = +j.attached || 0, i, it, fw = null, ch, waTpl, extra, nf;
+    if (st === 200) {
+      /* outside WhatsApp's 24-hour window the server sends only a notice template (pending.whatsapp): the message itself follows when the member replies */
+      waTpl = !!pend.whatsapp || s0.whatsapp === "template";
+      ch = [s0.email ? T("الإيميل", "e-mail") : "", s0.whatsapp && s0.whatsapp !== "template" ? T("الواتساب", "WhatsApp") : ""].filter(Boolean);
+      for (i = 0; i < its.length && !fw; i++) { it = its[i] || {}; if (it.found && it.file && !it.file.attached && it.file.reason !== "kind" && it.file.why) fw = it.file.why; }
+      nf = nFiles(att);
+      extra = att > 0 ? T(" — ومعاها " + nf[0], " — " + nf[1]) : s0.email && fw ? T(" — بالتفاصيل واللينكات؛ الملف الرسمي مااترفقش: " + fw.ar, " — with the details and links; the official file was not attached: " + fw.en) : "";
+      sayAny(ch.length ? "✅ " + T("اتبعتت على ", "Sent by ") + ch.join(T(" و", " and ")) + extra + (waTpl ? T(" — وعلى الواتساب وصلك تنبيه، والرسالة نفسها هتوصلك هناك أول ما ترد على الواتساب", " — and a WhatsApp notice reached you; the message itself follows there as soon as you reply on WhatsApp") : "") : waTpl ? "✅ " + T("وصلك تنبيه على الواتساب، والرسالة نفسها هتوصلك هناك أول ما ترد عليه.", "A WhatsApp notice reached you; the message itself follows there as soon as you reply.") : "⚠️ " + T("الرسالة مااتبعتتش على أي قناة.", "The message was not sent on any channel."));
+      if (ch.length || waTpl) done(name); else outcome(name, "failed", "not sent on any channel");
+    } else if (j.code === "timeout") refuse(name, "failed", "⏳ " + T("مش متأكد إنها اتبعتت — المنصة مارديتش في الوقت. بص على إيميلك قبل ما تطلبها تاني.", "Not sure it was sent — the platform did not answer in time. Check your inbox before asking again."));
+    else refuse(name, "failed", "⚠️ " + T("مااتبعتتش: ", "Not sent: ") + errMsg({ code: j.code || (st ? "http_" + st : "offline"), error: j.error, status: st }));
+    tellBassem(notifyWords(x));
+  }
+  /* what Bassem is told (his next turn): only what the platform answered — the channels, and per opportunity whether its file went and why not */
+  function notifyWords(x) {
+    var j = (x && x.j) || {}, st = x ? x.status : 0, s0 = j.sent || {}, pend = j.pending || {}, its = j.items || [], ar = [], en = [], i, it, t, w, f;
+    var chA = [s0.email ? "الإيميل" : "", s0.whatsapp && s0.whatsapp !== "template" ? "الواتساب" : ""].filter(Boolean), chE = [s0.email ? "e-mail" : "", s0.whatsapp && s0.whatsapp !== "template" ? "WhatsApp" : ""].filter(Boolean);
+    if (st !== 200) return j.code === "timeout" ? T("نتيجة «ابعتلي»: مش متأكد إنها اتبعتت، المنصة مارديتش في الوقت. قوله كده، وماتبعتهاش تاني قبل ما يبص على إيميله.", "Result of «send to me»: not sure it was sent, the platform did not answer in time. Tell him so, and do not send it again before he checks his inbox.")
+      : T("نتيجة «ابعتلي»: مااتبعتتش (" + String(j.code || j.error || st || "offline").slice(0, 60) + "). قوله كده بصراحة.", "Result of «send to me»: not sent (" + String(j.code || j.error || st || "offline").slice(0, 60) + "). Tell him so honestly.");
+    ar.push(chA.length ? "اتبعتت على " + chA.join(" و") : pend.whatsapp ? "وصله تنبيه على الواتساب، والرسالة نفسها هتوصله هناك أول ما يرد" : "مااتبعتتش على أي قناة");
+    en.push(chE.length ? "sent by " + chE.join(" and ") : pend.whatsapp ? "a WhatsApp notice reached him; the message itself follows when he replies" : "not sent on any channel");
+    if (chA.length && pend.whatsapp) { ar.push("وعلى الواتساب وصله تنبيه بس لحد ما يرد"); en.push("on WhatsApp only a notice until he replies"); }
+    for (i = 0; i < its.length && i < 3; i++) {
+      it = its[i] || {}; t = String(it.title || "").replace(/["«»<>\[\]{}]/g, " ").replace(/\s+/g, " ").slice(0, 50); f = it.file || {}; w = (it.found ? f.why : it.why) || {};
+      if (!it.found) { ar.push("الفرصة " + (i + 1) + ": مااتبعتش تفاصيلها (" + String(w.ar || it.reason || "") + ")"); en.push("opportunity " + (i + 1) + ": no details sent (" + String(w.en || it.reason || "") + ")"); }
+      else if (f.attached) { ar.push("\"" + t + "\": تفاصيلها ولينكاتها والملف الرسمي اترفق في الإيميل"); en.push("\"" + t + "\": its details, links and official file are in the e-mail"); }
+      else { ar.push("\"" + t + "\": تفاصيلها ولينكاتها" + (f.reason === "kind" ? "" : "، والملف مااترفقش (" + String(w.ar || f.reason || "") + ")")); en.push("\"" + t + "\": its details and links" + (f.reason === "kind" ? "" : "; the file was not attached (" + String(w.en || f.reason || "") + ")")); }
+    }
+    return T("نتيجة «ابعتلي»: " + ar.join("؛ ") + ". قول للعضو اللي حصل ده بس.", "Result of «send to me»: " + en.join("; ") + ". Tell the member only what happened.");
+  }
   function bassemTool(name, a) {
     var A = window.MIGAPI;
     /* the member's factory profile (POST /api/advisor/profile) — never routed to advisor.html. In the SDK call the registered handler
        saves it and answers Bassem (sdkRun); the widget cannot answer a tool, so there it is saved without a result */
     if (name === "bassem_save_profile") { if (LV && !LV.closed && LV.own && LV.own.bassem_save_profile) return; profileTool(a); return; }
-    if (name === "bassem_notify_member") {
-      var msg = urlsFix(String(a.message || "").trim()), chn = /^(whatsapp|email|both)$/.test(a.channel) ? a.channel : "both";
-      if (!msg) { refuse(name, "refused", T("قولّي الرسالة اللي عايزني أبعتهالك.", "Tell me the message you want me to send you.")); return; }
-      doing(T("ببعتلك الرسالة", "sending you the message"));
-      (A && A.notify ? A.notify(msg, chn) : post("/advisor/notify", { message: msg, channel: chn })).then(function (j) {
-        var s0 = (j && j.sent) || {}, via = (j && (j.via || {})) || {}, pend = (j && j.pending) || {};
-        /* outside WhatsApp's 24-hour window the server sends only a notice template (pending.whatsapp): the message itself follows when the member replies */
-        var waTpl = !!pend.whatsapp || s0.whatsapp === "template" || via.whatsapp === "template" || !!(j && j.whatsapp_via === "template");
-        var ch = [s0.email ? T("الإيميل", "e-mail") : "", s0.whatsapp && s0.whatsapp !== "template" ? T("الواتساب", "WhatsApp") : ""].filter(Boolean);
-        sayAny(ch.length ? "✅ " + T("اتبعتت على ", "Sent by ") + ch.join(T(" و", " and ")) + (waTpl ? T(" — وعلى الواتساب وصلك تنبيه، والرسالة نفسها هتوصلك هناك أول ما ترد على الواتساب", " — and a WhatsApp notice reached you; the message itself follows there as soon as you reply on WhatsApp") : "") : waTpl ? "✅ " + T("وصلك تنبيه على الواتساب، والرسالة نفسها هتوصلك هناك أول ما ترد عليه.", "A WhatsApp notice reached you; the message itself follows there as soon as you reply.") : "⚠️ " + T("الرسالة مااتبعتتش على أي قناة.", "The message was not sent on any channel."));
-        if (ch.length || waTpl) done(name); else outcome(name, "failed", "not sent on any channel");
-      }, function (e) { refuse(name, "failed", "⚠️ " + T("مااتبعتتش: ", "Not sent: ") + errMsg(e)); });
-      return;
-    }
+    if (name === "bassem_notify_member") { notifyGo(name, a); return; }
     if (name === "bassem_set_work_time") {
       var pr = {}; ["morning_time", "session_time", "days", "call_today_at", "pause", "wa_optin", "email_digest"].forEach(function (k) { if (a[k] != null && a[k] !== "") pr[k] = a[k]; });
       if (!pr.morning_time && a.time) pr.morning_time = a.time;

@@ -420,6 +420,9 @@ describe("production wrangler.toml", () => {
     assert.match(active, /name = "janna-lookup"/);
     assert.match(active, /\[\[d1_databases\]\]\s*\nbinding = "DB"\s*\ndatabase_name = "migate-db"\s*\ndatabase_id = "f86e00bb-9739-4985-a149-3dddb45b2b42"/);
     assert.match(active, /\[\[r2_buckets\]\]\s*\nbinding = "MEDIA"\s*\nbucket_name = "migate-media"/);
+    /* «ابعتلي» mail packs + the developer panel's intel probe: the ONE service binding, to migate-intel (no secret: notify-items.js PACK_HOST) */
+    assert.deepEqual([...active.matchAll(/\[\[services\]\]\s*\nbinding = "([^"]+)"\s*\nservice = "([^"]+)"/g)].map(m => [m[1], m[2]]), [["INTEL", "migate-intel"]]);
+    assert.equal((active.match(/\[\[services\]\]/g) || []).length, 1);
     assert.match(active, /crons = \["\*\/15 \* \* \* \*"\]/);
     const v = k => (active.match(new RegExp(`^${k} = "([^"]*)"`, "m")) || [])[1];
     assert.equal(v("ADMIN_EMAILS"), "info@madeinegyptgate.com");

@@ -118,6 +118,7 @@ deploy/deploy.sh cutover-rollback
 | `JANNA_KEY` | — | — | اختياري، والأفضل تركه | لو ضُبط يجب أن ترسل أداة جنة في Anam الهيدر `X-Janna-Key` |
 
 > أسرار Pages تصل إلى **النشر التالي** فقط. بعد إضافة سر أو تغييره شغّل `deploy.sh production` من جديد. أسرار الـ Worker تعمل فورًا.
+> «ابعتلي» بتفاصيل الفرص وملفاتها الرسمية **مالوش سر جديد**: الـ Worker ‏`janna-lookup` بيكلّم `migate-intel` عن طريق ربط خدمة (`[[services]] binding = "INTEL"` في `worker/wrangler.toml`) على اسم مضيف داخلي `mailpack.binding.invalid`، و`migate-intel` مابيردّش على المسار ده من أي اسم تاني (`worker-intel/INTEGRATION.md` §9). لازم `migate-intel` يكون موجود في الحساب قبل نشر `janna-lookup`، وإلا النشر بيفشل.
 > المعاينة بلا أسرار عمدًا. لو أردت تجربة لوحة الـ SEO على معاينة، اتبع التعليمات المكتوبة في آخر `deploy/wrangler-pages.toml` (KV منفصل للمعاينة + `deploy.sh secrets --set ADVISOR_SECRET --env preview` بقيمة لا تُستخدم في أي مكان آخر).
 > `PAGES_DEPLOY_HOOK` لا ينطبق على مشروع الرفع المباشر، لأن Deploy hooks متاحة فقط للمشاريع المربوطة بـ Git. زر «إعادة بناء الموقع» في لوحة الـ SEO سيعرض أنه غير مُعدّ، وهذا متوقع. التحديث يتم بالنشر اليومي (القسم 7).
 

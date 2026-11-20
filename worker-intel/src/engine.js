@@ -331,6 +331,30 @@ export async function storeItems(env, src, items, dedupe, nowIso) {
   if (stmts.length) await db.batch(stmts);
   return { new: uniq.filter(x => !existing.has(x.id)).length, updated: uniq.filter(x => existing.has(x.id)).length, dups };
 }
+/* the notice's own files a source lists (an adapter record's non-enumerable doc_urls [{u, t}] — Kenya PPIP documents[], adapters/json.js
+   keDocs) → KV «dochint:<item id>» {h:[{u, t}]} for 60 days, only for items this run kept. Read by «ابعتلي» (api.js mailPack → doc.js
+   itemFile tries them first, on the item's own official site only). An unchanged value is not written again; never fails a run. */
+export const DOC_HINT_TTL = 60 * 86400;
+export async function storeDocHints(env, src, raw, items) {
+  const kv = env && env.KV;
+  if (!kv) return 0;
+  const kept = new Set((items || []).map(i => i.id));
+  let n = 0;
+  for (const r of raw || []) {
+    if (!r || !Array.isArray(r.doc_urls) || !r.doc_urls.length) continue;
+    const id = itemId(src.id, String(r.ext_id || String(r.url || "").trim()));   // the id normalise() gives the record
+    if (!kept.has(id)) continue;
+    const h = r.doc_urls.filter(x => x && typeof x.u === "string" && /^https:\/\/[^\s]+$/i.test(x.u) && x.u.length <= 2000).slice(0, 2).map(x => ({ u: x.u, t: String(x.t || "").slice(0, 40) }));
+    if (!h.length) continue;
+    const v = JSON.stringify({ h });
+    try {
+      if ((await kv.get("dochint:" + id)) === v) continue;
+      await kv.put("dochint:" + id, v, { expirationTtl: DOC_HINT_TTL });
+      n++;
+    } catch (e) { /* a hint is a nice-to-have: the run goes on */ }
+  }
+  return n;
+}
 
 /* ---------- source selection (rotation) ---------- */
 export function dueSources(sources, groups, nowMs = Date.now(), max = LIMITS.maxSourcesPerRun, force = false) {
@@ -391,6 +415,7 @@ export async function runCycle(env, opts = {}) {
         items = items.filter(it => (it.deadline && it.deadline >= today) || !it.published_at || now - Date.parse(it.published_at) <= maxAge).filter(it => !(it.status === "closed" && mp.skip_closed !== false));
         items = items.slice(0, LIMITS.maxItemsPerSource);
         const w = await storeItems(env, src, items, dedupe, nowIso);
+        if (res.status === "ok") { try { const h = await storeDocHints(env, src, res.items, items); if (h) entry.hints = h; } catch (e) { /* hints never fail a run */ } }
         Object.assign(entry, { parsed: res.items.length, kept: items.length, new: w.new, updated: w.updated, dups: w.dups });
         stats.items_new += w.new; stats.items_updated += w.updated; stats.dups += w.dups;
         if (res.status === "ok") stats.ok++; else stats.not_modified++;

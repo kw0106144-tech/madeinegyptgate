@@ -758,6 +758,15 @@ describe("health: pages, APIs (in-process), intel, D1 counts, worker version", (
     for (let i = 0; i < 11; i++) await api(e2, "GET", D + "/health", { token: o2.token });
     assert.deepEqual([(await api(e2, "GET", D + "/health", { token: o2.token })).status], [429]);
   });
+  test("with the service binding INTEL (worker/wrangler.toml [[services]]) the intel probe goes through it, never through the workers.dev URL", async () => {
+    const seen = [], INTEL_B = { async fetch(req) { seen.push([req.method, new URL(req.url).pathname]); return new URL(req.url).pathname === "/api/intel/health" ? J({ ok: true }) : new Response(HTML, { status: 200, headers: { "Content-Type": "text/html" } }); } };
+    const env = env0({ INTEL: INTEL_B }), o = await owner(env);
+    const r = await api(env, "GET", D + "/health", { token: o.token });
+    assert.equal(r.status, 200, r.text);
+    assert.deepEqual(r.data.checks.filter(c => c.group === "intel").map(c => [c.id, c.ok]), [["intel:/api/intel/health", true], ["intel:/intel/", true]]);
+    assert.deepEqual(seen.sort(), [["GET", "/api/intel/health"], ["GET", "/intel/"]]);
+    assert.ok(!calls.some(c => c.url.startsWith(INTEL)), "no workers.dev request");
+  });
 });
 
 describe("the developer panel's own audit", () => {

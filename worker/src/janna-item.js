@@ -70,7 +70,7 @@ const CONTACT = {
 function tenderRecord(t, nowMs) {
   const st = statusOf(t.deadline, nowMs), intl = t.market !== "local";
   const rec = { section: "tenders", id: t.id, ref: t.ref, title: t.title, title_en: t.title_en || undefined, type: t.ptype || undefined, entity: t.entity || undefined, entity_en: t.entity_en || undefined,
-    entity_kind: t.kind || undefined, market: t.market, country: t.country || undefined, governorate: t.gov || undefined, city: t.city || undefined, activity: t.sector || undefined,
+    entity_kind: t.kind || undefined, market: t.market, country: t.country || undefined, country_en: t.country_en || undefined, governorate: t.gov || undefined, city: t.city || undefined, activity: t.sector || undefined,
     publish_date: t.publish || undefined, deadline: t.deadline || undefined, status: st, bid_bond_egp: t.bond_egp ?? undefined, bid_bond_note: t.bond_note || undefined,
     booklet_price_egp: t.booklet_egp ?? undefined, estimated_value: t.est_value ?? undefined, currency: t.currency || undefined,
     documents_url: t.docs || undefined, source: t.via || undefined, open_url: absUrl(t.path), list_url: t.list ? absUrl(t.list) : undefined,

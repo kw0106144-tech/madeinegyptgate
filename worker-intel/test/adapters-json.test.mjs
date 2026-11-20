@@ -6,7 +6,7 @@
 import test from "node:test"; import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url"; import { dirname, join } from "node:path";
-import { ADAPTERS, SEED_PATCHES, mapOcdsReleases, OCDS_FTS, parseWbContractAwards, legalEntityName, dropContactSentences, pastOrEmpty, ocdsCpv } from "../src/adapters/json.js";
+import { ADAPTERS, SEED_PATCHES, mapOcdsReleases, OCDS_FTS, parseWbContractAwards, legalEntityName, dropContactSentences, pastOrEmpty, ocdsCpv, keDocs } from "../src/adapters/json.js";
 import { normalise, parseRobots, robotsAllows, fillTemplate, LIMITS } from "../src/engine.js";
 import { MARKETS } from "../src/markets.js";
 import { KINDS } from "../src/util.js";
@@ -194,6 +194,43 @@ test("Kenya PPIP: newest first, disposals skipped, state corporations semi, impo
   assert.ok(items.filter(i => i.kind === "tender_semi").every(i => /Authority|Hospital|Board|Agency|Fund/i.test(i.entity)) && items.some(i => i.kind === "tender_semi"));
   assert.ok(items.every(i => /^https:\/\/tenders\.go\.ke\/tenders\/\d+$/.test(i.url) && i.market === "africa:ke"));
   assert.ok(recs.every(r => r.value === "" && r.currency === ""), "tender fee is not a contract value");
+});
+
+test("Kenya PPIP documents[] → the notice's own file as a hidden hint (doc_urls): Tender Document first, then Tender Notice, tenders.go.ke .pdf only", async () => {
+  const raw = JSON.parse(FX(FIXTURE["ke-ppip"])).data, byId = new Map(raw.map(r => [String(r.id), r]));
+  const { recs } = await run("ke-ppip");
+  let withDocs = 0;
+  for (const r of recs) {
+    const d = Object.getOwnPropertyDescriptor(r, "doc_urls");
+    assert.deepEqual(Object.keys(r).sort(), KEYS, r.ext_id + ": the record shape is unchanged");
+    const src = byId.get(r.ext_id), want = (src.documents || []).filter(x => !x.deleted_at && /^tender (?:document|notice)$/i.test((x.type || {}).description || ""));
+    if (!want.length) { assert.equal(d, undefined, r.ext_id); continue; }
+    withDocs++;
+    assert.ok(d && d.enumerable === false, r.ext_id + ": doc_urls is not enumerable");
+    const v = r.doc_urls;
+    assert.ok(v.length >= 1 && v.length <= 2, r.ext_id);
+    for (const x of v) { assert.match(x.u, /^https:\/\/tenders\.go\.ke\/storage\/Documents\/[^\s]+\.pdf$/); assert.match(x.t, /^Tender (?:Document|Notice)$/); }
+    if (want.some(x => x.type.description === "Tender Document")) assert.equal(v[0].t, "Tender Document", r.ext_id + ": the Tender Document first");
+    const kept = new Set(v.map(x => x.u));
+    for (const x of src.documents || []) if (!/^tender (?:document|notice)$/i.test((x.type || {}).description || "")) assert.ok(![...kept].some(u => u.endsWith(x.url)), r.ext_id + ": not from «" + x.type.description + "»");
+  }
+  assert.ok(withDocs >= 8, "the fixture's notices carry their files: " + withDocs);
+  assert.doesNotMatch(JSON.stringify(recs), /storage\/Documents/, "JSON.stringify of the records never carries the hints");
+  /* keDocs on its own: only url / type.description / deleted_at; deleted, other hosts, http, other types and non-files are dropped */
+  const docs = [
+    { url: "/storage/Documents/2-notice.pdf", type: { description: "Tender Notice" }, created_by: { name: "X", email: "x@example.invalid" } },
+    { url: "/storage/Documents/1-doc.pdf", type: { description: "tender document" } },
+    { url: "/storage/Documents/1-doc.pdf", type: { description: "Tender Document" } },
+    { url: "/storage/Documents/3-old.pdf", type: { description: "Tender Document" }, deleted_at: "2026-01-01" },
+    { url: "https://evil.example/x.pdf", type: { description: "Tender Document" } },
+    { url: "http://tenders.go.ke/storage/Documents/4.pdf", type: { description: "Tender Document" } },
+    { url: "/storage/Documents/5.exe", type: { description: "Tender Document" } },
+    { url: "/storage/Documents/6.pdf", type: { description: "Evaluation Report" } },
+    { url: "/storage/Documents/7.pdf" }, null, "x", { url: 42, type: { description: "Tender Document" } },
+  ];
+  assert.deepEqual(keDocs(docs), [{ u: "https://tenders.go.ke/storage/Documents/1-doc.pdf", t: "tender document" }, { u: "https://tenders.go.ke/storage/Documents/2-notice.pdf", t: "Tender Notice" }]);
+  assert.deepEqual(keDocs(undefined), []); assert.deepEqual(keDocs({}), []);
+  assert.doesNotMatch(JSON.stringify(keDocs(docs)), /example\.invalid|created_by/);
 });
 
 test("Uganda GPP: subject as title, estimated value in UGX, RFQ/P → rfq, parastatals semi, closed ones closed", async () => {

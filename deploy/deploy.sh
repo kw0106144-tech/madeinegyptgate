@@ -540,6 +540,13 @@ try:
     kv = [x for x in c.get("kv_namespaces", []) if x.get("binding") == "SEO_KV"]
     if not kv or kv[0].get("id") != kv_id:   # deploy 2: content.js writes the published overlay to KV "acc:overlay" (same namespace as Pages)
         probs.append('[[kv_namespaces]] binding "SEO_KV" must be id = "%s" (the Pages SEO_KV namespace; the Worker writes only acc:* keys)' % kv_id)
+    # service bindings: only INTEL → migate-intel (the «ابعتلي» mail packs + the developer panel's intel probe; no secret)
+    svcs = [x for x in c.get("services", []) if isinstance(x, dict)]
+    for x in svcs:
+        if x.get("binding") != "INTEL" or x.get("service") != "migate-intel":
+            probs.append('[[services]] %r: the only service binding is binding = "INTEL", service = "migate-intel"' % (x,))
+    if not any(x.get("binding") == "INTEL" for x in svcs):
+        warns.append('no [[services]] binding "INTEL" → migate-intel: «ابعتلي» e-mails carry the opportunities\' links only (no official file, no Information Center details)')
 except ImportError:                      # Python < 3.11: line-based check of uncommented settings
     live = "\n".join(l.split("#", 1)[0] for l in text.splitlines())
     if not re.search(r'database_id\s*=\s*"%s"' % re.escape(d1_id), live):

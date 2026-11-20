@@ -40,3 +40,5 @@ TOOL_RATE_PER_MIN = "30"
 [observability]
 enabled = true
 # Secrets: PLATFORM_KEY (admin endpoints, header X-Platform-Key). Optional TOOL_KEY (header X-Intel-Key for /api/intel/tool).
+# «ابعتلي» mail packs (POST /api/intel/mailpack, INTEGRATION.md §9): NO secret — answered only on the hostname mailpack.binding.invalid,
+# which only janna-lookup's service binding INTEL can send. Optional var PACK_RATE_PER_MIN (default 60 a minute).

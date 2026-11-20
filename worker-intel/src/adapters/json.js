@@ -221,7 +221,29 @@ export const OCDS_CF = {
 };
 
 /* ---------- Kenya PPIP (Laravel paginator; sortby=published_at&order=desc&perpage=50) ---------- */
-/* Read: id, title, tender_ref, published_at, close_at, pe.name, pe.pe_type_id, procurement_category/method titles.
+/* the notice's own published files (documents[]) → at most 2 {u, t}: the Tender Document first, then the Tender Notice; only
+   https://tenders.go.ke/….pdf|.docx. Read per entry: url, type.description, deleted_at — never created_by / updated_by / deleted_by.
+   Opening minutes, evaluation reports, award letters and the rest are not the notice's file and are skipped. */
+const KE_DOC_RANK = { "tender document": 0, "tender notice": 1 };
+export function keDocs(docs) {
+  const out = [], seen = new Set();
+  for (const d of Array.isArray(docs) ? docs : []) {
+    if (!d || typeof d !== "object" || d.deleted_at || typeof d.url !== "string") continue;
+    const t = str(d.type && typeof d.type === "object" ? d.type.description : "");
+    const rank = KE_DOC_RANK[t.toLowerCase()];
+    if (rank === undefined) continue;
+    let u; try { u = new URL(d.url, "https://tenders.go.ke/"); } catch (e) { continue; }
+    if (u.protocol !== "https:" || u.hostname !== "tenders.go.ke" || u.username || u.password || u.port || !/\.(?:pdf|docx)$/i.test(u.pathname)) continue;
+    u.hash = "";
+    const s = u.toString();
+    if (seen.has(s)) continue;
+    seen.add(s); out.push({ u: s, t, rank });
+  }
+  return out.sort((a, b) => a.rank - b.rank).slice(0, 2).map(x => ({ u: x.u, t: x.t }));
+}
+/* Read: id, title, tender_ref, published_at, close_at, pe.name, pe.pe_type_id, procurement_category/method titles, and documents[]
+   (url, type.description, deleted_at only: keDocs) as the record's non-enumerable doc_urls — the «ابعتلي» e-mail's official file
+   (engine.js storeDocHints → KV dochint:<id>); like withNext it never reaches Object.keys / JSON.stringify of the record.
    NEVER read: created_by (officials' names, e-mails, phones, national ID numbers), updated_by, team_members, subscribers,
    bidders, directors, contracts, pe.email / pe.telephone. pe_type_id 41 = state corporations (KPA, KRA, KEMSA, KNH, NCPB). */
 export function parseKePpip(text, src = {}) {
@@ -238,6 +260,8 @@ export function parseKePpip(text, src = {}) {
       summary: summary([meth, cat, r.tender_ref && "Ref " + str(r.tender_ref)]),
       proc_method: meth, proc_group: groupOf(cat), buyer_type: Number(pe.pe_type_id) === 41 ? "semi" : "",
     }));
+    const kd = keDocs(r.documents);
+    if (kd.length) Object.defineProperty(out[out.length - 1], "doc_urls", { value: kd, enumerable: false });
   }
   return out;
 }

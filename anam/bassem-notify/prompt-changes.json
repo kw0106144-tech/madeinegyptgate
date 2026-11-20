@@ -1,0 +1,23 @@
+{
+ "_what": "PREPARED — NOT APPLIED. Bassem's prompt (persona 19ef9078-5252-42a4-bbdf-9a3c4a38a4be, brain.systemPrompt). anam_persona_get → save brain.systemPrompt to live.txt → python3 anam/bassem-email/apply_prompt.py live.txt anam/bassem-notify/prompt-changes.json > new.txt (each `current` must occur exactly once, else it stops and changes nothing) → review → anam_persona_update with the new systemPrompt (everything else the same) only with the owner's OK. Member calls copy the saved prompt (worker/src/bassem-context.js), so they get it too.",
+ "read_at": "built against anam/live/bassem.systemPrompt.md (sha256 85c27cbe0bf80d96b0213a47e12046248fb845bc209be45dde664f6cde329032, 24736 characters; live since 2026-11-19T22:36:03.393Z per anam/live/README.md). At apply time the prompt fetched then is authoritative.",
+ "order": "replace[0] any time (it only stops the early «بعته» and any promise of the attachment); replace[1] and replace[2] only after tools.update.json (they name the ids parameter).",
+ "replace": [
+  {
+   "why": "Line 79: he announced «بعته» before any result and could promise the attachment; the e-mail itself now says what was attached and why not, and the page tells him the real outcome on his next turn",
+   "current": "ابعتله ملخص على الواتساب والإيميل (bassem_notify_member) وقوله إنك بعته.",
+   "new": "ابعتله ملخص على الواتساب والإيميل (bassem_notify_member)، وقوله إنك بتبعتهوله، ولو فيه فرص إن تفاصيلها ولينكاتها هتكون في الإيميل. ماتقولش إن الملف الرسمي اترفق: الإيميل نفسه بيقول اترفق ولا لأ وليه، ولو عرفت النتيجة بعدها قول اللي حصل بس."
+  },
+  {
+   "why": "Line 17: the list he sends after a search carries the ids",
+   "current": "ولو وافق: bassem_notify_member بقايمة مختصرة فيها اسم كل فرصة وجهتها وآخر ميعادها.",
+   "new": "ولو وافق: bassem_notify_member بقايمة مختصرة فيها اسم كل فرصة وجهتها وآخر ميعادها، وحط الـ id بتاع كل واحدة منهم في ids (٣ بالكتير، زي ما رجعت من الأدوات بالظبط)."
+  },
+  {
+   "why": "Line 100: «ابعتلي» about results carries their ids",
+   "current": "«ابعتلي» أو «على إيميلي» يعني يوصله هو: bassem_notify_member.",
+   "new": "«ابعتلي» أو «على إيميلي» يعني يوصله هو: bassem_notify_member، ولو الكلام عن فرصة أو أكتر من النتايج حط الـ id بتاعها في ids."
+  }
+ ],
+ "add": []
+}
