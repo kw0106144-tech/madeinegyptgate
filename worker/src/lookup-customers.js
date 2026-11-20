@@ -7,12 +7,13 @@ import { norm, STOP } from "./text.js";
 import { canon, isGeneric } from "./lookup-terms.js";
 
 /* label → the words a seller uses for that industry (Arabic, English; normalised by norm(), matched by canon() word by word, a phrase
-   as its words side by side). «ورق» is the paper industry: the paper / carton converters AND the printing houses that run on paper
-   (both are the seller's customers when he says «مصانع الورق» — the text names each group by its label, so the visitor hears both). */
+   as its words side by side). «ورق» is the paper industry only (review: mapping it to the printing houses too counted an industry the
+   seller never named, «ورق وكرتون» +37 printers; a seller who serves printers says «مطابع»). A kind of CUSTOMER the directory does not
+   list (hospitals, restaurants, shops: CUST_PLACE) is no label either: those words used to bring the makers of their equipment. */
 export const CUST_MAP = [
   ["التعبئة والتغليف والورق", "ورق|ورقي|ورقيه|كرتون|كراتين|كارتون|كرتونه|تعبئه|تغليف|تعبئه وتغليف|مواد تعبئه|مواد تغليف|عبوات|عبوه|اكياس|كيس|شكاير|شكائر|علب|مناديل|" +
     "packaging|package|packing|paper|carton|cartons|cardboard|corrugated|boxes|bags|tissue|packaging and paper"],
-  ["الطباعة والدعاية والإعلان", "ورق|طباعه|مطابع|مطبعه|مطبوعات|دعايه|اعلان|اعلانات|دعايه واعلان|لافتات|ليبل|ليبلات|ملصقات|printing|printers|printer|print|press|presses|advertising|signage|labels|printing and advertising"],
+  ["الطباعة والدعاية والإعلان", "طباعه|مطابع|مطبعه|مطبوعات|دعايه|اعلان|اعلانات|دعايه واعلان|لافتات|ليبل|ليبلات|ملصقات|printing|printers|printer|print|press|presses|advertising|signage|labels|printing and advertising"],
   ["الصناعات البلاستيكية والمطاط", "بلاستيك|بلاستيكي|بلاستيكيه|مطاط|كاوتش|كاوتشوك|بولي ايثيلين|بولي بروبلين|بي في سي|pvc|بلاستيك ومطاط|plastic|plastics|rubber|polymer|polymers|plastics and rubber"],
   ["مواد البناء والتشييد", "اسمنت|خرسانه|خرسانه جاهزه|طوب|جبس|بلوك|بلوكات|مواد بناء|مواد البناء|مواد تشييد|مواد التشييد|cement|concrete|bricks|brick|gypsum|building materials|construction materials"],
   ["الصناعات الغذائية والمشروبات", "اغذيه|غذائيه|غذائي|مواد غذائيه|صناعات غذائيه|مشروبات|سكر|البان|لبن|حليب|جبن|عصائر|عصير|حلويات|شوكولاته|بسكويت|مكرونه|دقيق|مطاحن|مخابز|زيوت طعام|زيت طعام|" +
@@ -22,7 +23,7 @@ export const CUST_MAP = [
   ["النفط والغاز والخدمات البترولية", "بترول|بترولي|بتروليه|نفط|غاز|غاز طبيعي|petroleum|oil and gas|natural gas"],
   ["الحديد والصلب والمعادن", "حديد|صلب|معادن|مسابك|درفله|الومنيوم|نحاس|steel|iron|metals|metal|foundry|foundries|aluminium|aluminum|copper"],
   ["الأدوية والمستلزمات الطبية", "ادويه|دواء|مستلزمات طبيه|مستحضرات طبيه|pharma|pharmaceutical|pharmaceuticals|medicines|medical supplies"],
-  ["الأجهزة الطبية والعلمية والمعملية", "اجهزه طبيه|معدات طبيه|معامل|معمل|مستشفيات|medical devices|medical equipment|laboratories|hospitals"],
+  ["الأجهزة الطبية والعلمية والمعملية", "اجهزه طبيه|معدات طبيه|اجهزه معامل|معدات معامل|medical devices|medical equipment|laboratory equipment"],
   ["المنظفات والصابون", "منظفات|صابون|مطهرات|detergents|detergent|soap|soaps"],
   ["الدهانات والأحبار", "دهانات|بويات|احبار|حبر|paints|paint|inks|ink|coatings"],
   ["الأعلاف والأسمدة والمبيدات", "اعلاف|علف|اسمده|سماد|مبيدات|feed|fodder|fertilizers|fertilizer|pesticides"],
@@ -40,7 +41,7 @@ export const CUST_MAP = [
   ["المياه ومعالجتها", "معالجه مياه|محطات مياه|تحليه|water treatment|desalination"],
   ["المقاولات والإنشاءات", "مقاولات|انشاءات|مقاولين|contracting|contractors|construction"],
   ["التعدين والمحاجر", "تعدين|محاجر|مناجم|mining|quarries|quarrying"],
-  ["التجهيزات الفندقية ومعدات المطاعم", "فنادق|مطاعم|فندقيه|hotels|restaurants|catering"],
+  ["التجهيزات الفندقية ومعدات المطاعم", "فندقيه|تجهيزات فندقيه|معدات فندقيه|معدات مطاعم|hotel supplies|hotel equipment|restaurant equipment|catering equipment|kitchen equipment"],
   ["الأمن والسلامة ومكافحة الحريق", "مكافحه حريق|سلامه مهنيه|fire fighting|safety equipment"],
   ["تكنولوجيا المعلومات والأجهزة المكتبية", "تكنولوجيا المعلومات|كمبيوتر|اجهزه مكتبيه|information technology|computers"],
   ["العدد والأدوات وأجهزة القياس", "اجهزه قياس|عدد وادوات|measuring instruments|hand tools"],
@@ -55,8 +56,18 @@ export const CUST_MAP = [
 const CUST_GENERIC = new Set(("مصانع مصنع شركات شركه صناعه صناعات صناعي صناعيه قطاع قطاعات مجال مجالات عملاء عملائي عملاءنا عميل زباين زبائن زبون بتوع بتاع " +
   "بخدم بنخدم نخدم اخدم يخدم بشتغل بنشتغل نشتغل شغل شغال بنبيع ببيع نبيع بنورد بورد لكل كل انواع نوع الخ وغيرها غيرها كتير مختلفه تانيه زي مثل " +
   "industries industry sector sectors companies company factories factory plants plant mills customers customer clients client houses house firms makers " +
-  "manufacturers producers serve serving sell selling supply").split(/\s+/).map(w => canon(norm(w))).filter(Boolean));
+  "manufacturers producers serve serving sell selling supply " +
+  /* review: sizes and kinds («شركات كبيرة» found 10 companies whose text says «خبرة كبيرة») */
+  "كبير كبيره كبار صغير صغيره صغار متوسط متوسطه عالمي عالميه دولي دوليه محلي محليه خاص خاصه جديد جديده قديم قديمه مصري مصريه عربي عربيه " +
+  "اجنبي اجنبيه مشهور مشهوره معروف معروفه big large small medium local international global new old famous major leading various different other").split(/\s+/).map(w => canon(norm(w))).filter(Boolean));
 const skip = k => !k || k.length < 2 || STOP.has(k) || CUST_GENERIC.has(k) || isGeneric(k) || /^\d+$/.test(k);
+/* a kind of CUSTOMER the directory does not list (it lists factories, companies and suppliers): said as «مالقيتش صناعة اسمها …», never
+   searched as the companies' words, which finds the ones that supply them, i.e. the seller's competitors */
+export const CUST_PLACE = new Set(("مستشفي مستشفيات عياده عيادات صيدليه صيدليات معمل معامل مطعم مطاعم فندق فنادق كافيه كافيهات قهاوي مقاهي سوبرماركت هايبر " +
+  "هايبرماركت ماركت محل محلات بقاله بقالات مول مولات مدرسه مدارس جامعه جامعات حكومه حكوميه وزاره وزارات بيوت منازل مستهلك مستهلكين افراد " +
+  "hospital hospitals clinic clinics pharmacy pharmacies lab labs laboratory laboratories restaurant restaurants hotel hotels cafe cafes " +
+  "supermarket supermarkets hypermarket hypermarkets grocery groceries shop shops store stores retail retailers mall malls school schools " +
+  "university universities government ministries households consumers").split(/\s+/).map(w => canon(norm(w))).filter(Boolean));
 /* the forms one word of a term may be read as: itself, without ONE attached و / ب / ل / ف / ك (3+ letters left), «لل» → «ال» */
 const formsOfWord = w => { const o = [canon(w)]; if (/^[وبلفك]/.test(w) && w.length - 1 >= 3) o.push(canon(w.slice(1))); if (/^لل/.test(w) && w.length >= 5) o.push(canon("ال" + w.slice(2))); return [...new Set(o.filter(Boolean))]; };
 let IX = null;
@@ -73,7 +84,7 @@ function ix() {
 }
 export const CUST_LABELS = CUST_MAP.map(x => x[0]);
 /* one item of the seller's list (its normalised words) → its terms: [{labels, unknown (the words no label took), words (what it said, without
-   the generic words)}]. A phrase of CUST_MAP is read first («تعبئه وتغليف» is ONE industry); then an attached «و» that follows a term
+   the generic words), place (true: one of them is a CUST_PLACE word)}]. A phrase of CUST_MAP is read first («تعبئه وتغليف» is ONE industry); then an attached «و» that follows a term
    starts the next one («مطابع وشغل فضاء خارجي» = «مطابع» + «فضاء خارجي»), as a standalone «و» does in src/index.js */
 export function custTerms(ws) {
   const { m, longest } = ix(), out = [];
@@ -96,6 +107,7 @@ export function custTerms(ws) {
     const k = canon(w);
     if (skip(k) || formsOfWord(w).some(skip)) continue;
     cur.unknown.push(w); cur.words.push(w);
+    if (formsOfWord(w).some(x => CUST_PLACE.has(x))) cur.place = true; // a kind of customer the directory does not list (src/index.js customers)
   }
   close();
   return out;

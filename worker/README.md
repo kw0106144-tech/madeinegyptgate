@@ -87,8 +87,10 @@ numbers or personal data, no API keys in the code.
 Understands Egyptian Arabic and English («plastic manufacturers in 10th of Ramadan»), industrial cities (widens to the
 governorate when a city has few hits) and the 27 governorates.
 - `customers` (2026-11-20, after the Al-Atlal call): `query` = the industries a SELLER serves, in his own words («ورق، كرتون، سكر،
-  أسمنت»). Each term → the platform's activity labels (`src/lookup-customers.js` CUST_MAP; a term no label knows → the companies that
-  write its words); counted = directory rows of type «مصنع» in the place (a city counts as its governorate), traders apart. Answer:
+  أسمنت»). Each term → the platform's activity labels (`src/lookup-customers.js` CUST_MAP; «ورق» is the paper industry only, «مطابع»
+  the printers; a term no label knows → the companies that write its words, and the text warns that these make or sell it, so the
+  seller's own product gives his competitors; a kind of customer the directory does not list, such as hospitals, restaurants or shops
+  (CUST_PLACE), → «مالقيتش …»); counted = directory rows of type «مصنع» in the place (a city counts as its governorate), traders apart. Answer:
   `groups[{industry, terms, factories, others, top[2]: {name, place, id, open_url}}]`, `count` (distinct factories), `others`,
   `results` (≤ 6), `text` — data only: directory factories, NOT purchase requests, contacts not published, no plan promise;
   «مالقيتش صناعة اسمها …» for an unknown term.

@@ -33,13 +33,15 @@ describe("U2 section=customers: the seller's customers, not his competitors", ()
   const inGiza = f => GIZA.some(g => norm(f[3]).includes(g));
   /* what the response must say, computed here from data.json: rows of each label in Giza, «مصنع» = a factory, every other type = a trader */
   const expected = label => { let factories = 0, others = 0; for (const f of DATA.f) if (f[2] === label && inGiza(f)) { if (f[1] === "مصنع") factories++; else others++; } return { factories, others }; };
-  const AL_ATLAL = "ورق، كرتون، سكر، أسمنت، بلاستيك، تعبئة وتغليف";
+  /* the industries Al-Atlal named in 8bacbfac, the printing houses («مطابع») among them */
+  const AL_ATLAL = "ورق، كرتون، سكر، أسمنت، بلاستيك، تعبئة وتغليف، مطابع";
   test("Al-Atlal's customers in الجيزة: one group per industry, its factories counted from data.json, the traders apart", () => {
     const r = search("customers", AL_ATLAL, "الجيزة");
     assert.equal(r.section, "customers"); assert.equal(r.governorate, "الجيزة");
-    /* «ورق» is the paper industry: the packaging / paper converters AND the printing houses (lookup-customers.js CUST_MAP) */
     const want = ["التعبئة والتغليف والورق", "الصناعات الغذائية والمشروبات", "مواد البناء والتشييد", "الصناعات البلاستيكية والمطاط", "الطباعة والدعاية والإعلان"];
     assert.deepEqual(r.groups.map(g => g.industry).sort(), [...want].sort());
+    /* review: «ورق» is the paper industry only — without «مطابع» no printing group is counted (an industry the seller never named) */
+    assert.deepEqual(search("customers", "ورق، كرتون، سكر، أسمنت، بلاستيك، تعبئة وتغليف", "الجيزة").groups.map(g => g.industry).sort(), want.slice(0, 4).sort());
     let sum = 0, traders = 0;
     for (const g of r.groups) {
       const e = expected(g.industry);
@@ -76,6 +78,22 @@ describe("U2 section=customers: the seller's customers, not his competitors", ()
     assert.deepEqual(u.groups.map(g => g.industry), ["الطباعة والدعاية والإعلان"]);
     const none = search("customers", "خخخظظظ", "");
     assert.equal(none.count, 0); assert.equal(none.groups.length, 0); assert.match(none.text, /^مالقيتش صناعة اسمها «خخخظظظ»/); assert.match(none.text, /اسألي العميل/);
+  });
+  test("review: a kind of customer the directory does not list (hospitals, restaurants, shops) is no industry and is not searched as words", () => {
+    const h = search("customers", "مستشفيات ومعامل", "القاهرة");
+    assert.deepEqual([h.count, h.groups.length, h.unknown], [0, 0, ["مستشفيات", "معامل"]], "not the makers of medical / lab equipment"); assert.match(h.text, /^مالقيتش صناعة اسمها «مستشفيات» ولا «معامل»/);
+    const r = search("customers", "سوبرماركت، مطاعم، مخابز", "الإسكندرية");
+    assert.deepEqual(r.groups.map(g => g.industry), ["الصناعات الغذائية والمشروبات"], "bakeries are food factories; restaurants are not «معدات المطاعم»"); assert.deepEqual(r.unknown, ["سوبرماركت", "مطاعم"]);
+    assert.deepEqual(search("customers", "hospitals and supermarkets", "").groups, []);
+    assert.deepEqual(search("customers", "معدات مطاعم", "").groups.map(g => g.industry), ["التجهيزات الفندقية ومعدات المطاعم"], "the equipment makers when he names them");
+    assert.equal(search("customers", "شركات كبيرة", "").groups.length, 0, "a size is no industry (not 10 companies whose text says «خبرة كبيرة»)");
+  });
+  test("review: the seller's own product as the query — the companies that write it are said to be its makers (competitors), the persona asks first", () => {
+    const r = search("customers", "سلندرات ودرافيل", "الجيزة"), b = search("customers", "سلندرات ودرافيل", "الجيزة", undefined, 1, "local");
+    assert.deepEqual(r.groups.map(g => [g.industry, !!g.by_words]).sort(), [["درافيل", true], ["سلندرات", true]], "no attached «و» in the name: " + JSON.stringify(r.groups));
+    assert.match(r.text, /تنبيه: «درافيل» و«سلندرات» مش أسماء صناعات في الدليل/); assert.match(r.text, /يبقوا منافسين مش عملاء، فاسأليه الأول/);
+    assert.match(b.text, /يبقوا منافسين مش عملاء، فاسأله الأول بيبيعها لأنهي صناعات قبل ما تقول الأرقام دي/);
+    assert.doesNotMatch(search("customers", AL_ATLAL, "الجيزة").text, /تنبيه/, "the platform's own industries need no warning");
   });
   test("the seller's own words: lists with «،» / «و», attached «و», English, a city counts as its governorate", () => {
     const t = custTerms(norm("مصانع الورق والكرتون وتعبئة وتغليف").split(" "));

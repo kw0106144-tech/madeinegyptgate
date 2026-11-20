@@ -430,7 +430,7 @@ function customers(query, governorate, m, MX) {
   const raw = String(query || "").slice(0, 200).replace(/[,،؛;|/]+|\s[-–—]\s/g, " " + CUST_SEP + " ").replace(/(^|\s)(?:و|او|أو|and|or|&)(?=\s|$)/giu, "$1" + CUST_SEP + " ");
   const P = parse(raw, governorate);
   let gov = P.gov, place = P.place, widened = null;
-  if (place && CITY_GOV[place]) { widened = place; gov = GOV[gov] ? gov : CITY_GOV[place]; place = ""; }
+  if (place && CITY_GOV[place]) { widened = place; gov = CITY_GOV[place]; place = ""; } // the city's own governorate (review: never «محافظة القاهرة (اللي فيها العاشر من رمضان)»)
   const V = dirView(MX), sayW = s => String(s).split(" ").map(w => P.said.get(w) || w).join(" ");
   const inPlace = i => !V.hidden(i) && locOk(V.loc(i), gov, place);
   const G = new Map(), unknown = [];
@@ -438,11 +438,14 @@ function customers(query, governorate, m, MX) {
     const said = sayW(t.words.join(" "));
     if (t.labels.length) { for (const l of t.labels) { if (!G.has(l)) G.set(l, { industry: l, terms: [], label: l }); const g = G.get(l); if (!g.terms.includes(said)) g.terms.push(said); } continue; }
     if (!t.unknown.length) continue;
+    /* review: a kind of customer the directory does not list (hospitals, restaurants, shops: lookup-customers.js CUST_PLACE) is no industry,
+       and is not searched as words either: the companies that write «مستشفيات» are the ones that supply them, the seller's competitors */
+    const Cq = lkConcepts(t.unknown.join(" "), dirVocab).concepts, CCq = Cq.map(compile), sayQ = Cq.length ? Cq.map(c => sayWord(P, c)).join(" ") : said; // «درافيل», not «ودرافيل»
+    if (t.place) { if (!unknown.includes(sayQ)) unknown.push(sayQ); continue; }
     /* no label: the companies that write every word of the term (whole words, src/lookup-terms.js) — anywhere first: none → no such industry */
-    const Cq = lkConcepts(t.unknown.join(" "), dirVocab).concepts, CCq = Cq.map(compile);
     const hits = Cq.length ? rankRows(Cq, V.match(CCq), Array.from({ length: V.N }, (_, i) => i).filter(i => !V.hidden(i))).filter(r => r.cls === 0).map(r => r.i) : [];
-    if (!hits.length) { if (!unknown.includes(said)) unknown.push(said); continue; }
-    const k = "d:" + said; if (!G.has(k)) G.set(k, { industry: said, terms: [said], desc: true, rows: hits.filter(inPlace) });
+    if (!hits.length) { if (!unknown.includes(sayQ)) unknown.push(sayQ); continue; }
+    const k = "d:" + sayQ; if (!G.has(k)) G.set(k, { industry: sayQ, terms: [sayQ], desc: true, rows: hits.filter(inPlace) });
   }
   const groups = [], counted = new Set(), traders = new Set();
   for (const g of G.values()) {
@@ -467,9 +470,12 @@ function customers(query, governorate, m, MX) {
   if (!out.length) text = (noIndustry.trim() || "مفيش صناعات واضحة في الطلب.") + (m ? " اسأل العميل بيبيع لأنهي صناعات بالظبط (زي ورق، أسمنت، أغذية، بلاستيك) ودوّر تاني بأسمائها." : " اسألي العميل بيبيع لأنهي صناعات بالظبط (زي ورق، أسمنت، أغذية، بلاستيك) ودوّري تاني بأسمائها.");
   else {
     const line = g => (g.by_words ? "مصانع بتكتب «" + g.industry + "» في نشاطها أو منتجاتها" : g.industry) + ": " + (g.factories ? factoriesN(g.factories) + (g.top.length ? " (منهم " + g.top.map(t => t.name).join(" و") + ")" : "") : "مفيش مصانع في الدليل هنا");
+    /* review (the Al-Atlal call again): a group found by its words alone holds the companies that MAKE or SELL that thing — the seller's
+       own product («سلندرات ودرافيل») gives his competitors; the persona asks before it says these numbers */
+    const byW = out.filter(g => g.by_words && g.factories), caution = !byW.length ? "" : ` تنبيه: ${byW.map(g => "«" + g.industry + "»").join(" و")} مش ${byW.length > 1 ? "أسماء صناعات" : "اسم صناعة"} في الدليل، فدول مصانع بتكتب الكلمة دي في نشاطها أو منتجاتها، يعني غالباً بتصنّعها أو بتورّدها: لو دي منتجات العميل نفسه يبقوا منافسين مش عملاء، ف${m ? "اسأله الأول بيبيعها لأنهي صناعات قبل ما تقول" : "اسأليه الأول بيبيعها لأنهي صناعات قبل ما تقولي"} الأرقام دي.`;
     text = `دي مصانع في دليل المنصة في الصناعات اللي حضرتك قلت إنك بتخدمها في ${W} — مش طلبات شراء، وبيانات تواصلهم مش منشورة: ${out.map(line).join("؛ ")}.`
       + (counted.size ? ` المجموع ${factoriesN(counted.size)}.` : "")
-      + (traders.size ? ` وكمان ${tradersN(traders.size)} في نفس الصناعات، مش محسوبين ضمن المصانع.` : "") + noIndustry
+      + (traders.size ? ` وكمان ${tradersN(traders.size)} في نفس الصناعات، مش محسوبين ضمن المصانع.` : "") + noIndustry + caution
       + (m ? " قولها كده بالظبط: أرقام مصانع من دليل المنصة في الصناعات دي، مش عملاء أكيدين ولا طلبات شراء؛ ماتوعدش بالتواصل معاهم، وماتضيفش أسماء أو أرقام أو بيانات تواصل."
         : " قوليها كده بالظبط: أرقام مصانع من دليل المنصة في الصناعات دي، مش عملاء أكيدين ولا طلبات شراء؛ ماتوعديش بالتواصل معاهم، وماتضيفيش أسماء أو أرقام أو بيانات تواصل.");
   }
