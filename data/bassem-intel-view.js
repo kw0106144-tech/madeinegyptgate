@@ -143,11 +143,23 @@
     }
     return null;
   }
+  /* a refused call: since 2026-11-20 worker-intel answers Bassem's POST with 200 {ok:false, flags:["busy"|"bad_request"], text} instead of a
+     429 / 400 (no results array) — shown as the failed call it was before (toolFailed), never as the feed list while Bassem says to wait */
+  function refusedResult(r) {
+    for (var n = 0; n < 3 && r != null; n++) {
+      if (typeof r === "string") { try { r = JSON.parse(r); } catch (x) { return null; } continue; }
+      if (typeof r !== "object") return null;
+      if (r.ok === false && !isArr(r.results) && isArr(r.flags) && (r.flags.indexOf("busy") > -1 || r.flags.indexOf("bad_request") > -1)) return r;
+      r = r.result != null ? r.result : r.data != null ? r.data : r.body;
+    }
+    return null;
+  }
   /* TOOL_CALL_COMPLETED of bassem_intel → exactly what Bassem got */
   function toolResult(d) {
     d = d || {}; var r = parseResult(d.result);
     /* one item / its document (it has no pending fallback of its own: never take a search's) */
     if (r && ONE.test(String(r.action || "").toLowerCase())) { RUN++; showOne(r); return true; }
+    if (!r && refusedResult(d.result)) { toolFailed(d); return true; }
     var p = take(d);
     if (!r) { if (p) intel(p.a); return false; } /* an answer the page cannot read: the labelled feed list instead */
     RUN++; /* a fallback feed query still on its way must not overwrite the tool's own answer */

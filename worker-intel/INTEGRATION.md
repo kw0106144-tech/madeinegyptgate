@@ -67,6 +67,15 @@ One result (owner 2026-11-19: «لما بقوله افتح الفرصة بيقو
   encrypted, empty, no_document) with an honest Arabic `text`. Cached in KV `doc:v1:<id>:<hash of url>` 12 h (a failure 30 min, a timeout 5 min).
   Its own rate limit: `DOC_RATE_PER_MIN` (default 10) per IP.
 Rate limit 30/min/IP. Optional: `wrangler secret put TOOL_KEY` and send header `X-Intel-Key` from the Anam tool.
+Speed (2026-11-20, `test/tool-speed.test.mjs`):
+- A refused POST (the rate limits, a broken JSON body) answers **200** `{ok:false, error, flags:["busy"|"bad_request"], text}` with a text
+  the model can act on — Anam's webhook heard a 400 / 429 only as "HTTP error" and retried blind. GET keeps 429 / 400; a wrong
+  `X-Intel-Key` stays 401. Each such answer logs one line `tool-soft-error <path> <code>` (no body): Anam now counts it as a success.
+- The rate counters' KV write runs in `ctx.waitUntil` (off the answer's path; a soft limit, it can lag a call or two).
+- The sources' names (`intel_sources`) are kept 10 minutes per database (`SOURCES_TTL_MS`); a failed read is not kept.
+- Several markets in one call (`market: "gcc,africa"`): the ranked list is interleaved by the ASKED market each item belongs to («sa» →
+  gcc, «africa:ke» → africa) before the top 5 are taken, so every asked market is heard; the count and each market's own order stay. Not
+  for news, not for a widened search.
 Suggested tool description: «ابحث في مركز معلومات المنصة (مناقصات، طلبات أسعار، مشاريع، أخبار من المصادر الرسمية). استخدم action=brief لملخص آخر 24 ساعة».
 
 ## 5. Admin (Control Center, deploy 2)

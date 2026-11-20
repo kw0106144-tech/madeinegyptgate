@@ -607,3 +607,20 @@ describe("consolidation B: recall by day on a busy day and at the Cairo-day boun
     assert.ok(f.fallback && f.hits.some(h => h.text === "معلومة آخر الليل"), JSON.stringify(f));
   });
 });
+
+describe("any-language calls (2026-11-20): spoken addresses and numbers in other languages are masked; English text is never eaten", () => {
+  test("other languages' spoken e-mails and digit words → masks (as the Arabic and English ones)", () => {
+    for (const s of ["jean point dupont arobase gmail point com", "ventas arroba empresa punto com", "info at firma punkt de", "info собака mail точка ru", "info艾特company点com",
+      "info arobase societe point fr", "info chiocciola azienda punto it", "ventas arroba empresa dot com", "info ایٹ gmail ڈاٹ com"]) assert.equal(maskPII(s), MASK_EMAIL, s);
+    assert.equal(maskPII("请发到info艾特company点com谢谢"), "请发到" + MASK_EMAIL + "谢谢", "the address only, the words around it stay");
+    for (const s of ["zéro six un deux trois quatre cinq six sept", "zero six un deux trois quatre cinq six sept", "cero uno dos tres cuatro cinco seis", "null eins sieben drei vier fünf sechs", "sıfır beş iki bir dört altı yedi"])
+      assert.equal(clean(s, 200), MASK_PHONE, s);
+    assert.equal(maskPII("ابعتلي على ahmed آت gmail دوت com"), "ابعتلي على " + MASK_EMAIL, "the Arabic form is unchanged");
+  });
+  test("ordinary text stays exactly as it was (the dot words of other languages never pair with the English «at … point»)", () => {
+    for (const s of ["we can stop at this point in time and talk", "look at that point of view", "she is at the point of no return", "le point de vente à Paris", "punto de venta", "eins zwei drei",
+      "un deux trois", "I have two or three questions about one plan", "the price is 5000 EGP per ton on 2026-12-30", "مصنع حديد في العاشر من رمضان", "عايز 3 4 5 مم حديد تسليح"]) {
+      assert.equal(maskPII(s), s, s); assert.equal(clean(s, 300), s, s);
+    }
+  });
+});

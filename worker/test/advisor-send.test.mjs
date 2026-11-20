@@ -96,6 +96,29 @@ describe("POST /send — an Information Center opportunity", () => {
     assert.deepEqual([c.status, c.data.deal.market], [200, "africa"]);
     assert.equal((await dealsOf(env, "m-intl")).length, 2, "the refused one started no deal");
   });
+  /* review 2026-11-20 CW-3: janna_lookup's lean answer gives a platform tender's item page where its list link was — the same deal */
+  test("a platform tender: a deal started on its list link is found from its item page (and back); other sites and trivial refs still match exactly", async () => {
+    const env = env0();
+    const tok = await verified(env, "m-eg");
+    const T1 = { ref: "eg-tnd-003", title: "توريد حديد تسليح لمشروع سكني", entity: "هيئة المجتمعات العمرانية", market: "local", country: "مصر", kind: "tender_gov" };
+    const LIST = "https://madeinegyptgate.com/tenders/search/#eg-tnd-003", PAGE = "https://madeinegyptgate.com/tender-item/%D8%AA%D9%88%D8%B1%D9%8A%D8%AF-%D8%AD%D8%AF%D9%8A%D8%AF/";
+    const a = await call(H, env, "/deals", { method: "POST", token: tok, body: { opportunity: { ...T1, source_url: LIST } } });
+    assert.equal(a.status, 201);
+    const b = await call(H, env, "/deals", { method: "POST", token: tok, body: { opportunity: { ...T1, source_url: PAGE } } });
+    assert.deepEqual([b.status, b.data.existing, b.data.deal.id], [200, true, a.data.deal.id], "the deal room's «start the deal»: no second deal");
+    const s = await send(env, tok, { ...MAIL, to: "buy@authority.example.eg", opportunity: { ...T1, source_url: PAGE } });
+    assert.deepEqual([s.status, s.data.deal_created, s.data.deal.id], [200, false, a.data.deal.id], "Bassem's «ابعت»: the e-mail goes on the same deal");
+    const w = await send(env, tok, { ...MAIL, to: "buy@authority.example.eg", opportunity: { ...T1, source_url: "https://www.madeinegyptgate.com/tenders/search/#eg-tnd-003" } });
+    assert.equal(w.data.deal.id, a.data.deal.id, "www. is the platform too");
+    const o = await call(H, env, "/deals", { method: "POST", token: tok, body: { opportunity: { ...T1, source_url: "https://etenders.gov.eg/t/eg-tnd-003" } } });
+    assert.equal(o.status, 201, "an official link of another site is its own identity, as before");
+    const t1 = await call(H, env, "/deals", { method: "POST", token: tok, body: { opportunity: { ...T1, ref: "1", source_url: LIST } } });
+    const t2 = await call(H, env, "/deals", { method: "POST", token: tok, body: { opportunity: { ...T1, ref: "1", source_url: PAGE } } });
+    assert.deepEqual([t1.status, t2.status], [201, 201], "a trivial ref is never an identity");
+    const x = await call(H, env, "/deals", { method: "POST", token: tok, body: { opportunity: { ...T1, title: "توريد حديد تسليح — المرحلة الثانية", source_url: PAGE } } });
+    assert.equal(x.status, 201, "another title is another tender");
+    assert.equal((await dealsOf(env, "m-eg")).length, 5);
+  });
 });
 
 describe("POST /send — an e-mail with no opportunity behind it", () => {

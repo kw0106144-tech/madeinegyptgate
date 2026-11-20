@@ -40,8 +40,23 @@ const EMAIL_RX = /[^\s@<>()"'«»,;:]{1,64}@[^\s@<>()"'«»,;:]{1,253}\.[A-Za-z]
 /* a spoken e-mail: "ahmed dot nour at gmail dot com", "ahmed underscore nour at …", «أحمد آت جيميل دوت كوم» (review 2026-11-19 #8) */
 const SP_JOIN = "(?:dot|underscore|dash|hyphen|دوت|نقط[ةه]|اندرسكور|أندرسكور|شرط[ةه])", SP_DOT = "(?:dot|دوت|نقط[ةه])";
 const SPOKEN_EMAIL_RX = new RegExp(`(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}._-]{1,40}(?:\\s+${SP_JOIN}\\s+[\\p{L}\\p{N}._-]{1,40}){0,3}\\s+(?:at|آت|أت|ات)\\s+[\\p{L}\\p{N}-]{2,40}\\s+${SP_DOT}\\s+\\p{L}{2,6}(?:\\s+${SP_DOT}\\s+\\p{L}{2,6})?(?![\\p{L}\\p{N}])`, "giu");
-/* a phone number said in words: 7+ digit words in a row («صفر واحد صفر صفر واحد اتنين…», «زيرو مية …», "zero one zero …"), digits mixed in */
-const NUM_W = "(?:و)?(?:صفر|زيرو|واحد[ةه]?|وحد[ةه]|اتنين|إتنين|اثنين|إثنين|تلات[ةه]|ثلاث[ةه]|اربع[ةه]|أربع[ةه]|خمس[ةه]|ست[ةه]|سبع[ةه]|تمان[يى][ةه]|ثمان[يى][ةه]|تسع[ةه]|مي[ةه]|zero|oh|one|two|three|four|five|six|seven|eight|nine|double|triple|[0-9٠-٩]{1,4})";
+/* any-language calls (2026-11-20): spoken addresses in other languages, as SEPARATE patterns — the dot words of other languages are never
+   paired with the English "at" + "point" («we can stop at this point in time», «look at that point of view» stay as they are):
+   - an at-word no English sentence uses (arobase · arroba · chiocciola · klammeraffe · собака · Urdu ایٹ) with any dot / join word
+     («jean point dupont arobase gmail point com», «ventas arroba empresa punto com», «info собака mail точка ru»);
+   - the English "at" only with the dot words that are not English words (punto · ponto · punkt · nokta · точка · Urdu ڈاٹ — never "point"):
+     «info at firma punkt de»;
+   - Chinese, no spaces needed: «info艾特company点com» (艾特 = @, 点 / 點 = dot). */
+const X_DOT = "(?:dot|دوت|نقط[ةه]|point|punto|ponto|punkt|nokta|точка|ڈاٹ)", X_JOIN = `(?:${X_DOT}|underscore|dash|hyphen|اندرسكور|أندرسكور|شرط[ةه]|tiret|guion|guión|trattino|bindestrich|дефис)`;
+const F_DOT = "(?:punto|ponto|punkt|nokta|точка|ڈاٹ)";
+const SPOKEN_EMAIL_X = new RegExp(`(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}._-]{1,40}(?:\\s+${X_JOIN}\\s+[\\p{L}\\p{N}._-]{1,40}){0,3}\\s+(?:arobase|arroba|chiocciola|klammeraffe|собака|ایٹ)\\s+[\\p{L}\\p{N}-]{2,40}\\s+${X_DOT}\\s+\\p{L}{2,6}(?:\\s+${X_DOT}\\s+\\p{L}{2,6})?(?![\\p{L}\\p{N}])`, "giu");
+const SPOKEN_EMAIL_F = new RegExp(`(?<![\\p{L}\\p{N}])[\\p{L}\\p{N}._-]{1,40}(?:\\s+${F_DOT}\\s+[\\p{L}\\p{N}._-]{1,40}){0,3}\\s+at\\s+[\\p{L}\\p{N}-]{2,40}\\s+${F_DOT}\\s+\\p{L}{2,6}(?:\\s+${F_DOT}\\s+\\p{L}{2,6})?(?![\\p{L}\\p{N}])`, "giu");
+const SPOKEN_EMAIL_ZH = /(?<![A-Za-z0-9._-])[A-Za-z0-9._-]{1,40}\s*艾特\s*[A-Za-z0-9-]{2,40}\s*[点點]\s*[A-Za-z]{2,6}(?:\s*[点點]\s*[A-Za-z]{2,6})?(?![A-Za-z0-9])/g;
+/* a phone number said in words: 7+ digit words in a row («صفر واحد صفر صفر واحد اتنين…», «زيرو مية …», "zero one zero …"), digits mixed in;
+   + the digit words of French, Spanish, Portuguese, Italian, German and Turkish (any-language calls 2026-11-20) under the same rule */
+const NUM_W = "(?:و)?(?:صفر|زيرو|واحد[ةه]?|وحد[ةه]|اتنين|إتنين|اثنين|إثنين|تلات[ةه]|ثلاث[ةه]|اربع[ةه]|أربع[ةه]|خمس[ةه]|ست[ةه]|سبع[ةه]|تمان[يى][ةه]|ثمان[يى][ةه]|تسع[ةه]|مي[ةه]|zero|oh|one|two|three|four|five|six|seven|eight|nine|double|triple"
+  + "|z[ée]ro|une?|deux|trois|quatre|cinq|sept|huit|neuf|cero|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|um|uma|dois|duas|três|quatro|sete|oito|nove"
+  + "|due|tre|quattro|cinque|sei|sette|otto|null|eins|zwei|drei|vier|f[üu]nf|sechs|sieben|acht|neun|s[ıi]f[ıi]r|bir|iki|[üu][çc]|d[öo]rt|be[şs]|alt[ıi]|yedi|sekiz|dokuz|[0-9٠-٩]{1,4})";
 const SPOKEN_PHONE_RX = new RegExp(`(?<![\\p{L}\\p{N}])${NUM_W}(?:[\\s,،.-]+${NUM_W}){6,}(?![\\p{L}\\p{N}])`, "giu");
 const DATE_RX = new RegExp(`[${DIG}]{4}[-/.][${DIG}]{1,2}[-/.][${DIG}]{1,2}|[${DIG}]{1,2}[-/.][${DIG}]{1,2}[-/.][${DIG}]{2,4}`, "gu");
 const PHONE_RX = new RegExp(`(?:\\+|00)?[${DIG}](?:[\\s.\\-()]?[${DIG}]){7,16}`, "gu");
@@ -50,7 +65,9 @@ export const MASK_EMAIL = "إيميل محجوب", MASK_PHONE = "رقم محجو
    dates (2026-12-30, 30/12/2026) and short numbers (3/4/5 مم, 5000 طن, refs like 2026/123456) are kept */
 export function maskPII(s) {
   const dates = [];
-  let t = String(s).replace(EMAIL_RX, MASK_EMAIL).replace(SPOKEN_EMAIL_RX, MASK_EMAIL).replace(DATE_RX, d => "\u0001" + (dates.push(d) - 1) + "\u0001");
+  let t = String(s).replace(EMAIL_RX, MASK_EMAIL).replace(SPOKEN_EMAIL_RX, MASK_EMAIL)
+    .replace(SPOKEN_EMAIL_X, MASK_EMAIL).replace(SPOKEN_EMAIL_F, MASK_EMAIL).replace(SPOKEN_EMAIL_ZH, MASK_EMAIL)
+    .replace(DATE_RX, d => "\u0001" + (dates.push(d) - 1) + "\u0001");
   /* digit words: 7 or more in a row, with at least 4 that are words (a run of plain digits is PHONE_RX's) */
   t = t.replace(SPOKEN_PHONE_RX, c => (c.split(/[\s,،.-]+/).filter(w => w && !/^[0-9٠-٩]+$/.test(w)).length >= 4 ? MASK_PHONE : c));
   t = t.replace(PHONE_RX, c => {

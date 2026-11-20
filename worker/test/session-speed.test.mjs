@@ -144,24 +144,25 @@ describe("session start: Server-Timing says where the wait went (milliseconds on
     assert.equal(serverTiming({ total: 1070.6, token: 650.2, checks: 40, ctx: 210, persona: 380, wait: 170 }), "checks;dur=40, ctx;dur=210, persona;dur=380, wait;dur=170, token;dur=650, total;dur=1071");
     assert.equal(serverTiming({ checks: 3, ctx: 0, token: 12, total: 15 }), "checks;dur=3, ctx;dur=0, token;dur=12, total;dur=15");
     assert.equal(serverTiming({ token: -5, total: "x" }), "token;dur=0, total;dur=0");
+    assert.equal(serverTiming({ total: 20, boot: 7.4, checks: 2 }), "boot;dur=7, checks;dur=2, total;dur=20", "boot (the Control Center boot before the handler) comes first");
     assert.equal(serverTiming(null), "");
   });
-  test("Bassem's enriched token: checks, ctx, persona, wait, token, total — and the page may read it (exposed with CORS)", async () => {
+  test("Bassem's enriched token: boot, checks, ctx, persona, wait, token, total — and the page may read it (exposed with CORS)", async () => {
     const env = env0();
     const { token } = await member(env, DR);
     const r = await call(env, { agent: "bassem", lang: "ar" }, token);
     assert.equal(r.status, 200, r.text);
     const h = r.headers.get("Server-Timing");
     assert.match(h, TIMING);
-    assert.deepEqual(names(h), ["checks", "ctx", "persona", "wait", "token", "total"]);
+    assert.deepEqual(names(h), ["boot", "checks", "ctx", "persona", "wait", "token", "total"]);
     assert.equal(r.headers.get("Access-Control-Expose-Headers"), "Server-Timing");
     for (const s of [DR.name, DR.email, DR.company, KEY, "tok-"]) assert.ok(!h.includes(s), "nothing but durations: " + s);
   });
-  test("Janna's plain token: checks, ctx, token, total (no persona read); a refusal from Anam (502) carries it too", async () => {
+  test("Janna's plain token: boot, checks, ctx, token, total (no persona read); a refusal from Anam (502) carries it too", async () => {
     const env = env0({ JANNA_VISITOR_CONTEXT: "0" });
     const r = await call(env, { agent: "janna", lang: "ar" });
     assert.equal(r.status, 200, r.text);
-    assert.deepEqual(names(r.headers.get("Server-Timing")), ["checks", "ctx", "token", "total"]);
+    assert.deepEqual(names(r.headers.get("Server-Timing")), ["boot", "checks", "ctx", "token", "total"]);
     mockAnam({ token: () => okJson({ error: "bad" }, 500) });
     const realErr = console.error; console.error = () => {};
     try {

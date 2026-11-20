@@ -405,7 +405,8 @@ async function createDeal(req, env, member) {
   // the same opportunity posted twice returns the existing deal. A ref alone is not an identity: some notices have none or a
   // trivial one ("1", "null"), and different tenders can share it — so dedupe only on a meaningful ref with the same title and source.
   if (d.ref && !/^(\d{1,2}|null|undefined|n\/?a|-+)$/i.test(d.ref)) {
-    const dup = await env.DB.prepare("SELECT * FROM deals WHERE member_id = ? AND ref = ? AND market = ? AND title = ? AND source_url = ?").bind(member.id, d.ref, d.market, d.title, d.source_url).first();
+    const dup = (await env.DB.prepare("SELECT * FROM deals WHERE member_id = ? AND ref = ? AND market = ? AND title = ? AND source_url = ?").bind(member.id, d.ref, d.market, d.title, d.source_url).first())
+      || await ownDealOf(env, member, d);
     if (dup) return json({ deal: dealOut(dup, env), existing: true });
   }
   const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM deals WHERE member_id = ?").bind(member.id).first();
@@ -598,7 +599,22 @@ function oppDeal(o) {
   if (d.source_url && !isUrl(d.source_url)) d.source_url = "";
   return d;
 }
-/* the member's deal for the same opportunity: same title + official link (+ market), else a meaningful ref, else title + buyer */
+/* review 2026-11-20 CW-3: the platform's OWN link of one item has two forms — the list link …/tenders/search/#<id> (janna_lookup until
+   2026-11-20) and the item page …/tender-item/<slug>/ (its lean answer since). A deal started on one form is the same deal on the other:
+   the same meaningful ref, market and title, both links on the platform's own site. Official links of other sites still match exactly. */
+const OWN_HOSTS = ["madeinegyptgate.com", "www.madeinegyptgate.com"];
+function ownUrl(env, u) {
+  let h = ""; try { h = new URL(String(u || "")).hostname.toLowerCase(); } catch (e) { return false; }
+  if (OWN_HOSTS.includes(h)) return true;
+  try { return h === new URL(site(env)).hostname.toLowerCase(); } catch (e) { return false; }
+}
+async function ownDealOf(env, member, d) {
+  if (!d.ref || TRIVIAL_REF.test(d.ref) || !ownUrl(env, d.source_url)) return null;
+  const { results } = await env.DB.prepare("SELECT * FROM deals WHERE member_id = ? AND ref = ? AND market = ? AND title = ? ORDER BY updated_at DESC LIMIT 20").bind(member.id, d.ref, d.market, d.title).all();
+  return (results || []).find(x => ownUrl(env, x.source_url)) || null;
+}
+/* the member's deal for the same opportunity: same title + official link (+ market), else a meaningful ref (the platform's own link in
+   either form: ownDealOf), else title + buyer */
 async function oppDealOf(env, member, d) {
   if (d.source_url) {
     const x = await env.DB.prepare("SELECT * FROM deals WHERE member_id = ? AND market = ? AND title = ? AND source_url = ? ORDER BY updated_at DESC LIMIT 1").bind(member.id, d.market, d.title, d.source_url).first();
@@ -607,6 +623,8 @@ async function oppDealOf(env, member, d) {
   if (d.ref && !TRIVIAL_REF.test(d.ref)) {
     const x = await env.DB.prepare("SELECT * FROM deals WHERE member_id = ? AND ref = ? AND market = ? AND title = ? AND source_url = ? ORDER BY updated_at DESC LIMIT 1").bind(member.id, d.ref, d.market, d.title, d.source_url).first();
     if (x) return x;
+    const y = await ownDealOf(env, member, d);
+    if (y) return y;
   }
   if (!d.source_url && !d.ref && d.entity) return await env.DB.prepare("SELECT * FROM deals WHERE member_id = ? AND market = ? AND title = ? AND entity = ? AND source_url = '' ORDER BY updated_at DESC LIMIT 1").bind(member.id, d.market, d.title, d.entity).first();
   return null;

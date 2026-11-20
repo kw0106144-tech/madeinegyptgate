@@ -128,7 +128,29 @@ describe("knowledge bank: what reaches a persona (personaOk), the knowledge_look
     const keyed = { ...env, JANNA_KEY: "jk-test" };
     assert.equal((await http(keyed, "POST", "/api/janna/knowledge", { body: { query: "الباقة" } })).status, 401);
     assert.equal((await http(keyed, "POST", "/api/janna/knowledge", { body: { query: "الباقة المميزة" }, headers: { "X-Janna-Key": "jk-test" } })).status, 200);
-    assert.equal((await http(env, "POST", "/api/janna/knowledge", { body: {} })).status, 400);
+    /* speed 2026-11-20: Anam's webhook (POST) hears a malformed call as 200 ok:false + a text (a bare 400 made it retry blind); GET keeps 400 */
+    const warn = console.warn; console.warn = () => {};
+    try {
+      const empty = await http(env, "POST", "/api/janna/knowledge", { body: {} });
+      assert.deepEqual([empty.status, empty.data.ok, empty.data.count, empty.data.code], [200, false, 0, "invalid"]); assert.match(empty.data.text, /ماتخترعش/);
+    } finally { console.warn = warn; }
+    assert.equal((await http(env, "GET", "/api/janna/knowledge")).status, 400);
+  });
+  test("speed 2026-11-20: over the lookup limit a POST hears 200 ok:false + today's text (GET keeps 429); the tool reads no Control Center table", async () => {
+    const env = env0(), ip = "198.51.100.61";
+    const { ipHash } = await import("../src/common.js");
+    const ih = await ipHash(new Request(SITE, { headers: { "CF-Connecting-IP": ip } }), env), win = Math.floor(Date.now() / 1000 / 60);
+    for (const w of [win, win + 1]) await env.DB.prepare("INSERT INTO rl (k, n, exp) VALUES (?, 240, ?)").bind("kbl|" + ih + "|" + w, new Date(Date.now() + 180000).toISOString()).run(); // this minute and the next: full
+    const lines = [], warn = console.warn; console.warn = (...a) => lines.push(a.join(" "));
+    let r; try { r = await http(env, "POST", "/api/janna/knowledge", { body: { query: "الباقة المميزة بكام" } }); } finally { console.warn = warn; }
+    assert.deepEqual([r.status, r.data.ok, r.data.code], [200, false, "rate_limited"]); assert.equal(r.data.text, "طلبات كتير ورا بعض على بنك المعلومات؛ جرّب بعد دقيقة.");
+    assert.deepEqual(lines, ["tool-soft-error /api/janna/knowledge rate_limited"]);
+    assert.equal((await http(env, "GET", "/api/janna/knowledge?query=" + encodeURIComponent("الباقة المميزة"))).status, 429);
+    /* index.js BARE: the knowledge tool skips ccBoot — no plans / settings / sealed keys are read for it */
+    const prep = env.DB.prepare.bind(env.DB), seen = [];
+    env.DB.prepare = sql => { seen.push(sql); return prep(sql); };
+    await http(env, "POST", "/api/janna/knowledge", { body: { query: "الباقة" }, headers: { "CF-Connecting-IP": "198.51.100.99" } });
+    assert.ok(seen.length > 0 && !seen.some(s => /cc_plans|cc_settings|cc_secrets/.test(s)), seen.join("\n"));
   });
   test("review 2026-11-19 #4 / #8: a payment instruction is never stored as an answer; the team can edit / redact the QUESTION (audited, search words follow)", async () => {
     const env = env0(), { token } = await member(env, "kr1");
@@ -162,5 +184,49 @@ describe("knowledge bank: what reaches a persona (personaOk), the knowledge_look
     /* a later ask of the merged question counts on the entry it went into */
     await captureKnowledge(env, { subject: "kz1", turns: [{ role: "user", text: "الباقة المميزة بكام في السنة؟", seq: 1 }, { role: "persona", text: "خمسة وعشرين ألف.", seq: 2 }], tools: [] });
     assert.ok(KB.autoMinSubjects >= 3);
+  });
+});
+
+describe("any-language calls (2026-11-20): «بنك المعلومات» stays Arabic + English and anonymous", () => {
+  const ask = (text, answer = "الباقة المميزة بخمسة وعشرين ألف جنيه في السنة.") => questionsOf({ turns: [{ role: "user", text, seq: 1 }, { role: "persona", text: answer, seq: 2 }], tools: [] });
+  test("a client turn with letters outside ASCII and the Arabic block is not captured (accented Latin, Cyrillic, CJK, Devanagari …)", () => {
+    for (const s of ["je m'appelle Jean Dupont, combien coûte l'abonnement ?", "Hola, me llamo Ana, ¿cuánto cuesta el plan?", "сколько стоит премиум план?", "高级套餐多少钱？", "प्रीमियम प्लान कितने का है?", "Wie viel kostet der Premium-Plan für Hüttenwerke?"])
+      assert.deepEqual(ask(s), [], s);
+  });
+  test("Arabic, English and Egyptian Franco questions are captured exactly as before", () => {
+    assert.deepEqual(ask("الباقة المميزة بكام؟").map(q => [q.question, q.intent, q.words]), [["الباقة المميزة بكام؟", "plans", ["باقه", "مميزه", "بكام"]]]);
+    assert.deepEqual(ask("أنا أحمد محمود صاحب مصنع حديد، الباقة المميزة بكام؟").map(q => q.question), ["الباقة المميزة بكام؟"]);
+    assert.deepEqual(ask("How much is the premium plan?").map(q => [q.question, q.intent, q.words]), [["How much is the premium plan?", "plans", ["premium", "plan"]]]);
+    assert.deepEqual(ask("el plan b kam?").map(q => [q.question, q.intent, q.words]), [["el plan b kam?", "plans", ["el", "plan", "kam"]]]);
+    assert.deepEqual(ask("ana 3ayez a3raf el plan b kam?").map(q => [q.question, q.intent]), [["ana 3ayez a3raf el plan b kam?", "plans"]]);
+    assert.equal(ask("قیمت پکیج ویژه چنده؟").length, 1, "Persian / Urdu letters (ی پ چ ژ) are in the Arabic block: captured as before");
+  });
+  test("a foreign self-introduction and the name after it are dropped (ASCII French / Spanish / German / Italian / Portuguese / Turkish)", () => {
+    const q = ask("je m'appelle Jean Dupont, quel est le prix du plan ?");
+    assert.equal(q.length, 1); assert.equal(q[0].question, "quel est le prix du plan?"); assert.ok(!/Jean|Dupont/i.test(JSON.stringify(q)));
+    assert.equal(ask("Je suis Jean Dupont, quel est le prix du plan ?")[0].question, "quel est le prix du plan?");
+    assert.equal(ask("ich heisse Hans Muller, was kostet der Plan?")[0].question, "was kostet der Plan?");
+    for (const [s, out] of [["me llamo Ana y quiero saber cuanto cuesta el plan?", "y quiero saber cuanto cuesta el plan?"], ["mi chiamo Marco Rossi della ditta Rossi Acciai, quanto costa il piano?", "quanto costa il piano?"],
+      ["benim adim Ahmet Yilmaz, fiyat ne kadar?", "fiyat ne kadar?"], ["meu nome e Joao Silva, quanto custa o plano?", "quanto custa o plano?"], ["Je suis Jean Dupont et je voudrais le prix", "et je voudrais le prix"]])
+      assert.equal(anonymize(s), out, s);
+    assert.equal(anonymize("je suis interesse par l acier"), "je suis interesse par l acier", "«je suis» + a lower-case word is not a name");
+    assert.equal(anonymize("Ian asked about the plan"), "Ian asked about the plan");
+  });
+  /* review 2026-11-20 CW-2: the commoner «I am <Name> from <Company>» form of other languages, as the English and Arabic ones already are */
+  test("«soy / sono / ich bin / ben / ik ben» + a capitalised name and the company after it are dropped; «soy sauce» stays", () => {
+    const turn = (text) => questionsOf({ turns: [{ role: "user", text, seq: 1 }, { role: "persona", text: "Steel prices start from the factory list on the platform.", seq: 2 }], tools: [] }).map(x => x.question);
+    for (const [s, out] of [["Hola, soy Juan Perez de Aceros del Norte, cuanto cuesta el acero?", "Hola, cuanto cuesta el acero?"],
+      ["Ciao, sono Marco Rossi della ditta Acciai Bianchi, quanto costa l'acciaio?", "Ciao, quanto costa l'acciaio?"],
+      ["Hallo, ich bin Hans Schmidt von Stahlwerk Nord, was kostet Stahl?", "Hallo, was kostet Stahl?"],
+      ["Merhaba, ben Ahmet Yilmaz, Kaya Celik firmasindan, celik fiyati ne kadar?", "Merhaba, celik fiyati ne kadar?"],
+      ["Hola soy Juan Perez de Aceros del Norte y quiero saber cuanto cuesta el acero?", "Hola y quiero saber cuanto cuesta el acero?"],
+      ["Ik ben Jan de Vries van Staal Holland, wat kost staal?", "wat kost staal?"]]) {
+      assert.deepEqual(turn(s), [out], s);
+      assert.ok(!/Juan|Perez|Aceros|Norte|Marco|Rossi|Acciai|Bianchi|Hans|Schmidt|Stahlwerk|Nord\b|Ahmet|Yilmaz|Kaya|Celik firm|Vries|Holland/.test(turn(s)[0]), s);
+    }
+    for (const s of ["Do you have soy sauce factories in Egypt?", "Is there any soy bean oil producer in Alexandria?", "Soy sauce producers in Egypt, how many are there?",
+      "Sono interessato all'acciaio, quanto costa?", "Hallo, ich bin auf der Suche nach Stahl, was kostet das?", "Do you have Ben Steel in your list?"])
+      assert.deepEqual(turn(s), [s], "unchanged: " + s);
+    assert.equal(anonymize("Hola soy Juan Cuanto cuesta el acero?"), "Hola Cuanto cuesta el acero?", "a question word is never a name");
   });
 });
