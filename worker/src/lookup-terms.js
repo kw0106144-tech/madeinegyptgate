@@ -58,6 +58,11 @@ const GENERIC_RAW = "صناعه صناعات صناعي صناعيه الصنا�
   "متخصص متخصصه متخصصين مختلف مختلفه انواع أنواع نوع جميع كافه كافة عام عامه جديد جديده مصر مصري مصريه بمصر في مصر اجود افضل اعلي جوده جودة " +
   "مورد موردين موردي تاجر تجار تجاره تجارة بيع شراء جمله تجزئه مجال مجالات قطاع نشاط عايزه عاوزه محتاجه بدور بدورلك دوري ابحثلي هات وريني " +
   "شغال شغالين بتعمل بيعمل بيعملوا بيصنع بيصنعوا يصنع تصنع عندكم فيه في ايه إيه حاجه حاجات ليا لينا عندي عندنا انا احنا دلوقتي حاليا " +
+  /* the words of a spoken request (review 2026-11-20: «محتاج حد يعملي علب كرتون» — the rare «حد» outweighed «علب كرتون» and the
+     carton-box makers were left out) */
+  "حد حدش فين الاقي ألاقي نلاقي يلاقي يعملي يعملهولي يعملوا اعمل نعمل يورد يوردلي يوردوا اشتري نشتري ابيع نبيع ابغي أبغى ابي اريد أريد " +
+  "عاوزين عايزين مين ازاي إزاي امتي امتى كام قريب قريبه جنبي كويس كويسه كويسين محترم محترمه رخيص رخيصه ارخص بتاع بتوع بتاعه " +
+  "عميل عملاء زباين زبائن زبون مشتري مشترين جاهز جاهزه want looking find who where buyer buyers customer customers client clients cheap near " +
   "industrial industry manufacturer manufacturers manufacturing maker makers supplier suppliers producer producers products product " +
   "services service company companies factory factories egypt egyptian best quality general new all types type kind kinds";
 const GENERIC = new Set(GENERIC_RAW.split(/\s+/).map(w => canon(norm(w))).filter(Boolean));
@@ -374,6 +379,8 @@ export function lookupVersion() {
   for (const ch of s) h = (h * 31 + ch.codePointAt(0)) >>> 0;
   return "lk1-" + h.toString(36);
 }
+/* how many records hold a word in any of its stored forms (variants), its form `not` left out */
+const seenAs = (w, not, vocab) => { let s = 0; for (const v of variants(w)) if (v !== not) s += vocab(v); return s; };
 
 /* ---------------- a query → concepts ----------------
    vocab(key) → how many records hold that stored form (0 = unknown word); it decides whether an attached «و» is «and» («ودرافيل») or the
@@ -395,7 +402,9 @@ export function concepts(query, vocab = () => 0) {
       if (/^لل/.test(w) && w.length >= 5) cands.push(["ال" + w.slice(2), false]);
       for (const [c, isAnd] of cands) {
         const kc = canon(c);
-        if (kc && kc !== k && vocab(kc) > vocab(k)) { if (isAnd && toks.length) part++; w = c; k = kc; break; }
+        /* every stored form counts (review 2026-11-20: the data writes «والجرانيت», one stored word, so «جرانيت» alone was as rare
+           as «وجرانيت» and «رخام وجرانيت» found 2 companies instead of the 44 marble / granite ones) */
+        if (kc && kc !== k && seenAs(c, k, vocab) > seenAs(w, "", vocab)) { if (isAnd && toks.length) part++; w = c; k = kc; break; }
       }
       toks.push({ w, k, part });
     }
@@ -437,7 +446,10 @@ export function concepts(query, vocab = () => 0) {
     for (let n = Math.min(MAX_N, toks.length - i); n >= 2 && !hit; n--) {
       const span = toks.slice(i, i + n); if (span.some(t => t.part !== span[0].part)) continue;
       const key = span.map(t => t.k).join(" ");
-      if (KEY_EQ.has(key) || KEY_REL.has(key)) hit = { n, key, label: span.map(t => t.w).join(" ") };
+      /* a phrase of a same-field list (RELATED) is one concept only when one of its words says nothing alone («الغازات الصناعية»);
+         «كابلات كهرباء», «مواسير حديد» are two words, each with its own equivalents (review 2026-11-20: as one phrase they found only
+         the records that write the two words side by side — El Sewedy's cables and «المواسير الصلب» were left out) */
+      if (KEY_EQ.has(key) || (KEY_REL.has(key) && span.some(t => NOSEARCH.has(t.k) || STOP.has(t.w) || STOP.has(t.k)))) hit = { n, key, label: span.map(t => t.w).join(" ") };
     }
     if (hit) { const a = altsOf(hit.key, hit.label); add(hit.label, a.alts, toks[i].part, a.amb); i += hit.n; continue; }
     const t = toks[i++];

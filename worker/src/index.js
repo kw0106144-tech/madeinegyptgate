@@ -15,7 +15,7 @@ import DATA from "./data.json";
 import { handleAdvisor, handleEmail } from "./advisor.js"; // AI Deal Advisor: /api/advisor/* + inbound replies (see README)
 import { handleProfile } from "./profile.js"; // /api/advisor/profile — the member's factory profile Bassem records in the call (migration 0007)
 import { handleMeetings, meetingsCron } from "./meetings.js"; // Janna-hosted meetings: /api/meetings/* + cron (see README)
-import { EN, norm } from "./text.js"; // shared Arabic/English normalisation (also used by matching.js)
+import { EN, norm, STOP } from "./text.js"; // shared Arabic/English normalisation (also used by matching.js)
 import { concepts as lkConcepts, altForms, canon as lkCanon, words as lkWords, phraseTokens, phraseToken, storedForms } from "./lookup-terms.js"; // the lookup's words, forms and synonyms
 // Interactive platform (docs/janna/INTERACTIVE-PLAN.md, Phase A) — see README "Platform API"
 import { handleAuth } from "./auth.js";             // /api/auth/*        one email-code login for every plan
@@ -60,14 +60,15 @@ function lookupEnglishToArabic(q) {
   for (const k of Object.keys(EN).sort((a, b) => b.length - a.length)) if (k !== "and") s = s.split(" " + k + " ").join(" " + EN[k] + " ");
   return s.trim();
 }
-/* a governorate or industrial city named in the (normalised) query, as whole words with or without its article and after one attached
-   و / ب / ل / ف (lookup-index 2026-11-20: «قنا» was found inside «قناطر», «السويس» inside «السويسرية») */
+/* a governorate or industrial city named in the (normalised) query, as whole words with its article after one attached و / ب / ل / ف,
+   or without it after «في» / «من» / an attached ب / ل («في اسكندرية») (lookup-index 2026-11-20: «قنا» was found inside «قناطر», «السويس»
+   inside «السويسرية»; review 2026-11-20: a bare «جيزة» / «بحيرة» is also a word of a name — «جيزة باور إندستري», «أسماك بحيرة ناصر») */
 const PLACE_RX = new Map();
 function placeIn(nq, name) {
   const n = norm(name); let rx = PLACE_RX.get(n);
   if (!rx) {
-    const alts = [n]; if (/^ال/.test(n) && n.length > 5) alts.push(n.slice(2));
-    rx = new RegExp("(?:^| )[وبلف]?(?:" + alts.map(a => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")(?= |$)");
+    const esc = a => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), bare = /^ال/.test(n) && n.length > 5 ? n.slice(2) : "";
+    rx = new RegExp("(?:^| )[وبلف]?" + esc(n) + "(?= |$)" + (bare ? "|(?:^| )(?:(?:في|من) |[بل])" + esc(bare) + "(?= |$)" : ""));
     PLACE_RX.set(n, rx);
   }
   return rx.exec(nq);
@@ -124,16 +125,16 @@ const ixOf = (name, make) => { let x = IXS.get(name); if (!x) { x = make(); IXS.
    an index built before f[6] existed falls back to the name and products; f[2] + fs[f[7]] = the activity labels (tie-breaker only) */
 function dirIx() {
   return ixOf("f", () => {
-    const F = DATA.f || [], FS = DATA.fs || [], FV = DATA.fv || [], FW = DATA.fw || 3, LC = new Map(), lab = [], loc = [];
+    const F = DATA.f || [], FS = DATA.fs || [], FV = DATA.fv || [], FW = DATA.fw || 3, LC = new Map(), lab = [], loc = [], nm = [];
     const dec = s => { const o = []; for (let j = 0; j + FW <= s.length; j += FW) { const k = FV[parseInt(s.slice(j, j + FW), 36)]; if (k) o.push(k); } return o; };
     const ix = buildIx(F.length, i => {
       const f = F[i], L = (f[2] || "") + " " + (Number.isInteger(f[7]) && f[7] >= 0 ? FS[f[7]] || "" : "");
-      let ls = LC.get(L); if (!ls) { ls = new Set(formsOf(L)); LC.set(L, ls); } lab.push(ls); loc.push(norm(f[3]));
+      let ls = LC.get(L); if (!ls) { ls = new Set(formsOf(L)); LC.set(L, ls); } lab.push(ls); loc.push(norm(f[3])); nm.push(" " + norm(f[0]) + " ");
       if (typeof f[6] !== "string" || !FV.length) return [[], formsOf(f[0] + " " + f[4])];
       const bar = f[6].indexOf("|");
       return [dec(f[6].slice(bar + 1)), dec(f[6].slice(0, bar))];
     }, [2, 3]);
-    return Object.assign(ix, { lab, loc });
+    return Object.assign(ix, { lab, loc, nm });
   });
 }
 /* how many companies hold a stored form: tells an attached «و» from a word's own first letter (src/lookup-terms.js concepts) */
@@ -242,14 +243,21 @@ function search(section, query, governorate, limit, page, market) {
   let widened = null;
   if (section === "factories" || section === "suppliers" || section === "products" || section === "market") {
     const X = dirIx(), F = DATA.f, prod = section === "products" || section === "market";
+    /* a company asked for by its name («الشركة المتحدة المصرية», «شركة العبوات والمستلزمات»: their generic words decide no match):
+       a record whose name holds the query's own words, in order, leads its class (review 2026-11-20) */
+    const nq = " " + P.q.split(" ").filter(w => w && !STOP.has(w)).join(" ") + " ", byName = nq.trim().indexOf(" ") > 0 ? i => (X.nm[i].includes(nq) ? 1 : 0) : null;
     if (prod) for (const r of ranked(productIx(), () => true)) if (C.length) { const p = DATA.p[r.i]; res.push([r, tag(P, C, r, { product: p[0], maker: p[1], category: p[2], url: SITE + "market.html" })]); }
-    const dir = ranked(X, i => locOk(X.loc[i], gov, place), { lab: i => X.lab[i] });
+    const dir = ranked(X, i => locOk(X.loc[i], gov, place), { lab: i => X.lab[i], first: byName });
     for (const r of prod ? dir.filter(r => r.cls < 2) : dir) { if (prod && !C.length) break; const f = F[r.i]; res.push([r, tag(P, C, r, prod ? { name: f[0], activity: f[2], location: f[3], products: f[4], url: SITE + f[5] } : company(f))]); }
-    /* a specific industrial city with few hits: widen to its governorate and say so */
-    if (!prod && place && res.length < 3 && CITY_GOV[place]) {
+    /* a specific industrial city with few hits (all words or part of them: a same-field result does not count — review 2026-11-20,
+       «أكياس بلاستيك … العاشر من رمضان»: 3 same-field results there kept the bag makers of الشرقية out): widen to its governorate and say so */
+    const strong = () => res.filter(r => r[0].cls < 2).length;
+    if (!prod && place && strong() < 3 && CITY_GOV[place]) {
       const g = norm(CITY_GOV[place]), seen = new Set(res.map(r => r[0].i));
-      for (const r of ranked(X, i => X.loc[i].includes(g) && !seen.has(i), { lab: i => X.lab[i] })) res.push([r, tag(P, C, r, company(F[r.i]))]);
+      for (const r of ranked(X, i => X.loc[i].includes(g) && !seen.has(i), { lab: i => X.lab[i], first: byName })) res.push([r, tag(P, C, r, company(F[r.i]))]);
       widened = CITY_GOV[place];
+      if (strong() >= 3) for (let k = res.length - 1; k >= 0; k--) if (res[k][0].cls === 2) res.splice(k, 1); // same field only when few (rankRows)
+      res.sort((a, b) => a[0].cls - b[0].cls); // the city's results first inside each class (the sort is stable)
     }
     if (prod) res.sort((a, b) => a[0].cls - b[0].cls); // products first inside each class (the sort is stable)
   } else if (section === "tenders") {
@@ -272,7 +280,10 @@ function search(section, query, governorate, limit, page, market) {
   const amb = C.length === 1 && C[0].amb ? { word: sayWord(P, C[0]), note: C[0].amb.note } : null;
   const pages = Math.max(1, Math.ceil(res.length / L)), pg = Math.min(Math.max(Math.floor(+page || 1), 1), 1000), from = (pg - 1) * L;
   const top = res.slice(from, from + L).map(r => enrichResult(section, r[1])), more = Math.max(0, res.length - from - top.length);
-  const st = { words: C.map(c => sayWord(P, c)).join(C.length > 1 && Q.parts > 1 ? " أو " : " "), all: nAll, rel: nRel, amb, n: C.length };
+  /* the words as the query's list items: «مواسير حديد» أو «بلاستيك» (review 2026-11-20: «مواسير أو حديد أو بلاستيك» read as if every
+     word were an alternative) */
+  const items = []; C.forEach(c => (items[c.part] = items[c.part] || []).push(sayWord(P, c)));
+  const st = { words: items.filter(Boolean).map(x => x.join(" ")).join("» أو «"), all: nAll, rel: nRel, amb, n: C.length };
   return { section, query, governorate: gov || null, place: place || null, market: section === "tenders" ? mk : undefined, widened_to: widened, count: res.length, count_all: nAll, partial: res.length > nAll,
     ...(amb ? { ambiguous: { word: amb.word, meanings: amb.note } } : {}), page: pg, pages, per_page: L, has_more: more > 0, results: top,
     text: (widened ? "نتائج قليلة داخل " + place + " نفسها، فتمت إضافة نتائج من محافظة " + widened + ". " : "") + (pg > pages && res.length ? `دي كانت كل النتائج (${res.length}) في ${pages === 1 ? "صفحة واحدة" : pages + " صفحات"}؛ مفيش صفحة ${pg}.` : summary(section, res.length, top.slice(0, 6), gov || place, paged, query, st)) + (more && paged ? ` وفيه كمان ${more} نتيجة: اطلب page=${pg + 1}، أو هات تفاصيل نتيجة بالـ id بتاعها من platform_item.` : "") };

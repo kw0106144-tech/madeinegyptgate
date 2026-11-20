@@ -163,6 +163,24 @@ describe("janna_lookup on the real directory (the investigation's queries)", () 
     assert.equal(r.count_all, 0); assert.ok(r.results.every(x => x.match === "related")); assert.match(r.text, /من نفس المجال بكلمات قريبة/);
     assert.equal(search("tenders", "الأعشاب الطبية").count, 0, "session 216f67f3: no tender is about herbs; «الطبية» alone is not a match");
   });
+  test("review 2026-11-20: lists with «و», two-word field phrases, spoken requests, names and the city widening", () => {
+    const mg = search("factories", "رخام وجرانيت", "", 10); // the data writes «والجرانيت» (one stored word): 2 results before
+    assert.ok(mg.count_all >= 40, String(mg.count_all)); for (const x of mg.results) assert.ok(holds(x, "رخام", "جرانيت"), x.name);
+    const box = search("factories", "محتاج حد يعملي علب كرتون", "", 10); // «حد» outweighed «علب كرتون»: 1 unrelated result before
+    for (const x of box.results.slice(0, 5)) { assert.equal(x.match, "all"); assert.ok(holds(x, "علبه") && holds(x, "كرتون"), x.name); }
+    const cab = search("factories", "كابلات كهرباء", "", 10); // El Sewedy was «same field only»
+    assert.equal(cab.results[0].name, "شركة السويدي للكهرباء"); assert.equal(cab.results[0].match, "all");
+    const pipe = search("factories", "مواسير حديد", "", 10);
+    assert.ok(names(pipe).slice(0, 3).includes("شركة النصر لصناعة المواسير الصلب ولوازمها")); assert.equal(pipe.results[0].match, "all");
+    assert.match(search("factories", "مواسير حديد وبلاستيك").text, /كل كلمات البحث \(«مواسير حديد» أو «بلاستيك»\)/, "the list items, not every word");
+    assert.equal(search("factories", "الخرسانة الجاهزة").results.filter(x => /الملابس الجاهزة/.test(x.name)).length, 0, "«جاهزة» alone is no match");
+    const gp = search("factories", "جيزة باور إندستري"); // a bare «جيزة» is a word of the name, not the governorate
+    assert.equal(gp.governorate, null); assert.match(gp.results[0].name, /^جيزة باور إندستري/);
+    assert.equal(search("factories", "مصانع ورق في اسكندرية").governorate, "الإسكندرية");
+    assert.equal(search("factories", "الشركة المتحدة المصرية").results[0].name, "الشركة المتحدة المصرية للتجارة والتنمية", "the name asked for leads");
+    const w = search("factories", "مصنع أكياس بلاستيك للتعبئة والتغليف في مدينة العاشر من رمضان", "", 10);
+    assert.equal(w.widened_to, "الشرقية"); assert.ok(w.count_all >= 1 && w.results.every(x => x.match !== "related"), w.text);
+  });
   test("places are whole words: «قناطر» is not قنا, «السويسرية» is not السويس", () => {
     assert.equal(search("factories", "قناطر").governorate, null);
     assert.equal(search("factories", "مصنع منتجات السويسرية").governorate, null);
