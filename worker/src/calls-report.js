@@ -598,17 +598,27 @@ export function missedLines(c, lookup, nowMs, budget) {
   const r = c.review, out = [], search = lookup && typeof lookup.search === "function" ? lookup.search : null, she = c.agent === "bassem" ? "" : "ت";
   const run = (sec, q, gov, mkt) => { if (!search || !q || !budget()) return null; try { return search(sec, String(q).slice(0, 120), String(gov || "").slice(0, 60), 10, undefined, mkt || undefined); } catch (e) { return null; } };
   const words0 = r.productWords && r.productWords.length ? r.productWords : [];
+  /* the second preview on the real calls of 2026-11-20: only what was searched is said — a search the budget (or a missing lookup) never
+     ran is no «مفيش»; an open tender counts for (a) when it is about his product (U1's match tag, not «related»; before U1 one of the query's
+     words in its title: the lookup also returns loose matches, an open tender that shares no word with his product was counted); and what
+     (a) said («… ولا طلب سعر لـ «X»») is not searched and said again by (c) (««X» ولسه مفيش في طلبات الأسعار» stood right under it in every
+     seller's card) */
+  const said = new Set();
   if (r.seller && words0.length) {
-    const q = words0[0], t = run("tenders", q), f = run("rfqs", q), cu = run("customers", q);
-    const open = t ? (t.results || []).filter(x => OPEN_ST.has(x.status)).length : 0, rq = f ? f.count || 0 : 0;
-    out.push(open || rq ? { ar: "النهارده الصبح على المنصة لـ «" + bdi(quote(q, 60)) + "»: مناقصات سارية " + ar(open) + "، طلبات أسعار " + ar(rq), en: "This morning for “" + quote(q, 60) + "”: open tenders " + open + ", RFQs " + rq }
-      : { ar: "النهارده الصبح مفيش مناقصة سارية ولا طلب سعر لـ «" + bdi(quote(q, 60)) + "» على المنصة", en: "This morning there is no open tender or RFQ for “" + quote(q, 60) + "” on the platform" });
+    const q = words0[0], t = run("tenders", q), f = run("rfqs", q), cu = run("customers", q), qw = words(q);
+    const about = x => (x.match ? x.match !== "related" : qw.some(w => words(x.title || x.name || "").some(z => z === w || (w.length >= 4 && z.startsWith(w)))));
+    const open = t ? (t.results || []).filter(x => x && OPEN_ST.has(x.status) && about(x)).length : 0, rq = f ? f.count || 0 : 0;
+    if (t && f) {
+      out.push(open || rq ? { ar: "النهارده الصبح على المنصة لـ «" + bdi(quote(q, 60)) + "»: مناقصات سارية " + ar(open) + "، طلبات أسعار " + ar(rq), en: "This morning for “" + quote(q, 60) + "”: open tenders " + open + ", RFQs " + rq }
+        : { ar: "النهارده الصبح مفيش مناقصة سارية ولا طلب سعر لـ «" + bdi(quote(q, 60)) + "» على المنصة", en: "This morning there is no open tender or RFQ for “" + quote(q, 60) + "” on the platform" });
+      said.add("tenders|" + quote(q, 80)); said.add("rfqs|" + quote(q, 80));
+    }
     if (cu && Array.isArray(cu.groups) && cu.groups.length) out.push({ ar: "عملاء محتملين في الدليل (مصانع في الصناعات اللي بيخدمها): " + ar(cu.groups.reduce((n, g) => n + (Number(g.factories) || 0), 0)), en: "Possible customers in the directory: " + cu.groups.reduce((n, g) => n + (Number(g.factories) || 0), 0) });
   }
   if (r.buyer && words0.length) {
     const q = words0[0], sr = run("suppliers", q), qw = words(q);
     const all = sr ? (sr.results || []).filter(x => (x.match ? x.match === "all" : qw.every(w => words(x.name + " " + (x.activity || "") + " " + (x.products || "")).some(z => z === w || z.startsWith(w))))).slice(0, 3) : [];
-    out.push(all.length ? { ar: "موردين في الدليل فيهم كل كلمات «" + bdi(quote(q, 60)) + "»: " + all.map(x => bdi(quote(x.name, 60))).join("، "), en: "Suppliers in the directory with every word of “" + quote(q, 60) + "”: " + all.length }
+    if (sr) out.push(all.length ? { ar: "موردين في الدليل فيهم كل كلمات «" + bdi(quote(q, 60)) + "»: " + all.map(x => bdi(quote(x.name, 60))).join("، "), en: "Suppliers in the directory with every word of “" + quote(q, 60) + "”: " + all.length }
       : { ar: "مفيش مورّد في الدليل فيه كل كلمات «" + bdi(quote(q, 60)) + "»", en: "No supplier in the directory has every word of “" + quote(q, 60) + "”" });
   }
   /* (c) one line per query: where it now returns something, and where still nothing */
@@ -616,6 +626,7 @@ export function missedLines(c, lookup, nowMs, budget) {
   for (const z of r.zeroSearches || []) {
     if (z.tool !== "janna_lookup" || !z.query || z.memory) continue; // a D1-only call's memory row does not say its section
     const sec = SECTION_AR[z.section] ? z.section : "factories"; // the lookup's own default (index.js: an unknown or missing section is the factories)
+    if (!z.governorate && !z.market && said.has(sec + "|" + z.query)) continue; // (a) searched it this morning and said it
     const list = byQ.get(z.query) || []; if (!list.some(x => x.sec === sec && x.gov === z.governorate && x.mkt === z.market)) list.push({ sec, gov: z.governorate || "", mkt: z.market || "" });
     byQ.set(z.query, list);
   }

@@ -169,14 +169,37 @@ describe("calls report e-mail: the real-call preview of 2026-11-20 (synthetic)",
     const t = cardText(renderReport(rep([conv()])));
     assert.ok(t.includes("عملت إيه: ١٤ عملية بحث (١٣ منهم رجّعوا صفر): Roller door maintenance — مجلس تجريبي 2026 «مش مطابقة»؛ RFQ-2026/118 بكر 50 مم «مش مطابقة»؛ … · فتحت تفاصيل نتيجة واحدة · سألت بنك المعلومات مرتين (مرة من غير إجابة)"), t);
     const one = cardText(renderReport(rep([conv({ review: review({ searchCount: 1, zeroCount: 1, itemCount: 0, kbCount: 1, kbZero: 1, searches: [] }) })])));
-    assert.ok(one.includes("عملت إيه: بحث واحد ورجّع صفر · سألت بنك المعلومات مرة ومالقاش إجابة"), one);
+    assert.ok(one.includes("عملت إيه: بحث واحد ورجّع صفر · سألت بنك المعلومات مرة ومالقتش إجابة"), one);
     const bas = cardText(renderReport(rep([conv({ agent: "bassem", review: review({ searchCount: 2, zeroCount: 2, itemCount: 2 }) })])));
     assert.ok(/عمل إيه: بحثين \(الاتنين رجّعوا صفر\): [^\n]+؛ … · فتح تفاصيل نتيجتين · سأل بنك المعلومات مرتين/.test(bas), bas);
+  });
+  test("second preview: the words agree with Janna / Bassem and with their noun — «سألت … ومالقتش» / «سأل … ومالقاش», «واحدة منهم رجّعت» after «عمليات بحث»", () => {
+    const card = (agent, over) => cardText(renderReport(rep([conv({ agent, review: review({ searches: [], ...over }) })])));
+    assert.ok(card("janna", { searchCount: 0, itemCount: 0, kbCount: 1, kbZero: 1 }).includes("عملت إيه: سألت بنك المعلومات مرة ومالقتش إجابة"));
+    assert.ok(card("bassem", { searchCount: 0, itemCount: 0, kbCount: 2, kbZero: 2 }).includes("عمل إيه: سأل بنك المعلومات مرتين ومالقاش إجابة"));
+    const j = card("janna", { searchCount: 7, zeroCount: 1, itemCount: 0, kbCount: 0 });
+    assert.ok(j.includes("عملت إيه: ٧ عمليات بحث (واحدة منهم رجّعت صفر)") && !j.includes("واحد منهم رجّع"), j);
+    assert.ok(card("janna", { searchCount: 12, zeroCount: 1, itemCount: 0, kbCount: 0 }).includes("١٢ عملية بحث (واحدة منهم رجّعت صفر)"));
+    assert.ok(card("bassem", { searchCount: 2, zeroCount: 1, itemCount: 0, kbCount: 0 }).includes("عمل إيه: بحثين (واحد منهم رجّع صفر)"), "«بحثين» is masculine");
+  });
+  test("second preview: a one-line «من غير طلب» call does not also say «مفيش طلب واضح» (nor «no request» + «no clear request»)", () => {
+    const r = renderReport(rep([conv({ parts: 3, minutes: 2, review: review({ verdict: "no_ask", ask: "none", flags: [] }) })]));
+    assert.match(r.text, /^- ١١:١٧ · جنة · دقيقتين · على ٣ أجزاء · من غير طلب · زائر مش معروف$/m);
+    assert.match(r.text, /^- 11:17 · Janna · 2 min · in 3 parts · no request · unknown visitor$/m);
+    assert.ok(!r.text.includes("مفيش طلب واضح") && !r.text.includes("no clear request"), r.text);
+    const p = renderReport(rep([conv({ review: review({ verdict: "useful", ask: "platform_question", flags: [] }) })]));
+    assert.ok(p.text.includes(" · مفيدة · زائر مش معروف · سؤال عن المنصة والباقات"), "another verdict still names the ask");
   });
   test("#11 a cut list says so («… و٢ كمان») and the seconds keep what shows the excess («٣٠٫٠٤ ث», never «٣٠ ث»)", () => {
     const r = renderReport(rep([conv()])), t = cardText(r);
     assert.ok(t.includes("ردود طويلة (أكتر من ٣٠ ثانية): ٣١ ث، ٣٢ ث، ٤١ ث، ٣٠٫٠٤ ث، ٣٤ ث، ٣٢ ث، … و٢ كمان (الردود ٢، ٣، ٤، ٥، ١٠، ١١، … و٢ كمان)"), t);
-    assert.ok(t.includes("[صاف] [whispers] [x1] … و١ كمان"), "three tags, then the count");
+    assert.ok(t.includes("[صاف] [whispers] [x1] [y2] (الرد ٢٧)") && !t.includes("و١ كمان"), "one tag over the three: shown, never «… و١ كمان»");
+    const five = cardText(renderReport(rep([conv({ review: review({ flags: [{ code: "bad_tag", turns: [27], tags: ["صاف", "whispers", "x1", "y2", "z3"] }] }) })])));
+    assert.ok(five.includes("[صاف] [whispers] [x1] … و٢ كمان"), "three tags, then the count: " + five);
+    const seven = review({ flags: [{ code: "long_turn", turns: [2, 3, 4, 5, 10, 11, 12], secs: [31, 32, 41, 30.04, 34, 32, 44] }] });
+    const r7 = renderReport(rep([conv({ review: seven })])), t7 = cardText(r7);
+    assert.ok(t7.includes("ردود طويلة (أكتر من ٣٠ ثانية): ٣١ ث، ٣٢ ث، ٤١ ث، ٣٠٫٠٤ ث، ٣٤ ث، ٣٢ ث، ٤٤ ث (الردود ٢، ٣، ٤، ٥، ١٠، ١١، ١٢)") && !t7.includes("كمان"), "7 long replies: all of them: " + t7);
+    assert.ok(r7.text.includes("long replies (over 30 s): 31 s, 32 s, 41 s, 30.04 s, 34 s, 32 s, 44 s (turns 2, 3, 4, 5, 10, 11, 12)") && !/and 1 more/.test(r7.text), "the English twin too");
     assert.ok(!/(^|[ ،:])٣٠ ث(،|$| )/m.test(t), "no «٣٠ ث» under «أكتر من ٣٠ ثانية»");
     const en = renderReport(rep([conv({ review: review({ flags: [review().flags[2]] }) })])).text.split("== Calls ==")[1];
     assert.ok(en.includes("long replies (over 30 s): 31 s, 32 s, 41 s, 30.04 s, 34 s, 32 s, … and 2 more (turns 2, 3, 4, 5, 10, 11, … and 2 more)"), "the English twin too: " + en);

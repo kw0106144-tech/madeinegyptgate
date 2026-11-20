@@ -266,7 +266,7 @@ describe("calls-review: the real-call preview of 2026-11-20 (synthetic, real-sha
     assert.deepEqual([r.seller, r.ask, r.askTurn], [true, "demand_search", 3]);
     assert.deepEqual(flagOf(r, "competitor_offered").turns, [2, 3], "offered (named + an offer) and said «منافس»");
     assert.deepEqual(r.wrong, ["competitor_offered"]);
-    const seen = [], lines = missedLines({ agent: "janna", review: r }, { search: (sec, q) => { seen.push(sec); return { count: sec === "rfqs" ? 2 : 0, results: sec === "tenders" ? [{ status: "سارية" }] : [] }; } }, T0, () => true).map(l => plain(l.ar));
+    const seen = [], lines = missedLines({ agent: "janna", review: r }, { search: (sec, q) => { seen.push(sec); return { count: sec === "rfqs" ? 2 : 0, results: sec === "tenders" ? [{ status: "سارية", title: "توريد بكر لمطبعة تجريبية" }] : [] }; } }, T0, () => true).map(l => plain(l.ar));
     assert.ok(lines.includes("النهارده الصبح على المنصة لـ «بكر»: مناقصات سارية ١، طلبات أسعار ٢"), JSON.stringify(lines));
     assert.ok(lines.includes("ماعرضتش عليه ملف بخدماته في الدليل"), "a seller never offered a profile");
     assert.ok(seen.includes("tenders") && seen.includes("rfqs"));
@@ -317,6 +317,25 @@ describe("calls-review: the real-call preview of 2026-11-20 (synthetic, real-sha
     const out = missedLines({ agent: "janna", review }, lookup, T0, () => true).map(l => plain(l.ar));
     assert.deepEqual(seen, [["rfqs", "بكر", ""], ["tenders", "بكر", ""], ["suppliers", "علب", "الجيزة"], ["factories", "ورق", ""]], "the lookup's own default section is the factories");
     assert.deepEqual(out, ["«بكر» دلوقتي بيرجّع ٢ في طلبات الأسعار — ولسه مفيش في المناقصات", "«علب» ولسه مفيش في الموردين (الجيزة)", "«ورق» ولسه مفيش في المصانع", "وكلمة بحث تانية رجّعت صفر — في الملف المرفق"]);
+  });
+
+  test("second preview: «كان ممكن» says only what it searched, counts only tenders about his product, and never says the seller's tenders / RFQs twice", () => {
+    const z = (query, section) => ({ query, section, governorate: "", market: "", tool: "janna_lookup" });
+    const seller = { seller: true, offeredProfile: true, productWords: ["بكر مطابع"], zeroSearches: [z("بكر مطابع", "rfqs"), z("بكر مطابع", "factories"), z("بكر مطابع", "tenders")] };
+    const tenders = [{ status: "سارية", title: "توريد أدوية لعام تجريبي" }, { status: "سارية", title: "توريد بكر مطاط لمطبعة تجريبية" }, { status: "منتهية", title: "توريد بكر قديم" },
+      { status: "سارية", title: "صيانة أبواب رولر", match: "related" }, { status: "تنتهي قريباً", title: "Supply of printing rollers", match: "partial" }];
+    const seen = [], lookup = { search: (sec, q) => { seen.push(sec); return sec === "tenders" ? { count: tenders.length, results: tenders } : { count: 0, results: [] }; } };
+    const out = missedLines({ agent: "janna", review: seller }, lookup, T0, () => true).map(l => plain(l.ar));
+    assert.deepEqual(out, ["النهارده الصبح على المنصة لـ «بكر مطابع»: مناقصات سارية ٢، طلبات أسعار ٠", "«بكر مطابع» ولسه مفيش في المصانع"],
+      "an open tender counts when it is about his product (a query word in its title, or U1's tag not «related»); (c) does not repeat the tenders / RFQs (a) said");
+    assert.deepEqual(seen, ["tenders", "rfqs", "customers", "factories"], "and does not search them again");
+    let left = 1; // the budget lets one search run: the RFQs were never searched, so nothing is said about them (no «مفيش … ولا طلب سعر»)
+    const cut = missedLines({ agent: "janna", review: seller }, { search: () => ({ count: 0, results: [] }) }, T0, () => left-- > 0).map(l => plain(l.ar));
+    assert.deepEqual(cut, [], JSON.stringify(cut));
+    const none = missedLines({ agent: "janna", review: { buyer: true, productWords: ["علب كرتون"] } }, {}, T0, () => true);
+    assert.deepEqual(none, [], "no lookup: no «مفيش مورّد …» either");
+    const buyer = missedLines({ agent: "janna", review: { buyer: true, productWords: ["علب كرتون"] } }, { search: () => ({ count: 0, results: [] }) }, T0, () => true).map(l => plain(l.ar));
+    assert.deepEqual(buyer, ["مفيش مورّد في الدليل فيه كل كلمات «علب كرتون»"], "a search that ran and found nothing is said");
   });
 
   test("#8 every search counted, never the screen echoes: 14 lookups (13 empty) + 14 janna_search + 2 knowledge lookups + 1 opened item", () => {

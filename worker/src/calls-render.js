@@ -38,9 +38,11 @@ const minEn = m => (m < 1 ? "under a minute" : m + " min");
 const partsAr = n => (n > 1 ? "على " + nAr(n, "جزء", "جزئين", "أجزاء", "جزء") : "");
 const partsEn = n => (n > 1 ? "in " + n + " parts" : "");
 const secAr = x => ar(x).replace(/\./g, "٫") + " ث";
-/* a list that is cut says so (#11): «٢، ٣، ٤، ٥، ١٠، ١١، … و٣ كمان» */
-const listAr = (a, f, max = RENDER_LIM.listed, sep = "، ") => a.slice(0, max).map(f).join(sep) + (a.length > max ? sep + "… و" + ar(a.length - max) + " كمان" : "");
-const listEn = (a, f, max = RENDER_LIM.listed, sep = ", ") => a.slice(0, max).map(f).join(sep) + (a.length > max ? sep + "… and " + (a.length - max) + " more" : "");
+/* a list that is cut says so (#11): «٢، ٣، ٤، ٥، ١٠، ١١، … و٣ كمان»; one item over the limit is shown, never «… و١ كمان» (the note takes
+   more room than the item: the second preview of 2026-11-20, 7 long replies) */
+const shownOf = (n, max) => (n > max + 1 ? max : n);
+const listAr = (a, f, max = RENDER_LIM.listed, sep = "، ") => { const k = shownOf(a.length, max); return a.slice(0, k).map(f).join(sep) + (a.length > k ? sep + "… و" + ar(a.length - k) + " كمان" : ""); };
+const listEn = (a, f, max = RENDER_LIM.listed, sep = ", ") => { const k = shownOf(a.length, max); return a.slice(0, k).map(f).join(sep) + (a.length > k ? sep + "… and " + (a.length - k) + " more" : ""); };
 const moreAr = n => nAr(n, "حاجة تانية", "حاجتين تانيين", "حاجات تانية", "حاجة تانية");
 export const VERDICT = Object.freeze({
   not_useful: ["مافادتش", "not useful"], partial: ["جزئياً", "partly useful"], useful: ["مفيدة", "useful"], no_ask: ["من غير طلب", "no request"], short: ["قصيرة", "short"],
@@ -145,13 +147,13 @@ function whoEn(w) {
 /* ---------- one card and one line ---------- */
 const OUTCOME_NONE = ["ولا حاجة", "nothing"];
 const NO_FLAG = "مفيش حاجة اتعلّمت تلقائياً";
-/* «… عمليات بحث (٣ منهم رجّعوا صفر)» */
+/* «… عمليات بحث (٣ منهم رجّعوا صفر)»; one of them agrees with its noun: «بحثين (واحد منهم رجّع صفر)», «٧ عمليات بحث (واحدة منهم رجّعت صفر)» */
 function searchesAr(sc, zc) {
   const n = nAr(sc, "بحث واحد", "بحثين", "عمليات بحث", "عملية بحث");
   if (!zc) return n;
   if (sc === 1) return n + " ورجّع صفر";
   if (zc >= sc) return n + " (" + (sc === 2 ? "الاتنين" : "كلهم") + " رجّعوا صفر)";
-  return n + " (" + (zc === 1 ? "واحد منهم رجّع صفر" : ar(zc) + " منهم رجّعوا صفر") + ")";
+  return n + " (" + (zc === 1 ? (sc >= 3 ? "واحدة منهم رجّعت صفر" : "واحد منهم رجّع صفر") : ar(zc) + " منهم رجّعوا صفر") + ")";
 }
 function cardParts(c) {
   const r = c.review || {}, agent = c.agent, P = agent === "bassem" ? "باسم" : "جنة", did = agent === "bassem" ? "عمل" : "عملت", said = agent === "bassem" ? "قال" : "قالت", she = agent === "bassem" ? "" : "ت";
@@ -170,7 +172,7 @@ function cardParts(c) {
   const tt = titles.length ? ": " + titles.map(x => bdi(x.t) + (x.off ? " «مش مطابقة»" : "")).join("؛ ") + (more ? "؛ …" : "") : "";
   if (sc) did1.push(searchesAr(sc, zc) + tt);
   if (ic) did1.push("فتح" + she + " تفاصيل " + nAr(ic, "نتيجة واحدة", "نتيجتين", "نتايج", "نتيجة") + (sc ? "" : tt));
-  if (kc) did1.push("سأل" + she + " بنك المعلومات " + nAr(kc, "مرة", "مرتين", "مرات", "مرة") + (r.kbZero ? (r.kbZero >= kc ? " ومالقاش إجابة" : " (" + nAr(r.kbZero, "مرة", "مرتين", "مرات", "مرة") + " من غير إجابة)") : ""));
+  if (kc) did1.push("سأل" + she + " بنك المعلومات " + nAr(kc, "مرة", "مرتين", "مرات", "مرة") + (r.kbZero ? (r.kbZero >= kc ? " ومالق" + (she ? "تش" : "اش") + " إجابة" : " (" + nAr(r.kbZero, "مرة", "مرتين", "مرات", "مرة") + " من غير إجابة)") : ""));
   if (did1.length) dLines.push(did1.join(" · "));
   else if (r.tools) dLines.push(nAr(r.tools, "أداة واحدة", "أداتين", "أدوات", "أداة"));
   const outs = (c.outcomes || []).map(o => o.ar).filter(Boolean);
@@ -209,17 +211,20 @@ function cardText(c) {
   if (p.na) L.push("  مش متاح من غير Anam: " + p.na);
   return L.join("\n");
 }
+/* a one-line row names the ask only when the verdict does not already say it: short, unrated and unread calls have none worth naming, and
+   «من غير طلب» is already «مفيش طلب واضح» (the second preview of 2026-11-20 said both on one row) */
+const NO_ASK_LABEL = /^(short|no_consent|not_read|no_ask)$/;
 function oneLine(c, more) {
   const r = c.review || {}, all = sortFlags(r.flags), shown = all.slice(0, 2).map(f => flagAr(f.code, c.agent));
   const fl = shown.length ? shown.join("، ") + (all.length > 2 ? " و" + moreAr(all.length - 2) : "") : "";
   return [ar(c.time || ""), (AGENT[agentKey(c)] || AGENT.janna_ar)[0], minAr(c.minutes || 0), partsAr(c.parts || 1), (VERDICT[r.verdict] || VERDICT.partial)[0], whoShort(c.who),
-    /^(short|no_consent|not_read)$/.test(r.verdict) ? "" : (ASK[r.ask] || ASK.none)[0], c.kind === "outside" ? "من برّه الموقع" : "", fl, (c.outcomes || []).map(o => o.ar).join("؛ "),
+    NO_ASK_LABEL.test(r.verdict) ? "" : (ASK[r.ask] || ASK.none)[0], c.kind === "outside" ? "من برّه الموقع" : "", fl, (c.outcomes || []).map(o => o.ar).join("؛ "),
     more ? "التفاصيل في الملف المرفق" : ""].filter(Boolean).map(bdi).join(" · ");
 }
 function lineEn(c) {
   const r = c.review || {}, all = sortFlags(r.flags);
   const fl = all.slice(0, 3).map(flagLineEn).join("; ") + (all.length > 3 ? "; and " + (all.length - 3) + " more" : "");
-  return [c.time || "", (AGENT[agentKey(c)] || AGENT.janna_ar)[1], minEn(c.minutes || 0), partsEn(c.parts || 1), (VERDICT[r.verdict] || VERDICT.partial)[1], whoEn(c.who), /^(short|no_consent|not_read)$/.test(r.verdict) ? "" : (ASK[r.ask] || ASK.none)[1],
+  return [c.time || "", (AGENT[agentKey(c)] || AGENT.janna_ar)[1], minEn(c.minutes || 0), partsEn(c.parts || 1), (VERDICT[r.verdict] || VERDICT.partial)[1], whoEn(c.who), NO_ASK_LABEL.test(r.verdict) ? "" : (ASK[r.ask] || ASK.none)[1],
     c.kind === "outside" ? "outside the site" : "", fl, (c.outcomes || []).map(o => o.en).join("; ")].filter(Boolean).map(bdi).join(" · ");
 }
 
