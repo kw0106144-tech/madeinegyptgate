@@ -17,7 +17,7 @@ function el(tag) {
   return e;
 }
 /* a fake page: {win, shown: hologram scenes, steps, screen: JANNA_LIVE.show calls, fetches, timers} */
-function page({ fetchMap = {}, busy = false, stackedLayout = false, liveCall = true, tokens = ["tok-1"], framePath = "", lang = "ar" } = {}) {
+function page({ fetchMap = {}, busy = false, stackedLayout = false, liveCall = true, tokens = ["tok-1"], framePath = "", lang = "ar", cards = false } = {}) {
   const shown = [], steps = [], screen = [], fetches = [], timers = [];
   const me = el("div"), jnl = el("div"); jnl.querySelector = sel => (sel === ".jnl-me" ? me : null);
   const listeners = {};
@@ -36,6 +36,8 @@ function page({ fetchMap = {}, busy = false, stackedLayout = false, liveCall = t
       if (typeof r === "function") r = r(String(url), init, fetches.length);
       return { ok: r.status >= 200 && r.status < 300, status: r.status, headers: { get: () => "application/json" }, json: async () => r.body };
     } };
+  /* the holo cards on the call video (data/call-holo.js) show bassem_intel's search / item in an SDK call; its official document stays here */
+  if (cards) win.MIG_CALL_HOLO = { owns: (t, a) => t === "bassem_intel" && !/^doc/.test(String((a && (a.action || (a.bodyParams && a.bodyParams.action))) || "")) };
   win.window = win; win.document = doc;
   const ctx = vm.createContext({ window: win, document: doc, Promise, JSON, Object, String, Date, Math, isNaN, parseInt, encodeURIComponent, Intl, Number, Array, RegExp,
     setTimeout: (fn, ms) => { timers.push({ fn, ms, done: false }); return timers.length; }, clearTimeout: id => { if (timers[id - 1]) timers[id - 1].done = true; },
@@ -175,6 +177,34 @@ describe("bassem_intel one result: action item / doc", () => {
     assert.deepEqual(E.screen, [["/intel/en/rfq/supply-of-chemicals-rw0000000a1/", null]]);
     E.V.toolResult({ toolName: "bassem_intel", result: TOOL });
     assert.deepEqual(E.screen[1], ["/intel/en/projects/steel-x1/", null], "search results too");
+  });
+});
+
+describe("the holo cards on the call video show bassem_intel (data/call-holo.js owns it)", () => {
+  test("no hologram scene and no card over a phone's video; the screen still opens the first result; desktop with work on the screen keeps the card under the video", async () => {
+    const P = page({ stackedLayout: true, cards: true });
+    P.fire("tool-call-started", { toolName: "bassem_intel", toolType: "server", toolCallId: "c1", arguments: { bodyParams: { action: "search", query: "حديد" } } });
+    P.fire("tool-call-completed", { toolName: "bassem_intel", toolCallId: "c1", result: JSON.stringify(TOOL) });
+    assert.equal(P.shown.length, 0, "no second scene of the same search over his face");
+    assert.equal(P.me.children.filter(c => c.className === "bv-card").length, 0, "no card over the top of the video");
+    assert.deepEqual(P.screen, [["/intel/projects/steel-x1/", null]], "the shared screen still shows the first result's page");
+    const D = page({ busy: true, cards: true });
+    D.V.toolResult({ toolName: "bassem_intel", result: TOOL });
+    assert.equal(D.shown.length, 0);
+    assert.ok(D.me.children.find(c => c.className === "bv-card"), "desktop, the screen left as it is: «افتحها في صفحة جديدة» under the video, as before");
+    const F = page({ cards: true });
+    F.fire("tool-call-started", { toolName: "bassem_intel", toolCallId: "c5", arguments: { action: "search", query: "x" } });
+    F.fire("tool-call-failed", { toolName: "bassem_intel", toolCallId: "c5", errorMessage: "timeout" });
+    assert.equal(F.steps.length, 0, "the cards say it did not finish");
+  });
+  test("one item: no scene, no phone card, its page on the screen; its official document (doc) stays on the hologram", async () => {
+    const P = page({ stackedLayout: true, cards: true });
+    P.V.toolResult({ toolName: "bassem_intel", result: ITEM });
+    assert.deepEqual([P.shown.length, P.me.children.filter(c => c.className === "bv-card").length], [0, 0]);
+    assert.deepEqual(P.screen, [["/intel/rfq/supply-of-chemicals-rw0000000a1/", null]]);
+    const Q = page({ cards: true, framePath: "/intel/rfq/supply-of-chemicals-rw0000000a1/" });
+    Q.V.toolResult({ toolName: "bassem_intel", result: DOC });
+    assert.equal(Q.shown[0].title, "مستند الفرصة الرسمي", "the document's scene is the hologram's");
   });
 });
 

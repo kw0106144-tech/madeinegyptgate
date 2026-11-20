@@ -170,7 +170,7 @@
   }
   function toolFailed(d) {
     var p = take(d || {}); if (!p) return;
-    RUN++; var H = holo();
+    RUN++; var H = cardsOwn(p.a) ? null : holo(); /* the cards on the video say it did not finish */
     if (H) try { H.step(T("البحث في مركز المعلومات ماكملش — مفيش نتايج أعرضها", "The Information Center search did not finish — no results to show"), "fail"); } catch (e) {}
   }
   /* fallback: GET the public feed (as asked → the longest word → without the market) and show it as the Information Center's list */
@@ -198,9 +198,13 @@
   function copy(o) { var r = {}; for (var k in o) if (o.hasOwnProperty(k)) r[k] = o[k]; return r; }
   /* r: {count, items[], q, market, widenedFrom, widenedTo, brief, error}; mode "tool" = the tool's own answer (its count and items),
      "feed" = the fallback list (no count, no «باسم لقى») */
+  /* the holo cards on the call video show this call (data/call-holo.js, SDK calls): no hologram scene of it and no card over the video
+     here — the screen still opens the first result's page, and on desktop a screen left as it is still gets the card under the video */
+  function cardsOwn(a) { var C = W.MIG_CALL_HOLO; try { return !!(C && C.owns && C.owns("bassem_intel", a || {})); } catch (e) { return false; } }
   function showIntel(r, a, mode) {
     r = r || {};
-    var H = holo(), L = live(), tool = mode === "tool";
+    var H = holo(), L = live(), tool = mode === "tool", own = tool && cardsOwn(a);
+    if (own) H = null;
     if (r.error) {
       /* the page could not read the feed: say so on the hologram; never a made-up list */
       if (H) try { H.step(T("مقدرتش أعرض النتايج على الشاشة دلوقتي", "Could not show the results on the screen right now"), "fail"); } catch (e) {}
@@ -228,7 +232,7 @@
     if (url && W.JANNA_LIVE && W.JANNA_LIVE.show) { try { shown = !!W.JANNA_LIVE.show(url); busy = !shown && !!(W.JANNA_LIVE.screenBusy && W.JANNA_LIVE.screenBusy()); } catch (e) {} }
     if (shown) flashScreenButton();
     /* phones (the screen sits under the video) and a screen that holds work (the e-mail draft stays): the card offers the page */
-    if (stacked() || (url && !shown)) card({ title: title, count: n, items: items, note: [note, !items.length ? T("مفيش نتايج مطابقة في المصادر الرسمية", "No matching results in the official sources") : "", busy ? T("سيبت الشاشة زي ما هي علشان شغلك اللي عليها", "I left the screen as it is so your work on it stays") : ""].filter(Boolean).join(" · "), more: url, busy: busy });
+    if (own ? !stacked() && !!url && !shown : stacked() || (url && !shown)) card({ title: title, count: n, items: items, note: [note, !items.length ? T("مفيش نتايج مطابقة في المصادر الرسمية", "No matching results in the official sources") : "", busy ? T("سيبت الشاشة زي ما هي علشان شغلك اللي عليها", "I left the screen as it is so your work on it stays") : ""].filter(Boolean).join(" · "), more: url, busy: busy });
   }
 
   /* ---------- one result: action "item" (its details) / "doc" (its official document) ---------- */
@@ -241,7 +245,8 @@
   }
   function firstSentence(s) { s = str(s, 220); var i = s.search(/[.؟!]\s/); return i > 20 ? s.slice(0, i) : s; }
   function showOne(r) {
-    var H = holo(), L = live(), doc = String(r.action || "") === "doc";
+    var H = holo(), L = live(), doc = String(r.action || "") === "doc", own = !doc && cardsOwn({ action: "item" });
+    if (own) H = null;
     var items = (r.results || []).map(item).filter(function (x) { return x.title; }), it = items[0];
     if (!r.found || !it) {
       if (H) try { H.step(doc ? T("مالقيتش الفرصة دي علشان أقرا مستندها", "Could not find that item to read its document") : T("مالقيتش الفرصة دي في مركز المعلومات", "That item is not on the Information Center"), "fail"); } catch (e) {}
@@ -259,7 +264,7 @@
     var shown = false, busy = false;
     if (W.JANNA_LIVE && W.JANNA_LIVE.show) { try { shown = !!W.JANNA_LIVE.show(it.page); busy = !shown && !!(W.JANNA_LIVE.screenBusy && W.JANNA_LIVE.screenBusy()); } catch (e) {} }
     if (shown) flashScreenButton();
-    if (stacked() || !shown) card({ title: doc ? T("مستند الفرصة الرسمي", "The item's official document") : T("تفاصيل الفرصة", "Item details"), items: [it], note: busy ? T("سيبت الشاشة زي ما هي علشان شغلك اللي عليها", "I left the screen as it is so your work on it stays") : "", more: it.page, busy: busy, cls: doc && !r.ok ? "er" : "" });
+    if (own ? !stacked() && !shown : stacked() || !shown) card({ title: doc ? T("مستند الفرصة الرسمي", "The item's official document") : T("تفاصيل الفرصة", "Item details"), items: [it], note: busy ? T("سيبت الشاشة زي ما هي علشان شغلك اللي عليها", "I left the screen as it is so your work on it stays") : "", more: it.page, busy: busy, cls: doc && !r.ok ? "er" : "" });
   }
 
   /* ---------- the results card under the video (phones; on desktop only when the screen was left as it is) ---------- */

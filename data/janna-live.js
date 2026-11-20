@@ -349,7 +349,10 @@
   ];
   var MKN2 = { local: ["مصر", "Egypt"], gulf: ["الخليج", "the Gulf"], arab: ["الدول العربية", "Arab markets"], africa: ["أفريقيا", "Africa"], asia: ["آسيا", "Asia"], europe: ["أوروبا", "Europe"] };
   function holoOn() { return !!(window.MIGHOLO && MIGHOLO.act); }
-  function holoTool(n, a) { if (!n || !/^(bassem|janna)_/.test(n) || !holoOn()) return; try { MIGHOLO.act(n, a || {}, { who: /^bassem_/.test(n) ? "bassem" : persona }); } catch (e) {} }
+  /* a server tool's start (webhook arguments arrive nested: {bodyParams:{…}}); bassem_intel is Janna's tool too, so it speaks as the persona
+     of the call — «جنة بتدوّر…», never «باسم بيدوّر…» in her call (map 2026-11-20). In SDK calls the holo cards on the video show the search
+     tools (data/call-holo.js), and data/holo.js leaves them to the cards (MIG_CALL_HOLO.owns) */
+  function holoTool(n, a) { if (!n || !/^(bassem|janna)_/.test(n) || !holoOn()) return; a = a || {}; if (a.bodyParams && typeof a.bodyParams === "object") a = a.bodyParams; try { MIGHOLO.act(n, a, { who: /^bassem_/.test(n) && n !== "bassem_intel" ? "bassem" : persona }); } catch (e) {} }
   function fmtDay(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "")); if (!m) return ""; try { return new Intl.DateTimeFormat(EN ? "en-GB" : "ar-EG-u-ca-gregory-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(new Date(+m[1], +m[2] - 1, +m[3])); } catch (e) { return m[0]; } }
   function holoWelcome() {
     HT = { sec: {}, t: 0, tool: 0, buf: {}, t0: Date.now() };
@@ -1710,6 +1713,7 @@
     if (!ov) build();
     /* Bassem SHOWS what he finds and saves: data/bassem-intel-view.js (intel results on the hologram + the screen, bassem_save_profile) */
     if (p === "bassem" && !window.BASSEM_VIEW && !document.querySelector("script[data-bassem-view]")) { var bv = document.createElement("script"), me0 = document.querySelector('script[src*="data/janna-live.js"]'); bv.src = (me0 ? me0.src.replace(/data\/janna-live\.js.*$/, "") : CLEAN ? "/" : "") + "data/bassem-intel-view.js" + (window.MIGVER_BV || (me0 && /[?&]v=([\w.-]+)/.exec(me0.src) ? "?v=" + /[?&]v=([\w.-]+)/.exec(me0.src)[1] : "")); /* same ?v= as janna-live.js (consolidation) */ bv.async = true; bv.setAttribute("data-bassem-view", "1"); document.head.appendChild(bv); }
+    if (sdkBox()) holoCards(); /* the holo cards on the call video: what the persona searches for and what it found (data/call-holo.js) */
     if (!window.BASSEM_MEMORY && !document.querySelector("script[data-bmm]")) { /* 0009: Janna's calls are remembered too (visitor id) */ var bmS = document.createElement("script"), bmJ = document.querySelector('script[src*="data/janna-live.js"]'), bmU = bmJ ? bmJ.src : "", bmV = /[?&]v=([\w.-]+)/.exec(bmU); bmS.src = (bmU ? bmU.replace(/data\/janna-live\.js.*$/, "") : "") + "data/bassem-memory.js" + (window.MIGVER_BM || (bmV ? "?v=" + bmV[1] : "")); bmS.async = true; bmS.charset = "utf-8"; bmS.setAttribute("data-bmm", "1"); document.head.appendChild(bmS); } /* Bassem's memory + web results, Janna's visitor memory: data/bassem-memory.js */
     ov.hidden = false; document.documentElement.style.overflow = "hidden"; document.documentElement.classList.add("jnl-on");
     if (!frame.getAttribute("src")) frame.src = o.screen ? withLang(url(o.screen)) : here();
@@ -1722,6 +1726,14 @@
       NUDGE = T("عايز أبدأ اجتماع تعريفي معاكي دلوقتي", "I'd like to start an introductory meeting with you now");
       if (sessT0) nudge(NUDGE, 0);
     }
+  }
+  /* «كروت الهولوجرام» (owner 2026-11-20 «المفروض وهي بتقول أنا ببحث عن مناقصة او فرصة يظهر ده»): data/call-holo.js, loaded once and
+     lazily, with this file's ?v= (or window.MIGVER_CH), for SDK calls only — the widget fallback reports no tool results */
+  function holoCards() {
+    if (window.MIG_CALL_HOLO || document.querySelector("script[data-call-holo]")) return;
+    var s = document.createElement("script"), me = document.querySelector('script[src*="data/janna-live.js"]'), src = me ? me.src : "", v = /[?&]v=([\w.-]+)/.exec(src);
+    s.src = (src ? src.replace(/data\/janna-live\.js.*$/, "") : CLEAN ? "/" : "") + "data/call-holo.js" + (window.MIGVER_CH || (v ? "?v=" + v[1] : "")); s.async = true; s.charset = "utf-8"; s.setAttribute("data-call-holo", "1");
+    document.head.appendChild(s);
   }
   /* the page the screen starts on: the page the visitor is on (its clean URL), the home page from the meeting page */
   function here() {
@@ -1738,8 +1750,9 @@
     /* the SDK call is ended explicitly (stops the session and its minutes); removing the widget's element ends the widget's session */
     sdkStop("close"); LV = null;
     langDrop(); micDrop(); nzDbgOff(); NZ.offerUntil = 0; if (NZ.el && NZ.el.parentNode) NZ.el.parentNode.removeChild(NZ.el); NZ.el = null; try { if (NZ.ac) { var acp = NZ.ac.close(); if (acp && acp.then) acp.then(null, function () {}); } } catch (e) {} NZ.ac = null; /* noise guard: microphone + meter released */
-    /* the captions box goes back to the page first */
+    /* the captions box goes back to the page first; the holo cards' timers stop (data/call-holo.js) */
     try { if (window.MIGCAPTIONS && MIGCAPTIONS.place) { ov.hidden = true; MIGCAPTIONS.place(); } } catch (e) {}
+    try { if (window.MIG_CALL_HOLO && MIG_CALL_HOLO.clear) MIG_CALL_HOLO.clear(); } catch (e) {}
     ov.remove(); ov = null; frame = null; SID = ""; sessT0 = 0; NUDGE = ""; document.documentElement.style.overflow = ""; document.documentElement.classList.remove("jnl-on");
     clearInterval(scrT); scrT = 0; setTimeout(wbTell, 0);
     if (m) { m.noteEl = note(m.msg); MT = null; }
@@ -3499,6 +3512,22 @@
      member asked for it himself (o.force: the «افتحها على الشاشة» button) */
   window.JANNA_LIVE.show = function (u, o) { u = String(u || ""); if (!frame || !ov || ov.hidden || !/^\/(?!\/)[^\s"'<>\\]*$/.test(u)) return false; if (!(o && o.force) && screenBusy()) return false; go(u); return true; };
   window.JANNA_LIVE.screenBusy = screenBusy;
+  /* a holo card's result tapped by the member (data/call-holo.js): its page on the shared screen, as the page opens an item itself
+     (itemShow: this site's paths only) — never over work on the screen (screenWork: the deal room, a form being filled; then Bassem's own
+     tab, else a new tab; screenBusy would send almost every list page to a new tab: its script-filled selects) — and on stacked layouts
+     the call scrolls to the screen like «الشاشة». The tap counts as the screen's last move (MV0, the 2.5 s rule): a lookup answering
+     right after it does not take away what he chose. This tab never leaves the call. */
+  window.JANNA_LIVE.showCard = function (u) {
+    u = String(u || ""); if (!frame || !ov || ov.hidden || !/^\/(?!\/)[^\s"'<>\\]*$/.test(u)) return false;
+    if (screenWork()) { var a = absUrl(u); if (!a) return false; if (persona === "bassem") openTab(a.href); else extTab(a.href); return true; }
+    MV0 = Date.now(); go(u);
+    var sw = ov.querySelector(".jnl-hd .sw"); if (sw) sw.classList.remove("new");
+    if (stackedNow()) { var s2 = ov.querySelector(".jnl-scr"); if (s2) try { s2.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) { s2.scrollIntoView(); } }
+    return true;
+  };
+  /* is the persona speaking (her text still streaming, or her voice still playing it: contWire's estimate)? data/call-holo.js keeps its
+     cards up while she talks about them */
+  window.JANNA_LIVE.speaking = function () { var s = LV && !LV.closed && LV.spk; return !!(s && (s.on || Date.now() < (s.until || 0))); };
   /* «باسم معاك»: isOpen() = a call is open in this tab (Bassem's tab asks its opener); openTab(u) = a page out of Bassem's call in a tab of
      its own (data/bassem-intel-view.js «افتحها في صفحة جديدة»); welcomeBack() = the member came back from that tab (its bar): on a phone the
      video comes back into view */
