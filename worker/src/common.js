@@ -350,3 +350,23 @@ export async function resubscribe(env, email, list) {
   }
   await env.DB.batch(stmts);
 }
+
+/* a tool webhook's POST body, tolerant (2026-11-21: Anam's janna_lookup / knowledge_lookup started arriving with the arguments outside a
+   JSON body — every call answered «bad json»): JSON object (its bodyParams / queryParams / pathParams merged in), an empty body, or a
+   form-encoded one. → an object, or null when the body is something else. Never logs the body. */
+export async function toolBody(req) {
+  let t = "";
+  try { t = await req.text(); } catch (e) { return null; }
+  t = String(t || "").trim();
+  if (!t) return {};
+  if (t[0] === "{") {
+    let o; try { o = JSON.parse(t); } catch (e) { return null; }
+    if (!o || typeof o !== "object" || Array.isArray(o)) return null;
+    const out = {};
+    for (const k of ["queryParams", "pathParams", "bodyParams"]) if (o[k] && typeof o[k] === "object" && !Array.isArray(o[k])) Object.assign(out, o[k]);
+    for (const k of Object.keys(o)) if (!["queryParams", "pathParams", "bodyParams", "headers"].includes(k)) out[k] = o[k];
+    return out;
+  }
+  if (/^[^=&\s]+=/.test(t)) { try { return Object.fromEntries(new URLSearchParams(t)); } catch (e) { return null; } }
+  return null;
+}

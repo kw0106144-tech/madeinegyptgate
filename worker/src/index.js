@@ -46,7 +46,7 @@ import { handleVisitorMemory } from "./visitor.js";   // /api/janna/memory[/task
 import { handleKnowledge } from "./knowledge.js";     // /api/janna/knowledge  the personas' knowledge_lookup tool
 import { dailyMemory } from "./daily.js";              // day digests + «ملخص العميل» + tasks / knowledge merge / caps report (once per Cairo day)
 import { dailyJobs, newCountFor } from "./digest.js";
-import { cairoDay, addDays, toolSoftError } from "./common.js";
+import { cairoDay, addDays, toolSoftError, toolBody } from "./common.js";
 // ---- web search (src/websearch.js) + the opportunity hunt (src/web-hunt.js): Bassem POST /api/advisor/web|hunt, Janna POST /api/janna/web|hunt ----
 import { handleWebSearch, handleJannaWebSearch, WS_MARKETS } from "./websearch.js";
 import { handleJannaHunt, handleBassemHunt } from "./web-hunt.js";
@@ -704,7 +704,7 @@ const WORKER = {
     if (env && env.JANNA_KEY && req.headers.get("X-Janna-Key") !== env.JANNA_KEY) return json({ error: "unauthorized" }, 401);
     const post = req.method === "POST";
     let a = Object.fromEntries(url.searchParams);
-    if (post) { try { a = Object.assign(a, await req.json()); } catch (e) { toolSoftError("/api/janna/lookup", "bad_json"); return json({ error: "bad json", count: 0, results: [], text: LOOKUP_TEXT.bad_json }, 200); } }
+    if (post) { const b = await toolBody(req); if (!b) { toolSoftError("/api/janna/lookup", "bad_json"); return json({ error: "bad json", count: 0, results: [], text: LOOKUP_TEXT.bad_json }, 200); } a = Object.assign(a, b); }
     const section = lookupSection(a.section); // LOOKUP_SECTIONS (+ customers, projects, events, news, awards — U2 / U15); unknown → factories, as before
     if (!a.query && !a.governorate) { if (post) toolSoftError("/api/janna/lookup", "query_required"); return json({ error: "query required", count: 0, results: [], text: LOOKUP_TEXT.no_query }, post ? 200 : 400); }
     /* U16: the members' approved products / companies (D1, at most one read per isolate per 10 minutes; fail-soft) for the sections that list

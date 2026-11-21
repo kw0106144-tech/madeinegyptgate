@@ -17,7 +17,7 @@
 import DATA from "./data.json";
 import ITEMS from "./items.json";
 import { norm, forLLM, instructionLike } from "./text.js";
-import { cairoDay, addDays, toolSoftError } from "./common.js";
+import { cairoDay, addDays, toolSoftError, toolBody } from "./common.js";
 
 export const SITE = "https://madeinegyptgate.com/";
 /* stored paths: "/tender-item/eg-tnd-003/" (decoded UTF-8) or a site hash link "tenders/search/#OFF%3A1" (already encoded) */
@@ -304,7 +304,7 @@ export async function handleItem(req, env, ctx, nowMs = Date.now()) {
      a bare "HTTP error 400" and it retried blind; GET keeps the status codes. One log line each, never the body. */
   const post = req.method === "POST", soft = (code, o) => { if (post) toolSoftError("/api/janna/item", code); return json({ found: false, ...o }, post ? 200 : 400); };
   if (post) {
-    let b; try { b = await req.json(); } catch (e) { return soft("bad_json", { error: "bad json", text: ITEM_TEXT.bad_json }); }
+    let b = await toolBody(req); if (!b) return soft("bad_json", { error: "bad json", text: ITEM_TEXT.bad_json });
     if (b && typeof b === "object") { for (const k of ["arguments", "parameters", "args", "input"]) if (b[k] && typeof b[k] === "object") b = Object.assign({}, b[k], b); a = Object.assign(a, b); }
   }
   const sec = sectionOf(a.section);

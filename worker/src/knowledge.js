@@ -24,7 +24,7 @@
        the data desk: GET /api/team/desk/knowledge + PUT /api/team/desk/knowledge/:id.
    Every stored text that reaches an LLM goes through forLLM + instructionLike (an instruction-like question / answer is never stored,
    and is filtered again on the way out). */
-import { iso, sha256, hmac, jparse, secretOf, line, rateOk, ipHash, toolSoftError } from "./common.js";
+import { iso, sha256, hmac, jparse, secretOf, line, rateOk, ipHash, toolSoftError, toolBody } from "./common.js";
 import { norm, stem, tokens, clean, forLLM, instructionLike, asciiDigits, MASK_EMAIL, MASK_PHONE } from "./text.js";
 import { hasTable, auditStmt, fail } from "./acc-base.js";
 
@@ -333,7 +333,7 @@ export async function handleKnowledge(req, env) {
        429 reached it as a bare "HTTP error" and it retried blind; GET keeps the status codes. One log line each, never the body. */
     const post = req.method === "POST", soft = (status, code, o) => { if (post) toolSoftError("/api/janna/knowledge", code); return json({ ok: false, count: 0, results: [], ...o }, post ? 200 : status); };
     const url = new URL(req.url); let a = Object.fromEntries(url.searchParams);
-    if (post) { try { const b = await req.json(); if (b && typeof b === "object" && !Array.isArray(b)) a = { ...a, ...b }; } catch (e) { return soft(400, "bad_json", { error: "bad_json", code: "bad_json", text: KB_SOFT.bad }); } }
+    if (post) { const b = await toolBody(req); if (!b) return soft(400, "bad_json", { error: "bad_json", code: "bad_json", text: KB_SOFT.bad }); a = { ...a, ...b }; }
     const q = line(a.query || a.q || a.question || "", 200);
     if (!q) return soft(400, "query_required", { error: "query required", code: "invalid", field: "query", text: KB_SOFT.bad });
     if (!(await rateOk(env, "kbl|" + (await ipHash(req, env)), 240, 60))) return soft(429, "rate_limited", { error: "rate_limited", code: "rate_limited", text: KB_SOFT.busy });
