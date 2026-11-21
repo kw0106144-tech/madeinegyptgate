@@ -2,14 +2,15 @@
    - GET  /api/janna/item?section=tenders&id=eg-tnd-003      (or &ref=6/2026/2027, or &title=…)
    - POST /api/janna/item  {section, id|ref|title}           (Anam webhooks POST the tool arguments as the top-level JSON body,
                                                                like /api/janna/lookup; {arguments:{…}} / {parameters:{…}} are unwrapped too)
-   → {found, section, id, ref, title, …every public field the platform has…, open_url, list_url?, documents_url? (tenders only), contact, text}
+   → {found, section, id, ref, title, …every public field the platform has…, open_url, list_url?, contact, text} (never documents_url)
    `text` is a short spoken summary in Egyptian Arabic built ONLY from fields that exist (no field → not mentioned, never guessed).
    NO SOURCE in what the persona gets (owner 2026-11-20: «ميكتبش مصدر اي معلومه»; «ميقولوش حاجه ولا من بره بيانات المنصه ولاغيره هما
    يقولوا المعلومه وخلاص»): no source's name (a tender's `source`, a news item's paper), no source link (documents_url of a news item,
-   an award, a project, an offer, a zone, an event), no «منقول من مصدره» line — sayItem() on every answer. The buyer / the entity / the
-   store / the organiser stay (they are the item itself). A tender keeps documents_url: its official notice is what the «ابعتلي» and the
-   opportunity e-mails attach (data/janna-live.js harvest → /api/advisor/send), unchanged until the owner decides about those e-mails;
-   findItem() keeps every field for them (notify-items.js reads the record in-process).
+   an award, a project, an offer, a zone, an event — and since 2026-11-21 («شيله») not a tender's official notice either), no «منقول من
+   مصدره» line — sayItem() on every answer, and enrichResult() adds no documents_url to the lookup's results. The buyer / the entity / the
+   store / the organiser stay (they are the item itself). The «ابعتلي» e-mail keeps the official notice: notify-items.js reads the record
+   in-process through findItem(), which keeps every field; data/janna-live.js (itemOpp) then falls back to the item's own page (url /
+   open_url) for its source_url.
    Data: src/items.json (worker/build-items.js: the full public records + the clean URL of each item's page) next to src/data.json.
    Also exported for /api/janna/lookup (src/index.js): enrichResult() adds id / ref_no / open_url / the amounts to each result.
    Contacts: the platform never gives private phones / e-mails; contact goes through the platform (contact rules in `contact`). */
@@ -70,7 +71,7 @@ const short = (s, n) => { s = String(s || ""); return s.length > n ? s.slice(0, 
 const join = parts => parts.filter(Boolean).join(" ").replace(/\s+([،.])/g, "$1").replace(/\s+/g, " ").trim();
 /* the contact rules the persona may say — none of them names a source or says where the data came from (owner 2026-11-20) */
 const CONTACT = {
-  tenders: "التقديم الرسمي عند الجهة نفسها من الإعلان الرسمي (documents_url). المنصة مش بتطرح ولا بترسي المناقصات، ومفيش أرقام تليفونات أو إيميلات خاصة.",
+  tenders: "التقديم الرسمي عند الجهة نفسها من إعلانها الرسمي (التفاصيل في صفحة المناقصة على المنصة: open_url). المنصة مش بتطرح ولا بترسي المناقصات، ومفيش أرقام تليفونات أو إيميلات خاصة.",
   rfqs: "صاحب الطلب بياناته الشخصية مش متاحة؛ العضو يسجّل عرض سعره من صفحة الطلب على المنصة (list_url) والمنصة تبلغه بأي تحديث.",
   factories: "التواصل مع المصنع عن طريق زر «اطلب عرض سعر» في صفحته على المنصة — مفيش أرقام تليفونات أو إيميلات خاصة.",
   products: "السعر عند الطلب: من زر «اطلب عرض سعر» في صفحة المنتج أو المصنع على المنصة.",
@@ -265,7 +266,7 @@ export function enrichResult(section, r, nowMs = Date.now()) {
     if (!t) return r;
     return Object.assign(r, { id: t.id, ref_no: t.ref || undefined, entity: t.entity || r.entity, city: t.city || undefined, publish_date: t.publish || undefined,
       bid_bond_egp: t.bond_egp ?? undefined, bid_bond_note: t.bond_note || undefined, booklet_price_egp: t.booklet_egp ?? undefined, estimated_value: t.est_value ?? undefined, currency: t.currency || undefined,
-      documents_url: t.docs || undefined, open_url: absUrl(t.path), list_url: t.list ? absUrl(t.list) : undefined, list_key: listKey(t) || undefined, market: t.market, country: t.market !== "local" ? t.country : undefined,
+      open_url: absUrl(t.path), list_url: t.list ? absUrl(t.list) : undefined, list_key: listKey(t) || undefined, market: t.market, country: t.market !== "local" ? t.country : undefined,
       /* «tenders/search/#OFF:1» may open ANOTHER tender (shared number): when the record has no unique list link, url = its own page */
       ...(!t.list && absUrl(t.path) ? { url: absUrl(t.path) } : {}) });
   }
@@ -278,11 +279,11 @@ export function enrichResult(section, r, nowMs = Date.now()) {
 }
 
 /* ---------- what the persona gets: the item without its source (owner 2026-11-20) — no `source` (a tender's portal, a news item's
-   paper), no documents_url except a tender's official notice (the e-mails' attachment, see the header) ---------- */
+   paper), no documents_url (no link to another site; a tender's too since 2026-11-21, see the header) ---------- */
 export function sayItem(r) {
   if (!r || typeof r !== "object" || Array.isArray(r)) return r;
   const { source, ...x } = r; void source;
-  if (x.section !== "tenders") delete x.documents_url;
+  delete x.documents_url;
   return x;
 }
 

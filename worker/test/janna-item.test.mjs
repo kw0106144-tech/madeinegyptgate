@@ -98,7 +98,9 @@ describe("/api/janna/item — one item in full + a spoken Egyptian summary", () 
     assert.equal(r.status, 200); const d = r.data;
     assert.equal(d.found, true); assert.equal(d.id, "eg-tnd-003"); assert.equal(d.ref, "6/2026/2027");
     assert.equal(d.entity, "شركة مطاحن مصر العليا"); assert.equal(d.governorate, "الأقصر"); assert.equal(d.bid_bond_egp, 1000000); assert.equal(d.booklet_price_egp, 7000);
-    assert.equal(d.open_url, S + "/tender-item/eg-tnd-003/"); assert.match(d.documents_url, /^https:\/\/meobserver\.news\//);
+    assert.equal(d.open_url, S + "/tender-item/eg-tnd-003/"); assert.equal(d.documents_url, undefined, "owner 2026-11-21 «شيله»: no link to the notice's site");
+    assert.match(TAIBA.docs, /^https:\/\/meobserver\.news\//); assert.equal(findItem("tenders", { id: "eg-tnd-003" }, NOW).documents_url, TAIBA.docs, "findItem keeps it for the «ابعتلي» e-mail (notify-items.js, in-process)");
+    assert.ok(!/meobserver/.test(JSON.stringify(d)), "the notice's site appears nowhere in the answer");
     assert.match(d.text, /^المناقصة دي من شركة مطاحن مصر العليا في الأقصر/);
     assert.match(d.text, /8 ديسمبر/); assert.match(d.text, /التأمين الابتدائي مليون جنيه/); assert.match(d.text, /ثمن الكراسة 7 آلاف جنيه/);
     assert.ok(!/القيمة التقديرية/.test(d.text), "no invented estimated value");
@@ -126,7 +128,7 @@ describe("/api/janna/item — one item in full + a spoken Egyptian summary", () 
     const j = findItem("projects", { id: "r015" }, NOW); assert.equal(j.found, true); assert.equal(j.value_egp_million, 15000); assert.match(j.text, /15 مليار جنيه/); assert.ok(!/^مشروع مشروع/.test(j.text));
     assert.equal(j.progress, undefined); /* the research-only progress % is never served */
   });
-  test("no source (owner 2026-11-20 «ميكتبش مصدر اي معلومه»): every item the persona gets names no paper, portal or site and links no source — only a tender keeps its official notice (the e-mails attach it)", async () => {
+  test("no source (owner 2026-11-20 «ميكتبش مصدر اي معلومه»): every item the persona gets names no paper, portal or site and links no source — not even a tender's official notice (owner 2026-11-21; the e-mails read findItem)", async () => {
     const SRC_WORDS = /المصدر|مصدره|مصدرها|المصادر|منقول|موقعه الرسمي|موقع المعرض|منشور في [^يا]/;
     const ids = { tenders: ITEMS.t.map(x => x.id), rfqs: ITEMS.q.map(x => x.id), offers: ITEMS.o.map(x => x.id), cities: ITEMS.z.map(x => x.id), awards: ITEMS.a.map(x => x.id), projects: ITEMS.j.map(x => x.id),
       news: (DATA.i || []).filter(x => x && x[0] === "news").map(x => x[1]), events: (DATA.i || []).filter(x => x && x[0] === "event").map(x => x[1]) };
@@ -135,7 +137,7 @@ describe("/api/janna/item — one item in full + a spoken Egyptian summary", () 
       const full = findItem(sec, { id: String(id) }, NOW); if (!full.found) continue;
       const r = sayItem(full); n++;
       assert.equal(r.source, undefined, sec + " " + id + ": no source's name");
-      if (sec !== "tenders") assert.equal(r.documents_url, undefined, sec + " " + id + ": no source link");
+      assert.equal(r.documents_url, undefined, sec + " " + id + ": no source link (a tender's notice too, owner 2026-11-21)");
       for (const k of ["text", "contact", "latest_news"]) if (r[k]) assert.doesNotMatch(r[k], SRC_WORDS, sec + " " + id + " " + k + ": " + r[k]);
       if (full.source) assert.ok(!r.text.includes(full.source), sec + " " + id + ": " + r.text);
     }
@@ -144,11 +146,31 @@ describe("/api/janna/item — one item in full + a spoken Egyptian summary", () 
     const nw = ids.news[0], h = await call("/api/janna/item", { method: "POST", body: { section: "news", id: nw } });
     assert.equal(h.status, 200); assert.equal(h.data.found, true); assert.equal(h.data.source, undefined); assert.equal(h.data.documents_url, undefined); assert.ok(h.data.open_url);
     const t = await call("/api/janna/item", { method: "POST", body: { section: "tenders", id: "eg-tnd-003" } });
-    assert.equal(t.data.source, undefined); assert.equal(t.data.documents_url, TAIBA.docs, "a tender's official notice stays for the «ابعتلي» e-mail");
+    assert.equal(t.data.source, undefined); assert.equal(t.data.documents_url, undefined, "no tender notice link either (owner 2026-11-21 «شيله»)");
     /* a stored sentence loses its attribution, the entity's own words stay */
     assert.equal(unsourced("بدء التشغيل التجريبي للمرحلة الأولى وفق المصادر الحكومية في أكتوبر"), "بدء التشغيل التجريبي للمرحلة الأولى في أكتوبر");
     assert.equal(unsourced("المناقصة منشورة في بوابة المشتريات الأوروبية في 3 نوفمبر"), "المناقصة منشورة في 3 نوفمبر");
     assert.equal(unsourced("الافتتاح في يناير وفق المطور"), "الافتتاح في يناير وفق المطور");
+  });
+  test("owner 2026-11-21 «شيله»: the tender results of janna_lookup (POST = the persona, GET too) carry no documents_url and no link off the platform — local, international and all", async () => {
+    const off = u => typeof u === "string" && /^https?:/i.test(u) && !u.startsWith(S + "/");
+    let n = 0;
+    for (const market of [undefined, "all", "africa", "gulf"]) for (const query of ["حديد", "توريد", "مياه", ""]) for (const method of ["POST", "GET"]) {
+      const q = { section: "tenders", query, ...(market ? { market } : {}) };
+      const r = method === "POST" ? await call("/api/janna/lookup", { method, body: q }) : await call("/api/janna/lookup?" + new URLSearchParams(q), { method });
+      if (r.status !== 200 || !r.data || !Array.isArray(r.data.results)) continue;
+      for (const x of r.data.results) {
+        n++;
+        assert.equal(x.documents_url, undefined, method + " " + JSON.stringify(q) + " " + x.title);
+        for (const [k, v] of Object.entries(x)) assert.ok(!off(v), method + " " + k + " = " + v);
+      }
+      assert.ok(!/meobserver|etenders|https?:\/\/(?!madeinegyptgate\.com)/i.test(JSON.stringify(r.data)), method + " " + JSON.stringify(q));
+    }
+    assert.ok(n > 20, "checked " + n + " results");
+    /* the call page's «ابعتلي» harvest (data/janna-live.js itemOpp: documents_url || url || open_url) now falls on the platform's own page */
+    const p = await call("/api/janna/lookup", { method: "POST", body: { section: "tenders", query: "صوامع طيبة" } });
+    const t = p.data.results.find(x => x.id === "eg-tnd-003"); assert.ok(t, JSON.stringify(p.data.results.map(x => x.id)));
+    assert.equal(t.documents_url || t.url || t.open_url, "https://madeinegyptgate.com/tender-item/eg-tnd-003/");
   });
   test("errors: unknown item → POST 200 found:false (the Anam webhook hears it) / GET 404 (no invention); GET without section / key 400; a malformed POST 200 found:false + a text; method 405", async () => {
     const n = await call("/api/janna/item", { method: "POST", body: { section: "tenders", title: "طائرات فضائية حربية" } });

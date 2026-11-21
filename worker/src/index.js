@@ -559,6 +559,7 @@ export function leanLookup(o) {
   const results = o.results.map(r => {
     if (!r || typeof r !== "object") return r;
     const x = { ...r };
+    delete x.documents_url; // owner 2026-11-21 «شيله»: no link to another site reaches the persona (the e-mails read findItem in-process)
     if (x.open_url) {
       delete x.url; delete x.list_url; delete x.list_key;
       try { x.open_url = decodeURI(x.open_url); } catch (e) { /* a malformed escape: keep it encoded */ }
