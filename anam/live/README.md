@@ -13,9 +13,45 @@ previous text back (the version of the file before that write, in git history).
 |---|---|---|---|---|
 | `janna-ar.systemPrompt.md` | Janna AR `5f06d835-22cc-4460-b412-84cefa9e565b` | `2026-11-20T12:27:47.252Z` | `58ca004ed8542ddea43ad62dbe6b13bae45404813dde00913b649d851df8ac8a` | 26,336 |
 | `janna-en.systemPrompt.md` | Janna EN `e5101653-65b4-44a6-85e5-ec2e78f82685` | `2026-11-20T12:32:29.328Z` | `59715d3e6ff495840c97f8262246dbac9f671ebf64fb3f9ce4bf47c7c629a5fa` | 30,787 (a read says 30,788: see Janna AR and Janna EN) |
-| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-20T12:47:51.016Z` | `ffe1d26871abb25fff9345084282be904eff05c1353128d370f88336180298ae` | 30,615 (the API says 30,616: see Bassem) |
+| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-21T22:09:50.514Z` | `98ac9016017cddfb41e2ce6065108d540afe78827d259b31eb7272fd56c3a047` | 32,051 (the API says 32,052: see Bassem) |
 | `bassem_save_profile.description.md` | tool `bassem_save_profile` `4c3b35f3-0590-44d7-85d1-321eeb21c79e` | `2026-11-20T08:37:02.665Z` | `41eaa3ade439de9372710286ac29e0594d4f884b1ac0478777e5a068b829c55a` | 894 |
+| `bassem-notify-send.tools.md` | tools `bassem_notify_member` `325b182c-e5e0-42d0-a130-658919faf12f` and `bassem_send_email` `a00e4d99-df41-4a43-8c66-39bdfa3d2495` | `2026-11-21T22:06:40.549Z` / `2026-11-21T22:06:43.489Z` | (the bodies are in the file) | |
 | `janna_lookup.tool.json` | tool `janna_lookup` `29fd5087-5eff-4919-afb2-3d01b8cc70de` (Janna AR and Janna EN) | `2026-11-20T12:49:00.983Z` | `9d52be6431fcf1dcd9ecd39b301e4758b20553adba47a7956de9a8aac7f0f0b5` (the file) | description 909 |
+
+## The call-quality + «no source» round for Bassem, applied on 2026-11-21
+
+The owner approved it on 2026-11-21 («اه»، «ايوه بس متاخدش وقت»), after main `36f4b43` (fix/bassem-call-quality, fix/no-sources, «فرص السوق») was
+deployed. Round 3 (`scratchpad/round3`, BA-*) is **not** in it: it waits for the search tools.
+
+| UTC | Write | Fields sent | `updatedAt` before → after |
+|---|---|---|---|
+| 22:06:40 | `bassem_notify_member` `325b182c`, `anam_tool_update` | `description`, `config` (`awaitResult` true, `toolTimeoutSeconds` **5**, the same parameters) | `2026-11-20T08:27:35.164Z` → `2026-11-21T22:06:40.549Z` |
+| 22:06:43 | `bassem_send_email` `a00e4d99`, `anam_tool_update` | `config` (the same 25 s and parameters; `to` accepts `me`) | `2026-11-19T22:06:35.548Z` → `2026-11-21T22:06:43.489Z` |
+| 22:09:50 | Bassem, `anam_persona_update` | `systemPrompt` only | `2026-11-20T23:07:39.928Z` → `2026-11-21T22:09:50.514Z` |
+
+- **The live text before.** Bassem's `updatedAt` was `2026-11-20T23:07:39.928Z`, not the 12:58 one of this README. That write sent `toolIds` only: the
+  owner's «🔗 وصّل البحث» (`worker/src/acc-wsconnect.js`, one PUT `{toolIds, expectedUpdatedAt}`) created `bassem_web_hunt` `7175f080` at
+  23:07:38.449 and attached it to Bassem 1.5 s later (25 tool ids since). The prompt itself was unchanged: the read's trim total was 30,616 UTF-16 units
+  (= this file's 30,615 characters + 🌐), its visible 4,877 units ended exactly where this file's first 4,877 units end, and the price sync, run offline on
+  this file with the live plans matrix of `/data/overlay.js` (4,000 / 10,000 / 25,000 / 50,000 / 100,000, VAT 14 %), changes nothing. So the text the
+  changes were applied to is the previous copy here, sha256 `ffe1d268…98ae`.
+- **What changed** (one Python script, each `old` checked to occur exactly once in the live text and once at its turn; 30,615 → 32,051 characters):
+  - the nine call-quality lines of `anam-changes.json` (fix/bassem-call-quality, call `f75d15f4`): BQ-R8 (`old_live`), BQ-R8-MAIL, BQ-R1, BQ-R9, BQ-NAME,
+    BQ-MAIL, BQ-NOTIFY, BQ-SELF, BQ-LANG;
+  - NS1-NS5 of `anam/rounds/2026-11-21-no-sources/replacements.json` (NS6, Janna EN, not applied);
+  - HONEST-ATTR, a new bullet right after the first one of «# الأمانة»: «ماتنسبش لحد صفة أو منصب أو معلومة عنه (زي «رئيس مجلس إدارة») غير لو هو قالها
+    أو موجودة في بيانات العضو اللي وصلتك أول المكالمة.»
+  - Untouched: the emotion tags and «# STYLE CUES», the owner / operator line, the plan prices (the sync still parses the price block and finds nothing to
+    change).
+- **Checked.** `anam_session_list active=true` was empty before the tool writes and right before the persona write. The write carried
+  `expectedUpdatedAt` and got no 409. The reply and a fresh read show `updatedAt` `2026-11-21T22:09:50.514Z`, a trim total of 32,052 UTF-16 units (=
+  32,051 characters + 1 for 🌐) and a visible part of 4,499 units identical to the start of this file; `toolIds` (25), LLM, voice, avatar, director notes,
+  `voiceDetectionOptions` and the greeting are unchanged. A read is trimmed, so the full sha256 cannot be checked from Anam: the text sent was this file.
+- **Seen on the way, not written by this round.** At 22:07:58 UTC (between the tool writes and the persona write) `bassem_web_search` `ba72bdcb` and
+  `bassem_web_hunt` `7175f080` got their «no source» descriptions (the owner's «🔗 وصّل البحث» again, or another session); the persona was not touched by it.
+- **Rollback.** Prompt: this file at `36f4b43` (sha256 `ffe1d268…98ae`, `git show 36f4b43:anam/live/bassem.systemPrompt.md`), `systemPrompt` only, with
+  `expectedUpdatedAt` = `2026-11-21T22:09:50.514Z` or whatever is live then. Tools: the «Before» blocks of `bassem-notify-send.tools.md`; roll the notify
+  tool back together with the prompt (BQ-NOTIFY tells Bassem a result comes back).
 
 ## The «calls» round, applied on 2026-11-20
 
@@ -223,7 +259,7 @@ writes, and are **not** what is live.
 
 ## Bassem
 
-**Since 2026-11-20 12:47 UTC** his prompt is the expressions + usefulness text (section above). His director notes are `warm` 0.5
+**Since 2026-11-21 22:09 UTC** his prompt is the expressions + usefulness text plus the call-quality + «no source» round (both sections above). His director notes are `warm` 0.5
 (before them: 0.55), and his avatar model has been `cara-4.1-express` since 09:30 UTC.
 
 That text is built on his text of 08:57–12:47 UTC (sha256 `fadcad2a…`). That one is `anam/calls/bassem.new.md` of the «calls» round
@@ -277,7 +313,7 @@ The API trims Bassem's and Janna EN's prompts, so their sha256 cannot be checked
 file:
 
 - the `updatedAt`;
-- the total in the trim notice, which counts UTF-16 units: today 30,616 for Bassem's 30,615 characters and 30,788 for Janna EN's 30,787;
+- the total in the trim notice, which counts UTF-16 units: today 32,052 for Bassem's 32,051 characters (since 2026-11-21 22:09 UTC) and 30,788 for Janna EN's 30,787;
 - the part that is shown.
 
 The Worker's price sync (`worker/src/acc-plans.js` `personaSync`, after a plans change, retried hourly) can rewrite each persona's price
