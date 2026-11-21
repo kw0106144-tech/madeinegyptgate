@@ -86,7 +86,7 @@ describe("Bassem's draft summary in the language the member speaks (draftWords, 
       assert.equal(M.draftWords("cmp", {}, lg, o, "ar"), M.draftWords("cmp", {}, lg, o), lg);
       assert.equal(M.draftWords("room", {}, lg, o, undefined), M.draftWords("room", {}, lg, o), lg);
     }
-    assert.match(M.draftWords("cmp", {}, "en", null, "ar"), /قوله دلوقتي في جملتين أو تلاتة بالمصري الإيميل بيقول إيه/);
+    assert.match(M.draftWords("cmp", {}, "en", null, "ar"), /قوله دلوقتي في جملة أو اتنين قصيرين بالمصري \(حوالي ٢٠ كلمة\) الإيميل بيقول إيه/);
   });
   test("he chose French with 🌐: the summary in French, «not in his language» only when the e-mail is not French", () => {
     const fr = M.draftWords("cmp", {}, "fr", null, "fr");
@@ -187,7 +187,7 @@ describe("data/janna-live.js 🌐 wiring (source checks)", () => {
   });
   test("a call where nobody chose sends nothing: the per-part re-send needs a stored choice that differs from the persona's own", () => {
     const p = body("langPart");
-    assert.match(p, /var stored = langStored\(\);\s*if \(stored && stored !== langDef\(\)\) \{ LG\.prev = langDef\(\); langSend\(me, stored, me\.cont \? 0 : 2\); \}/);
+    assert.match(p, /var stored = langStored\(\);\s*if \(stored && stored !== langDef\(\)\) \{ LG\.prev = langDef\(\); langSend\(me, stored, me\.cont \? 0 : 2\); langTouch\(\); \}/);
     assert.match(body("langStored"), /langRow\(s\) && s !== langDef\(\) \? s : ""/);
     assert.match(body("langDef"), /persona === "janna" && EN \? "en" : "ar"/, "Bassem hears Arabic on both pages");
     assert.match(body("langWire"), /on\("DATA_CHANNEL_OPEN", function \(\) \{ setTimeout\(function \(\) \{ langPart\(me\); \}, 0\); \}\)/);
@@ -253,6 +253,33 @@ describe("data/janna-live.js 🌐 wiring (source checks)", () => {
     sb.window.MIGFLAGS.on = () => true; const me4 = { ...me, lang: "fr", client: { sendDataMessage: m => sent.push(m) } }; sb.LV = me4; sb.langOff();
     assert.equal(sent.length, 1, "nothing for a call in its own language, a part not ready, or while the switch is on");
     assert.match(LIVE, /window\.addEventListener\("mig:flags", function \(\) \{ try \{ langOff\(\); \} catch \(e\) \{\} try \{ langUi\(\); \} catch \(e\) \{\} \}\);/);
+  });
+  test("review 2026-11-21: a choice not used for 30 min is dropped before a NEW call (Bassem's call f75d15f4 heard Arabic as English a day later)", () => {
+    const store = {}, clock = { t: 1_800_000_000_000 };
+    const sb = { LG: { mem: {} }, EN: false, persona: "bassem", Date: { now: () => clock.t },
+      sessionStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } } };
+    vm.createContext(sb);
+    vm.runInContext(cut(LIVE, "  /* @lang-pure-begin", "  /* @lang-pure-end */") + "\n  function langDef() { return persona === \"janna\" && EN ? \"en\" : \"ar\"; }\n" + cut(LIVE, "  var LANG_TTL", "  /* what the persona hears now"), sb);
+    assert.equal(sb.LANG_TTL, 30 * 60000);
+    sb.langStore("en"); assert.equal(store["mig-jnl-lang:bassem"], "en|" + clock.t, "the choice and when it was used");
+    assert.equal(sb.langStored(), "en");
+    clock.t += 20 * 60000; sb.langExpire(); assert.equal(sb.langStored(), "en", "20 min later: kept");
+    sb.langTouch(); clock.t += 20 * 60000; sb.langExpire(); assert.equal(sb.langStored(), "en", "used again 20 min ago: kept");
+    clock.t += 11 * 60000; sb.langExpire(); assert.equal(sb.langStored(), "", "31 min unused: back to the persona's own language");
+    assert.equal(store["mig-jnl-lang:bassem"], undefined); assert.equal(sb.LG.expired, "en");
+    store["mig-jnl-lang:bassem"] = "en"; assert.equal(sb.langStored(), "en", "a value stored before this change still reads");
+    sb.langExpire(); assert.equal(sb.langStored(), "", "…and counts as old (it has no time)");
+    sb.langStore("ar"); assert.equal(store["mig-jnl-lang:bassem"], undefined, "the persona's own language is no choice");
+    sb.sessionStorage = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); }, removeItem() { throw new Error("blocked"); } };
+    sb.langStore("fr"); assert.equal(sb.langStored(), "fr", "no sessionStorage: this page's memory");
+    clock.t += 31 * 60000; sb.langExpire(); assert.equal(sb.langStored(), "");
+  });
+  test("review 2026-11-21 wiring: only a NEW call expires the choice (a continuation part keeps it); no call on → the 🌐 link shows the next call's language; his words keep it in use", () => {
+    const p = body("langPart");
+    assert.match(p, /me\.langDone = true;\s*if \(!me\.cont\) langExpire\(\);[^\n]*\n\s*var stored = langStored\(\);/);
+    assert.match(p, /langSend\(me, stored, me\.cont \? 0 : 2\); langTouch\(\); \}/);
+    assert.match(LIVE, /function langUi\(\) \{\n    if \(!LV \|\| LV\.closed\) langExpire\(\);/);
+    assert.match(body("heardAdd"), /try \{ langTouch\(\); \} catch \(e\) \{\}/);
   });
   test("a long call's next part keeps the language; the placeholder invites any language; JANNA_LIVE.lang()", () => {
     assert.match(body("resumeText"), /s \+= "\\nLANGUAGE: " \+ lc \+ " \(" \+ langRow\(lc\)\[3\] \+ "\): continue only in " \+ langRow\(lc\)\[3\] \+ "\."/);
