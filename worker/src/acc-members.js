@@ -385,8 +385,8 @@ export async function revokeSessions(req, env, ctx, adm, id) {
    request under the Egyptian personal data protection law 151/2020 — in body.reason (≥ 10 characters); the reason and the counts go
    into the audit row. Both tables are checked first: 0007 / 0008 may not be applied yet, and a missing table fails the whole batch.
    0009: the same erasure takes his tasks (memory_tasks), «ملخص العميل» (memory_briefs) and Janna's memory of every visitor id linked to
-   his account (advisor_memory 'v:<id>' rows + janna_visitors) — each table only when it exists. (The memory alone, without the account:
-   the owner's POST /api/admin/cc/memory/erase, acc-memory.js.) */
+   his account (advisor_memory 'v:<id>' rows + janna_visitors) — each table only when it exists. 0011: and his rows of the daily calls report
+   (call_sessions, call_reviews). (The memory alone, without the account: the owner's POST /api/admin/cc/memory/erase, acc-memory.js.) */
 export const ERASE_REASON_MIN = 10;
 export async function deleteMember(req, env, ctx, adm, id) {
   const b = await body(req);
@@ -405,7 +405,10 @@ export async function deleteMember(req, env, ctx, adm, id) {
   /* review 2026-11-19 #11: «بنك المعلومات» too — his keyed asker hash (and his linked visitor ids') leaves the asker lists, and an entry
      only he asked goes (knowledge.js kbEraseStmts, the same step as the API erasure acc-memory.js) */
   const kb = await kbEraseStmts(env, subj);
-  const reason = line(b.reason, 300), erase = memRows > 0 || profile || taskRows > 0 || vids.length > 0 || kb.stmts.length > 0;
+  const cs = await hasTable(env, "call_sessions"), cr = await hasTable(env, "call_reviews"); // 0011: the calls report's rows of him
+  const callRows = (cs ? (await countOf(env, `SELECT COUNT(*) AS n FROM call_sessions WHERE member_id = ? OR subject IN (${ph})`, m.id, ...subj)) || 0 : 0)
+    + (cr ? (await countOf(env, `SELECT COUNT(*) AS n FROM call_reviews WHERE subject IN (${ph})`, ...subj)) || 0 : 0);
+  const reason = line(b.reason, 300), erase = memRows > 0 || profile || taskRows > 0 || vids.length > 0 || kb.stmts.length > 0 || callRows > 0;
   if (erase && Array.from(reason).length < ERASE_REASON_MIN) fail(400, "reason_required", "حذف الحساب ده هيمسح ذاكرة باسم معاه: اكتب السبب القانوني (طلب رسمي من صاحب البيانات بموجب قانون حماية البيانات الشخصية 151 لسنة 2020) / deleting this account erases Bassem's memory of it: state the legal basis (a formal data-subject request, Egyptian PDPL 151/2020)", { memory_rows: memRows, factory_profile: profile, tasks: taskRows, janna_visitors: vids.length, min: ERASE_REASON_MIN });
   await batch(env, [
     env.DB.prepare("UPDATE members SET email = ?, name = '', title = '', phone = '', company = '', products = '', sector = '', governorate = '', plan = 'visitor', plan_expires = '', factory_ref = '', prefs_json = '{}', inbox_paused = 1, email_verified_at = '', role = 'user', updated_at = ? WHERE id = ?").bind(`deleted+${m.id}@invalid`, t, m.id),
@@ -418,9 +421,11 @@ export async function deleteMember(req, env, ctx, adm, id) {
     ...(brf ? [env.DB.prepare(`DELETE FROM memory_briefs WHERE subject IN (${ph})`).bind(...subj)] : []),      // 0009: «ملخص العميل»
     ...(vids.length ? [env.DB.prepare(`DELETE FROM janna_visitors WHERE member_id = ?`).bind(m.id)] : []),     // 0009: his visitor ids
     ...kb.stmts,                                                                                                  // 0009: his asker hash / his own entries in «بنك المعلومات»
+    ...(cs ? [env.DB.prepare(`DELETE FROM call_sessions WHERE member_id = ? OR subject IN (${ph})`).bind(m.id, ...subj)] : []), // 0011: the calls report
+    ...(cr ? [env.DB.prepare(`DELETE FROM call_reviews WHERE subject IN (${ph})`).bind(...subj)] : []),
     metaUpsert(env, m.id, { notes: "deleted " + t, legacy_profile_json: "{}", tags: "", status: "active", requested_plan: "", suspended_plan: "", suspended_expires: "" }, t),
     adm.auditStmt("member.delete", "member", m.id, { email: maskEmail(m.email), plan: m.plan, company: m.company ? "(set)" : "", ...(erase ? { bassem_memory_rows: memRows, factory_profile: profile, tasks: taskRows, janna_visitors: vids.length } : {}) },
-      { email: `deleted+${m.id}@invalid`, ...(reason ? { reason } : {}), ...(kb.stmts.length ? { knowledge_askers: kb.askers, knowledge_removed: kb.removed } : {}) }, `anonymised ${maskEmail(m.email)}` + (erase ? ` · Bassem memory erased (${memRows} rows${profile ? " + factory profile" : ""}${taskRows ? " + " + taskRows + " tasks" : ""}${vids.length ? " + Janna visitor memory (" + vids.length + ")" : ""}${kb.stmts.length ? " + knowledge bank (" + kb.askers + " asker lists, " + kb.removed + " entries)" : ""}) · legal request: ${reason}` : "")),
+      { email: `deleted+${m.id}@invalid`, ...(reason ? { reason } : {}), ...(kb.stmts.length ? { knowledge_askers: kb.askers, knowledge_removed: kb.removed } : {}), ...(callRows ? { call_rows: callRows } : {}) }, `anonymised ${maskEmail(m.email)}` + (erase ? ` · Bassem memory erased (${memRows} rows${profile ? " + factory profile" : ""}${taskRows ? " + " + taskRows + " tasks" : ""}${vids.length ? " + Janna visitor memory (" + vids.length + ")" : ""}${kb.stmts.length ? " + knowledge bank (" + kb.askers + " asker lists, " + kb.removed + " entries)" : ""}) · legal request: ${reason}` : "")),
   ]);
   return { body: { ok: true } };
 }

@@ -55,6 +55,7 @@ import { handleJannaHunt, handleBassemHunt } from "./web-hunt.js";
 import { publishedLeads, publicItem, handlePublicLeads } from "./web-public.js";
 // ---- 📎 photos in Janna's and Bassem's chats (src/chat-media.js, switch chat_photos): read once by Workers AI, never stored ----
 import * as CHATMEDIA from "./chat-media.js";
+import { callsReportCron } from "./calls-report.js"; // «تقرير مكالمات جنة وباسم اليومي»: the morning e-mail (platform cron, its own D1 budget)
 // Admin Control Center (docs/janna/ACC-CONTRACT.md §0.2): one CC object handed to every new handler (no cross-area imports)
 import * as ACC from "./acc.js"; import * as CONTENT from "./content.js"; import * as PAY from "./payments.js"; import * as MAILC from "./email-center.js";
 export const CC = { acc: ACC, content: CONTENT, payments: PAY, email: MAILC, chatMedia: CHATMEDIA };   // Control Center (ACC-CONTRACT §0.2)
@@ -732,10 +733,13 @@ export default WORKER;
 /* «🛠️ المطوّر» health (acc-dev.js): this Worker's own APIs are checked IN-PROCESS — a fetch from a Worker to its own zone skips the Workers
    routes of that zone (no global_fetch_strictly_public flag here), so it could never reach them through the front door */
 CC.self = { fetch: (req, env, ctx) => WORKER.fetch(req, env, ctx) };
+/* the daily calls report (calls-report.js) re-runs searches on the bundled data and counts today's open tenders: the lookup's own code
+   (section: how the route reads a section — LOOKUP_SECTIONS, their aliases, unknown → factories) */
+CC.lookup = { search: (...a) => search(...a), tenderStatus, GOV, CITY_GOV, section: lookupSection };
 /* every 15 min: inquiry retries / 48 h reminders / 30-day auto-close; once a day after 07:00 Cairo: digests + deadline
    reminders; Bassem's WhatsApp at each member's own time; once a Cairo day after midnight: the memory consolidation (memory.js) and then
-   the daily memory update (daily.js: day digests, «ملخص العميل», tasks, knowledge merge, caps report). Each part is isolated so one
-   failure does not stop the others. */
+   the daily memory update (daily.js: day digests, «ملخص العميل», tasks, knowledge merge, caps report); once a Cairo day from the owner's time
+   (default 08:30): the calls report of the day before (calls-report.js). Each part is isolated so one failure does not stop the others. */
 export async function platformCron(env, nowMs = Date.now()) {
   const out = {};
   if (!env || !env.DB) return out;
@@ -745,7 +749,8 @@ export async function platformCron(env, nowMs = Date.now()) {
   const menv = budgetEnv(env, TICK.budget), busy = () => !!(out.daily && out.daily.ran); // the 07:00 digests tick (its item sync is ~800 statements) runs no memory job
   for (const [k, fn] of [["inquiries", () => inquiriesCron(env, nowMs)], ["daily", () => dailyJobs(env, nowMs)], ["bassem", () => bassemCron(env, nowMs, m => newCountFor(env, m, nowMs))], ["cc", () => CC.acc.ccCron(env, nowMs, CC)],
     ["memory", () => (busy() ? { skipped: "daily digests ran in this tick" } : memoryCron(menv, nowMs))],
-    ["memory_day", () => (busy() ? { skipped: "daily digests ran in this tick" } : out.memory && out.memory.rebuilt ? { skipped: "consolidation ran in this tick" } : dailyMemory(menv, nowMs))]]) {
+    ["memory_day", () => (busy() ? { skipped: "daily digests ran in this tick" } : out.memory && out.memory.rebuilt ? { skipped: "consolidation ran in this tick" } : dailyMemory(menv, nowMs))],
+    ["calls_report", () => (busy() ? { skipped: "daily digests ran in this tick" } : callsReportCron(env, nowMs, CC))]]) { // its own budgetEnv(env, 80) inside
     try { out[k] = await fn(); } catch (e) { out[k] = { error: String(e && e.message || e) }; console.error("platform cron " + k, e && e.stack || e); }
   }
   return out;

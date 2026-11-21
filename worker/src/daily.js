@@ -138,6 +138,9 @@ export async function refreshBrief(env, subject, agent, D, nowMs = Date.now()) {
     const vs = await q("SELECT visitor_id, first_at, calls, interest_json FROM janna_visitors WHERE member_id = ? AND link_via = 'session' ORDER BY first_at LIMIT 3", subject); // review #5 / #6: his own signed-in links only
     if (vs.length && vs.some(v => v.calls > 0)) { const it = jparse(vs[0].interest_json, {}), n = vs.reduce((a, v) => a + Number(v.calls || 0), 0), intr = L([...(it.products || []), ...(it.markets || []).map(x => marketAr(x))], 30, 4);
       lines.push("- قبل ما يبقى عضو: اتكلم مع جنة " + ar(n).replace("مكالمة", "مرة").replace("مكالمتين", "مرتين").replace("مكالمات", "مرات") + " (أول مرة " + (dayAr(cairoOf(vs[0].first_at), nowMs) || "") + ")" + (intr.length ? "، وكان مهتم بـ " + intr.join("، ") : "")); }
+    /* «رسالة الصبح <time>» only, never its channel (owner 2026-11-20: no WhatsApp promise while sending is off): this brief is read on later
+       days, so a stored «على الواتساب» would outlive the switch; the call's member block says which channel is true today (bassem-context.js
+       WA_LINE, from whatsapp.js waMemberState) */
     const p = prefsOf(m || {}), pf = [p.session_time ? "ميعاد الشغل اليومي " + p.session_time : "", p.morning_time && p.morning_time !== "09:00" ? "رسالة الصبح " + p.morning_time : p.morning_time ? "رسالة الصبح 09:00" : "", top(langs, 3).filter(l => LANG_AR[l]).length ? "الإيميلات بـ" + top(langs, 3).filter(l => LANG_AR[l]).map(l => LANG_AR[l]).join(" و") : ""].filter(Boolean);
     if (pf.length) lines.push("- تفضيلات: " + pf.join("، "));
     Object.assign(data, { makes, markets: mk, history, topics: tp, deals: dl, prefs: pf });

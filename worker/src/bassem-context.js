@@ -121,6 +121,20 @@ export function marketsAr(m) {
 /* the plan in force (an expired plan is no plan), as the Control Center names it: «باقة الشريك الاستراتيجي» → «الشريك الاستراتيجي» */
 export const planAr = m => ctxField(String((PLAN_NAME[effPlan(m)] || [])[0] || "").replace(/^باقة\s+/, ""), FIELD_MAX);
 
+/* the WhatsApp line (owner 2026-11-20: in a call Bassem promised the owner a morning report «على الواتساب» while the platform's real
+   WhatsApp sending was still off): ONE line in every member block — is WhatsApp on or off for THIS member, as whatsapp.js waMemberState
+   decides it from the memo ccBoot loaded for the request (no extra read). The saved prompt says «على الواتساب أو الإيميل»; this line says
+   which one is true today. off = the owner's own sentence. paused: his daily messages are stopped (no morning message, no call link at his
+   time, no WhatsApp) whatever the platform's switch says, so that line never names WhatsApp as coming back. Any other value (not given,
+   unknown) reads as off: a promise the platform cannot keep is worse than none. No «» (the saved prompt speaks what is in «»). */
+export const WA_LINE = Object.freeze({
+  off: "- إرسال الواتساب من المنصة لسه مش شغّال: الرسايل والتقارير بتوصله على الإيميل بس، فماتوعدوش بالواتساب.",
+  paused: "- العضو موقّف رسايل باسم اليومية: مفيش رسالة صبح ولا لينك مكالمة في ميعاده ولا أي رسالة واتساب بتوصله، واللي بتبعتهوله بنفسك بيوصله على الإيميل بس، فماتوعدوش بالواتساب ولا برسالة الصبح؛ ولو عايزها ترجع، يرجّعها من قسم الواتساب والإيميل في لوحة التحكم بتاعته.",
+  member: "- إرسال الواتساب من المنصة شغّال، بس الواتساب مش متفعّل للعضو ده في حسابه: الرسايل والتقارير بتوصله على الإيميل بس، فماتوعدوش بالواتساب؛ ولو عايزها على الواتساب، يفعّلها من قسم الواتساب والإيميل في لوحة التحكم بتاعته.",
+  live: "- إرسال الواتساب من المنصة شغّال ومتفعّل للعضو ده: تقدر تبعتله على الواتساب والإيميل، وقول إن حاجة وصلت على الواتساب بس لما نتيجة الأداة تقول كده.",
+});
+export const waLineAr = s => WA_LINE[s === "live" || s === "member" || s === "paused" ? s : "off"];
+
 /* the persona's FIRST sentence (initialMessage), Arabic on every page; g = honorific(...).g. The neutral line ("" : a title a man or a
    woman may hold) has no second-person form at all (حضرتك / بيك / عامل are spoken -ak / -ik, masculine by default) */
 export function greeting(addr, g) {
@@ -136,7 +150,8 @@ export function greeting(addr, g) {
    first sentence (no name, no second-person form), «don't invent a name» and the account facts; janna-session.js uses it only when
    Bassem's memory or the member's factory profile has something to add (else today's plain request, exactly as before).
    o.continued (a continuation part of the same call, janna-session.js continue_call): no greeting at all (the ephemeral persona skips
-   it), «don't greet again, carry on from the last words», and no first-meeting line (that part of the call already happened). */
+   it), «don't greet again, carry on from the last words», and no first-meeting line (that part of the call already happened).
+   o.wa (whatsapp.js waMemberState: "live" | "member" | "paused" | "off"): the WhatsApp line above (WA_LINE); not given → the off line. */
 export function memberContext(m, lang, o = {}) {
   if (!m) return null;
   lang = lang === "en" ? "en" : "ar";
@@ -154,6 +169,7 @@ export function memberContext(m, lang, o = {}) {
   if (plan) { L.push("- الباقة: " + plan + (markets ? "، والأسواق في نطاقها: " + markets : "")); known.push("باقته"); }
   /* the signature of every e-mail he writes for the member: the title, the FULL name and the company as the platform has them */
   if (named) L.push("- الإمضاء في أي إيميل بتكتبه له: " + h.ar + " " + (fullName(m.name) || first) + (company ? " — " + company : "") + ". الاسم بالكامل والشركة زي ما هم هنا بالظبط ومن غير اختصار؛ وفي إيميل مش بالعربي: " + (h.en || h.ar) + " والاسم نفسه بالحروف اللاتيني.");
+  L.push(waLineAr(o.wa)); // WhatsApp on or off for him, before he promises a channel (o.wa = whatsapp.js waMemberState; not given → off)
   if (o.continued) L.push("- المكالمة دي استكمال لنفس المكالمة بعد ما اتقطعت: ماترحّبش تاني ولا تقول إنك باسم ولا تسأله عن حاله، وكمّل من آخر كلام بينكم المكتوب تحت.");
   else L.push(named ? "- إنت فتحت المكالمة بترحيب باسمه وقلتله إنك باسم وسألته عن حاله: ماتكرّرش الترحيب ولا إنك باسم، واسمع رده وكمّل الخطوة 1."
     : "- إنت فتحت المكالمة بترحيب وقلتله إنك باسم وسألته عن الأخبار: ماتكرّرش الترحيب ولا إنك باسم، واسمع رده وكمّل الخطوة 1.");

@@ -26,6 +26,8 @@
      chat_photos               chat-media.js     POST /api/janna/media/look, /api/janna/media/ticket, /api/advisor/media/look → 503
                                                  feature_off; janna-session.js gives Janna's call no photo ticket (OFF by default; LOCKED
                                                  while the Worker has no AI binding: featureOn ignores locks, so the endpoints check env.AI too)
+     calls_report              calls-report.js   the daily calls report e-mail (platform cron) is skipped before any Anam / D1 read;
+                                                 POST /api/admin/cc/dev/calls-report/send (+ /preview) → 503 feature_off
    The platform's own apps (user agent «MIGApp/<v> (ios|android)», app-ua.js; app parity plan 2026-11-20 — the defaults keep the apps
    exactly like the website, the texts of the OFF rows wait for the owner's approval: docs/app/OWNER-APPROVAL-AR.md):
      app_buy_ios / app_buy_android  payments.js + acc-me.js  POST /api/pay/checkout, POST /api/me/invoices from THAT app → 403 app_buy_off
@@ -39,14 +41,16 @@
    Rows are LOCKED (effective off, cannot be switched ON from here; OFF is always allowed) while what they need is missing: whatsapp_send
    until the respond.io token test passed; bassem_web_search / janna_web_search until a web-search key + their tool secret exist (both in
    «مفاتيح الخدمات»); web_leads, web_leads_public, web_leads_lookup, account_delete, visitor_erase_request until their migration is applied. chat_photos while the Worker has no AI binding (env.AI).
+   calls_report until an e-mail route («البريد») and a report recipient exist.
    The two privacy rules are PERMANENT POLICY (POLICIES): shown, never switches.
    Reader: loadFeatures(env) — ≤ 1 D1 read per isolate per 30 s (memo per env.DB; acc.js ccBoot warms it at the start of every request /
    cron run), featureOn(env, key) async, featureSync(env, key) from the memo (the default before the first load). No 0006 tables → the
    defaults; any other read error → the last good view, else the defaults (a D1 hiccup never switches the platform off).
-   Leaf module: imports service-keys.js only (inquiries.js, whatsapp.js, auth.js, janna-session.js, websearch.js, web-hunt.js, web-leads.js,
-   digest.js, bassem-meetings.js import it). It reads the «🔗 وصّل البحث بجنة وباسم» state itself (cc_settings websearch.connect — nit 2:
-   never through acc-wsconnect.js, which imports this file). */
+   Leaf module: imports service-keys.js and email-center.js only (inquiries.js, whatsapp.js, auth.js, janna-session.js, websearch.js, web-hunt.js,
+   web-leads.js, digest.js, bassem-meetings.js, calls-report.js import it). It reads the «🔗 وصّل البحث بجنة وباسم» state itself (cc_settings
+   websearch.connect — nit 2: never through acc-wsconnect.js, which imports this file). */
 import { loadServiceKeys, respondioToken, webSearchConfig } from "./service-keys.js";
+import { mailReady } from "./email-center.js"; // calls_report's lock: an e-mail route exists (imports crypto.js only — no cycle)
 
 export const FEATURES_KEY = "features";
 export const FLAGS_MEMO_MS = 30000;
@@ -115,6 +119,12 @@ export const FEATURES = Object.freeze([
     desc_ar: "إيميل وإشعار الصبح بالجديد اللي يطابق متابعات العضو، وتذكير قبل آخر موعد بـ 7 أيام وبيوم. لو قفلته، مفيش ملخصات ولا تذكيرات.",
     desc_en: "The morning e-mail / notification with new items matching a member's follows, and reminders 7 days and 1 day before a deadline. Off: no digests and no reminders.",
     enforced_by: ["cron: daily digests + deadline reminders"] },
+  { key: "calls_report", default: true, scope: "server",
+    label_ar: "تقرير مكالمات جنة وباسم اليومي (إيميل)", label_en: "Daily Janna & Bassem calls report (e-mail)",
+    desc_ar: "كل يوم الصبح في الميعاد اللي بتحدده (الافتراضي ٨:٣٠ بتوقيت القاهرة) بيوصل لمستلمي التقرير إيميل بمكالمات جنة وباسم في اليوم اللي فات: مين كلّم، سأل عن إيه، اتقاله إيه، الأدوات رجّعت إيه، النتيجة، وتقييم تلقائي لكل مكالمة. لو قفلته، مفيش تقرير ولا أي قراية من Anam علشانه.",
+    desc_en: "Every morning at the time you set (default 08:30 Cairo time) the report recipients get an e-mail with yesterday's Janna and Bassem calls: who talked, what they asked, what they were told, what the tools returned, the outcome and an automatic rating of each call. Off: no report and no Anam reads for it.",
+    lock_rule_ar: "مقفول لحد ما يبقى فيه طريقة إرسال إيميل في «البريد» ومستلم للتقرير في «المطوّر» ← «تقرير المكالمات»", lock_rule_en: "Locked until «E-mail» has a way to send and the report has a recipient («Developer» → «Calls report»)",
+    enforced_by: ["cron: calls report", "POST /api/admin/cc/dev/calls-report/send → 503 feature_off"] },
   { key: "whatsapp_send", default: true, scope: "server",
     label_ar: "إرسال واتساب", label_en: "WhatsApp sending",
     desc_ar: "زرار إيقاف إضافي لكل رسايل الواتساب. التشغيل الحقيقي بيتعمل من «مفاتيح الخدمات» (اختبار توكن respond.io ← رسالة تجربة لرقم المنصة ← «تشغيل إرسال واتساب الحقيقي»). لو قفلته هنا، مفيش أي رسالة واتساب بتطلع (ولا حتى رسالة التجربة) والإيميل بيشتغل بداله.",
@@ -322,6 +332,12 @@ export async function stateOf(env, d) {
     // 📎 photos: the Worker's Workers AI binding ([ai] in worker/wrangler.toml) — without it nothing can read a photo
     if (d.key === "chat_photos") return env && env.AI && typeof env.AI.run === "function" ? NONE : { locked: T("no_ai", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
     if (d.key === "web_leads" || d.key === "web_leads_public" || d.key === "web_leads_lookup") return (await leadsStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
+    // the daily calls report (calls-report.js): an e-mail route (the e-mail center's config, RESEND_API_KEY or the SEND_EMAIL binding) and a recipient
+    if (d.key === "calls_report") {
+      if (!mailReady(env)) return { locked: T("no_route", "مقفول: مفيش طريقة إرسال إيميل شغّالة — شغّلها من «البريد»", "Locked: no working e-mail route — set it up in «E-mail»"), needs: null, ready: false };
+      if (!(await callsReportTo(env)).length) return { locked: T("no_recipient", "مقفول: مفيش مستلم للتقرير — حطّه في «المطوّر» ← «تقرير المكالمات»", "Locked: the report has no recipient — set one in «Developer» → «Calls report»"), needs: null, ready: false };
+      return NONE;
+    }
     // the app's store rows: the deletion requests need their table (migration 0010); the reviewer sign-in needs its address + code, unexpired
     if (d.key === "account_delete" || d.key === "visitor_erase_request") {
       return (await deleteStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
@@ -377,6 +393,19 @@ export async function readReview(env) {
     const until = String(o.until || ""), t = Date.parse(until);
     return { email: o.email, code_hash: o.code_hash, until, by: String(o.by || ""), at: String(o.at || ""), live: t > Date.now() };
   } catch (e) { return null; }
+}
+
+/* «تقرير المكالمات اليومي» (calls-report.js): cc_settings k = CALLS_REPORT_KEY (scope 'system'; dev.* is reserved for the owner's /dev API) —
+   the recipients the owner saved (JSON `to`, ≤ 5), else the platform's own mailboxes TEAM_EMAIL + ADMIN_EMAILS (common.js adminEmails).
+   → [addresses] (lower case) — never throws */
+export const CALLS_REPORT_KEY = "dev.calls_report";
+const MAIL_RX = /^[^\s@<>()",;:\\[\]]{1,64}@[A-Za-z0-9](?:[A-Za-z0-9-]{0,62}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,62}[A-Za-z0-9])?)+$/; // advisor.js isEmail
+const mailOk = e => typeof e === "string" && e.length <= 254 && MAIL_RX.test(e);
+export async function callsReportTo(env) {
+  const db = dbOf(env); let to = [];
+  if (db) try { const r = await db.prepare("SELECT v FROM cc_settings WHERE k = ? AND scope = 'system'").bind(CALLS_REPORT_KEY).first(); const o = r ? JSON.parse(String(r.v || "")) : null; if (o && Array.isArray(o.to)) to = o.to.map(x => String(x || "").trim().toLowerCase()).filter(mailOk).slice(0, 5); } catch (e) { to = []; }
+  if (to.length) return to;
+  return [...new Set([String((env && env.TEAM_EMAIL) || ""), ...String((env && env.ADMIN_EMAILS) || "").split(/[\s,;]+/)].map(x => x.replace(/[\r\n\t]+/g, " ").trim().slice(0, 254).toLowerCase()).filter(mailOk))];
 }
 
 /* ---------- the views ---------- */

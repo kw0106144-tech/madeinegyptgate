@@ -175,7 +175,9 @@ describe("Janna's memory in her next call: POST /api/janna/session {agent: janna
     refuse = true; calls.length = 0;
     const r = await sess(env, { agent: "janna", visitor_id: v });
     assert.equal(r.status, 200);
-    assert.deepEqual(tokenPosts().map(c => !!c.body.personaConfig.systemPrompt), [true, false], "the enriched copy, then the plain persona");
+    // the calls report's tagged clientLabel (janna-session.js): a 4xx with the tag → the same copy once with the plain label, then the plain persona
+    assert.deepEqual(tokenPosts().map(c => !!c.body.personaConfig.systemPrompt), [true, true, false], "the enriched copy (tagged, then the plain label), then the plain persona");
+    assert.deepEqual(tokenPosts().map(c => /\.[a-z2-7]{12}$/.test(c.body.clientLabel)), [true, false, false]);
     assert.equal(r.data.visitor_context, undefined);
   });
   test("signed in: the visitor id is linked to the member (session); a second member on the same browser never takes it; an unauthenticated visitor never reads another visitor's memory", async () => {

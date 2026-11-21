@@ -9,7 +9,7 @@
    /api/admin/cc/keys*: «مفاتيح الخدمات» (owner only, acc-keys.js) — respond.io token + channel, Anam key, the WhatsApp live switch;
      POST /keys/websearch/connect = «🔗 وصّل البحث بباسم» (acc-wsconnect.js: creates / updates the Anam tool bassem_web_search, attaches it to Bassem).
    /api/admin/cc/dev/*: «🛠️ المطوّر» (owner only, dev.manage, acc-dev.js) — feature switches (flags.js), deploys + rollback, health, audit,
-     the owner's photo-reading test (POST /dev/vision, src/chat-media.js).
+     the owner's photo-reading test (POST /dev/vision, src/chat-media.js), the daily calls report (calls-report.js: settings, send, preview).
    /api/admin/cc/meetings*: «📞 اجتماعات باسم» (owner + admin, meetings.bassem; the daily cap: owner only, meetings.cap — bassem-meetings.js)
      — Bassem (Anam) joins a Google Meet / Zoom / Teams call of the platform's team; Anam's list of his invites; cancel.
    ccBoot(env, CC) applies the plans matrix (≤ 1 D1 read per isolate per 60 s), the mail config and the service keys (service-keys.js);
@@ -210,6 +210,11 @@ const ROUTES = [
   R("POST", P("/dev/deploys/rollback"), "dev.manage", (q, e, c, a) => DEV.postRollback(q, e, c, a)),
   R("GET", P("/dev/health"), "dev.manage", (q, e, c, a) => DEV.getHealth(q, e, c, a)),
   R("GET", P("/dev/audit"), "dev.manage", (q, e, c, a, u) => DEV.devAudit(e, u)),
+  // «تقرير المكالمات اليومي» (calls-report.js): settings, a manual send (≤ 3 per report day), a preview (≤ 6 per 10 min) — every one audited
+  R("GET", P("/dev/calls-report"), "dev.manage", (q, e) => DEV.getCallsReport(e)),
+  R("PUT", P("/dev/calls-report"), "dev.manage", (q, e, c, a) => DEV.putCallsReport(q, e, c, a)),
+  R("POST", P("/dev/calls-report/send"), "dev.manage", (q, e, c, a) => DEV.sendCallsReport(q, e, c, a)),
+  R("GET", P("/dev/calls-report/preview"), "dev.manage", (q, e, c, a, u) => DEV.previewCallsReport(q, e, c, a, u)),
   R("GET", P("/dev/review"), "dev.manage", (q, e) => DEV.getReview(e)),
   R("PUT", P("/dev/review"), "dev.manage", (q, e, c, a) => DEV.putReview(q, e, c, a)),
   R("DELETE", P("/dev/review"), "dev.manage", (q, e, c, a) => DEV.deleteReview(q, e, c, a)),
