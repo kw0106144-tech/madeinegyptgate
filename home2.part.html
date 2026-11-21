@@ -602,6 +602,17 @@ html[lang=en] .hero h1::first-letter { text-transform: uppercase; }
 .dl .pr { display: flex; gap: 6px; align-items: baseline; } .dl .pr b { color: #B42318; font-size: .95rem; } .dl .pr s { color: var(--muted); font-size: .74rem; }
 .dl .sl { font-size: .68rem; color: var(--green); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spimg { display: block; width: 100%; height: 100%; aspect-ratio: 1; background-size: 1000% 1000%; background-repeat: no-repeat; background-color: #fff; }
+/* iPhone / iPad only (html.mig-iosw, set by the script below when CSS.supports("-webkit-touch-callout", "none"), i.e. WebKit on iOS):
+   Safari whitened the page under the header while scrolling (2026-11-21), its tiles painted late. No backdrop blur over the playing
+   hero video (it is redone at every video frame; a slightly stronger glass instead), the endless animations of a section far from the
+   screen stop (each kept a layer of its own; they start again before the section is seen), and a finished entrance animation (cin2, heroIn, smrise) is removed once it ended (same final look, one layer less). */
+html.mig-iosw .hchips span { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255,255,255,.14); }
+html.mig-iosw .kpis div { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(255,255,255,.12); }
+html.mig-iosw .ios-pause .live-dot, html.mig-iosw .ios-pause .ticker .run, html.mig-iosw .ios-pause .vid .play, html.mig-iosw .ios-pause .sphead h3 .live,
+html.mig-iosw .ios-pause .sprun, html.mig-iosw .ios-pause .awrun, html.mig-iosw .ios-pause .plogos-track, html.mig-iosw .ios-pause .radar .sweep,
+html.mig-iosw .ios-pause .fpx-track, html.mig-iosw .ios-pause .samap .pin .ring { animation: none !important; }
+html.mig-iosw .ios-done { animation: none !important; }
+html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
 </style>
 
 <div class="scroll-prog" id="sprog"></div><button class="totop" id="totop" aria-label="العودة للأعلى">↑</button>
@@ -819,6 +830,24 @@ html[lang=en] .hero h1::first-letter { text-transform: uppercase; }
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
   var reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /* iPhone / iPad (WebKit on iOS, every browser there): the page went white under the header while scrolling (2026-11-21) because
+     WebKit paints the tiles of this long page on the main thread, which the page kept busy. On iOS only, the work nobody can see stops:
+     loops, timers, the hero video and CSS animations of what is off screen (300px margin), finished entrance animations (CSS above),
+     and the tickers hold the copies they need instead of five. Desktop and Android run exactly as before. */
+  var IOSW = false; try { IOSW = !!(window.CSS && CSS.supports && CSS.supports("-webkit-touch-callout", "none")); } catch (e) {}
+  if (IOSW) document.documentElement.classList.add("mig-iosw");
+  var iosIO = IOSW && "IntersectionObserver" in window ? new IntersectionObserver(function (es) { es.forEach(function (e) { var t = e.target; t._iosOn = e.isIntersecting; (t._iosCb || []).forEach(function (f) { try { f(e.isIntersecting); } catch (x) {} }); }); }, { rootMargin: "300px 0px" }) : null;
+  function iosWatch(el, cb) { if (!iosIO || !el) return; if (cb) (el._iosCb = el._iosCb || []).push(cb); if (el._iosOn === undefined) { el._iosOn = true; iosIO.observe(el); } }
+  function iosOff(el) { return !!(iosIO && el && el._iosOn === false); }
+  if (iosIO) $$("main > *").forEach(function (sec) { iosWatch(sec, function (on) { sec.classList.toggle("ios-pause", !on); }); });
+  if (IOSW) document.addEventListener("animationend", function (e) { var t = e.target; if (t && t.classList && /^(cin2|heroIn|smrise)$/.test(e.animationName)) t.classList.add("ios-done"); }, true);
+  /* a ticker's track is its items twice (it slides by half); on iOS one copy is enough once a half is twice as wide as the strip */
+  function runFill(el, h, minLen) {
+    if (!el) return; var x = h;
+    if (!IOSW) { while (h && x.length < minLen) x += h; el.innerHTML = x + x; return; }
+    el.innerHTML = x + x; var w = (el.parentNode && el.parentNode.clientWidth) || window.innerWidth || 400;
+    while (h && x.length < minLen && el.scrollWidth / 2 < w * 2) { x += h; el.innerHTML = x + x; }
+  }
   /* clean links, no legacy *.html stub (sweep 2026-11-19 #24 #28): a member factory opens its own page — the generator writes it at
      the slug of the directory record's old URL (data/oldfac.js row 7, seo_build.part.py), rows the Control Center added after the build
      (row 16) have none yet — and anything else opens the directory search, which reads #q= (the hub /factories/ does not read the old
@@ -851,7 +880,7 @@ html[lang=en] .hero h1::first-letter { text-transform: uppercase; }
   if (RMK && !RMK.length) RMK = null;
   function isIdx(m) { return /^EGX\d+/i.test(m.symbol) || m.type === "index" || /^مؤشر/.test(m.name_ar || ""); }
   if (RMK) PRICES = RMK.map(function (m) { var al = /LME/.test(m.symbol), rb = /REBAR/.test(m.symbol), ix = isIdx(m), nm = ix ? (m.name_ar || m.symbol).replace(/ \(.*\)$/, "") : rb ? "حديد التسليح (طن)" : al ? "الألومنيوم LME ($/طن)" : (m.name_ar || m.symbol).replace(/ \(.*\)$/, "").replace(/ «.*$/, "") + " (" + m.symbol + ")"; return [nm, m.close, typeof m.change_pct === "number" && isFinite(m.change_pct) ? m.change_pct : null, m.symbol, m.exchange || "", ix]; });
-  $("#newsRun").innerHTML = (function (h) { var x = h; while (h && x.length < 9000) x += h; return x + x; })(NEWS.map(function (x) { return '<a class="nw" href="' + (Array.isArray(x) ? "article.html#" + x[1] : "/news/") + '">' + (Array.isArray(x) ? x[0] : x) + '</a><span class="sep">● صنع في مصر ●</span>'; }).join(""));
+  runFill($("#newsRun"), NEWS.map(function (x) { return '<a class="nw" href="' + (Array.isArray(x) ? "article.html#" + x[1] : "/news/") + '">' + (Array.isArray(x) ? x[0] : x) + '</a><span class="sep">● صنع في مصر ●</span>'; }).join(""), 9000);
   setTimeout(function () { ["#newsRun", "#priceRun"].forEach(function (id) { var r = $(id); if (r && r.scrollWidth) r.style.animationDuration = Math.max(30, Math.round(r.scrollWidth / 2 / 55)) + "s"; }); }, 400);
   /* a change in % with the fewest decimals (1–4) that still shows it: +0.02 stays «+0.02», never «+0.0» */
   function pct(v) { var d = 1; while (d < 4 && +Math.abs(v).toFixed(d) === 0) d++; return v.toFixed(d); }
@@ -860,7 +889,7 @@ html[lang=en] .hero h1::first-letter { text-transform: uppercase; }
     var h = PRICES.map(function (x, pi) { if (x[1] == null) return '<a class="pr" href="/bourse/#' + PID[pi] + '">' + x[0] + ' <span class="pill st">' + x[4] + '</span></a>'; var c = x[2] > 0 ? "up" : x[2] < 0 ? "dn" : "st", unit = x[5] ? " نقطة" : /\$/.test(x[0]) ? " $" : " ج.م", v = x[1] > 1000 ? fmt.format(Math.round(x[1])) : x[1].toFixed(2); return '<a class="pr" href="/bourse/#' + PID[pi] + '">' + x[0].replace(/ \(\$\/طن\)/, " ($/طن)") + ': <b class="num">' + v + unit + '</b>' + (x[2] == null ? '' : '<span class="pill ' + c + '">' + (x[2] > 0 ? "▲ +" + pct(x[2]) + "%" : x[2] < 0 ? "▼ " + pct(x[2]) + "%" : "● مستقر") + '</span>') + '</a>'; }).join("");
     var asof = ""; (RMK || []).forEach(function (m) { if (m.as_of_date && m.as_of_date > asof) asof = m.as_of_date; });
     if (h) h = '<span class="pr">📅 ' + (asof ? "آخر إغلاق " + asof + " · " : "") + "المصدر: البورصة المصرية (EGX)" + '</span>' + h;
-    var hx = h; while (h && hx.length < 6000) hx += h; $("#priceRun").innerHTML = hx + hx;
+    runFill($("#priceRun"), h, 6000);
   }
   renderPrices();
   /* prices change only when the data file (REAL.market) is refreshed from its source; never simulated in the browser */
@@ -880,7 +909,7 @@ html[lang=en] .hero h1::first-letter { text-transform: uppercase; }
 
   /* Rotating word */
   var ROT = ["الأسواق المحلية", "الأسواق العربية", "الأسواق الأفريقية", "الأسواق الآسيوية", "الأسواق الأوروبية", "الأسواق العالمية"], ri = 0;
-  if (!reduced) setInterval(function () { var r = $("#rot"); r.classList.add("out"); setTimeout(function () { ri = (ri + 1) % ROT.length; r.textContent = ROT[ri]; r.classList.remove("out"); }, 350); }, 2600);
+  if (!reduced) setInterval(function () { var r = $("#rot"); if (iosOff(r)) return; r.classList.add("out"); setTimeout(function () { ri = (ri + 1) % ROT.length; r.textContent = ROT[ri]; r.classList.remove("out"); }, 350); }, 2600);
 
   /* Hub orbit */
   var ORB = [["🚚", "الموردون", "/market/#suppliers"], ["🏬", "منافذ البيع", "/market/#outlets"], ["🏛️", "الحكومة", "/tenders/"], ["🚢", "الشحن", "/deal/#shipping"], ["🛡️", "التأمين", "/deal/#insurance"], ["🏦", "جهات التمويل", "/deal/#finance"]];
@@ -918,8 +947,12 @@ html[lang=en] .hero h1::first-letter { text-transform: uppercase; }
     });
     $("#dots").innerHTML = h;
   }
-  if (!reduced) { setInterval(orbSend, 1800); orbSend(); } else { var hv = document.getElementById("heroVid"); if (hv) { hv.removeAttribute("autoplay"); hv.pause(); } }
-  (function oloop() { if (!document.hidden) orbFrame(); requestAnimationFrame(oloop); })();
+  var orbEl = $("#orbit"); iosWatch(orbEl); iosWatch($("#rot"));
+  if (!reduced) { setInterval(function () { if (!iosOff(orbEl)) orbSend(); }, 1800); orbSend(); } else { var hv = document.getElementById("heroVid"); if (hv) { hv.removeAttribute("autoplay"); hv.pause(); } }
+  (function oloop() { if (!document.hidden && !iosOff(orbEl)) orbFrame(); requestAnimationFrame(oloop); })();
+  /* iOS: the hero video plays only while the hero is on screen */
+  (function () { var hv = $("#heroVid"), hs = hv && hv.closest(".hero"); if (!IOSW || reduced || !hs) return;
+    iosWatch(hs, function (on) { try { if (on) { var pr = hv.play(); if (pr && pr.catch) pr.catch(function () {}); } else hv.pause(); } catch (e) {} }); })();
 
 
   var CITIES = window.MIGZONES ? MIGZONES.map(function (z) { return z.name_ar; }) : [];
@@ -1057,7 +1090,8 @@ html[lang=en] .hero h1::first-letter { text-transform: uppercase; }
   $("#mcxTabs").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; $$("#mcxTabs button").forEach(function (x) { x.classList.toggle("on", x === b); }); renderMcx(b.dataset.k); });
   function mcxStep(d) { var t = $("#mcxTrack"), c = t.querySelector(".nc"); if (!c) return; t.scrollBy({ left: d * (c.offsetWidth + 16), behavior: "smooth" }); }
   $("#mcxN").onclick = function () { mcxStep(-1 * (document.documentElement.dir === "ltr" ? -1 : 1)); }; $("#mcxP").onclick = function () { mcxStep((document.documentElement.dir === "ltr" ? -1 : 1)); };
-  var mcxT = setInterval(function () { var t = $("#mcxTrack"); if (!t || t.matches(":hover")) return; var max = t.scrollWidth - t.clientWidth; if (Math.abs(t.scrollLeft) >= max - 4) t.scrollTo({ left: 0, behavior: "smooth" }); else mcxStep(-1 * (document.documentElement.dir === "ltr" ? -1 : 1)); }, 5000);
+  iosWatch($("#mcxTrack"));
+  var mcxT = setInterval(function () { var t = $("#mcxTrack"); if (!t || t.matches(":hover") || iosOff(t)) return; var max = t.scrollWidth - t.clientWidth; if (Math.abs(t.scrollLeft) >= max - 4) t.scrollTo({ left: 0, behavior: "smooth" }); else mcxStep(-1 * (document.documentElement.dir === "ltr" ? -1 : 1)); }, 5000);
   var MVID = []; /* only real videos (data/videos.js); no illustrative fallback */
   if (window.MIGVIDS && MIGVIDS.length) MVID = MIGVIDS.slice(0, 6).map(function (v) { return [v.thumb, v.title_ar, v.channel + (v.duration ? " · " + v.duration : ""), "فيديو", v.url]; });
   $("#mcxVlist").innerHTML = MVID.map(function (v) { return '<a class="vi" href="' + (v[4] || "/videos/") + '"' + (v[4] ? ' target="_blank" rel="noopener"' : '') + '><span class="th"><img src="' + v[0] + '" alt="" loading="lazy"><i>' + v[3] + '</i></span><span><b>' + v[1] + '</b><small>' + v[2] + '</small></span></a>'; }).join("");
@@ -1216,7 +1250,8 @@ html[lang=en] .hero h1::first-letter { text-transform: uppercase; }
     dt.classList.remove("jfade"); void dt.offsetWidth; dt.classList.add("jfade");
   }
   $("#track").addEventListener("click", function (e) { var b = e.target.closest(".stg"); if (!b) return; var i = +b.dataset.i; if (i === js) { location.href = JL[i][0]; return; } setJ(i); clearInterval(jT); });
-  var jT; function jAuto() { clearInterval(jT); if (!reduced) jT = setInterval(function () { setJ((js + 1) % JR.length); }, 3200); }
+  iosWatch($("#track"));
+  var jT; function jAuto() { clearInterval(jT); if (!reduced) jT = setInterval(function () { if (iosOff($("#track"))) return; setJ((js + 1) % JR.length); }, 3200); }
   setJ(0); jAuto();
 
 
@@ -1359,16 +1394,16 @@ html[lang=en] .hero h1::first-letter { text-transform: uppercase; }
     if (OFU.some(function (o) { return o.price_egp != null; })) {
       function egMade(o) { return o.made_in_egypt === true || o.egypt_made === true; } function pEgp(o, k) { return o[k + "_egp"] != null ? o[k + "_egp"] : null; }
       var OFS = OFU.filter(function (o) { return pEgp(o, "price") != null; }).sort(function (a, b) { return egMade(b) - egMade(a) || (b.discount_pct || 0) - (a.discount_pct || 0); }).slice(0, 24);
-      $("#dlx").innerHTML = OFS.map(function (o) { return '<a class="dl" href="offer.html#' + o.id + '">' + (o.discount_pct ? '<span class="off">خصم ' + o.discount_pct + '%</span>' : '') + '<span class="im" style="background:#fff">' + (o.img ? '<img src="' + o.img + '" alt="" loading="lazy" style="object-fit:contain">' : '') + '</span><span class="tx"><b class="n">' + o.product_ar + (o.size_unit ? ' – ' + o.size_unit : '') + '</b><span class="pr"><b class="num">' + pEgp(o, "price") + ' ج.م</b>' + (pEgp(o, "old_price") ? '<s class="num">' + pEgp(o, "old_price") + '</s>' : '') + '</span><span class="sl">🏪 ' + o.store_ar + ' · 📍 ' + (o.branch_example ? o.branch_example.split(" - ").pop() : "جميع الفروع") + '</span></span></a>'; }).join("");
+      iosWatch($("#dlx")); $("#dlx").innerHTML = OFS.map(function (o) { return '<a class="dl" href="offer.html#' + o.id + '">' + (o.discount_pct ? '<span class="off">خصم ' + o.discount_pct + '%</span>' : '') + '<span class="im" style="background:#fff">' + (o.img ? '<img src="' + o.img + '" alt="" loading="lazy" style="object-fit:contain">' : '') + '</span><span class="tx"><b class="n">' + o.product_ar + (o.size_unit ? ' – ' + o.size_unit : '') + '</b><span class="pr"><b class="num">' + pEgp(o, "price") + ' ج.م</b>' + (pEgp(o, "old_price") ? '<s class="num">' + pEgp(o, "old_price") + '</s>' : '') + '</span><span class="sl">🏪 ' + o.store_ar + ' · 📍 ' + (o.branch_example ? o.branch_example.split(" - ").pop() : "جميع الفروع") + '</span></span></a>'; }).join("");
       $("#dlxN").onclick = function () { $("#dlx").scrollBy({ left: -360 * (document.documentElement.dir === "ltr" ? -1 : 1) }); }; $("#dlxP").onclick = function () { $("#dlx").scrollBy({ left: 360 * (document.documentElement.dir === "ltr" ? -1 : 1) }); };
       $("#dlxT").parentNode.innerHTML = "📅 محدّثة " + (OFS[0].source_checked || "");
-      setInterval(function () { var r = $("#dlx"); if (!r || r.matches(":hover")) return; if (Math.abs(r.scrollLeft) >= r.scrollWidth - r.clientWidth - 4) r.scrollTo({ left: 0 }); else r.scrollBy({ left: -180 * (document.documentElement.dir === "ltr" ? -1 : 1) }); }, 3500);
+      setInterval(function () { var r = $("#dlx"); if (!r || r.matches(":hover") || iosOff(r)) return; if (Math.abs(r.scrollLeft) >= r.scrollWidth - r.clientWidth - 4) r.scrollTo({ left: 0 }); else r.scrollBy({ left: -180 * (document.documentElement.dir === "ltr" ? -1 : 1) }); }, 3500);
     } else if (DLU.length) {
       var ICON = { food: "🍞", build: "🧱", plastic: "🧪", elec: "🔌", glass: "🪟", metal: "⚙️", petro: "🛢️", med: "💊", furn: "🪑" };
-      $("#dlx").innerHTML = DLU.map(function (d) { var off = Math.round((1 - d.price / d.old) * 100); return '<a class="dl" href="/market/#deals" data-openp="' + d.id + '"><span class="off">خصم ' + off + '%</span><span class="im">' + (d.img ? '<img src="img/' + d.img + '.jpg" alt="" loading="lazy">' : (ICON[d.cat] || "📦")) + '</span><span class="tx"><b class="n">' + d.name + '</b><span class="pr"><b class="num">' + d.price.toLocaleString("en-US") + ' ج.م</b><s class="num">' + d.old.toLocaleString("en-US") + '</s></span><span class="sl">🏭 ' + d.seller + '</span></span></a>'; }).join("");
+      iosWatch($("#dlx")); $("#dlx").innerHTML = DLU.map(function (d) { var off = Math.round((1 - d.price / d.old) * 100); return '<a class="dl" href="/market/#deals" data-openp="' + d.id + '"><span class="off">خصم ' + off + '%</span><span class="im">' + (d.img ? '<img src="img/' + d.img + '.jpg" alt="" loading="lazy">' : (ICON[d.cat] || "📦")) + '</span><span class="tx"><b class="n">' + d.name + '</b><span class="pr"><b class="num">' + d.price.toLocaleString("en-US") + ' ج.م</b><s class="num">' + d.old.toLocaleString("en-US") + '</s></span><span class="sl">🏭 ' + d.seller + '</span></span></a>'; }).join("");
       $("#dlxN").onclick = function () { $("#dlx").scrollBy({ left: -360 * (document.documentElement.dir === "ltr" ? -1 : 1) }); }; $("#dlxP").onclick = function () { $("#dlx").scrollBy({ left: 360 * (document.documentElement.dir === "ltr" ? -1 : 1) }); };
       (function tick() { var n = new Date(), e = new Date(n); e.setHours(24, 0, 0, 0); var ms = e - n, h = Math.floor(ms / 36e5), m = Math.floor(ms % 36e5 / 6e4), sc = Math.floor(ms % 6e4 / 1e3); $("#dlxT").textContent = String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(sc).padStart(2, "0"); setTimeout(tick, 1000); })();
-      var dlxA = setInterval(function () { var r = $("#dlx"); if (!r || r.matches(":hover")) return; if (Math.abs(r.scrollLeft) >= r.scrollWidth - r.clientWidth - 4) r.scrollTo({ left: 0 }); else r.scrollBy({ left: -180 * (document.documentElement.dir === "ltr" ? -1 : 1) }); }, 3500);
+      var dlxA = setInterval(function () { var r = $("#dlx"); if (!r || r.matches(":hover") || iosOff(r)) return; if (Math.abs(r.scrollLeft) >= r.scrollWidth - r.clientWidth - 4) r.scrollTo({ left: 0 }); else r.scrollBy({ left: -180 * (document.documentElement.dir === "ltr" ? -1 : 1) }); }, 3500);
     } else { var dsec = document.querySelector(".dlx"); if (dsec) dsec.hidden = true; }
     function toMarket() { var q = $("#hq").value.trim() || $("#hfac").value; try { if (q) sessionStorage.setItem("mig-q", q); } catch (x) {} MIGREG.set($("#hreg").value); location.href = "/market/#" + (hs.cat ? "cat-" + hs.cat : $("#hreg").value ? "reg-" + $("#hreg").value : "results"); }
     $("#pfilter").addEventListener("submit", function (e) { e.preventDefault(); toMarket(); });
