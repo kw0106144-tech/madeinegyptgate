@@ -118,8 +118,15 @@ test("item: by id, by its Information Center page, by its official link — the 
   assert.match(r.note, /action=doc/);
   /* missing facts are said as missing, never made up */
   const g = await tool(env, { action: "details", id: GH.id }, NOW);
-  assert.match(g.text, /القيمة مش منشورة في المصدر/); assert.match(g.text, /في غانا/); assert.match(g.text, /المصدر مانشرش وصف أكتر من العنوان/);
+  assert.match(g.text, /القيمة مش منشورة/); assert.match(g.text, /في غانا/); assert.match(g.text, /مفيش وصف منشور أكتر من العنوان/);
   assert.equal(g.item.official_link, "page");
+  /* no source (owner 2026-11-20 «ميكتبش مصدر اي معلومه»): the spoken text and the item name no portal, site or «المصدر»; the buyer stays */
+  for (const x of [r, g]) {
+    assert.doesNotMatch(x.text, /المصدر|مصدر|المصادر|GHANEPS|منظومة|بوابة|etenders|الرابط الرسمي/i, x.text);
+    assert.equal(x.item.source, undefined, "no source's name in the item the persona gets");
+    assert.doesNotMatch(x.note, /source:|المصدر/i);
+  }
+  assert.match(g.text, /^مناقصة حكومية «Supply of laboratory equipment for the university» من Kwame Nkrumah University/, "the buyer is the opportunity itself");
 });
 test("item: hidden → not found; a duplicate → the notice it duplicates; no id → the closest results to ask about, never a guess", async () => {
   const dup = { ...RW, id: "rw0000000d9", dup_of: RW.id, url: "https://www.etenders.gov.za/other.pdf", url_norm: "etenders.gov.za/other.pdf" };
@@ -357,7 +364,8 @@ test("the item page keeps the markup Bassem's screen reader uses (data/bassem-li
 });
 test("itemText never invents: no deadline → said; an unknown currency code is kept as written", () => {
   const t = itemText({ ...GH, deadline: null, value: 5000, currency: "XYZ" }, { name: "Ghana – GHANEPS", name_ar: "غانا – منظومة GHANEPS" }, NOW);
-  assert.match(t, /ميعاد التقديم مش منشور في المصدر/); assert.match(t, /القيمة التقديرية ٥,٠٠٠ XYZ/); assert.match(t, /المصدر الرسمي: غانا – منظومة GHANEPS/);
+  assert.match(t, /ميعاد التقديم مش منشور/); assert.match(t, /القيمة التقديرية ٥,٠٠٠ XYZ/);
+  assert.doesNotMatch(t, /المصدر|GHANEPS|منظومة/, "the source is never said (owner 2026-11-20)");
 });
 test("fetchDoc fileCap («ابعتلي» attachments): a lower cap for PDF / DOCX only; an untyped answer is read up to max(fileCap, the HTML cap); none → as before", async () => {
   const env = { KV: makeKV() }, at = (url, res, fileCap) => fetchDoc(new URL(url), env, { fetchFn: net({ [url]: res }).fn, deadline: Date.now() + 5000, ...(fileCap ? { fileCap } : {}) });

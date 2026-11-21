@@ -15,7 +15,7 @@ import { norm } from "../src/text.js";
 import { canon, variants } from "../src/lookup-terms.js";
 import { custTerms, CUST_MAP } from "../src/lookup-customers.js";
 import { memberData, resetMembers, MEMBERS_TTL, MEMBER_TAG } from "../src/lookup-members.js";
-import { findItem, sectionOf } from "../src/janna-item.js";
+import { findItem, sectionOf, sayItem } from "../src/janna-item.js";
 import { D1 } from "./helpers.mjs";
 
 const S = "https://madeinegyptgate.com";
@@ -181,7 +181,10 @@ describe("U15 the dated lists: events, news, projects, awards", () => {
     assert.equal(e.found, true); assert.equal(e.date, "2027-03-30"); assert.equal(e.status, "قادم"); assert.match(e.text, /30 مارس 2027/); assert.ok(e.open_url.endsWith("event.html#egypes-2027"));
     const ev = search("events", "طاقة", "").results[0]; assert.equal(findItem("events", { id: ev.id }, NOW).title, ev.title, "the lookup's id opens it");
     const n0 = search("news", "حديد", "").results[0], n = findItem("news", { id: n0.id }, NOW);
-    assert.equal(n.found, true); assert.equal(n.title, n0.title); assert.match(n.text, /منشور في/); assert.equal(n.source, n0.source);
+    assert.equal(n.found, true); assert.equal(n.title, n0.title); assert.match(n.text, /منشور يوم/); assert.equal(n.source, n0.source, "findItem keeps the record whole (the e-mails read it in-process)");
+    /* what the persona gets (owner 2026-11-20 «ميكتبش مصدر اي معلومه»): the date only, never the paper's name nor its link */
+    assert.ok(n0.source && !n.text.includes(n0.source), "the spoken text names no source");
+    const said = sayItem(n); assert.equal(said.source, undefined); assert.equal(said.documents_url, undefined); assert.equal(said.text, n.text); assert.equal(said.open_url, n.open_url);
     assert.equal(findItem("events", { title: "فود أفريكا" }, NOW).id, "food-africa-2026");
   });
   test("review: an event that started 2 days ago may still be running — «بدأ», listed first, never «انتهى» (the data keeps no end date)", () => {

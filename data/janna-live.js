@@ -364,7 +364,7 @@
       if (i.planName) items.push({ title: T("باقة ", "") + i.planName + (EN ? " plan" : ""), sub: i.end ? T("باسم مستشارك لحد ", "Bassem is your advisor until ") + fmtDay(i.end) : "", href: L("dashboard.html") });
       var mk = (i.markets || []).map(function (m) { return MKN2[m] ? MKN2[m][EN ? 1 : 0] : ""; }).filter(Boolean);
       if (mk.length) items.push({ title: T("أسواق باقتك", "Your plan's markets"), sub: mk.join(T("، ", ", ")) });
-      items.push({ title: T("المناقصات وطلبات الأسعار والمشاريع", "Tenders, RFQs and projects"), sub: T("الجديد كل يوم من المصادر الرسمية", "New every day from official sources"), href: L("tenders.html") });
+      items.push({ title: T("المناقصات وطلبات الأسعار والمشاريع", "Tenders, RFQs and projects"), sub: T("الجديد كل يوم في نطاق باقتك", "New every day in your plan's markets"), href: L("tenders.html") }); /* never «من المصادر الرسمية» (owner 2026-11-18 / 2026-11-20) */
       steps = [T("فتحت ملف شركتك", "Opened your company file"), T("بجهّز الجديد في نطاق باقتك", "Preparing what is new in your plan's markets")];
     } else {
       items = [{ title: T("دليل المصانع والشركات المصرية", "Egyptian factory & company directory"), sub: T("دوّر بالمنتج أو النشاط أو المحافظة", "Search by product, activity or governorate"), href: L("factories.html") },

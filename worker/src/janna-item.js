@@ -2,8 +2,15 @@
    - GET  /api/janna/item?section=tenders&id=eg-tnd-003      (or &ref=6/2026/2027, or &title=…)
    - POST /api/janna/item  {section, id|ref|title}           (Anam webhooks POST the tool arguments as the top-level JSON body,
                                                                like /api/janna/lookup; {arguments:{…}} / {parameters:{…}} are unwrapped too)
-   → {found, section, id, ref, title, …every public field the platform has…, open_url, list_url?, documents_url?, contact, text}
+   → {found, section, id, ref, title, …every public field the platform has…, open_url, list_url?, contact, text} (never documents_url)
    `text` is a short spoken summary in Egyptian Arabic built ONLY from fields that exist (no field → not mentioned, never guessed).
+   NO SOURCE in what the persona gets (owner 2026-11-20: «ميكتبش مصدر اي معلومه»; «ميقولوش حاجه ولا من بره بيانات المنصه ولاغيره هما
+   يقولوا المعلومه وخلاص»): no source's name (a tender's `source`, a news item's paper), no source link (documents_url of a news item,
+   an award, a project, an offer, a zone, an event — and since 2026-11-21 («شيله») not a tender's official notice either), no «منقول من
+   مصدره» line — sayItem() on every answer, and enrichResult() adds no documents_url to the lookup's results. The buyer / the entity / the
+   store / the organiser stay (they are the item itself). The «ابعتلي» e-mail keeps the official notice: notify-items.js reads the record
+   in-process through findItem(), which keeps every field; data/janna-live.js (itemOpp) then falls back to the item's own page (url /
+   open_url) for its source_url.
    Data: src/items.json (worker/build-items.js: the full public records + the clean URL of each item's page) next to src/data.json.
    Also exported for /api/janna/lookup (src/index.js): enrichResult() adds id / ref_no / open_url / the amounts to each result.
    Contacts: the platform never gives private phones / e-mails; contact goes through the platform (contact rules in `contact`). */
@@ -62,15 +69,23 @@ const STP = { "سارية": "ولسه مفتوحة", "تنتهي قريباً": 
 const first = (s, n) => { s = String(s || "").split(/[،,]\s*/).filter(Boolean); return s.slice(0, n).join("، "); };
 const short = (s, n) => { s = String(s || ""); return s.length > n ? s.slice(0, n).replace(/\s+\S*$/, "") + "…" : s; };
 const join = parts => parts.filter(Boolean).join(" ").replace(/\s+([،.])/g, "$1").replace(/\s+/g, " ").trim();
+/* the contact rules the persona may say — none of them names a source or says where the data came from (owner 2026-11-20) */
 const CONTACT = {
-  tenders: "التقديم الرسمي عند الجهة نفسها من الإعلان الرسمي (documents_url). المنصة مش بتطرح ولا بترسي المناقصات، ومفيش أرقام تليفونات أو إيميلات خاصة.",
+  tenders: "التقديم الرسمي عند الجهة نفسها من إعلانها الرسمي (التفاصيل في صفحة المناقصة على المنصة: open_url). المنصة مش بتطرح ولا بترسي المناقصات، ومفيش أرقام تليفونات أو إيميلات خاصة.",
   rfqs: "صاحب الطلب بياناته الشخصية مش متاحة؛ العضو يسجّل عرض سعره من صفحة الطلب على المنصة (list_url) والمنصة تبلغه بأي تحديث.",
   factories: "التواصل مع المصنع عن طريق زر «اطلب عرض سعر» في صفحته على المنصة — مفيش أرقام تليفونات أو إيميلات خاصة.",
   products: "السعر عند الطلب: من زر «اطلب عرض سعر» في صفحة المنتج أو المصنع على المنصة.",
-  offers: "العرض من صفحة المحل الرسمية (documents_url)؛ الأسعار ممكن تتغير بعد آخر مراجعة.",
-  cities: "البيانات من المصادر الرسمية المفتوحة للمنطقة.", awards: "بيانات الترسية منقولة من مصدرها المنشور (documents_url).", projects: "بيانات المشروع من مصدره المنشور (documents_url)؛ التواصل مع الجهة المالكة مش من خلال المنصة.",
-  news: "الخبر منقول من مصدره المنشور (documents_url)؛ التفاصيل عند المصدر نفسه.", events: "مواعيد المعرض وتفاصيله والتسجيل من موقعه الرسمي (documents_url)؛ المنصة مش الجهة المنظمة.",
+  offers: "العرض عند المحل نفسه؛ الأسعار ممكن تتغير بعد آخر مراجعة.",
+  cities: "التخصيص والتواصل عند الجهة المسؤولة عن المنطقة نفسها، مش من خلال المنصة.", awards: "المنصة مش طرف في الترسية دي، والتواصل مع الجهة أو الفايز مش من خلال المنصة.", projects: "التواصل مع الجهة المالكة للمشروع مش من خلال المنصة.",
+  news: "ده خبر؛ مفيش تواصل بخصوصه من خلال المنصة، ومفيش تفاصيل غير اللي فيه.", events: "التسجيل والتفاصيل عند الجهة المنظمة نفسها؛ المنصة مش الجهة المنظمة.",
 };
+/* a stored sentence without its attribution to a source («وفق المصادر», «منشورة في بوابة المشتريات الأوروبية في …» → «منشورة في …») —
+   «وفق المطور / وزير …» (the entity itself) stays */
+export function unsourced(s) {
+  return String(s || "").replace(/\s*[،,]?\s*(?:وفق|حسب|بحسب|وفقا ل|وفقاً ل|نقلا عن|نقلاً عن)\s+(?:ال)?(?:مصادر|تقارير|موقع|بواب[ةه]|جريد[ةه]|صحيف[ةه])(?:\s+(?!في\s)[^\s،,.؛;()]+){0,3}/g, "")
+    .replace(/(منشور[ةه]?)\s+(?:في|على)\s+(?:ال)?(?:بواب[ةه]|موقع|جريد[ةه]|صحيف[ةه]|منص[ةه])\s+[^،,.؛;()]+?(?=\s+في\s|\s*[(،,.؛;]|$)/g, "$1")
+    .replace(/\s+([،,.؛;])/g, "$1").replace(/\s{2,}/g, " ").replace(/^[\s،,؛;.]+/, "").trim();
+}
 
 /* ---------- records ---------- */
 function tenderRecord(t, nowMs) {
@@ -93,7 +108,7 @@ function tenderRecord(t, nowMs) {
     t.deadline ? "آخر ميعاد للتقديم " + sayDate(t.deadline, nowMs) + (STP[st] ? " " + STP[st] : "") + "." : "وميعاد التقديم مش معلن في بيانات المنصة.",
     money.length ? money.join("، و") + "." : "ومفيش مبالغ (تأمين أو ثمن كراسة) منشورة على المنصة للمناقصة دي.",
     !t.entity ? "اسم الجهة مش مذكور في بيانات المنصة." : "",
-    t.docs ? "الشروط والكراسة من الإعلان الرسمي" + (t.via ? " على " + t.via : "") + "." : "",
+    t.docs ? "الشروط والكراسة من الإعلان الرسمي للمناقصة." : "",
   ]);
   return rec;
 }
@@ -173,12 +188,12 @@ function awardRecord(a, nowMs) {
 function projectRecord(p, nowMs) {
   const rec = { section: "projects", id: p.id, title: p.name, name: p.name, governorate: p.gov || undefined, location: p.location || undefined, activity: p.sector || undefined, stage: p.stage || undefined,
     value_egp_million: p.value_mn_egp ?? undefined, owner: p.owner || undefined, contractor: p.contractor || undefined, consultant: p.consultant || undefined, start_year: p.start || undefined,
-    end_year: p.end || undefined, latest_news: p.news || undefined, latest_news_date: p.news_date || undefined, documents_url: p.docs || undefined, open_url: absUrl(p.path), contact: CONTACT.projects };
+    end_year: p.end || undefined, latest_news: p.news ? unsourced(p.news) : undefined, latest_news_date: p.news_date || undefined, documents_url: p.docs || undefined, open_url: absUrl(p.path), contact: CONTACT.projects };
   rec.text = join([
  (/^مشروع/.test(p.name) ? "" : "مشروع ") + p.name + (p.gov ? " في " + p.gov : "") + (p.location ? " (" + p.location + ")" : "") + (p.sector ? "، قطاع " + p.sector : "") + (p.stage ? "، ومرحلته دلوقتي " + p.stage : "") + ".",
     p.owner ? "المالك " + p.owner + (p.contractor ? "، والمقاول " + p.contractor : "") + (p.consultant ? "، والاستشاري " + p.consultant : "") + "." : p.contractor ? "المقاول " + p.contractor + "." : "",
     p.value_mn_egp != null ? "القيمة المعلنة حوالي " + sayMillion(p.value_mn_egp, "جنيه") + "." : "",
-    p.news ? "آخر خبر" + (p.news_date ? " (" + sayDate(p.news_date, nowMs) + ")" : "") + ": " + short(p.news, 220) : "",
+    p.news ? "آخر خبر" + (p.news_date ? " (" + sayDate(p.news_date, nowMs) + ")" : "") + ": " + short(unsourced(p.news), 220) : "",
   ]);
   return rec;
 }
@@ -188,8 +203,7 @@ function newsRecord(x, nowMs) {
   const gov = x[4] && x[4] !== NO_GOV ? x[4] : "";
   const rec = { section: "news", id: x[1], title: x[5], date: x[2] || undefined, category: x[3] || undefined, governorate: gov || undefined, source: x[9] || undefined,
     documents_url: x[10] || undefined, open_url: absUrl(x[6]), contact: CONTACT.news };
-  rec.text = join(["الخبر ده: " + short(x[5], 200) + ".", x[9] ? "منشور في " + x[9] + (x[2] ? " يوم " + sayDate(x[2], nowMs) : "") + "." : x[2] ? "منشور يوم " + sayDate(x[2], nowMs) + "." : "",
-    "التفاصيل من المصدر نفسه، ومفيش أرقام أو أسعار غير اللي في الخبر."]);
+  rec.text = join(["الخبر ده: " + short(x[5], 200) + ".", x[2] ? "منشور يوم " + sayDate(x[2], nowMs) + "." : "", "مفيش أرقام أو أسعار غير اللي في الخبر."]);
   return rec;
 }
 /* an event's status on `today` (review: data.json i keeps its START date only, and the events of the data last 1–3 days): one that started
@@ -200,8 +214,8 @@ function eventRecord(x, nowMs) {
   const rec = { section: "events", id: x[1], title: x[5], date: d || undefined, status: st || undefined, activity: x[3] || undefined, governorate: where || undefined,
     host: x[9] || undefined, documents_url: x[10] || undefined, open_url: absUrl(x[6]), contact: CONTACT.events }; // host = the organiser, else the venue (build-index.js)
   rec.text = join([x[5] + (where ? " في " + where : "") + (x[9] ? " (" + x[9] + ")" : "") + ".", !d ? "وميعاده مش منشور في بيانات المنصة." : st === "قادم" ? "ميعاده " + sayDate(d, nowMs) + "."
-    : st === "بدأ" ? "بدأ يوم " + sayDate(d, nowMs) + " وممكن يكون لسه شغال؛ آخر يوم فيه من موقعه الرسمي." : "كان يوم " + sayDate(d, nowMs) + " وخلص.",
-    x[3] ? "مجاله: " + x[3] + "." : "", "التسجيل والتفاصيل من موقع المعرض الرسمي."]);
+    : st === "بدأ" ? "بدأ يوم " + sayDate(d, nowMs) + " وممكن يكون لسه شغال؛ آخر يوم فيه عند الجهة المنظمة." : "كان يوم " + sayDate(d, nowMs) + " وخلص.",
+    x[3] ? "مجاله: " + x[3] + "." : "", "التسجيل والتفاصيل عند الجهة المنظمة."]);
   return rec;
 }
 
@@ -252,7 +266,7 @@ export function enrichResult(section, r, nowMs = Date.now()) {
     if (!t) return r;
     return Object.assign(r, { id: t.id, ref_no: t.ref || undefined, entity: t.entity || r.entity, city: t.city || undefined, publish_date: t.publish || undefined,
       bid_bond_egp: t.bond_egp ?? undefined, bid_bond_note: t.bond_note || undefined, booklet_price_egp: t.booklet_egp ?? undefined, estimated_value: t.est_value ?? undefined, currency: t.currency || undefined,
-      documents_url: t.docs || undefined, open_url: absUrl(t.path), list_url: t.list ? absUrl(t.list) : undefined, list_key: listKey(t) || undefined, market: t.market, country: t.market !== "local" ? t.country : undefined,
+      open_url: absUrl(t.path), list_url: t.list ? absUrl(t.list) : undefined, list_key: listKey(t) || undefined, market: t.market, country: t.market !== "local" ? t.country : undefined,
       /* «tenders/search/#OFF:1» may open ANOTHER tender (shared number): when the record has no unique list link, url = its own page */
       ...(!t.list && absUrl(t.path) ? { url: absUrl(t.path) } : {}) });
   }
@@ -262,6 +276,15 @@ export function enrichResult(section, r, nowMs = Date.now()) {
   if (sec === "offers") { const o = O.find(x => absUrl(x.path) && hashOf(r.url) === x.id); return o ? Object.assign(r, { id: o.id, discount_pct: o.discount_pct ?? undefined, cities: o.cities || undefined, open_url: absUrl(o.path) }) : r; }
   if (sec === "cities") { const z = Z.find(x => hashOf(r.url) === x.id); return z ? Object.assign(r, { id: z.id, open_url: absUrl(z.path) }) : r; }
   return r;
+}
+
+/* ---------- what the persona gets: the item without its source (owner 2026-11-20) — no `source` (a tender's portal, a news item's
+   paper), no documents_url (no link to another site; a tender's too since 2026-11-21, see the header) ---------- */
+export function sayItem(r) {
+  if (!r || typeof r !== "object" || Array.isArray(r)) return r;
+  const { source, ...x } = r; void source;
+  delete x.documents_url;
+  return x;
 }
 
 /* ---------- HTTP: same key rule and CORS as /api/janna/lookup ---------- */
@@ -289,5 +312,5 @@ export async function handleItem(req, env, ctx, nowMs = Date.now()) {
   if (!a.id && !a.ref && !a.title && !a.query && !a.name) return soft("id_required", { error: "id, ref or title required", text: ITEM_TEXT.no_id });
   const r = findItem(sec, { id: a.id == null ? "" : String(a.id).slice(0, 160), ref: a.ref == null ? "" : String(a.ref).slice(0, 160), title: String(a.title || a.query || a.name || "").slice(0, 300) }, nowMs);
   /* an Anam webhook answer that is not 2xx may never reach the model (holo5 tools.md #4): POST says «not found» with 200; GET keeps 404 */
-  return json(r, r.found || req.method === "POST" ? 200 : 404);
+  return json(sayItem(r), r.found || req.method === "POST" ? 200 : 404);
 }

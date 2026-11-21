@@ -1331,11 +1331,12 @@
         }
         if (/^(?:doc|document|pdf|read|requirements)$/.test(iact)) {
           sp.kind = "search"; sp.title = T(N + " " + V(w, "بيقرالك", "بتقرالك") + " المستند الرسمي للفرصة", N + " is reading the item's official document");
-          sp.plan = [P(T("بفتح المستند الرسمي من موقع الجهة", "Opening the official document on the buyer's site"), 1200), P(T("بقرا الشروط والمستندات والتأمين والميعاد", "Reading the requirements, documents, bid bond and deadline"), 2200), P(T("بقولك اللي مكتوب فيه بس", "Telling you only what it says"), 800)];
+          sp.plan = [P(T("بفتح المستند الرسمي للفرصة", "Opening the item's official document"), 1200), P(T("بقرا الشروط والمستندات والتأمين والميعاد", "Reading the requirements, documents, bid bond and deadline"), 2200), P(T("بقولك اللي مكتوب فيه بس", "Telling you only what it says"), 800)];
           break;
         }
-        sp.kind = "search"; sp.title = a.action === "search" ? T(N + " " + V(w, "بيدوّر", "بتدوّر") + " في المصادر الرسمية: " + (iq || "فرص لقطاعك") + (imk ? " · " + imk : ""), N + " is searching official sources: " + (iq || "opportunities for your sector") + (imk ? " · " + imk : ""))
-          : T(N + " " + V(w, "بيجهّزلك", "بتجهّزلك") + " الجديد النهارده من المصادر الرسمية", N + " is preparing today's news from official sources");
+        /* no «المصادر الرسمية» (owner 2026-11-18 «شيل كلمة من المصادر الرسمية»; 2026-11-20 «ميكتبش مصدر اي معلومه»): the Information Center */
+        sp.kind = "search"; sp.title = a.action === "search" ? T(N + " " + V(w, "بيدوّر", "بتدوّر") + " في مركز المعلومات: " + (iq || "فرص لقطاعك") + (imk ? " · " + imk : ""), N + " is searching the Information Center: " + (iq || "opportunities for your sector") + (imk ? " · " + imk : ""))
+          : T(N + " " + V(w, "بيجهّزلك", "بتجهّزلك") + " الجديد النهارده من مركز المعلومات", N + " is preparing today's news from the Information Center");
         sp.plan = [P(T("بفتح مركز المعلومات اليومي", "Opening the daily information center"), 900), P(T("بدوّر في المناقصات وطلبات الأسعار والمشاريع", "Scanning tenders, RFQs and projects"), 1300), P(T("بفلتر على نطاق باقتك", "Filtering to your plan's markets"), 1000), P(T("النتيجة معايا — بقولهالك دلوقتي", "Got it — telling you now"), 600)];
         break;
       }
@@ -1345,11 +1346,13 @@
         var wa = a.bodyParams && typeof a.bodyParams === "object" ? a.bodyParams : a, wh = /_web_hunt$/.test(tool);
         var wq = str(wh ? wa.product || wa.query : wa.query, 50), wk = str(wa.market, 24).toLowerCase(), wm = WM[wk] ? T(WM[wk][0], WM[wk][1]) : codeName(wa.market, "markets", MK); /* market codes of worker/src/websearch.js */
         if (wh && !wm) wm = T("مصر", "Egypt");
-        sp.kind = "search"; sp.title = wh ? T(N + " " + V(w, "بيدوّر", "بتدوّر") + " على فرص في الإنترنت: " + (wq || "…") + (wm ? " · " + wm : ""), N + " is looking for opportunities on the web: " + (wq || "…") + (wm ? " · " + wm : ""))
-          : T(N + " " + V(w, "بيدوّر", "بتدوّر") + " في الإنترنت: " + (wq || "…") + (wm ? " · " + wm : ""), N + " is searching the web: " + (wq || "…") + (wm ? " · " + wm : ""));
-        sp.main = { type: "results", hd: T("من الإنترنت", "From the web") };
-        sp.plan = wh ? [P(T("بدوّر على مناقصات وطلبات أسعار ومشترين على الإنترنت", "Searching the web for tenders, RFQs and buyers"), 1300), P(T("بشيل المكرر والمنافسين والمواقع اللي مش مناسبة", "Dropping duplicates, competitors and unsuitable sites"), 1100), P(T("دي فرص من الإنترنت — لازم نتأكد من المصدر", "Opportunities from the web — check each source"), 700)]
-          : [P(T("بدوّر في مواقع على الإنترنت", "Searching websites"), 900), P(T("بشيل المكرر والمواقع اللي مش مناسبة", "Dropping duplicates and unsuitable sites"), 1100), P(T("دي نتايج من الإنترنت — لازم نتأكد من المصدر", "Web results — check each source"), 700)];
+        /* the information itself, never where it comes from (owner 2026-11-20: «ميقولوش حاجه ولا من بره بيانات المنصه ولاغيره هما يقولوا
+           المعلومه وخلاص»): no «الإنترنت», no site, no «لازم نتأكد من المصدر» */
+        sp.kind = "search"; sp.title = wh ? T(N + " " + V(w, "بيدوّر", "بتدوّر") + " على فرص: " + (wq || "…") + (wm ? " · " + wm : ""), N + " is looking for opportunities: " + (wq || "…") + (wm ? " · " + wm : ""))
+          : T(N + " " + V(w, "بيدوّر", "بتدوّر") + " على: " + (wq || "…") + (wm ? " · " + wm : ""), N + " is looking for: " + (wq || "…") + (wm ? " · " + wm : ""));
+        sp.main = { type: "results", hd: wh ? T("فرص", "Opportunities") : T("نتايج", "Results") };
+        sp.plan = wh ? [P(T("بدوّر على مناقصات وطلبات أسعار ومشترين", "Looking for tenders, RFQs and buyers"), 1300), P(T("بشيل المكرر والمنافسين واللي مش مناسب", "Dropping duplicates, competitors and what doesn't fit"), 1100), P(T("الفرص معايا — بقولهالك دلوقتي", "Got them — telling you now"), 700)]
+          : [P(T("بدوّر على اللي طلبته", "Looking for what you asked"), 900), P(T("بشيل المكرر واللي مش مناسب", "Dropping duplicates and what doesn't fit"), 1100), P(T("النتيجة معايا — بقولهالك دلوقتي", "Got it — telling you now"), 700)];
         break;
       }
       case "bassem_recall": {

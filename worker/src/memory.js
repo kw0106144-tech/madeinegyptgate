@@ -104,13 +104,9 @@ const llm = (s, n) => { const v = forLLM(s, n); return v && !instructionLike(s, 
 const isWeb = t => /web/.test(String(t || ""));
 /* item tools: what they "search" is an opened item's title — never a topic / product / search of the call (blocker E) */
 export const isItemTool = t => /(^|_)(open|item|navigate|screen|show|guide)(_|$)/.test(String(t || ""));
-const DOMAIN_RX = /^[a-z0-9.-]+\.[a-z]{2,}$/i;
-/* the sites of stored web results (hostnames of the links, else a domain-shaped entity) — the ONLY part of a web result that reaches the LLM */
-const sitesOf = (results, n = 3) => { const o = [];
-  for (const r of Array.isArray(results) ? results : []) { let h = ""; try { h = r && r.url ? new URL(r.url).hostname.toLowerCase().replace(/^www\./, "") : ""; } catch (e) { h = ""; }
-    if (!h && r && DOMAIN_RX.test(String(r.entity || ""))) h = String(r.entity).toLowerCase().replace(/^www\./, "");
-    if (h && DOMAIN_RX.test(h) && !o.includes(h)) o.push(h); if (o.length >= n) break; }
-  return o; };
+/* a web search / hunt reaches the LLM again only as its words, market and count: never a page title (untrusted text), never a site, a
+   domain or a link (owner 2026-11-20 «ميكتبش مصدر اي معلومه»: the persona never says where a result came from — not even «last time I
+   found it on …»); rows stored before that rule may still hold links in data_json: they are never read back to the LLM */
 const countAr = n => (n === 1 ? "نتيجة واحدة" : n === 2 ? "نتيجتين" : n <= 10 ? n + " نتايج" : n + " نتيجة");
 
 /* ---------- search tokens: text.js tokens() + a few clitics (و/ف/ب/ك + ال, لل), ؤ / ئ, Arabic-Indic digits, English plural -s ---------- */
@@ -213,10 +209,11 @@ const BIZ_W = new Set(["مصنع", "مصانع", "مصنعي", "مصنعنا", "
   "انتاج", "بننتج", "بنتج", "منتج", "منتجات", "بنبيع", "ببيع", "نبيع", "بنورد", "بورد", "نورد", "توريد", "تاجر", "بتاجر", "بنتاجر", "تجاره", "مورد", "موردين", "مستورد",
   "استيراد", "تصدير", "مصدر", "عميل", "عملاء", "عملائي", "زباين", "عايز", "عاوز", "محتاج", "بدور", "بندور", "مطلوب"].map(w => norm(w)));
 const bizTurn = text => norm(String(text || "")).split(" ").some(w => BIZ_W.has(w) || (/^[وفبل]/.test(w) && BIZ_W.has(w.slice(1))) || BIZ_W.has(w.replace(/^[وفبل]?ال/, "")));
-const TOOL_AR = { janna_lookup: "دليل المنصة", janna_search: "بحث المنصة", bassem_intel: "مركز المعلومات", bassem_web_search: "بحث الإنترنت", web_search: "بحث الإنترنت",
-  janna_web_search: "بحث الإنترنت", bassem_web_hunt: "فرص من الإنترنت", janna_web_hunt: "فرص من الإنترنت",
+/* the web tools are «بحث» / «بحث عن فرص» — never «من الإنترنت» (owner 2026-11-20: no word about where an answer came from) */
+const TOOL_AR = { janna_lookup: "دليل المنصة", janna_search: "بحث المنصة", bassem_intel: "مركز المعلومات", bassem_web_search: "بحث", web_search: "بحث",
+  janna_web_search: "بحث", bassem_web_hunt: "بحث عن فرص", janna_web_hunt: "بحث عن فرص",
   janna_item: "تفاصيل من المنصة", platform_item: "تفاصيل من المنصة", bassem_open_item: "اتفتح على الشاشة", bassem_open_opportunity: "اتفتح على الشاشة" };
-const toolAr = t => TOOL_AR[t] || (/web/.test(t) ? "بحث الإنترنت" : /intel/.test(t) ? "مركز المعلومات" : isItemTool(t) ? "اتفتح على الشاشة" : "بحث");
+const toolAr = t => TOOL_AR[t] || (/web/.test(t) ? "بحث" : /intel/.test(t) ? "مركز المعلومات" : isItemTool(t) ? "اتفتح على الشاشة" : "بحث");
 const STAGE_AR = { discover: "استكشاف", contact: "تواصل", offer: "عرض سعر", negotiation: "تفاوض", contract: "تعاقد", delivery: "توريد" };
 const LANGS = /^(ar|en|fr|zh|es|de|tr|ru|pt|it)$/; // bassem_draft_email's 10 languages (holo5)
 
@@ -337,8 +334,7 @@ const searchKey = async s => (await sha256(s.tool + "|" + norm(s.query) + "|" + 
 const resKey = r => (r.id || r.ref ? "r:" + norm(r.id || r.ref) + (r.ref && !r.id ? "|" + norm(r.title) : "") : r.url ? "u:" + r.url.replace(/[?#].*$/, "").toLowerCase() : "t:" + norm(r.title));
 async function searchRow(env, memberId, callId, s, nowMs, agent) {
   const best = s.results[0], web = isWeb(s.tool);
-  const sites = web ? sitesOf(s.results) : [];
-  const text = s.query + (!s.results.length ? " — لا نتائج" : web ? " — " + countAr(s.results.length) + (sites.length ? " من " + sites.join("، ") : "") : " — " + s.results.map(r => r.title + (r.entity ? " — " + r.entity : "")).join("؛ "));
+  const text = s.query + (!s.results.length ? " — لا نتائج" : web ? " — " + countAr(s.results.length) : " — " + s.results.map(r => r.title + (r.entity ? " — " + r.entity : "")).join("؛ "));
   const day = callId ? "" : cairoDay(nowMs); // outside a call the same search on another day is a new row
   const sq = await searchKey(s), hash = "search|" + callId + "|" + day + "|" + sq;
   /* «فيه جديد؟» (blocker C): the results this same search never returned before (earlier calls / days of this member) */
@@ -482,29 +478,29 @@ async function knownOf(env, subject, tools) {
 
 /* ---------- recall ---------- */
 const kindOf = k => (k === "turns" ? "turn" : k === "summaries" ? "summary" : k === "searches" ? "search" : k === "facts" ? "fact" : k === "tasks" ? "task" : k === "questions" ? "question" : k === "days" ? "day" : k);
-/* a stored search's refs / links (blocker C): web → only the sites and links (a web title never goes back to the LLM) */
-const refsOf = d => (Array.isArray(d.results) ? d.results : []).slice(0, LIM.results).map(r => isWeb(d.tool)
-  ? { site: sitesOf([r], 1)[0] || "", url: r.url || "" }
-  : { title: llm(r.title, 140), ref: r.ref || "", ...(r.id ? { id: r.id } : {}), url: r.url || "" }).filter(r => r.title || r.site || r.url);
+/* a stored search's refs / links (blocker C): a platform search's titles, refs and its own pages; a web search: none (no title, no site,
+   no link of another site goes back to the LLM or onto the call's screen) */
+const refsOf = d => (isWeb(d.tool) ? [] : (Array.isArray(d.results) ? d.results : []).slice(0, LIM.results).map(r => ({ title: llm(r.title, 140), ref: r.ref || "", ...(r.id ? { id: r.id } : {}), url: r.url || "" })).filter(r => r.title || r.url));
 function hitOut(r, nowMs) {
   const d = jparse(r.data_json, {}), date = cairoOf(r.at), h = { id: r.id, kind: r.kind, at: r.at, date, day_ar: dayRel(date, nowMs) };
   if (r.kind === "search") { const b = (d.results || [])[0]; Object.assign(h, { tool: d.tool || "", source: toolAr(d.tool || ""), query: llm(d.query, 120), market: d.market || "", count: d.count || 0,
-    best: !b ? null : isWeb(d.tool) ? { title: "", entity: sitesOf([b], 1)[0] || "", deadline: "", url: b.url || "", ref: "" } // a web title never goes back to the LLM
+    best: !b ? null : isWeb(d.tool) ? { title: "", entity: "", deadline: "", url: "", ref: "" } // a web row: no title, no site, no link
       : { title: llm(b.title, 140), entity: llm(b.entity, 80), deadline: b.deadline ? (/^\d{4}-\d{2}-\d{2}$/.test(b.deadline) ? b.deadline : llm(b.deadline, 12)) : "", url: b.url || "", ref: b.ref || "" },
-    refs: refsOf(d), ...(isWeb(d.tool) ? { sites: sitesOf(d.results) } : {}),
+    refs: refsOf(d),
     ...(d.new_since ? { new_since: { at: d.new_since.at, day_ar: dayRel(d.new_since.day || cairoOf(d.new_since.at), nowMs), count: d.new_since.count || 0,
-      items: (d.new_since.items || []).slice(0, LIM.results).map(x => isWeb(d.tool) ? { site: sitesOf([x], 1)[0] || "", url: x.url || "" } : { title: llm(x.title, 120), ref: x.ref || "", ...(x.id ? { id: x.id } : {}), url: x.url || "" }) } } : {}) }); }
+      items: isWeb(d.tool) ? [] : (d.new_since.items || []).slice(0, LIM.results).map(x => ({ title: llm(x.title, 120), ref: x.ref || "", ...(x.id ? { id: x.id } : {}), url: x.url || "" })) } } : {}) }); }
   else if (r.kind === "summary") Object.assign(h, { topics: (d.topics || []).map(x => llm(x, 40)).filter(Boolean), next: (d.next || []).map(x => llm(x, 100)).filter(Boolean), failed: (d.failed || []).map(x => llm(x, 80)).filter(Boolean), call_id: r.call_id });
   else if (r.kind === "turn") Object.assign(h, { role: d.role || "", call_id: r.call_id });
   else if (r.kind === "day") Object.assign(h, { day: d.day || date, calls: d.calls || 0, topics: (d.topics || []).map(x => llm(x, 40)).filter(Boolean) });
-  h.text = llm(r.kind === "turn" && d.role === "persona" ? stripCues(r.text) : r.text, r.kind === "day" ? 420 : 300); // his own words, without a stray cue tag of an older row
+  h.text = r.kind === "search" && isWeb(d.tool) ? llm(d.query, 120) + " — " + (d.count ? countAr(d.count) : "لا نتائج") // a web row: never its stored text (an older one named sites)
+    : llm(r.kind === "turn" && d.role === "persona" ? stripCues(r.text) : r.text, r.kind === "day" ? 420 : 300); // his own words, without a stray cue tag of an older row
   return h;
 }
 const refsAr = h => { const ids = (h.refs || []).map(x => x.id || x.ref).filter(Boolean).slice(0, 3); return ids.length ? " (أرقامها: " + ids.join("، ") + ")" : ""; };
 function hitLine(h) {
   const when = h.day_ar || h.date;
   const fresh = h.new_since ? " — جديد من بحث " + (h.new_since.day_ar || "قبل كده") + ": " + (h.new_since.count ? countAr(h.new_since.count) + " ماكانتش ظهرت قبل كده" + (h.new_since.items.length && h.new_since.items[0].title ? "، أولها " + h.new_since.items[0].title : "") : "مفيش جديد عن المرة اللي فاتت") : "";
-  if (h.kind === "search" && isWeb(h.tool)) return when + "، " + h.source + " عن " + h.query + (h.market ? " في " + forLLM(marketAr(h.market), 30) : "") + ": " + (h.count ? countAr(h.count) + (h.sites && h.sites.length ? " من " + h.sites.join("، ") : "") : "مالقيناش نتايج") + fresh;
+  if (h.kind === "search" && isWeb(h.tool)) return when + "، " + h.source + " عن " + h.query + (h.market ? " في " + forLLM(marketAr(h.market), 30) : "") + ": " + (h.count ? countAr(h.count) : "مالقيناش نتايج") + fresh;
   if (h.kind === "search") return when + "، " + h.source + " عن " + h.query + (h.market ? " في " + forLLM(marketAr(h.market), 30) : "") + ": " + (h.best && h.best.title ? (h.count > 1 ? h.count + " نتايج، أهمها " : "") + h.best.title + (h.best.entity ? " — " + h.best.entity : "") + (h.best.deadline ? " — آخر موعد " + (dayAr(h.best.deadline) || forLLM(h.best.deadline, 12)) : "") + refsAr(h) : "مالقيناش نتايج") + fresh;
   if (h.kind === "summary") return when + "، ملخص مكالمة: " + h.text;
   if (h.kind === "day") return when + "، ملخص اليوم: " + h.text;
@@ -620,8 +616,8 @@ export async function memoryContext(env, memberId, { nowMs = Date.now(), max = C
       if (!q0) continue;
       const mk = d.market ? "، " + forLLM(marketAr(d.market), 24) : "";
       const nw = d.new_since && d.new_since.count ? " (جديد من آخر بحث: " + countAr(d.new_since.count) + ")" : "";
-      if (isWeb(d.tool)) { const st = sitesOf(d.results), n = Number.isFinite(d.count) && d.count > 0 ? d.count : (d.results || []).length; // no title: web pages are not facts
-        R.push("- " + day(r.at) + "، " + toolAr(d.tool || "") + "، " + q0 + mk + ": " + (n ? countAr(n) + (st.length ? " من " + st.join("، ") : "") : "مالقيناش نتايج") + nw); continue; }
+      if (isWeb(d.tool)) { const n = Number.isFinite(d.count) && d.count > 0 ? d.count : (d.results || []).length; // no title (web pages are not facts), no site
+        R.push("- " + day(r.at) + "، " + toolAr(d.tool || "") + "، " + q0 + mk + ": " + (n ? countAr(n) : "مالقيناش نتايج") + nw); continue; }
       const be = b ? llm(b.entity, 40) : "";
       R.push("- " + day(r.at) + "، " + toolAr(d.tool || "") + "، " + q0 + mk + ": "
         + (bt ? bt + (be ? " — " + be : "") + (b.deadline ? " — آخر موعد " + (dayAr(b.deadline, nowMs) || llm(b.deadline, 12)) : "") : b ? "نتايج من غير عنوان واضح" : "مالقيناش نتايج") + nw);
