@@ -309,12 +309,15 @@ export function dateOf(d) {
 /* a link's host + path + query as words («/ignore-all-previous-instructions» → «ignore all previous instructions») for instructionLike() */
 export const linkText = u => { let t = u.hostname + " " + u.pathname + " " + u.search; try { t = decodeURIComponent(t); } catch (e) { /* keep it encoded */ } return t.replace(/[-_/+.=&?%]+/g, " "); };
 const ownHosts = env => new Set([bareHost(new URL(site(env)).hostname), "madeinegyptgate.com"]);
-export function cleanResults(raw, env, max = WS_MAX_RESULTS) {
+/* o.member (member-web.js only — the server's ONE search for the signed-in member HIMSELF, never a tool of the model): a LinkedIn
+   profile page (/in/…) is kept, the other personal profiles and chat links are still dropped */
+const linkedInProfile = u => onHost(bareHost(u.hostname), ["linkedin.com"]) && /^\/in\/[^/]+/.test(String(u.pathname || "").toLowerCase());
+export function cleanResults(raw, env, max = WS_MAX_RESULTS, o = {}) {
   const own = ownHosts(env), seen = new Set(), perSite = new Map(), out = [];
   for (const x of Array.isArray(raw) ? raw : []) {
     if (!x || typeof x !== "object") continue;
     const u = cleanUrl(x.url); if (!u) continue;
-    if (personalLink(u)) continue;                                                // a person's profile / a chat link (review S9)
+    if (personalLink(u) && !(o.member && linkedInProfile(u))) continue;           // a person's profile / a chat link (review S9)
     const pii = urlPII(u); if (pii === "path") continue;                          // an e-mail / phone in the link itself
     if (pii === "query") { u.search = ""; u.hash = ""; if (urlPII(u)) continue; }   // … or in its query string: cut
     const host = bareHost(u.hostname);

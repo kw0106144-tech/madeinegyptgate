@@ -16,6 +16,9 @@
                                acc-keys.js       POST /keys/wa-test (the owner's test message) → 409 feature_off; can_send_test false
      bassem_web_search         websearch.js      POST /api/advisor/web → feature_off (200, the model hears the text)
                                web-hunt.js       POST /api/advisor/hunt → feature_off (200)
+     bassem_member_web         member-web.js     the server's ONE web search for the signed-in member himself (name + company) when his
+                                                 call with Bassem starts, and the «اللي ظاهر عنه على الإنترنت» line of his block (off →
+                                                 no search, no line; locked without a web-search key; 30-day store = migration 0013)
      janna_web_search          websearch.js      POST /api/janna/web → feature_off (200)
                                web-hunt.js       POST /api/janna/hunt → feature_off (200)
      web_leads                 web-leads.js      the web results Janna / Bassem find are kept for the data desk (off → nothing stored;
@@ -40,7 +43,7 @@
      app_janna_autovoice       (site only)       data/janna-welcome.js: Janna's voice waits for a tap in the app unless this is on
    Rows are LOCKED (effective off, cannot be switched ON from here; OFF is always allowed) while what they need is missing: whatsapp_send
    until the respond.io token test passed; bassem_web_search / janna_web_search until a web-search key + their tool secret exist (both in
-   «مفاتيح الخدمات»); web_leads, web_leads_public, web_leads_lookup, account_delete, visitor_erase_request until their migration is applied. chat_photos while the Worker has no AI binding (env.AI).
+   «مفاتيح الخدمات»); bassem_member_web until a web-search key exists; web_leads, web_leads_public, web_leads_lookup, account_delete, visitor_erase_request until their migration is applied. chat_photos while the Worker has no AI binding (env.AI).
    calls_report until an e-mail route («البريد») and a report recipient exist.
    The two privacy rules are PERMANENT POLICY (POLICIES): shown, never switches.
    Reader: loadFeatures(env) — ≤ 1 D1 read per isolate per 30 s (memo per env.DB; acc.js ccBoot warms it at the start of every request /
@@ -137,6 +140,14 @@ export const FEATURES = Object.freeze([
     desc_en: "Bassem searches the web (not only the platform's data) — and, for a member who sells, hunts for tenders, RFQs, buyers and new projects for the product — and says the information itself: never a site, a link, a source or that it comes from the web; the source is kept for the platform team only (the data desk). Needs a web-search key and «Bassem's tool secret» in «Service keys» and a press on «🔗 Connect web search to Janna and Bassem».",
     lock_rule_ar: "مقفول لحد ما يتحط مفتاح بحث الإنترنت في «مفاتيح الخدمات»", lock_rule_en: "Locked until a web-search key is saved in «Service keys»",
     enforced_by: ["POST /api/advisor/web → feature_off (200)", "POST /api/advisor/hunt → feature_off (200)"] },
+  /* «باسم يعرف هو بيكلّم مين» (owner 2026-11-21: Bassem called a member «رئيس مجلس إدارة» without knowing it; «يبحث في جوجل … عن الشخص
+     عشان يبقي عارف هو بيكلم مين»): ON by default (his request), locked without a web-search key. Not a tool of the model (member-web.js) */
+  { key: "bassem_member_web", default: true, scope: "server",
+    label_ar: "باسم يعرف العضو من الإنترنت", label_en: "Bassem knows the member from the web",
+    desc_ar: "أول ما العضو المدفوع يكلّم باسم وهو داخل بحسابه، المنصة نفسها بتعمل بحث واحد على الإنترنت عن العضو ده بس (اسمه واسم شركته من حسابه — مش إيميل ولا تليفون)، وبتطلّع منه منصبه ونشاط شركته لو ظاهرين بوضوح، وبتديهم لباسم في أول المكالمة علشان يعرف هو بيكلّم مين؛ باسم مابيقولش منهم إلا اللي العضو أكّده ولا بيقول جاي منين. النتيجة بتتحفظ ٣٠ يوم للعضو (البحث مابيتكررش كل مكالمة)، والفريق بيشوفها ويمسحها من كارت العضو في «الأعضاء والاشتراكات». مابيتعملش لجنة ولا للزوار. بيستخدم نفس مفتاح بحث الإنترنت وحده اليومي.",
+    desc_en: "When a paying member signed in to his account calls Bassem, the platform itself runs ONE web search for that member only (his name and his company from his account — never an e-mail or a phone), keeps his position and his company's activity when the results show them plainly, and gives them to Bassem at the start of the call so he knows who he is talking to; Bassem says only what the member confirmed and never where it comes from. The result is kept 30 days per member (no search every call); the team sees and clears it on the member's card in «Members & subscriptions». Never for Janna or visitors. Uses the same web-search key and daily cap.",
+    lock_rule_ar: "مقفول لحد ما يتحط مفتاح بحث الإنترنت في «مفاتيح الخدمات»", lock_rule_en: "Locked until a web-search key is saved in «Service keys»",
+    enforced_by: ["POST /api/janna/session (agent bassem, a member's full sign-in): no search and no web line in his block"] },
   /* 📎 photos in the chats of Janna and Bassem (owner 2026-11-20: «مفيش في شاشه الشات بتاعت جنة او باسم مكان العميل يحطلهم في صوره»).
      Phase 1A + 1A+: the photo is read once by Workers AI and never stored; the texts behind the switch wait for the owner's word-for-word
      approval (docs/app/OWNER-APPROVAL-AR.md §8). Locked until the Worker is deployed with its [ai] binding (worker/wrangler.toml). */
@@ -327,6 +338,14 @@ export async function stateOf(env, d) {
       if (c.cap <= 0) return { locked: null, needs: T("cap_zero", "الحد اليومي للبحث = 0 في «مفاتيح الخدمات»", "The daily search cap is 0 in «Service keys»"), ready: false };
       if (J && c.cap_janna <= 0) return { locked: null, needs: T("cap_janna_zero", "حد جنة اليومي = 0 في «مفاتيح الخدمات»", "Janna's daily share is 0 in «Service keys»"), ready: false };
       if (!(await connectedOf(env))[J ? "janna" : "bassem"]) return { locked: null, needs: T("not_connected", "دوس «🔗 وصّل البحث بجنة وباسم» في «مفاتيح الخدمات»", "Press «🔗 Connect web search to Janna and Bassem» in «Service keys»"), ready: false };
+      return NONE;
+    }
+    // the server's search for the member himself (member-web.js): only the search key, provider and cap (no tool secret: not a tool)
+    if (d.key === "bassem_member_web") {
+      const c = await webSearchConfig(env);
+      if (!c.key) return { locked: c.reason === "key_unreadable" || c.janna_reason === "key_unreadable" ? T("key_unreadable", "مقفول: مفتاح بحث الإنترنت المحفوظ مش مقروء — دخّله تاني في «مفاتيح الخدمات»", "Locked: the saved web-search key cannot be read — enter it again in «Service keys»") : T("no_key", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
+      if (!c.provider) return { locked: null, needs: T("no_provider", "اختار مزود البحث (Tavily / Serper / Brave) في «مفاتيح الخدمات»", "Choose the search provider (Tavily / Serper / Brave) in «Service keys»"), ready: false };
+      if (c.cap <= 0) return { locked: null, needs: T("cap_zero", "الحد اليومي للبحث = 0 في «مفاتيح الخدمات»", "The daily search cap is 0 in «Service keys»"), ready: false };
       return NONE;
     }
     // 📎 photos: the Worker's Workers AI binding ([ai] in worker/wrangler.toml) — without it nothing can read a photo

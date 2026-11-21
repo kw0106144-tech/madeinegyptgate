@@ -77,6 +77,7 @@ import { appOf } from "./app-ua.js";                // the platform's own apps (
 import { mediaTicket } from "./chat-ticket.js";      // 📎 the photo ticket of Janna's call (src/chat-media.js, switch chat_photos)
 import { hasTable } from "./acc-base.js";            // 0011: the calls report's call_sessions row (a missing table writes nothing)
 import { waMemberState } from "./whatsapp.js";      // the member's WhatsApp for the block's WhatsApp line (sync: the memo ccBoot loaded, no extra read)
+import { memberWebLine } from "./member-web.js";    // 0013: what the web shows about the member himself (the server's search, switch bassem_member_web)
 
 export const ANAM_TOKEN_URL = "https://api.anam.ai/v1/auth/session-token";
 export const ANAM_PERSONA_URL = "https://api.anam.ai/v1/personas/"; // + a persona id from PERSONAS (read-only GET, Bassem's member context)
@@ -207,21 +208,25 @@ export async function continuation(env, memberId, callId, nowMs = Date.now()) {
     return resumeContext({ turns }, { maxChars: CONTINUE_MAX_CHARS, maxItems: 12 });
   } catch (e) { return ""; } // no 0008 table yet: the part starts fresh
 }
-export async function bassemContext(env, m, lang, b, nowMs = Date.now()) {
+/* x.full (the member's OWN full sign-in, Bearer v2 — never Bassem's e-mailed advisor token, never staff): what the web shows about him
+   (member-web.js, owner 2026-11-21 «يبحث … عن الشخص عشان يبقي عارف هو بيكلم مين») — the stored summary (≤ 30 days), else ONE search in the
+   background (x.waitUntil) whose line is used now only when it finishes within MW_FAST_MS; "" = no line */
+export async function bassemContext(env, m, lang, b, nowMs = Date.now(), x = {}) {
   if (!m) return null;
   /* the continuation and the factory profile are independent reads: one D1 round trip instead of two (owner 2026-11-19 «باسم بياخد وقت»);
      wa = is WhatsApp really on for him (whatsapp.js waMemberState: the rules of the sends, from this request's memo — no D1 read) */
-  const [cont, prof] = await Promise.all([continuation(env, m.id, b && b.continue_call, nowMs), memberProfile(env, m.id)]), o = { continued: !!cont, wa: waMemberState(env, m) };
+  const [cont, prof, web] = await Promise.all([continuation(env, m.id, b && b.continue_call, nowMs), memberProfile(env, m.id),
+    x.full ? memberWebLine(env, m, { nowMs, waitUntil: x.waitUntil }) : ""]), o = { continued: !!cont, wa: waMemberState(env, m) };
   const base = memberContext(m, lang, o) || memberContext(m, lang, { ...o, anonymous: true });
   if (!base) return null;
-  const parts = [base.block, "- " + todayLineAr(nowMs) + " (بتوقيت القاهرة)."];
+  const parts = [base.block, ...(web ? [web] : []), "- " + todayLineAr(nowMs) + " (بتوقيت القاهرة)."];
   if (cont) parts.push("", RESUME_BLOCK[0], cont, RESUME_BLOCK[1]);
   if (prof && prof.block) parts.push("", prof.block);
   const room = Math.min(CONTEXT_MAX, BLOCK_MAX - parts.join("\n").length - MEMORY_BLOCK[0].length - MEMORY_BLOCK[1].length - 8);
   const mem = room >= 300 ? await memoryContext(env, m.id, { nowMs, max: room }) : "";
   if (mem) parts.push("", MEMORY_BLOCK[0], mem, MEMORY_BLOCK[1]);
-  if (base.anonymous && !mem && !(prof && prof.block) && !cont) return null; // nothing to add for a member Bassem cannot greet by name
-  return { ...base, block: fitBlock(parts.join("\n")), memory: !!mem, profile: !!(prof && prof.block) };
+  if (base.anonymous && !mem && !(prof && prof.block) && !cont && !web) return null; // nothing to add for a member Bassem cannot greet by name
+  return { ...base, block: fitBlock(parts.join("\n")), memory: !!mem, profile: !!(prof && prof.block), ...(web ? { web: true } : {}) };
 }
 
 /* ---------- the daily calls report (calls-report.js, migration 0011) ----------
@@ -312,7 +317,8 @@ export async function handleJannaSession(req, env, execCtx, opt) {
         /* a member Bassem greets by name always gets the enriched persona (bassemContext never returns null for him): its read starts NOW,
            beside his D1 context, instead of after it (owner 2026-11-19 «باسم بياخد وقت»); anyone else: read only once a context exists */
         if (memberContext(c.m, lang)) personaP = readPersona();
-        ctx = await bassemContext(env, c.m, lang, b, nowMs);
+        const wu = execCtx && typeof execCtx.waitUntil === "function" ? p => execCtx.waitUntil(p) : null;
+        ctx = await bassemContext(env, c.m, lang, b, nowMs, { full: !!who.id, waitUntil: wu });
       }
     } else { tm.checks = (tc = Date.now()) - startMs; if (visitorContextOn(env, b)) ctx = await jannaSessionContext(env, req, b, lang, nowMs); } // Janna: the visitor's memory + the knowledge bank (null = plain)
     tm.ctx = Date.now() - tc;
