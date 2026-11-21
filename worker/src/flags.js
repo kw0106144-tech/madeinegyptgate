@@ -44,7 +44,7 @@
    Rows are LOCKED (effective off, cannot be switched ON from here; OFF is always allowed) while what they need is missing: whatsapp_send
    until the respond.io token test passed; bassem_web_search / janna_web_search until a web-search key + their tool secret exist (both in
    «مفاتيح الخدمات»); bassem_member_web until a web-search key exists; web_leads, web_leads_public, web_leads_lookup, account_delete, visitor_erase_request until their migration is applied. chat_photos while the Worker has no AI binding (env.AI).
-   calls_report until an e-mail route («البريد») and a report recipient exist.
+   calls_report until an e-mail route («البريد») and a report recipient exist; site_guard_alerts until an e-mail route exists.
    The two privacy rules are PERMANENT POLICY (POLICIES): shown, never switches.
    Reader: loadFeatures(env) — ≤ 1 D1 read per isolate per 30 s (memo per env.DB; acc.js ccBoot warms it at the start of every request /
    cron run), featureOn(env, key) async, featureSync(env, key) from the memo (the default before the first load). No 0006 tables → the
@@ -128,6 +128,19 @@ export const FEATURES = Object.freeze([
     desc_en: "Every morning at the time you set (default 08:30 Cairo time) the report recipients get an e-mail with yesterday's Janna and Bassem calls: who talked, what they asked, what they were told, what the tools returned, the outcome and an automatic rating of each call. Off: no report and no Anam reads for it.",
     lock_rule_ar: "مقفول لحد ما يبقى فيه طريقة إرسال إيميل في «البريد» ومستلم للتقرير في «المطوّر» ← «تقرير المكالمات»", lock_rule_en: "Locked until «E-mail» has a way to send and the report has a recipient («Developer» → «Calls report»)",
     enforced_by: ["cron: calls report", "POST /api/admin/cc/dev/calls-report/send → 503 feature_off"] },
+  /* «حماية الموقع» (owner 2026-11-21: «عايزك تقفل ان اي حد يقدر يسحب ب control s … ولو حد حاول يدخل يجيب احنا بانيين الموقع ازاي كل ده
+     يبقي مقفول ويجيلي نوتيفكشن»): data/guard.js on every page + guard.js (the attempts and the hourly e-mail). Both ON by default (his request) */
+  { key: "site_guard", default: true, scope: "client",
+    label_ar: "حماية الموقع من النسخ", label_en: "Copy protection on the site",
+    desc_ar: "بيمنع حفظ الصفحة (Ctrl+S) وعرض الكود (Ctrl+U) واختصارات أدوات المطوّر (F12 و Ctrl+Shift+I/J/C)، والكليك اليمين والسحب على الصور والفيديوهات وصور جنة وباسم والهولوجرام، وتحديد الكلام على جنة وباسم. الكتابة في الخانات والطباعة والمكالمات بتفضل شغالة، وجوجل بيشوف الصفحات عادي. ملحوظة: ده بيصعّب النسخ بس — أي حاجة بتشتغل في متصفح الزائر ممكن تتنزل بطرق تانية. لو عمل مشكلة لحد، اقفله من هنا.",
+    desc_en: "Blocks saving the page (Ctrl+S), viewing its source (Ctrl+U) and the developer-tools shortcuts (F12, Ctrl+Shift+I/J/C), right-click and drag on pictures, videos, Janna's and Bassem's figures and the hologram, and selecting text on Janna and Bassem. Typing in fields, printing and calls keep working, and Google sees the pages as before. Note: this only makes copying harder — whatever runs in a visitor's browser can still be downloaded other ways. If it causes anyone trouble, switch it off here.",
+    enforced_by: ["site"] },
+  { key: "site_guard_alerts", default: true, scope: "server",
+    label_ar: "تنبيه محاولات نسخ الموقع (إيميل)", label_en: "Copy-attempt alerts (e-mail)",
+    desc_ar: "لو حد جرّب يحفظ الصفحة أو يفتح الكود أو أدوات المطوّر، أو فتح صفحات كتير جداً في دقايق، أو استعمل متصفح آلي أو أداة نسخ مواقع (wget / curl / HTTrack …)، بيوصلك إيميل ملخص — إيميل واحد في الساعة بالكتير — فيه عدد المحاولات ونوعها والصفحات وعدد الزوار المختلفين، من غير IP ولا أي بيانات شخصية. بيروح لمستلمي تقرير المكالمات (وإلا info@madeinegyptgate.com)، وبيظهر سطر في تقرير المكالمات اليومي. لو قفلته، مفيش تسجيل ولا إيميل.",
+    desc_en: "When someone tries to save a page, open its source or the developer tools, opens very many pages within minutes, or uses a headless browser or a site-copying tool (wget / curl / HTTrack …), you get a summary e-mail — one an hour at most — with the number of attempts, their types, the pages and the number of different visitors, without IP addresses or any personal data. It goes to the calls report's recipients (else info@madeinegyptgate.com), and a line appears in the daily calls report. Off: nothing is recorded and no e-mail is sent.",
+    lock_rule_ar: "مقفول لحد ما يبقى فيه طريقة إرسال إيميل في «البريد» (المحاولات بتتسجّل برضه وبتظهر في تقرير المكالمات)", lock_rule_en: "Locked until «E-mail» has a way to send (the attempts are still recorded and shown in the calls report)",
+    enforced_by: ["POST /api/ev/guard → nothing stored", "POST /api/ev/pv: many pages in minutes / a headless browser", "GET /data/overlay.js: a site-copying tool", "cron: the hourly alert e-mail"] },
   { key: "whatsapp_send", default: true, scope: "server",
     label_ar: "إرسال واتساب", label_en: "WhatsApp sending",
     desc_ar: "زرار إيقاف إضافي لكل رسايل الواتساب. التشغيل الحقيقي بيتعمل من «مفاتيح الخدمات» (اختبار توكن respond.io ← رسالة تجربة لرقم المنصة ← «تشغيل إرسال واتساب الحقيقي»). لو قفلته هنا، مفيش أي رسالة واتساب بتطلع (ولا حتى رسالة التجربة) والإيميل بيشتغل بداله.",
@@ -357,6 +370,8 @@ export async function stateOf(env, d) {
       if (!(await callsReportTo(env)).length) return { locked: T("no_recipient", "مقفول: مفيش مستلم للتقرير — حطّه في «المطوّر» ← «تقرير المكالمات»", "Locked: the report has no recipient — set one in «Developer» → «Calls report»"), needs: null, ready: false };
       return NONE;
     }
+    // the copy-attempt alerts (guard.js): an e-mail route — the attempts are recorded either way (featureOn ignores locks)
+    if (d.key === "site_guard_alerts") return mailReady(env) ? NONE : { locked: T("no_route", "مقفول: مفيش طريقة إرسال إيميل شغّالة — شغّلها من «البريد»", "Locked: no working e-mail route — set it up in «E-mail»"), needs: null, ready: false };
     // the app's store rows: the deletion requests need their table (migration 0010); the reviewer sign-in needs its address + code, unexpired
     if (d.key === "account_delete" || d.key === "visitor_erase_request") {
       return (await deleteStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };

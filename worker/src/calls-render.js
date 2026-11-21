@@ -251,6 +251,12 @@ function summaryLines(rep) {
     L.push("زيارات الموقع: " + ar(pv.views || 0) + " مشاهدة · " + ar(pv.uniq || 0) + " زائر · " + ar(pv.mobile || 0) + " من الموبايل" + ((pv.sources || []).length ? " — أكتر المصادر: " + pv.sources.slice(0, 3).map(x => bdi(x[0]) + " " + ar(x[1])).join("، ") : ""));
     E.push("Site visits: " + (pv.views || 0) + " views · " + (pv.uniq || 0) + " visitors · " + (pv.mobile || 0) + " on mobile" + ((pv.sources || []).length ? " — top sources: " + pv.sources.slice(0, 3).map(x => bdi(x[0]) + " " + x[1]).join(", ") : ""));
   } else { L.push("زيارات الموقع: مش متاحة"); E.push("Site visits: not available"); }
+  /* «حماية الموقع» (guard.js): the day's copy attempts, on the visits line (the summary keeps 6 lines) — only when there were some */
+  const gd = k.guard;
+  if (gd && gd.n) {
+    L[L.length - 1] += " — محاولات نسخ الموقع: " + ar(gd.n) + " من " + nAr(gd.visitors || 0, "زائر", "زائرين", "زوار", "زائر") + " (التفاصيل في إيميلات «تنبيه محاولات نسخ الموقع»)";
+    E[E.length - 1] += " — copy attempts: " + gd.n + " from " + (gd.visitors || 0) + " visitors";
+  }
   const op = k.opps || {}, nd = k.needs || {};
   L.push("فرص مفتوحة النهارده: مناقصات مصرية " + ar(op.tenders || 0) + "، طلبات أسعار " + ar(op.rfqs || 0) + " · أسئلة جديدة محتاجة إجابة: " + ar(nd.fresh || 0) + (nd.total != null ? " (الكل " + ar(nd.total) + ")" : ""));
   E.push("Open opportunities today: Egyptian tenders " + (op.tenders || 0) + ", RFQs " + (op.rfqs || 0) + " · new questions that need an answer: " + (nd.fresh || 0) + (nd.total != null ? " (all " + nd.total + ")" : ""));

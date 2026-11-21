@@ -205,6 +205,11 @@ export const TEMPLATES = Object.freeze([
     about_ar: "كل صباح: مكالمات جنة وباسم في اليوم اللي فات وتقييمها التلقائي — لمستلمي التقرير اللي المالك حددهم بس («🛠️ المطوّر» ← «تقرير المكالمات»؛ الافتراضي إيميلات المنصة). فيه بيانات أشخاص محجوبة.",
     about_en: "Every morning: yesterday's Janna and Bassem calls and their automatic rating — only to the report recipients the owner set («🛠️ Developer» → «Calls report»; default: the platform's own mailboxes). It holds masked personal data.",
     sample_ar: "تقرير مكالمات جنة وباسم — ‹day›: ‹n› مكالمة", sample_en: "Calls report ‹day›: ‹n› calls" }),
+  // «حماية الموقع» (guard.js): the hourly summary of copy attempts — counts, types, pages, browsers; no IP, no personal data
+  T({ key: "team_site_guard", group: "team", to: "team", via: "send", prefixes: ["guard-"], name_ar: "تنبيه محاولات نسخ الموقع", name_en: "Site guard: copy attempts",
+    about_ar: "ملخص كل ساعة (لو فيه محاولات بس): حد جرّب يحفظ الصفحة أو يفتح الكود أو أدوات المطوّر، أو فتح صفحات كتير في دقايق، أو استعمل أداة نسخ — العدد والنوع والصفحات وعدد الزوار، من غير IP. لمستلمي تقرير المكالمات.",
+    about_en: "An hourly summary (only when there were attempts): someone tried to save a page, open its source or the developer tools, opened very many pages in minutes or used a copying tool — counts, types, pages and visitors, no IP. To the calls report's recipients.",
+    sample_ar: "تنبيه حماية الموقع: ‹n› محاولة نسخ — ‹day› ‹time›", sample_en: "Site guard: ‹n› copy attempts" }),
   // ---- follows & reminders ----
   T({ key: "follow_digest", group: "digest", to: "member", list: "digest", prefixes: ["digest-"], name_ar: "ملخص المتابعات اليومي", name_en: "Daily follows digest",
     about_ar: "العناصر الجديدة اللي تطابق متابعات العضو (مرة في اليوم).", about_en: "New items matching the member's follows (once a day).",

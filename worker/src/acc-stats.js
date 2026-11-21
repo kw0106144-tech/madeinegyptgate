@@ -2,7 +2,9 @@
    and privacy-preserving page analytics POST /api/ev/pv (§3.1.12): no raw IPs, user agents or referrers are stored — a daily-salted keyed
    hash per visitor (ipHash + coarse browser/os/device family), per page a hash of that, aggregated counters only, bots ignored. */
 import DATA from "./data.json";
-import { now, iso, sha256, secretOf, ipHash, rateOk, cairoDay, addDays, site, effPlan } from "./common.js";
+import { now, iso, sha256, secretOf, ipHash, rateN, cairoDay, addDays, site, effPlan, uaFamily, cleanPath } from "./common.js";
+import { guardPageView } from "./guard.js"; // «حماية الموقع»: many pages from one network in minutes, a headless browser (guard.js)
+export { uaFamily, cleanPath }; // they moved to common.js (guard.js needs them without importing this file)
 import { all, first, countOf, hasTable, csvText, ccCors, ccPreflight, dateOk, dayStartIso, dayAfterIso, ccOrigins } from "./acc-base.js";
 
 const ROUTABLE_SQL = "(kind IN ('rfq', 'basket') OR (kind = 'contact' AND target_type IN ('factory', 'company')))"; // = inquiries.js routable(); needs_team = this + status in_progress | no_match
@@ -146,11 +148,6 @@ function pvSourceOk(req, env) {
   if (o && o !== "null") return ok(o);
   return !!r && ok(r);
 }
-export function uaFamily(ua) {
-  const b = /Edg\//.test(ua) ? "edge" : /OPR\/|Opera/.test(ua) ? "opera" : /SamsungBrowser/.test(ua) ? "samsung" : /Firefox\/|FxiOS/.test(ua) ? "firefox" : /Chrome\/|CriOS/.test(ua) ? "chrome" : /Safari\//.test(ua) ? "safari" : "other";
-  const o = /Android/.test(ua) ? "android" : /iPhone|iPad|iPod/.test(ua) ? "ios" : /Windows/.test(ua) ? "windows" : /Mac OS X|Macintosh/.test(ua) ? "mac" : /Linux|CrOS/.test(ua) ? "linux" : "other";
-  return `${b}/${o}/${/Mobi|Android|iPhone|iPad/.test(ua) ? "m" : "d"}`;
-}
 export function srcOf(r, own) {
   let h = typeof r === "string" ? r.trim().toLowerCase() : "";
   if (!h) return "direct";
@@ -172,14 +169,6 @@ export function srcOf(r, own) {
   if (h === "t.me" || /(^|\.)telegram\.(org|me)$/.test(h)) return "telegram";
   return h.slice(0, 60);
 }
-export function cleanPath(p) {
-  let s = typeof p === "string" ? p : "";
-  s = s.split(/[?#]/)[0];
-  try { s = decodeURIComponent(s); } catch (e) { return ""; }
-  s = s.normalize("NFC").replace(/[\u0000-\u001f\u007f]/g, "");
-  if (!s.startsWith("/") || s.startsWith("//")) return "";
-  return s.slice(0, 200);
-}
 export async function pageView(req, env) {
   if (req.method === "OPTIONS") return ccPreflight(req, env);
   const done = () => new Response(null, { status: 204, headers: { "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff", Vary: "Origin", ...ccCors(req, env) } });
@@ -191,12 +180,19 @@ export async function pageView(req, env) {
     let b = {}; try { b = JSON.parse(t || "{}"); } catch (e) { return done(); }
     if (!b || typeof b !== "object" || Array.isArray(b)) return done();
     const ua = req.headers.get("User-Agent") || "";
-    if (!ua || BOT.test(ua) || BOT2.test(ua)) return done();
+    if (!ua || BOT.test(ua) || BOT2.test(ua)) {
+      // «حماية الموقع» (guard.js): a headless browser that opens the site's own pages (HeadlessChrome, PhantomJS …) is reported, never counted
+      if (ua && pvSourceOk(req, env)) { const hp = cleanPath(b.p); if (hp) await guardPageView(req, env, { ua, path: hp, headless: true }); }
+      return done();
+    }
     if (!pvSourceOk(req, env)) return done();
     const path = cleanPath(b.p); if (!path) return done();
     if (!(await hasTable(env, "cc_pv_day"))) return done();
     const own = hostOf(site(env)).replace(/^www\./, ""), src = srcOf(b.r, own), day = cairoDay(), ih = await ipHash(req, env);
-    if (!(await rateOk(env, "pvip|" + ih, 300, 86400))) return done(); // ≤ 300 counted views per network per day
+    const nIp = await rateN(env, "pvip|" + ih, 86400);
+    // «حماية الموقع»: past a normal day's pages (guard.js MASS.after), one more counter finds very many pages in a few minutes — nothing for anyone else
+    await guardPageView(req, env, { ua, path, ih, dayCount: nIp });
+    if (nIp > 300) return done(); // ≤ 300 counted views per network per day
     const secret = secretOf(env) || env.MEETINGS_SECRET || "mig";
     const h = (await sha256(`${secret}|pv|${day}|${ih}|${uaFamily(ua)}`)).slice(0, 40), ph = (await sha256(h + "|" + path)).slice(0, 40);
     const v1 = await env.DB.prepare("INSERT INTO cc_pv_seen (h, day) VALUES (?, ?) ON CONFLICT(h) DO NOTHING").bind(h, day).run();

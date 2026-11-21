@@ -36,6 +36,7 @@ import { handleMeDeleteRequest, handleVisitorEraseRequest } from "./delete-reque
 import { handleInquiries, handleInquiryEmail, isInquiryAddress, inquiriesCron } from "./inquiries.js"; // /api/inquiries* + automatic routing
 import { handleAdmin } from "./admin.js";           // /api/admin/*       monitoring console (no human step in any flow)
 import { handleEv, handleUnsub } from "./ev.js";    // /api/ev, /api/unsub
+import { handleGuardEv, guardTool, guardCron } from "./guard.js"; // «حماية الموقع»: /api/ev/guard, copying tools on /data/overlay.js, the hourly alert
 import { handleWA, bassemCron } from "./whatsapp.js"; // /api/wa/*        respond.io webhook + Bassem's daily WhatsApp
 import { handleJannaSession } from "./janna-session.js"; // /api/janna/session  live-call session tokens (JS SDK: no third-party mark)
 import { handleTiming } from "./live-timing.js";       // /api/janna/timing   the call page's start timing beacon (numbers only)
@@ -663,7 +664,7 @@ const WORKER = {
     // Control Center first: the /api/me, /api/auth and /api/admin regexes below would swallow these paths (ACC-CONTRACT §3.0).
     // Every family is anchored at the start of the path (review F9): /api/janna/x/api/admin/cc/… is NOT the Control Center, so a WAF /
     // Access / IP rule written for /api/admin/* or /api/me/* cannot be bypassed through another routed prefix.
-    if (/^\/data\/overlay\.js$/.test(url.pathname)) return CC.content.serveOverlay(req, env, ctx);
+    if (/^\/data\/overlay\.js$/.test(url.pathname)) { if (ctx && ctx.waitUntil) ctx.waitUntil(guardTool(req, env)); return CC.content.serveOverlay(req, env, ctx); } // guard.js: wget / curl / HTTrack … (counted, never refused)
     if (/^\/media\/u\//.test(url.pathname)) return CC.content.serveMedia(req, env, ctx);
     if (/^\/api\/index\.php$/.test(url.pathname)) return CC.acc.handleOldApi(req, env, ctx);
     if (/^\/api\/admin\/cc(\/|$)/.test(url.pathname)) return CC.acc.handleCC(req, env, ctx, CC);
@@ -685,6 +686,7 @@ const WORKER = {
     if (/^\/api\/me(\/|$)/.test(url.pathname)) return handleMe(req, env, ctx);
     if (/^\/api\/inquiries(\/|$)/.test(url.pathname)) { const res = await handleInquiries(req, env, ctx); if (req.method === "POST" && res.status === 201) { try { const j = await res.clone().json(); if (j && j.ref) ctx.waitUntil(CC.payments.onInquiryCreated(env, j.ref, CC)); } catch (e) { /* ignore */ } } return res; }
     if (/^\/api\/admin(\/|$)/.test(url.pathname)) return handleAdmin(req, env, ctx);
+    if (/^\/api\/ev\/guard\/?$/.test(url.pathname)) return handleGuardEv(req, env, ctx); // «حماية الموقع» (data/guard.js beacon)
     if (/^\/api\/ev\/?$/.test(url.pathname)) return handleEv(req, env, ctx);
     if (/^\/api\/unsub\/?$/.test(url.pathname)) return handleUnsub(req, env, ctx);
     if (/^\/api\/wa(\/|$)/.test(url.pathname)) return handleWA(req, env, ctx);
@@ -751,7 +753,8 @@ export async function platformCron(env, nowMs = Date.now()) {
   for (const [k, fn] of [["inquiries", () => inquiriesCron(env, nowMs)], ["daily", () => dailyJobs(env, nowMs)], ["bassem", () => bassemCron(env, nowMs, m => newCountFor(env, m, nowMs))], ["cc", () => CC.acc.ccCron(env, nowMs, CC)],
     ["memory", () => (busy() ? { skipped: "daily digests ran in this tick" } : memoryCron(menv, nowMs))],
     ["memory_day", () => (busy() ? { skipped: "daily digests ran in this tick" } : out.memory && out.memory.rebuilt ? { skipped: "consolidation ran in this tick" } : dailyMemory(menv, nowMs))],
-    ["calls_report", () => (busy() ? { skipped: "daily digests ran in this tick" } : callsReportCron(env, nowMs, CC))]]) { // its own budgetEnv(env, 80) inside
+    ["calls_report", () => (busy() ? { skipped: "daily digests ran in this tick" } : callsReportCron(env, nowMs, CC))], // its own budgetEnv(env, 80) inside
+    ["guard", () => guardCron(env, nowMs)]]) { // «حماية الموقع»: ≤ 1 read when nothing happened; at most one e-mail an hour
     try { out[k] = await fn(); } catch (e) { out[k] = { error: String(e && e.message || e) }; console.error("platform cron " + k, e && e.stack || e); }
   }
   return out;
