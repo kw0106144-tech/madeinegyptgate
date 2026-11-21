@@ -17,6 +17,7 @@ import { ipHash, cairoDay } from "../src/common.js";
 import { issueSession } from "../src/auth.js";
 import { D1 } from "./helpers.mjs";
 import { resetMembers } from "../src/lookup-members.js";
+import { resetPublished } from "../src/web-public.js";
 
 const SITE = "https://madeinegyptgate.com";
 const KEY = "anam-test-key-speed-0f3a"; // fake: never a real key
@@ -40,10 +41,19 @@ const req = (path, { method = "GET", body, headers = {} } = {}) => new Request(S
 
 describe("1 worker-tool-fast: Anam's webhooks and the health check skip ccBoot", () => {
   test("POST /api/janna/lookup, POST /api/janna/item, GET /api/janna/health: not one D1 statement (they read only the bundled data)", async () => {
-    resetMembers(); // this isolate's memo of the members' records (src/lookup-members.js) starts empty
+    resetMembers(); resetPublished(); // this isolate's memos of the members' records (src/lookup-members.js) and «فرص السوق» (src/web-public.js) start empty
     const env = { DB: new D1() }, seen = counted(env);
     const l = await worker.fetch(req("/api/janna/lookup", { method: "POST", body: { section: "tenders", query: "حديد" } }), env, {});
     assert.equal(l.status, 200); assert.ok((await l.json()).count > 0);
+    /* «فرص السوق» (src/web-public.js, owner 2026-11-20): tenders / rfqs / customers / projects / news also read the published web
+       opportunities and the owner's switches — the two indexed reads and the switches in ONE round trip, once per isolate per 10 minutes
+       (never ccBoot's loaders); the next lookup reads nothing */
+    assert.equal(seen.length, 3, seen.join("\n"));
+    assert.equal(seen.filter(s => /FROM web_leads WHERE status = \? ORDER BY last_seen DESC LIMIT/.test(s)).length, 2, seen.join("\n"));
+    assert.ok(seen.some(s => /FROM cc_settings WHERE k = \? AND scope = 'system'/.test(s)), seen.join("\n"));
+    seen.length = 0;
+    const l2 = await worker.fetch(req("/api/janna/lookup", { method: "POST", body: { section: "rfqs", query: "حديد" } }), env, {});
+    assert.equal(l2.status, 200);
     const i = await worker.fetch(req("/api/janna/item", { method: "POST", body: { section: "tenders", id: "eg-tnd-003" } }), env, {});
     assert.equal((await i.json()).found, true);
     const h = await worker.fetch(req("/api/janna/health"), env, {});

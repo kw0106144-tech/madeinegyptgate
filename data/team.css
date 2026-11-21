@@ -75,6 +75,8 @@
 .tm-c { display: inline-flex; align-items: center; gap: 4px; border-radius: 99px; padding: 2px 10px; font-size: .78rem; font-weight: 800; background: var(--sunken); color: var(--fg); white-space: nowrap; }
 .tm-c.g { background: var(--tm-ok-bg); color: var(--tm-ok); } .tm-c.a { background: var(--tm-warn-bg); color: var(--tm-warn); }
 .tm-c.r { background: var(--tm-bad-bg); color: var(--tm-bad); } .tm-c.b { background: var(--tm-info-bg); color: var(--tm-info); }
+/* «🙈 إخفاء من المنصة» on a published web lead: the one press that takes it off the platform */
+.tm-hide { background: var(--tm-bad-bg); color: var(--tm-bad); border: 1px solid currentColor; font-weight: 800; }
 .tm-pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .tm-empty { padding: 26px 16px; text-align: center; color: var(--muted); border: 2px dashed var(--line); border-radius: 16px; line-height: 1.8; }
 .tm-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
