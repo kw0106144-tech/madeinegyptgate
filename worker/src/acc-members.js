@@ -9,6 +9,7 @@ import { fail, HttpErr, body, paging, likeOf, all, first, countOf, allIn, hasTab
   isBootstrap, adminList, MEMBER_ROLE, ROLES, ADMIN_GRANTS, TEAM_ROLES, factoryNames, refExists, DIR_REF_RX, sendTpl, loginUrl, validator, dayStartIso, dayAfterIso } from "./acc-base.js";
 import { planCanX, plansWithX } from "./acc-plans.js";
 import { kbEraseStmts } from "./knowledge.js";                                // 0009: the legal erasure of «بنك المعلومات» entries (review 2026-11-19 #11)
+import { memberWebView, clearMemberWeb, forgetMemberWeb, MW_TABLE } from "./member-web.js"; // 0013: what the web shows about the member (Bassem + the team only)
 
 const PLANS = ["visitor", "profile", "basic", "premium", "partner", "strategic"];
 const STATUSES = ["active", "pending", "suspended"];
@@ -188,7 +189,18 @@ export async function memberDetail(env, id, adm) {
   const auditRows = (await all(env, "SELECT * FROM cc_audit WHERE target_type = 'member' AND target_id = ? ORDER BY id DESC LIMIT 20", m.id)).map(auditOut);
   const bassemOn = planCanX(m, "bassem");
   const metaOut = meta ? { ...meta, legacy_profile_json: undefined } : null;
-  return { member: row, meta: metaOut, invoices, routed: { count: routedN, last }, follows, bassem: bassemOn ? prefsOut(m) : null, sessions, audit: auditRows, legacy_profile: jget((meta && meta.legacy_profile_json) || "{}", {}) };
+  /* 0013: «اللي ظاهر عنه على الإنترنت» — what Bassem gets about him from the server's search (member-web.js): the card shows it to
+     bassem.read (owner / admin / support) only, never to anyone else */
+  const web = bassemOn && adm && typeof adm.can === "function" && adm.can("bassem.read") ? await memberWebView(env, m).catch(() => null) : null;
+  return { member: row, meta: metaOut, invoices, routed: { count: routedN, last }, follows, bassem: bassemOn ? prefsOut(m) : null, ...(web ? { bassem_web: web } : {}), sessions, audit: auditRows, legacy_profile: jget((meta && meta.legacy_profile_json) || "{}", {}) };
+}
+/* DELETE /members/:id/web-summary (members.write: owner / admin; audited member.web_summary_clear): the summary goes, and the member is not
+   searched again until his name / company changes. Without migration 0013 → 503 member_web_off */
+export async function clearWebSummary(req, env, ctx, adm, id) {
+  const m = await memberById(env, id); if (!m) fail(404, "not_found", "member not found");
+  const r = await clearMemberWeb(env, adm, m, batch);
+  if (r.off) fail(503, "member_web_off", "الملخص متخزّن في الذاكرة بس لحد ما ملف 0013_member_web.sql يتشغّل — اقفل «باسم يعرف العضو من الإنترنت» من «المطوّر» لو عايز تشيله دلوقتي / not stored yet: apply migrations/0013_member_web.sql, or switch «Bassem knows the member from the web» off in «Developer»");
+  return { body: { ok: true, had: r.had } };
 }
 export const auditOut = r => ({ ...r, before: jget(r.before_json, null), after: jget(r.after_json, null), before_json: undefined, after_json: undefined });
 
@@ -406,6 +418,7 @@ export async function deleteMember(req, env, ctx, adm, id) {
      only he asked goes (knowledge.js kbEraseStmts, the same step as the API erasure acc-memory.js) */
   const kb = await kbEraseStmts(env, subj);
   const cs = await hasTable(env, "call_sessions"), cr = await hasTable(env, "call_reviews"); // 0011: the calls report's rows of him
+  const mw = await hasTable(env, MW_TABLE); // 0013: what the web shows about him (member-web.js)
   const callRows = (cs ? (await countOf(env, `SELECT COUNT(*) AS n FROM call_sessions WHERE member_id = ? OR subject IN (${ph})`, m.id, ...subj)) || 0 : 0)
     + (cr ? (await countOf(env, `SELECT COUNT(*) AS n FROM call_reviews WHERE subject IN (${ph})`, ...subj)) || 0 : 0);
   const reason = line(b.reason, 300), erase = memRows > 0 || profile || taskRows > 0 || vids.length > 0 || kb.stmts.length > 0 || callRows > 0;
@@ -423,10 +436,12 @@ export async function deleteMember(req, env, ctx, adm, id) {
     ...kb.stmts,                                                                                                  // 0009: his asker hash / his own entries in «بنك المعلومات»
     ...(cs ? [env.DB.prepare(`DELETE FROM call_sessions WHERE member_id = ? OR subject IN (${ph})`).bind(m.id, ...subj)] : []), // 0011: the calls report
     ...(cr ? [env.DB.prepare(`DELETE FROM call_reviews WHERE subject IN (${ph})`).bind(...subj)] : []),
+    ...(mw ? [env.DB.prepare("DELETE FROM member_web_profile WHERE member_id = ?").bind(m.id)] : []),       // 0013: «اللي ظاهر عنه على الإنترنت»
     metaUpsert(env, m.id, { notes: "deleted " + t, legacy_profile_json: "{}", tags: "", status: "active", requested_plan: "", suspended_plan: "", suspended_expires: "" }, t),
     adm.auditStmt("member.delete", "member", m.id, { email: maskEmail(m.email), plan: m.plan, company: m.company ? "(set)" : "", ...(erase ? { bassem_memory_rows: memRows, factory_profile: profile, tasks: taskRows, janna_visitors: vids.length } : {}) },
       { email: `deleted+${m.id}@invalid`, ...(reason ? { reason } : {}), ...(kb.stmts.length ? { knowledge_askers: kb.askers, knowledge_removed: kb.removed } : {}), ...(callRows ? { call_rows: callRows } : {}) }, `anonymised ${maskEmail(m.email)}` + (erase ? ` · Bassem memory erased (${memRows} rows${profile ? " + factory profile" : ""}${taskRows ? " + " + taskRows + " tasks" : ""}${vids.length ? " + Janna visitor memory (" + vids.length + ")" : ""}${kb.stmts.length ? " + knowledge bank (" + kb.askers + " asker lists, " + kb.removed + " entries)" : ""}) · legal request: ${reason}` : "")),
   ]);
+  forgetMemberWeb(m.id); // the isolate's copy too (no 0013 table: the only one)
   return { body: { ok: true } };
 }
 

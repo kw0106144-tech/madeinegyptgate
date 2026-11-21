@@ -495,6 +495,27 @@ Code: `src/auth.js` (login) · `src/me.js` (account) · `src/inquiries.js` (engi
 
 All JSON; errors are `{error, code}`; auth = `Authorization: Bearer <token>` (the page keeps it in localStorage `mig-tok`).
 
+## What the web shows about the member — src/member-web.js (owner 2026-11-21; migration 0013)
+
+Bassem once called a member «رئيس مجلس إدارة» without knowing it; the owner wants him to know who he is talking to. **Not a tool of the
+model** (his tools still never search for a person): when a paying member's call starts with his OWN full sign-in (Bearer v2 — never the
+e-mailed advisor token, never staff, never Janna or a visitor), `janna-session.js` `bassemContext` asks `memberWebLine`:
+
+- the stored summary (D1 `member_web_profile`, 30 days per member) when it is fresh for his current name + company (`query_hash`);
+- else ONE provider call (`websearch.js` `runProvider`: the same key, provider and daily cap — Bassem's share, reserved first, given back
+  when refused) for `"<full name>" <company>` from his account, nothing else (no e-mail, phone, title or id). It runs in the background
+  (`execCtx.waitUntil`); its line is used in this call only when it finishes within `MW_FAST_MS` (500 ms), else from the next call;
+- `summarize` (deterministic, no LLM) keeps his position only when a result names it right next to his name AND names his company, and
+  the company's activity only when a result says it right after the company's name (never out of the company's own name). Nothing
+  clear → no line (`none`, 30 days); a provider failure → `failed`, retried after 6 h (a summary found before is kept).
+
+The block line: `- اللي ظاهر عنه على الإنترنت: <position> في <company>، ونشاطها: <activity>. ماتقولش منه إلا اللي هو أكّده، وماتقولش جاي
+منين، ومتنسبلوش صفة مش هنا.` Switch: «🛠️ المطوّر» → `bassem_member_web` (ON by default, locked without a web-search key; OFF = no search
+and no line). The team: `GET /api/admin/cc/members/:id` carries `bassem_web` for `bassem.read` (status, summary, the supporting links —
+team only), `DELETE /api/admin/cc/members/:id/web-summary` (`members.write`, audited `member.web_summary_clear`) clears it until the
+name / company changes. Erased with the account (`deleteMember`) and the owner's legal memory erasure. Without 0013: the isolate's memory
+only, the clear answers `503 member_web_off`. Tests: `test/member-web.test.mjs`.
+
 ## Endpoints
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
