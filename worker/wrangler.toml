@@ -118,6 +118,7 @@ binding = "AI"
 #   Anam tool bassem_web_search; or the panel slot «سر أدوات باسم») + WEBSEARCH_KEY (or the panel slot) · optional vars WEBSEARCH_PROVIDER
 #   (tavily | serper | brave) and WEBSEARCH_CAP (calls per Cairo day, default 300, 0 = off) — the panel values win for provider / cap.
 [vars]
+PRON_DICT_ID = "142e481d-0594-4491-a518-92f0ecec8192"   # Anam pronunciation dictionary «صنع في مصر — نطق الأسماء» (باسم → باسِم), Arabic calls; "0" = off
 SITE_URL = "https://madeinegyptgate.com/"
 MAIL_FROM = "منصة صنع في مصر <noreply@madeinegyptgate.com>" # the ONE sender (domain verified at Resend); Reply-To set per email
 TEAM_EMAIL = "info@madeinegyptgate.com"        # no-match "action needed" notices, meeting bookings, Reply-To of team answers
