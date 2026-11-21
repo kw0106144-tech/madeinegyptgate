@@ -200,3 +200,43 @@ export function timingSafeEqual(a, b) {
   return diff === 0 && a.length > 0;
 }
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* the arguments of a persona's tool webhook (bassem_intel), every form Anam may send — the same rules as janna-lookup's
+   worker/src/common.js toolArgs (this worker imports nothing from there). Anam POSTs a webhook's arguments as the flat bodyParams object;
+   2026-11-21 Janna AR's model sent some calls FLAT and Anam then POSTed an empty body. Merged, later wins: the query string, then the body
+   (a JSON object, flat or under bodyParams / queryParams / pathParams / arguments / parameters / args / input — an object or its JSON
+   text —, empty / "null" / "undefined", form-encoded, multipart text fields). → {a, bad, tooLarge, empty}; validation stays with tool(). */
+const ARG_WRAPS = ["queryParams", "pathParams", "bodyParams", "arguments", "parameters", "args", "input"];
+const objOf = x => { if (typeof x === "string") { const t = x.trim(); if (t[0] !== "{") return null; try { x = JSON.parse(t); } catch (e) { return null; } } return x && typeof x === "object" && !Array.isArray(x) ? x : null; };
+export function flatToolArgs(o) {
+  if (!o || typeof o !== "object" || Array.isArray(o)) return {};
+  const out = {};
+  for (const k of ARG_WRAPS) { const w = objOf(o[k]); if (w) for (const j of Object.keys(w)) if (!ARG_WRAPS.includes(j) && j !== "headers") out[j] = w[j]; }
+  for (const k of Object.keys(o)) if (k !== "headers" && !(ARG_WRAPS.includes(k) && objOf(o[k]))) out[k] = o[k];
+  return out;
+}
+export async function toolArgs(req, { max = 16384 } = {}) {
+  const a = flatToolArgs(Object.fromEntries(new URL(req.url).searchParams));
+  const r = { a, bad: false, tooLarge: false, empty: false };
+  if (req.method === "POST") {
+    let t = "";
+    try { t = await req.text(); } catch (e) { r.bad = true; return r; }
+    if (t.length > max) { r.tooLarge = true; return r; }
+    t = String(t || "").replace(/^﻿/, "").trim();
+    let b = null;
+    const blank = !t || t === "null" || t === "undefined";
+    if (blank) b = {};
+    else if (t[0] === "{") b = objOf(t);
+    else {
+      const ct = String(req.headers.get("Content-Type") || "");
+      if (/multipart\/form-data/i.test(ct)) {
+        try { const fd = await new Response(t, { headers: { "Content-Type": ct } }).formData(); b = {}; for (const [k, v] of fd.entries()) if (typeof v === "string") b[k] = v; } catch (e) { b = null; }
+      } else if (/^[^=&\s{}\[\]"]+=/.test(t)) { try { b = Object.fromEntries(new URLSearchParams(t)); } catch (e) { b = null; } }
+    }
+    if (!b) { r.bad = true; return r; }
+    Object.assign(a, flatToolArgs(b));
+    /* nothing arrived: no body at all and no argument in the query string (a JSON body, even {}, keeps the endpoint's own field errors) */
+    r.empty = blank && !Object.keys(a).some(k => a[k] !== undefined && a[k] !== null && String(a[k]).trim() !== "");
+  }
+  return r;
+}

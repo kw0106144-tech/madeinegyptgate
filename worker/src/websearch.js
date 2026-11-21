@@ -45,7 +45,7 @@
    cache by normalised query + options (per-isolate memory + KV SEO_KV "acc:ws:*", the Worker's own prefix), shared by both personas.
    No SSRF: the only URLs ever fetched are the three fixed provider endpoints above (redirect: manual). The data desk keeps the
    opportunities found WITH their link and site (web-leads.js, migration 0012, provider answers only — review S8). */
-import { safeEq, sha256, cairoDay, addDays, site, iso, toolSoftError } from "./common.js";
+import { safeEq, sha256, cairoDay, addDays, site, iso, toolSoftError, toolArgs, toolEmptyText } from "./common.js";
 import { norm, forLLM, instructionLike, stripPII } from "./text.js";
 import { webSearchConfig } from "./service-keys.js";
 import { featureOn } from "./flags.js"; // «🛠️ المطوّر» bassem_web_search / janna_web_search: off → feature_off (the persona says web search is off)
@@ -563,6 +563,21 @@ export function soft(path, voice, code, http, extra, headers) {
   toolSoftError(path, code);
   return out({ error: code, code, http, ...(extra || {}), count: 0, results: [], text: voiceText(voice, code, extra && extra.reason) }, 200, headers);
 }
+/* the call's arguments never arrived (common.js toolArgs: the model sent them flat and Anam POSTed an empty body, 2026-11-21): HTTP 200 +
+   a text that has the model send the call again ONCE in the nested shape — never «tell me the product», which made the persona ask a
+   visitor who had just said it */
+export function emptyArgs(path, voice, fields, example) {
+  toolSoftError(path, "empty_args");
+  return out({ error: "empty_args", code: "empty_args", http: 400, count: 0, results: [], text: toolEmptyText(fields, example, isEn(voice)) });
+}
+/* the body of a web tool's POST, every form Anam may send → {a} | a soft answer (`res`) */
+export async function webArgs(req, path, voice, fields, example) {
+  const r = await toolArgs(req, { max: WS_MAX_BODY });
+  if (r.tooLarge) return { res: soft(path, voice, "too_large", 413) };
+  if (r.bad) return { res: soft(path, voice, "bad_json", 400) };
+  if (r.empty) return { res: emptyArgs(path, voice, fields, example) };
+  return { a: r.a };
+}
 /* a counter refusal → its soft answer */
 export function refusal(path, voice, r, nowMs) {
   if (r.error === "websearch_off") return soft(path, voice, "websearch_off", 503, { reason: r.reason || "no_counter" });
@@ -599,10 +614,9 @@ async function serveSearch(req, env, ctx, nowMs, who) {
   if (!secret) return soft(W.path, voice, "websearch_off", 503, { reason: (who === "janna" ? cfg.janna_reason : cfg.reason) || "no_tool_secret" }); // fail-closed
   const got = req.headers.get(WS_HEADER) || "";
   if (!got || !safeEq(got, secret)) return out({ error: "unauthorized" }, 401);
-  let b = {};
-  try { const t = await req.text(); if (t.length > WS_MAX_BODY) return soft(W.path, voice, "too_large", 413); b = t ? JSON.parse(t) : {}; }
-  catch (e) { return soft(W.path, voice, "bad_json", 400); }
-  const a = argsOf(b);
+  const wa = await webArgs(req, W.path, voice, "query، و kind و market و lang لو فيه", { query: "rubber rollers importers Kenya", kind: "companies" }); // common.js toolArgs
+  if (wa.res) return wa.res;
+  const a = argsOf(wa.a);
   voice = voiceOf(who, who === "janna" ? a.lang : ""); // Bassem's lang is the result language (as before): his voice stays Arabic
   if (!(await featureOn(env, W.feature))) return soft(W.path, voice, "feature_off", 503, { feature: W.feature, reason: "feature_off" });
   const ready = who === "janna" ? cfg.janna_ready : cfg.ready;

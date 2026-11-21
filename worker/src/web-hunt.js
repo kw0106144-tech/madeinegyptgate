@@ -32,7 +32,7 @@ import { norm, instructionLike, EN as EN_AR } from "./text.js";
 import { webSearchConfig } from "./service-keys.js";
 import { featureOn } from "./flags.js";
 import { WS_HEADER, WS_MAX_BODY, WS_NOTE, WS_MARKETS, voiceOf, isEn, soft, refusal, out, argsOf, queryHygiene, marketOf, runProvider, cleanResults, cacheKey, cacheGet, cachePut,
-  reserveUnits, giveBack, sayable, sayResult } from "./websearch.js";
+  reserveUnits, giveBack, sayable, sayResult, webArgs } from "./websearch.js";
 import { productNeed, industryNeed, classify, relevant, namedIn, canonUrl, bareHost, SERVICE_RX } from "./web-classify.js";
 import { recordLeads, rejectedOf, leadHash, productKey } from "./web-leads.js";
 
@@ -289,10 +289,9 @@ async function serveHunt(req, env, ctx, nowMs, who) {
   if (!secret) return soft(W.path, voice, "websearch_off", 503, { reason: (who === "janna" ? cfg.janna_reason : cfg.reason) || "no_tool_secret" }); // fail-closed
   const got = req.headers.get(WS_HEADER) || "";
   if (!got || !safeEq(got, secret)) return out({ error: "unauthorized" }, 401);
-  let b = {};
-  try { const t = await req.text(); if (t.length > WS_MAX_BODY) return soft(W.path, voice, "too_large", 413); b = t ? JSON.parse(t) : {}; }
-  catch (e) { return soft(W.path, voice, "bad_json", 400); }
-  const a = argsOf(b, ["product", "query", "q"]);
+  const wa = await webArgs(req, W.path, voice, "product، و product_en و buyer_industries و market و lang لو فيه", { product: "سلندرات درافيل", product_en: "industrial rubber rollers", market: "eg" }); // common.js toolArgs
+  if (wa.res) return wa.res;
+  const a = argsOf(wa.a, ["product", "query", "q"]);
   voice = voiceOf(who, a.lang); // the language the persona speaks: Janna's tool sends it, Bassem's may (nit 15)
   if (!(await featureOn(env, W.feature))) return soft(W.path, voice, "feature_off", 503, { feature: W.feature, reason: "feature_off" });
   if (!(who === "janna" ? cfg.janna_ready : cfg.ready)) return soft(W.path, voice, "websearch_off", 503, { reason: who === "janna" ? cfg.janna_reason : cfg.reason });

@@ -351,22 +351,59 @@ export async function resubscribe(env, email, list) {
   await env.DB.batch(stmts);
 }
 
-/* a tool webhook's POST body, tolerant (2026-11-21: Anam's janna_lookup / knowledge_lookup started arriving with the arguments outside a
-   JSON body — every call answered «bad json»): JSON object (its bodyParams / queryParams / pathParams merged in), an empty body, or a
-   form-encoded one. → an object, or null when the body is something else. Never logs the body. */
-export async function toolBody(req) {
-  let t = "";
-  try { t = await req.text(); } catch (e) { return null; }
-  t = String(t || "").trim();
-  if (!t) return {};
-  if (t[0] === "{") {
-    let o; try { o = JSON.parse(t); } catch (e) { return null; }
-    if (!o || typeof o !== "object" || Array.isArray(o)) return null;
-    const out = {};
-    for (const k of ["queryParams", "pathParams", "bodyParams"]) if (o[k] && typeof o[k] === "object" && !Array.isArray(o[k])) Object.assign(out, o[k]);
-    for (const k of Object.keys(o)) if (!["queryParams", "pathParams", "bodyParams", "headers"].includes(k)) out[k] = o[k];
-    return out;
-  }
-  if (/^[^=&\s]+=/.test(t)) { try { return Object.fromEntries(new URLSearchParams(t)); } catch (e) { return null; } }
-  return null;
+/* ---------- the arguments of a persona's tool webhook (janna_lookup, knowledge_lookup, platform_item, the web tools) ----------
+   Anam builds a SERVER_WEBHOOK's request from the model's arguments in the nested shape {bodyParams: {…}, queryParams?, pathParams?}:
+   the BODY it POSTs is bodyParams alone, as flat JSON. 2026-11-21 (Janna AR on azure_openai, sessions 5638390d / 88c2befb): the model
+   started answering some tools with FLAT arguments ({query, section}); Anam then POSTed no usable body (empty) and the call came back
+   «bad json» (req.json()) or «product_required» (web hunt) — Bassem's calls and Janna's bassem_intel, still nested, were fine.
+   toolArgs reads every form the arguments may arrive in and merges them (later wins): the query string, then the body —
+     JSON object, flat or with its arguments under bodyParams / queryParams / pathParams / arguments / parameters / args / input (an object,
+     or that object as JSON text), an empty body (also "null" / "undefined"), form-encoded, multipart form fields (text only).
+   Validation stays with each endpoint (its required fields, caps and rate limits). → {a, bad, tooLarge, empty}: bad = a body that is
+   none of those (garbage, an array, a JSON scalar); empty = no argument arrived at all (no body and no query-string argument — the
+   case above: the model must send the call again in the nested shape, toolEmptyText; a JSON {} keeps the endpoint's own field error).
+   Never logs the body. */
+const ARG_WRAPS = ["queryParams", "pathParams", "bodyParams", "arguments", "parameters", "args", "input"];
+const objOf = x => { if (typeof x === "string") { const t = x.trim(); if (t[0] !== "{") return null; try { x = JSON.parse(t); } catch (e) { return null; } } return x && typeof x === "object" && !Array.isArray(x) ? x : null; };
+export function flatToolArgs(o) {
+  if (!o || typeof o !== "object" || Array.isArray(o)) return {};
+  const out = {};
+  for (const k of ARG_WRAPS) { const w = objOf(o[k]); if (w) for (const j of Object.keys(w)) if (!ARG_WRAPS.includes(j) && j !== "headers") out[j] = w[j]; }
+  for (const k of Object.keys(o)) if (k !== "headers" && !(ARG_WRAPS.includes(k) && objOf(o[k]))) out[k] = o[k];
+  return out;
 }
+export async function toolArgs(req, { max = 16384, query = true } = {}) {
+  const a = query ? flatToolArgs(Object.fromEntries(new URL(req.url).searchParams)) : {};
+  const r = { a, bad: false, tooLarge: false, empty: false };
+  if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH") {
+    let t = "";
+    try { t = await req.text(); } catch (e) { r.bad = true; return r; }
+    if (t.length > max) { r.tooLarge = true; return r; }
+    t = String(t || "").replace(/^\uFEFF/, "").trim();
+    let b = null;
+    const blank = !t || t === "null" || t === "undefined";
+    if (blank) b = {};
+    else if (t[0] === "{") { b = objOf(t); }
+    else {
+      const ct = String(req.headers.get("Content-Type") || "");
+      if (/multipart\/form-data/i.test(ct)) {
+        try { const fd = await new Response(t, { headers: { "Content-Type": ct } }).formData(); b = {}; for (const [k, v] of fd.entries()) if (typeof v === "string") b[k] = v; } catch (e) { b = null; }
+      } else if (/^[^=&\s{}\[\]"]+=/.test(t)) { try { b = Object.fromEntries(new URLSearchParams(t)); } catch (e) { b = null; } }
+    }
+    if (!b) { r.bad = true; return r; }
+    Object.assign(a, flatToolArgs(b));
+    /* nothing arrived: no body at all and no argument in the query string (a JSON body, even {}, keeps the endpoint's own field errors) */
+    r.empty = blank && !Object.keys(a).some(k => a[k] !== undefined && a[k] !== null && String(a[k]).trim() !== "");
+  }
+  return r;
+}
+/* toolArgs' body alone (kept for its callers / tests): an object, or null when the body is none of the accepted forms */
+export async function toolBody(req) {
+  const r = await toolArgs(req, { query: false, max: LIM_REQ });
+  return r.bad || r.tooLarge ? null : r.a;
+}
+/* the model-facing answer to a call whose arguments never arrived (r.empty): send it again ONCE, nested — the shape Anam builds the request
+   from — with the tool's own fields; `example` is the tool's own minimal call */
+export const toolEmptyText = (fields, example, en) => en
+  ? "The request arrived with no arguments. Call the tool again ONCE with the arguments inside bodyParams, for example " + JSON.stringify({ bodyParams: example }) + " (" + fields + "). If it fails again, say the search is not available right now; never give results without a search."
+  : "الطلب وصل من غير أي متغيرات. ابعته تاني مرة واحدة بس والمتغيرات جوّه bodyParams، زي " + JSON.stringify({ bodyParams: example }) + " (" + fields + ")؛ ولو فشل تاني قول إن البحث مش متاح دلوقتي، ومفيش نتايج تتقال من غير بحث.";

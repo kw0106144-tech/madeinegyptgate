@@ -430,7 +430,10 @@ the data team («🌐 فرص من الإنترنت», 0011) so it can become pla
 | POST | `/api/janna/web` | `janna_web_search` (same body as Bassem's search) | `JANNA_TOOL_SECRET` / slot `janna.tool_secret` |
 | POST | `/api/janna/hunt` | `janna_web_hunt` (same body as Bassem's hunt) | same |
 
-All four skip `ccBoot` (index.js `BARE`), take Anam's `{bodyParams:{…}}` as well as a flat body, and answer the model in its persona's
+All four skip `ccBoot` (index.js `BARE`), read their arguments in every form a webhook may send them (`common.js` `toolArgs`, like
+`/api/janna/lookup`, `/api/janna/item`, `/api/janna/knowledge` and `/api/intel/tool`: flat JSON, `{bodyParams|arguments|…:{…}}`, the query
+string, form-encoded; a POST with no argument at all — a model's flat call, which Anam sends with an empty body, 2026-11-21 — answers 200
+`empty_args` with a text that has the model send it again once inside `bodyParams`), and answer the model in its persona's
 voice (Janna feminine Arabic «لقيت… محتاجة…», Bassem masculine, English with `lang:"en"`). **No source** (owner 2026-11-20: «ميكتبش مصدر
 اي معلومه»; «ميقولوش حاجه ولا من بره بيانات المنصه ولاغيره هما يقولوا المعلومه وخلاص»): what the persona and the call get is the
 information itself — every result is `sayResult()` (websearch.js) `{type, title, date?, market?, entity?, official?}`: the platform's short

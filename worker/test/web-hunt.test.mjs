@@ -370,6 +370,27 @@ describe("the hunt and Janna's search: endpoints, voices, switches", () => {
     assert.equal(pcalls().length, 0);
     assert.ok(logs.filter(l => l.startsWith("tool-soft-error /api/janna/")).length >= 4);
   });
+  test("2026-11-21: a call whose arguments never arrived (flat from the model → Anam POSTs an empty body) gets empty_args + a nested retry text, never «tell me the product»; nested, flat, query-string and form arguments all arrive", async () => {
+    const env = hEnv();
+    for (const [p, h, ex] of [["/api/janna/hunt", JSECRET, '"product":'], ["/api/janna/web", JSECRET, '"query":'], ["/api/advisor/hunt", BSECRET, '"product":'], ["/api/advisor/web", BSECRET, '"query":']]) {
+      logs = [];
+      const e = await api(env, p, "", { "X-MIG-Tool": h });
+      assert.deepEqual([e.status, e.data.error, e.data.code, e.data.count], [200, "empty_args", "empty_args", 0], p);
+      assert.ok(e.data.text.includes("bodyParams") && e.data.text.includes(ex) && !/اسم المنتج|product's name/.test(e.data.text), p + ": " + e.data.text);
+      assert.ok(logs.includes("tool-soft-error " + p + " empty_args"), logs.join("\n"));
+    }
+    assert.equal(pcalls().length, 0, "nothing searched without arguments");
+    const hunt = { product: "سلندرات درافيل", product_en: "industrial rubber rollers", market: "eg" };
+    for (const b of [hunt, { bodyParams: hunt }, { arguments: JSON.stringify(hunt) }]) {
+      const r = await jHunt(env, b); assert.ok(r.status === 200 && r.data.error !== "product_required" && r.data.error !== "empty_args", JSON.stringify(b) + " → " + r.text.slice(0, 200));
+    }
+    const qs = await api(env, "/api/janna/hunt?product=" + encodeURIComponent("سلندرات درافيل") + "&market=eg", "", { "X-MIG-Tool": JSECRET });
+    assert.ok(qs.data.error !== "product_required" && qs.data.error !== "empty_args", qs.text.slice(0, 200));
+    const form = await worker.fetch(new Request(SITE + "/api/janna/web", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "X-MIG-Tool": JSECRET }, body: "query=" + encodeURIComponent("rubber rollers importers Kenya") }), env, mkCtx());
+    const fj = await form.json(); assert.ok(fj.error !== "query_required" && fj.error !== "empty_args", JSON.stringify(fj).slice(0, 200));
+    assert.ok(pcalls().length > 0, "the arguments reached the search");
+    const zero = await jWeb(env, {}); assert.equal(zero.data.error, "query_required", "a JSON {} keeps its field error");
+  });
   test("each switch stops only its persona: janna_web_search off → Janna's two paths feature_off, Bassem's untouched; bassem_web_search off → the reverse", async () => {
     const env = hEnv(); reply.by = ATLAL_WEB;
     await env.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES ('features', 'system', ?, ?)").bind(JSON.stringify({ v: 1, values: { janna_web_search: false } }), new Date().toISOString()).run();

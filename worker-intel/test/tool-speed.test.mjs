@@ -101,3 +101,21 @@ test("interleaveMarkets: by the ASKED market (sa / gcc → gcc, africa:ke → af
   assert.deepEqual(interleaveMarkets(one, ["gcc", "africa"]).map(r => r.id), [1, 2]);
   assert.deepEqual(interleaveMarkets([], ["gcc", "africa"]), []);
 });
+
+/* 2026-11-21: Janna AR's model sent some webhook calls FLAT; Anam then POSTs an EMPTY body. An empty bassem_intel call used to run as a
+   «search» with no query (any latest items); now it answers empty_args + a text that has the model send it again ONCE nested. The
+   arguments arrive in every other form (util.js toolArgs); garbage stays bad_json. */
+test("bassem_intel: an empty body → empty_args + the nested retry text, never results; nested / query-string / form / arguments-text all arrive; garbage stays bad_json", async () => {
+  const env = await envWith(GULF, { KV: makeKV() });
+  const logs = [], w = console.warn; console.warn = (...a) => logs.push(a.join(" "));
+  let e; try { e = await (await handleApi(post(""), env, {})).json(); } finally { console.warn = w; }
+  assert.deepEqual([e.ok, e.code, e.results, e.count], [false, "empty_args", undefined, undefined]);
+  assert.ok(e.text.includes('{"bodyParams":{"action":"search","query":"steel","days":30}}'), e.text);
+  assert.deepEqual(logs, ["tool-soft-error /api/intel/tool empty_args"]);
+  const want = { action: "search", query: "steel", market: "gcc", days: 30 };
+  const forms = [post(want), post({ bodyParams: want }), post({ arguments: JSON.stringify(want) }),
+    new Request("https://madeinegyptgate.com/api/intel/tool?action=search&query=steel&market=gcc&days=30", { method: "POST", headers: { "CF-Connecting-IP": "203.0.113.21" }, body: "" }),
+    new Request("https://madeinegyptgate.com/api/intel/tool", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", "CF-Connecting-IP": "203.0.113.22" }, body: "action=search&query=steel&market=gcc&days=30" })];
+  for (const q of forms) { const j = await (await handleApi(q, env, {})).json(); assert.ok(!j.error && j.count === 6, JSON.stringify(j).slice(0, 200)); }
+  for (const b of ["[1]", "hello", '"steel"']) { const j = await quiet(async () => (await handleApi(post(b), env, {})).json()); assert.equal(j.error, "bad json", b); }
+});

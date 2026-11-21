@@ -46,7 +46,7 @@ import { handleVisitorMemory } from "./visitor.js";   // /api/janna/memory[/task
 import { handleKnowledge } from "./knowledge.js";     // /api/janna/knowledge  the personas' knowledge_lookup tool
 import { dailyMemory } from "./daily.js";              // day digests + «ملخص العميل» + tasks / knowledge merge / caps report (once per Cairo day)
 import { dailyJobs, newCountFor } from "./digest.js";
-import { cairoDay, addDays, toolSoftError, toolBody } from "./common.js";
+import { cairoDay, addDays, toolSoftError, toolArgs, toolEmptyText } from "./common.js";
 // ---- web search (src/websearch.js) + the opportunity hunt (src/web-hunt.js): Bassem POST /api/advisor/web|hunt, Janna POST /api/janna/web|hunt ----
 import { handleWebSearch, handleJannaWebSearch, WS_MARKETS } from "./websearch.js";
 import { handleJannaHunt, handleBassemHunt } from "./web-hunt.js";
@@ -648,6 +648,7 @@ export function leanLookup(o) {
    text the model can act on (never results it could repeat); GET keeps the status codes. Each such answer is one log line (toolSoftError). */
 const LOOKUP_TEXT = {
   bad_json: "طلب البحث وصل ناقص. ابعت section و query تاني مرة واحدة بس؛ ولو فشل تاني قول إن البحث مش متاح دلوقتي، ومفيش نتايج تتقال من غير بحث.",
+  empty_args: toolEmptyText("section و query، و governorate لو فيه", { section: "factories", query: "بلاستيك" }),
   no_query: "مفيش كلمة بحث في الطلب: لازم query فيها المنتج أو النشاط أو اسم الشركة (زي حديد أو بلاستيك). لتفاصيل بند واحد بالـ id أو الرقم استخدم platform_item. لو مش واضح العميل بيدوّر على إيه اسأله الأول.",
 };
 /* speed 2026-11-20: these read only the bundled data (data.json / items.json) or their own tables, never what ccBoot loads (plans matrix,
@@ -703,8 +704,10 @@ const WORKER = {
     if (!/^\/api\/janna\/lookup\/?$/.test(url.pathname)) return json({ error: "not found" }, 404);
     if (env && env.JANNA_KEY && req.headers.get("X-Janna-Key") !== env.JANNA_KEY) return json({ error: "unauthorized" }, 401);
     const post = req.method === "POST";
-    let a = Object.fromEntries(url.searchParams);
-    if (post) { const b = await toolBody(req); if (!b) { toolSoftError("/api/janna/lookup", "bad_json"); return json({ error: "bad json", count: 0, results: [], text: LOOKUP_TEXT.bad_json }, 200); } a = Object.assign(a, b); }
+    /* every form Anam's webhook may send (common.js toolArgs; 2026-11-21 flat arguments → an empty body) */
+    const ta = await toolArgs(req), a = ta.a;
+    if (post && (ta.bad || ta.tooLarge)) { toolSoftError("/api/janna/lookup", "bad_json"); return json({ error: "bad json", count: 0, results: [], text: LOOKUP_TEXT.bad_json }, 200); }
+    if (post && ta.empty) { toolSoftError("/api/janna/lookup", "empty_args"); return json({ error: "empty arguments", code: "empty_args", count: 0, results: [], text: LOOKUP_TEXT.empty_args }, 200); }
     const section = lookupSection(a.section); // LOOKUP_SECTIONS (+ customers, projects, events, news, awards — U2 / U15); unknown → factories, as before
     if (!a.query && !a.governorate) { if (post) toolSoftError("/api/janna/lookup", "query_required"); return json({ error: "query required", count: 0, results: [], text: LOOKUP_TEXT.no_query }, post ? 200 : 400); }
     /* U16: the members' approved products / companies (D1, at most one read per isolate per 10 minutes; fail-soft) for the sections that list

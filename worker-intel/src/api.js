@@ -1,5 +1,5 @@
 /* migate-intel — public JSON API (/api/intel/*), Bassem's Anam SERVER_WEBHOOK (/api/intel/tool) and admin endpoints. */
-import { KIND_GROUPS, KINDS, KIND_LABEL, KIND_SEG, SITE, timingSafeEqual, cairoDay, addDays, fmtDay, fmtCairo, ID_RE, normText, sqlLit, clip, stripUrls, dayOf, canonicalUrl, stripContacts, hash53 } from "./util.js";
+import { KIND_GROUPS, KINDS, KIND_LABEL, KIND_SEG, SITE, timingSafeEqual, toolArgs, cairoDay, addDays, fmtDay, fmtCairo, ID_RE, normText, sqlLit, clip, stripUrls, dayOf, canonicalUrl, stripContacts, hash53 } from "./util.js";
 import { readItemDoc, itemFile, TOPIC_AR } from "./doc.js";
 import { sectorIndex, sectorName, SECTORS } from "./sectors.js";
 import { marketFilter, marketsFilter, marketName, PLAN_SCOPE } from "./markets.js";
@@ -587,6 +587,7 @@ async function admin(env, req, action, ctx) {
   return { error: "unknown action" };
 }
 
+const TOOL_EMPTY_TEXT = "الطلب وصل من غير أي متغيرات. ابعته تاني مرة واحدة بس والمتغيرات جوّه bodyParams، زي " + JSON.stringify({ bodyParams: { action: "search", query: "steel", days: 30 } }) + " (action، و query أو id، و market و kind لو فيه)؛ ولو فشل تاني قول إن البحث مش متاح دلوقتي، ومفيش نتايج تتقال من غير بحث.";
 export async function handleApi(req, env, ctx) {
   const url = new URL(req.url), path = url.pathname.replace(/\/+$/, "");
   if (req.method === "OPTIONS") return new Response(null, { headers: cors(req) });
@@ -635,7 +636,11 @@ export async function handleApi(req, env, ctx) {
          call reached the model as a bare "HTTP error" and it retried blind; GET keeps the status codes. One log line each, never the body. */
       const post = req.method === "POST", soft = (status, code, o) => { if (post) console.warn("tool-soft-error", path, code); return json(req, { ok: false, ...o }, post ? 200 : status); };
       if (await rateLimited(env, req, +(env.TOOL_RATE_PER_MIN || 30), "rl:", ctx)) return soft(429, "rate_limited", { error: "rate limited", flags: ["busy"], text: "لحظة واحدة، طلبات كتير ورا بعض. جرّب تاني بعد دقيقة." });
-      let b = p; if (post) { try { b = Object.assign({}, p, await req.json()); } catch (e) { return soft(400, "bad_json", { error: "bad json", flags: ["bad_request"], text: "طلب البحث وصل ناقص. ابعته تاني مرة واحدة بس؛ ولو فشل تاني قول إن البحث مش متاح دلوقتي، ومفيش نتايج تتقال من غير بحث." }); } }
+      /* every form Anam's webhook may send (util.js toolArgs); no argument at all = the model's call came FLAT and Anam POSTed an empty
+         body (2026-11-21): the model sends it again ONCE nested, instead of getting a «search» with no query */
+      const ta = await toolArgs(req), b = ta.a;
+      if (post && (ta.bad || ta.tooLarge)) return soft(400, "bad_json", { error: "bad json", flags: ["bad_request"], text: "طلب البحث وصل ناقص. ابعته تاني مرة واحدة بس؛ ولو فشل تاني قول إن البحث مش متاح دلوقتي، ومفيش نتايج تتقال من غير بحث." });
+      if (post && ta.empty) return soft(400, "empty_args", { error: "empty arguments", code: "empty_args", flags: ["bad_request"], text: TOOL_EMPTY_TEXT });
       /* reading a document fetches from the official site: its own, smaller budget (DOC_RATE_PER_MIN, default 10 a minute) */
       if (ACTIONS[String(b.action || "").toLowerCase().trim()] === "doc" && await rateLimited(env, req, +(env.DOC_RATE_PER_MIN || 10), "rld:", ctx))
         return soft(429, "doc_rate_limited", { error: "rate limited", action: "doc", flags: ["busy"], text: "لحظة واحدة، طلبات قراءة مستندات كتير ورا بعض. جرّب تاني بعد دقيقة." });

@@ -17,7 +17,7 @@
 import DATA from "./data.json";
 import ITEMS from "./items.json";
 import { norm, forLLM, instructionLike } from "./text.js";
-import { cairoDay, addDays, toolSoftError, toolBody } from "./common.js";
+import { cairoDay, addDays, toolSoftError, toolArgs, toolEmptyText } from "./common.js";
 
 export const SITE = "https://madeinegyptgate.com/";
 /* stored paths: "/tender-item/eg-tnd-003/" (decoded UTF-8) or a site hash link "tenders/search/#OFF%3A1" (already encoded) */
@@ -292,6 +292,7 @@ const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...CORS } });
 const ITEM_TEXT = {
   bad_json: "طلب التفاصيل وصل ناقص. ابعت section و id من نتيجة janna_lookup تاني مرة واحدة بس؛ ولو فشل تاني قول إن التفاصيل مش متاحة دلوقتي، ومتخترعش بيانات.",
+  empty_args: toolEmptyText("section و id من نتيجة janna_lookup، أو ref أو title", { section: "tenders", id: "eg-tnd-003" }).replace("البحث مش متاح", "التفاصيل مش متاحة").replace("ومفيش نتايج تتقال من غير بحث", "ومتخترعش بيانات"),
   no_section: "لازم section (tenders أو rfqs أو factories أو products أو offers أو cities أو awards أو projects أو news أو events) و id من نتيجة janna_lookup. ابعتهم تاني مرة واحدة بس، ومتخترعش بيانات.",
   no_id: "لازم id أو ref أو title للبند. ابعت section و id من نتيجة janna_lookup تاني مرة واحدة بس؛ ولو مفيش نتيجة دوّر الأول بـ janna_lookup، ومتخترعش بيانات.",
 };
@@ -299,14 +300,12 @@ export async function handleItem(req, env, ctx, nowMs = Date.now()) {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "GET" && req.method !== "POST") return json({ error: "method" }, 405);
   if (env && env.JANNA_KEY && req.headers.get("X-Janna-Key") !== env.JANNA_KEY) return json({ error: "unauthorized" }, 401);
-  let a = Object.fromEntries(new URL(req.url).searchParams);
+  const ta = await toolArgs(req), a = ta.a; // every form Anam's webhook may send (common.js toolArgs: arguments / parameters / args / input too)
   /* speed 2026-11-20: a malformed POST (Anam's platform_item) answers 200 found:false with a text the model can act on — a 400 reached it as
      a bare "HTTP error 400" and it retried blind; GET keeps the status codes. One log line each, never the body. */
   const post = req.method === "POST", soft = (code, o) => { if (post) toolSoftError("/api/janna/item", code); return json({ found: false, ...o }, post ? 200 : 400); };
-  if (post) {
-    let b = await toolBody(req); if (!b) return soft("bad_json", { error: "bad json", text: ITEM_TEXT.bad_json });
-    if (b && typeof b === "object") { for (const k of ["arguments", "parameters", "args", "input"]) if (b[k] && typeof b[k] === "object") b = Object.assign({}, b[k], b); a = Object.assign(a, b); }
-  }
+  if (post && (ta.bad || ta.tooLarge)) return soft("bad_json", { error: "bad json", text: ITEM_TEXT.bad_json });
+  if (post && ta.empty) return soft("empty_args", { error: "empty arguments", code: "empty_args", text: ITEM_TEXT.empty_args });
   const sec = sectionOf(a.section);
   if (!sec) return soft("section_required", { error: "section required", sections: ITEM_SECTIONS, text: ITEM_TEXT.no_section });
   if (!a.id && !a.ref && !a.title && !a.query && !a.name) return soft("id_required", { error: "id, ref or title required", text: ITEM_TEXT.no_id });

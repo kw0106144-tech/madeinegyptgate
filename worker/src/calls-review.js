@@ -108,7 +108,7 @@ const OFFER_RX = /(^| )(افتحلك|افتحهولك|افتحها|اوريك|ا
 const PROFILE_RX = /(^| )(ملف|ملفك|بروفايل|صفحه شركتك|سجل|تسجل|اسجلك|التسجيل|باقه|الباقه|عضويه|profile|register|registration)/;
 const NOANS_RX = /معنديش معلومه|معنديش معلومات|مش متاكده|مش متاكد|مقدرش افيدك|ماقدرش افيدك|مش عارفه|ارجع للجهه|مش متاح عندي|i don ?t have (that|this) information|i m not sure/;
 /* R17 — the soft-error texts the lookup answers a malformed call with (index.js LOOKUP_TEXT, normalised), and an {error} answer */
-const SOFT_ERR_RX = /طلب البحث وصل ناقص|مفيش كلمه بحث في الطلب|query required|bad json/;
+const SOFT_ERR_RX = /طلب البحث وصل ناقص|مفيش كلمه بحث في الطلب|الطلب وصل من غير اي متغيرات|query required|bad json|empty arguments|empty_args/;
 const CODE_RAW = /\b(errMsg|undefined|NaN)\b|\[object Object\]|function\s*\(|=>|\{"|<\/?(div|span|br|script)\b/;
 const CYRILLIC = /[Ѐ-ӿ]/, CJK = /[぀-ヿ㐀-鿿가-힯]/;
 /* the persona's tools by what they do (report review 2026-11-20 #8): a LOOKUP returns data the persona reads — a search; janna_search only
