@@ -7,7 +7,8 @@
      MIGFLAGS.ready(fn, maxMs)   → fn() once the answer is in, or after maxMs (default 2500) with the defaults — never later
      MIGFLAGS.all() / .loaded() / .refresh() / .apply() (markup added later) / .msg(key)
    On the /intel/ pages (migate-intel takes the site's <head>), intel_pages never hides their own links: they stay served.
-   Applied to the page: <html class="mig-off-<key>"> for every key that is off (CSS below hides the call buttons / intel links);
+   Applied to the page: <html class="mig-off-<key>"> for every key that is off (CSS below hides the call buttons / intel links / the links
+   to «فرص السوق» — web_leads_public, whose default here is OFF until the server says it is on);
    [data-mig-feature~="key"] is hidden while the key is off; [data-mig-off~="key"] is shown only while it is off (an empty one gets the
    built-in message, e.g. the register page's «التسجيل الجديد موقوف مؤقتاً»). Event "mig:flags" {features, from} on window.
    The platform's own apps (user agent «MIGApp/<v> (ios|android)», app/capacitor.config.json; the head script of seo_build.part.py
@@ -39,6 +40,9 @@
   DEF.call_languages = true; /* the 🌐 speaking-language button of Janna's and Bassem's calls (data/janna-live.js reads MIGFLAGS.on) */
   DEF.call_holo = true; /* the search cards on the call video (data/call-holo.js reads MIGFLAGS.on) */
   DEF.chat_photos = false; /* 📎 photos in Janna's / Bassem's calls and the «اكتبلي» bubble: OFF until the owner switches it on (never fail-open) */
+  /* «فرص السوق» (/market-opportunities/, worker/src/web-public.js): its menu link shows only once the server says the page is on (the
+     switch web_leads_public, locked until migration 0012) — never fail-open: before that the page has nothing to show */
+  DEF.web_leads_public = false;
   var F = null, FROM = "", CBS = [], DONE = false, BUSY = false;
   var own = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
   function en() { return W.MIGLANG === "en" || (D.documentElement.getAttribute("lang") || "").slice(0, 2) === "en"; }
@@ -65,7 +69,9 @@
      page's join / talk buttons (#mtgNow, #mtgGo), the forms' «احجز اجتماع مع جنة» ([data-mgq-meet]); Bassem's 🎥 on /advisor/ and in his bubble */
   var CSS = "html.mig-off-janna_live .jnl-btn,html.mig-off-janna_live .jw-sb .jw-acts .jw-call,html.mig-off-janna_live #meetB,html.mig-off-janna_live #mtgNow,html.mig-off-janna_live #mtgGo,html.mig-off-janna_live [data-mgq-meet]"
     + ",html.mig-off-bassem_live #advLive,html.mig-off-bassem_live .advlv,html.mig-off-bassem_live [data-bs=video],html.mig-off-bassem_live .bst-call"
-    + ",html.mig-off-intel_pages a[href='/intel'],html.mig-off-intel_pages a[href^='/intel/'],html.mig-off-intel_pages a[href^='https://madeinegyptgate.com/intel/'],html.mig-off-intel_pages a[href^='https://www.madeinegyptgate.com/intel/'],html.mig-off-intel_pages [data-intel]{display:none!important}"
+    + ",html.mig-off-intel_pages a[href='/intel'],html.mig-off-intel_pages a[href^='/intel/'],html.mig-off-intel_pages a[href^='https://madeinegyptgate.com/intel/'],html.mig-off-intel_pages a[href^='https://www.madeinegyptgate.com/intel/'],html.mig-off-intel_pages [data-intel]"
+    /* «فرص السوق» while web_leads_public is off: every link to the page (the main menu's, the data desk's) */
+    + ",html.mig-off-web_leads_public a[href*='market-opportunities']{display:none!important}"
     /* the store rules (app_buy_ios / app_buy_android off): buying UI hidden inside THAT app only */
     + "html.mig-app-ios.mig-off-app_buy_ios [data-mig-buy],html.mig-app-android.mig-off-app_buy_android [data-mig-buy]{display:none!important}"
     + PLAN_LINKS.join(",") + "{display:none!important}"

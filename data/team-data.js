@@ -16,8 +16,12 @@
      GET  /api/team/desk/leads?status=new|accepted|rejected|all&type=&q=&page=&limit=     → {items, total, page, limit, counts, by_type}
                                                                                             (off:true until migration 0012 is applied)
      PUT  /api/team/desk/leads/:id {status: accepted|rejected|new, reason?}               → {ok, item} (one audit row; 503 leads_off)
-     «🌐 فرص من الإنترنت» (0012): what Janna's and Bassem's web searches found — reviewed here (✓ مقبولة / ✗ مرفوضة with a reason), an
-     accepted tender / RFQ / project becomes platform content only through its form above, with {lead_id} (the lead is then linked).
+     «🌐 فرص من الإنترنت» (0012): what Janna's and Bassem's web searches found. Since the owner's decision of 2026-11-20 every new / accepted
+     lead without personal data is ON THE PLATFORM at once («فرص السوق» /market-opportunities/ and what Janna and Bassem say — the
+     opportunity itself, never its source: worker/src/web-public.js); each item says so (published, public_why). «🙈 إخفاء من المنصة»
+     (one press: {status: rejected, reason: hidden}, audited leads.hide) takes a wrong one off; «↩ رجّعها على المنصة» ({status: accepted},
+     audited leads.restore) puts a rejected / hidden one back. The source and the link stay HERE, for the team only. ✓ مقبولة / ✗ ارفض with a
+     reason as before; an accepted tender / RFQ / project can also become platform content through its form above, with {lead_id}.
    Governorates come from data/regions.js (window.MIGREG, the 27 codes), sectors from window.MIGSECTORS, plans from window.MIGPLAN. */
 (function () {
   "use strict";
@@ -471,7 +475,7 @@
   function leadsShell() {
     var q = S.lq;
     return '<section class="tm-card"><div class="tm-h"><h2>🌐 ' + esc(T("فرص من الإنترنت", "Web leads")) + '</h2><button type="button" class="btn btn-line btn-sm" data-act="leads-reload">↻ ' + esc(T("تحديث", "Refresh")) + "</button></div>"
-      + '<p class="tm-lead">' + esc(T("دي المناقصات وطلبات الأسعار والعملاء المحتملين والمشاريع اللي جنة وباسم لقوها على الإنترنت وهما بيدوّروا للعملاء. دي مواقع برّه المنصة: راجع المصدر بنفسك، علّم الكويس «مقبولة» والوحش «مرفوضة» بسببه — المرفوض مابيرجعش في البحث تاني. المقبول من المناقصات والطلبات والمشاريع بيتضاف للمنصة من فورمه بالمصدر بتاعه بس.", "These are the tenders, RFQs, potential buyers and projects Janna and Bassem found on the web while searching for clients. They are sites outside the platform: check the source yourself, mark the good ones «Accepted» and the bad ones «Rejected» with a reason — a rejected link does not come back in later searches. An accepted tender, RFQ or project is added to the platform only through its form, with its source.")) + "</p>"
+      + '<p class="tm-lead">' + esc(T("دي المناقصات وطلبات الأسعار والعملاء المحتملين والمشاريع والأخبار اللي جنة وباسم لقوها على الإنترنت وهما بيدوّروا للعملاء. كل فرصة هنا بتتنشر على طول في صفحة «فرص السوق» وبتقولها جنة وباسم — الفرصة نفسها بس، من غير أي مصدر — ما عدا المرفوضة والمخفية واللي فيها بيانات شخصية. لو فيه فرصة غلط دوس «🙈 إخفاء من المنصة» (بتختفي من الصفحة ومن كلام جنة وباسم خلال دقايق، ومابترجعش في البحث تاني)، و«↩ رجّعها على المنصة» بيرجّعها. المصدر واللينك هنا للفريق بس: راجع المصدر بنفسك. المقبول من المناقصات والطلبات والمشاريع ممكن كمان يتضاف لصفحات المنصة من فورمه بمصدره.", "These are the tenders, RFQs, potential buyers, projects and news Janna and Bassem found on the web while searching for clients. Every opportunity here is published at once on the «Market opportunities» page and said by Janna and Bassem — the opportunity itself only, without any source — except the rejected, the hidden and those with personal data. If one is wrong, press «🙈 Hide from the platform» (it leaves the page and what Janna and Bassem say within minutes, and does not come back in later searches); «↩ Put it back on the platform» restores it. The source and the link here are for the team only: check the source yourself. An accepted tender, RFQ or project can also be added to the platform's pages through its form, with its source.")) + ' <a href="/market-opportunities/" target="_blank" rel="noopener">' + esc(T("شوف صفحة «فرص السوق» ↗", "See the «Market opportunities» page ↗")) + "</a></p>"
       + '<form class="tm-tools" data-leads-q="1" role="search"><input class="tm-in" type="search" name="q" maxlength="80" dir="auto" value="' + esc(q.q) + '" placeholder="' + esc(T("دوّر في العنوان أو الموقع أو المنتج", "Search the title, site or product")) + '" aria-label="' + esc(T("دوّر في الفرص", "Search the leads")) + '"><button class="btn btn-green" type="submit">🔎 ' + esc(T("دوّر", "Search")) + "</button></form>"
       + '<div class="tm-seg" role="group" data-seg="status" aria-label="' + esc(T("الحالة", "Status")) + '"></div>'
       + '<div class="tm-seg" role="group" data-seg="type" aria-label="' + esc(T("النوع", "Type")) + '"></div>'
@@ -531,7 +535,10 @@
     var id = +it.id || 0, st = String(it.status || "new"), ty = own(LTYPE, it.type) ? it.type : "other", u = safeLink(it.url), busy = !!S.lbusy[id];
     var tl = (EN ? it.type_en : it.type_ar) || L2(LTYPE, ty), sl = (EN ? it.status_en : it.status_ar) || L2(LSTAT, st), mk = L2(LMKT, String(it.market || "")) || (it.market ? String(it.market).toUpperCase() : T("كل الدنيا", "Worldwide"));
     var who = whoNames(it.personas && it.personas.length ? it.personas : [it.persona]), dis = busy ? " disabled" : "", sn = +it.seen_count || 0;
-    var h = '<article class="tm-row" data-lead="' + id + '"><div class="top"><span class="t" dir="auto">' + esc(it.title || "—") + "</span><span>" + chip(tl, ty === "tender" || ty === "rfq" ? "b" : "") + (it.official ? " " + chip(T("بوابة رسمية", "Official portal"), "g") : "") + (it.aggregator ? " " + chip(T("موقع تجميع مناقصات", "Tender aggregator"), "a") : "") + " " + chip(sl, st === "accepted" ? "g" : st === "rejected" ? "r" : "a") + "</span></div>"
+    /* on the platform now? (worker/src/web-public.js: new / accepted, an opportunity, no personal data) — and why not */
+    var pub = it.published === true, why = (EN ? it.public_why_en : it.public_why_ar) || "";
+    var pc = pub ? chip(T("🟢 منشورة على المنصة", "🟢 On the platform"), "g") : st === "rejected" ? chip(it.reason === "hidden" ? T("🙈 مخفية من المنصة", "🙈 Hidden from the platform") : T("مش على المنصة", "Not on the platform"), "r") : chip(T("مش منشورة", "Not published") + (why ? ": " + why : ""), "a");
+    var h = '<article class="tm-row" data-lead="' + id + '"><div class="top"><span class="t" dir="auto">' + esc(it.title || "—") + "</span><span>" + chip(tl, ty === "tender" || ty === "rfq" ? "b" : "") + (it.official ? " " + chip(T("بوابة رسمية", "Official portal"), "g") : "") + (it.aggregator ? " " + chip(T("موقع تجميع مناقصات", "Tender aggregator"), "a") : "") + " " + chip(sl, st === "accepted" ? "g" : st === "rejected" ? "r" : "a") + " " + pc + "</span></div>"
       + '<div class="meta"><span dir="ltr">' + esc(it.site || "") + "</span><span>" + esc(mk) + "</span>" + (it.product ? '<span dir="auto">' + esc(T("المنتج: ", "Product: ") + it.product) + "</span>" : "") + (who ? "<span>" + esc(T("لقاها: ", "Found by: ") + who) + "</span>" : "")
       + (sn > 1 ? "<span>" + esc(T(sn === 2 ? "ظهرت مرتين" : "ظهرت " + nf(sn) + (sn <= 10 ? " مرات" : " مرة"), "Seen " + nf(sn) + " times")) + "</span>" : "") + (it.date ? '<span dir="auto">' + esc(T("تاريخها: ", "Dated: ") + it.date) + "</span>" : "") + "<span>" + esc(T("آخر ظهور: ", "Last seen: ")) + fdate(it.last_seen) + "</span></div>"
       + (it.snippet ? '<div class="v" dir="auto">' + esc(it.snippet) + "</div>" : "")
@@ -539,9 +546,12 @@
       + (st === "rejected" && (it.reason_ar || it.reason) ? '<div class="v"><b>' + esc(T("سبب الرفض: ", "Reason: ")) + "</b>" + esc((EN ? it.reason_en : it.reason_ar) || it.reason) + "</div>" : "")
       + (it.content_id ? '<div class="v"><b>' + esc(T("اتضاف للمنصة: ", "Added to the platform: ")) + '</b><span dir="ltr">' + esc(it.content_id) + "</span></div>" : "")
       + '<div class="tm-acts">' + (u ? '<a class="btn btn-line btn-sm" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer">🔗 ' + esc(T("افتح المصدر", "Open the source")) + "</a>" : "");
-    if (st !== "accepted") h += '<button type="button" class="btn btn-green btn-sm" data-act="lead-set" data-id="' + id + '" data-st="accepted"' + dis + ">✓ " + esc(T("مقبولة", "Accept")) + "</button>";
+    /* «🙈 إخفاء من المنصة»: one press for every published one (rejected, reason hidden); «↩ رجّعها على المنصة» for a rejected / hidden one */
+    if (pub) h += '<button type="button" class="btn btn-sm tm-hide" data-act="lead-set" data-id="' + id + '" data-st="rejected" data-reason="hidden"' + dis + ">🙈 " + esc(T("إخفاء من المنصة", "Hide from the platform")) + "</button>";
+    if (st === "rejected") h += '<button type="button" class="btn btn-green btn-sm" data-act="lead-set" data-id="' + id + '" data-st="accepted"' + dis + ">↩ " + esc(T("رجّعها على المنصة", "Put it back on the platform")) + "</button>";
+    if (st === "new") h += '<button type="button" class="btn btn-green btn-sm" data-act="lead-set" data-id="' + id + '" data-st="accepted"' + dis + ">✓ " + esc(T("مقبولة", "Accept")) + "</button>";
     if (st !== "rejected") h += '<button type="button" class="btn btn-line btn-sm" data-act="lead-rej" data-id="' + id + '" aria-expanded="' + (S.lrej === String(id)) + '"' + dis + ">✗ " + esc(T("ارفض", "Reject")) + "</button>";
-    if (st !== "new") h += '<button type="button" class="btn btn-line btn-sm" data-act="lead-set" data-id="' + id + '" data-st="new"' + dis + ">↺ " + esc(T("رجّعها جديدة", "Back to new")) + "</button>";
+    if (st === "accepted") h += '<button type="button" class="btn btn-line btn-sm" data-act="lead-set" data-id="' + id + '" data-st="new"' + dis + ">↺ " + esc(T("رجّعها جديدة", "Back to new")) + "</button>";
     if (st === "accepted" && LFORM[ty] && !it.content_id) h += '<button type="button" class="btn btn-line btn-sm" data-act="lead-convert" data-id="' + id + '"' + dis + ">➕ " + esc(T("ضيفها للمنصة كـ ", "Add it to the platform as ") + L2(LTYPE, ty)) + "</button>";
     h += "</div>";
     if (S.lrej === String(id) && st !== "rejected") h += '<div class="tm-seg" role="group" aria-label="' + esc(T("سبب الرفض", "Reason for rejecting")) + '">' + LREASON.map(function (r) { return '<button type="button" data-act="lead-set" data-id="' + id + '" data-st="rejected" data-reason="' + r[0] + '"' + dis + ">" + esc(EN ? r[2] : r[1]) + "</button>"; }).join("") + "</div>";
@@ -556,7 +566,11 @@
     call("PUT", "/team/desk/leads/" + id, b).then(function (j) {
       S.lbusy[id] = false;
       if (!j || j.ok !== true || !j.item) throw { code: "bad_response", status: 200 };
-      toast(st === "accepted" ? T("✓ اتعلّمت مقبولة.", "✓ Marked accepted.") : st === "rejected" ? T("✗ اترفضت — مش هترجع في البحث تاني.", "✗ Rejected — it will not come back in searches.") : T("↺ رجعت جديدة.", "↺ Back to new."));
+      var was = leadById(id), back = was && was.status === "rejected" && st !== "rejected", on = j.item.published === true;
+      toast(st === "rejected" && reason === "hidden" ? T("🙈 اتخفت من المنصة — بتختفي من «فرص السوق» ومن كلام جنة وباسم خلال دقايق، ومش هترجع في البحث تاني.", "🙈 Hidden from the platform — it leaves «Market opportunities» and what Janna and Bassem say within minutes, and will not come back in searches.")
+        : st === "rejected" ? T("✗ اترفضت — اتشالت من المنصة ومش هترجع في البحث تاني.", "✗ Rejected — it is off the platform and will not come back in searches.")
+        : back ? (on ? T("↩ رجعت على المنصة (خلال دقايق).", "↩ Back on the platform (within minutes).") : T("↩ رجعت، بس مش هتظهر على المنصة: ", "↩ Restored, but it will not show on the platform: ") + ((EN ? j.item.public_why_en : j.item.public_why_ar) || ""))
+        : st === "accepted" ? T("✓ اتعلّمت مقبولة.", "✓ Marked accepted.") : T("↺ رجعت جديدة.", "↺ Back to new."));
       loadLeads();
     }, function (e) {
       S.lbusy[id] = false; if (S.leads) paintLeads(S.leads);

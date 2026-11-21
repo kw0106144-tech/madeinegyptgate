@@ -5,11 +5,14 @@
      (lean for the model: leanLookup below; a malformed request still answers 200 with a `text` the model can act on — never a bare 400)
      sections (LOOKUP_SECTIONS): the directory, products, tenders, rfqs, offers, cities + customers (a seller's customer industries →
      directory factories, src/lookup-customers.js), projects, events, news, awards; the members' approved products / companies come from D1
-     (src/lookup-members.js, ≤ 1 read per isolate per 10 minutes), tagged «عضو على المنصة»
+     (src/lookup-members.js, ≤ 1 read per isolate per 10 minutes), tagged «عضو على المنصة»; tenders, rfqs, customers, projects and news
+     also say the published web opportunities (src/web-public.js, ≤ 1 read per isolate per 10 minutes) AFTER the platform's own results,
+     counted apart (extra / extra_count — count stays the platform's), as information only: no source, no site, no link
    - GET  /api/janna/lookup?section=&query=&governorate=&page=               (the full shape, for testing / the website)
      each result also carries id (for /api/janna/item), open_url (the item's own page) and, for tenders, the amounts the data has
    - GET|POST /api/janna/item {section, id|ref|title}  → the full public record of ONE item + a spoken summary (src/janna-item.js)
    - GET  /api/janna/health
+   - GET  /api/janna/opportunities?type=&market=&q=&page=  «فرص السوق»: the published web opportunities, never their source (src/web-public.js)
    - POST /api/janna/timing   the live-call page's start timing beacon → 204 + one log line of numbers (src/live-timing.js)
    - POST /api/janna/media/look · /api/janna/media/ticket · /api/advisor/media/look  📎 a photo of Janna's / Bassem's chat, read once by
      Workers AI and never stored → the guarded text block the page gives the persona (src/chat-media.js, switch chat_photos)
@@ -45,8 +48,11 @@ import { dailyMemory } from "./daily.js";              // day digests + «ملخ
 import { dailyJobs, newCountFor } from "./digest.js";
 import { cairoDay, addDays, toolSoftError } from "./common.js";
 // ---- web search (src/websearch.js) + the opportunity hunt (src/web-hunt.js): Bassem POST /api/advisor/web|hunt, Janna POST /api/janna/web|hunt ----
-import { handleWebSearch, handleJannaWebSearch } from "./websearch.js";
+import { handleWebSearch, handleJannaWebSearch, WS_MARKETS } from "./websearch.js";
 import { handleJannaHunt, handleBassemHunt } from "./web-hunt.js";
+// ---- «فرص السوق» (src/web-public.js): the web leads published on the platform — GET /api/janna/opportunities (the page /market-opportunities/)
+//      and, in janna_lookup, after the platform's own results (switches web_leads_public / web_leads_lookup; never a source) ----
+import { publishedLeads, publicItem, handlePublicLeads } from "./web-public.js";
 // ---- 📎 photos in Janna's and Bassem's chats (src/chat-media.js, switch chat_photos): read once by Workers AI, never stored ----
 import * as CHATMEDIA from "./chat-media.js";
 // Admin Control Center (docs/janna/ACC-CONTRACT.md §0.2): one CC object handed to every new handler (no cross-area imports)
@@ -327,11 +333,11 @@ const dayNum = d => (d ? Date.parse(d + "T12:00:00Z") / 86400000 : 0);
 /* page: 1-based (10 results at most per page); market (tenders only): local (default — the Egyptian list, as before) | gulf | africa |
    asia | europe | intl (all four) | all (Egyptian + international). opts.members = the D1 memo of src/lookup-members.js (the route reads it
    for the directory, product and customers sections; without it only the bundled data is searched); opts.nowMs = the clock (tests). */
-function search(section, query, governorate, limit, page, market, { members = null, nowMs = Date.now() } = {}) {
+function search(section, query, governorate, limit, page, market, { members = null, web = null, nowMs = Date.now() } = {}) {
   /* the paging / open-one hint only for a caller that pages or picks markets (Bassem's new definition); Janna's tool has neither */
   const paged = (page != null && page !== "") || (market != null && market !== "");
   const MX = memberIx(members);
-  if (section === "customers") return customers(query, governorate, paged, MX);
+  if (section === "customers") return withWeb(section, customers(query, governorate, paged, MX), query, governorate, market, web, paged, nowMs);
   const P = parse(query, governorate), { gov, place } = P;
   const L = Math.min(Math.max(+limit || 6, 1), 10), res = [], M = marketOf(market), mk = M.mk || "local";
   if (section === "tenders" && M.bad) return { section, query, governorate: gov || null, place: place || null, market: null, market_unknown: M.bad, markets: MARKETS, widened_to: null, count: 0, page: 1, pages: 1, per_page: L, has_more: false, results: [],
@@ -393,8 +399,9 @@ function search(section, query, governorate, limit, page, market, { members = nu
     const first = k => { const d = dayOf(I[X.rows[k]][2]); return !d ? 0 : ev && eventStatus(d, today) !== "انتهى" ? 2e6 - dayNum(d) : dayNum(d); }; // running / next first
     for (const r of byFirst(ranked(X, k => !gov || norm(govOf(I[X.rows[k]][4])).includes(G), { first }), first)) {
       const x = I[X.rows[r.i]], d = dayOf(x[2]);
-      res.push([r, tag(P, C, r, ev ? { title: x[5], date: d, status: eventStatus(d, today), activity: x[3] || "", governorate: govOf(x[4]) || undefined, host: x[9] || undefined, id: x[1], open_url: absUrl(x[6]), documents_url: x[10] || undefined }
-        : { title: x[5], date: d, category: x[3] || "", governorate: govOf(x[4]) || undefined, source: x[9] || "", id: x[1], open_url: absUrl(x[6]), documents_url: x[10] || undefined })]);
+      /* owner 2026-11-20 «ميكتبش مصدر اي معلومه»: no source name and no source link reach the persona (the organiser of an event is its own) */
+      res.push([r, tag(P, C, r, ev ? { title: x[5], date: d, status: eventStatus(d, today), activity: x[3] || "", governorate: govOf(x[4]) || undefined, host: x[9] || undefined, id: x[1], open_url: absUrl(x[6]) }
+        : { title: x[5], date: d, category: x[3] || "", governorate: govOf(x[4]) || undefined, id: x[1], open_url: absUrl(x[6]) })]);
     }
   } else if (section === "projects") {
     const J = ITEMS.j || [], G = norm(gov);
@@ -415,9 +422,70 @@ function search(section, query, governorate, limit, page, market, { members = nu
   const items = []; C.forEach(c => (items[c.part] = items[c.part] || []).push(sayWord(P, c)));
   const st = { words: items.filter(Boolean).map(x => x.join(" ")).join("» أو «"), all: nAll, rel: nRel, amb, n: C.length,
     ...(section === "tenders" ? { open: res.filter(r => isOpen(r[1].status)).length, q: String(query || "").trim().slice(0, 80) } : {}) };
-  return { section, query, governorate: gov || null, place: place || null, market: section === "tenders" ? mk : undefined, widened_to: widened, count: res.length, count_all: nAll, partial: res.length > nAll,
+  return withWeb(section, { section, query, governorate: gov || null, place: place || null, market: section === "tenders" ? mk : undefined, widened_to: widened, count: res.length, count_all: nAll, partial: res.length > nAll,
     ...(amb ? { ambiguous: { word: amb.word, meanings: amb.note } } : {}), page: pg, pages, per_page: L, has_more: more > 0, results: top,
-    text: (widened ? "نتائج قليلة داخل " + place + " نفسها، فتمت إضافة نتائج من محافظة " + widened + ". " : "") + (pg > pages && res.length ? `دي كانت كل النتائج (${res.length}) في ${pages === 1 ? "صفحة واحدة" : pages + " صفحات"}؛ مفيش صفحة ${pg}.` : summary(section, res.length, top.slice(0, 6), gov || place, paged, query, st)) + (more && paged ? ` وفيه كمان ${more} نتيجة: اطلب page=${pg + 1}، أو هات تفاصيل نتيجة بالـ id بتاعها من platform_item.` : "") };
+    text: (widened ? "نتائج قليلة داخل " + place + " نفسها، فتمت إضافة نتائج من محافظة " + widened + ". " : "") + (pg > pages && res.length ? `دي كانت كل النتائج (${res.length}) في ${pages === 1 ? "صفحة واحدة" : pages + " صفحات"}؛ مفيش صفحة ${pg}.` : summary(section, res.length, top.slice(0, 6), gov || place, paged, query, st)) + (more && paged ? ` وفيه كمان ${more} نتيجة: اطلب page=${pg + 1}، أو هات تفاصيل نتيجة بالـ id بتاعها من platform_item.` : "") },
+    query, governorate, market, web, paged, nowMs);
+}
+
+/* ---------- «فرص السوق» in janna_lookup (src/web-public.js; owner switch web_leads_lookup) ----------
+   The web opportunities published on the platform, for the sections they belong to, AFTER the platform's own results: matched like the
+   platform's lists (the query's concepts, whole stored words, all or part of the words — never «the same field» only), on the title and
+   the entity (then the product and the words that found it), for words only (a bare section listing never brings them); a governorate in
+   the query keeps only the ones of that governorate, a market (Bassem's tool) only that market's; the open / closing / undated first, the
+   closed last; ≤ WEB_MAX said. Counted APART: count / count_all stay the platform's own (the platform's numbers never grow with them) —
+   extra_count / extra. The text says them as information only: never a site, a source or a link (none is in them), never as the
+   platform's own data or a registered company, a closed one never as open, an undated one never as open. */
+const WEB_SECTIONS = { tenders: ["tender"], rfqs: ["rfq"], customers: ["buyer", "buyer_list"], projects: ["project"], news: ["news"] };
+export const WEB_MAX = 4;
+const WEB_MK = { local: ["eg"], gulf: ["gulf", "sa", "ae", "kw", "qa", "om", "bh"], africa: ["africa", "ma", "dz", "tn", "ly", "sd", "ke", "ng", "et", "za"],
+  asia: ["asia", "cn", "in", "tr", "jo", "iq"], europe: ["europe", "de", "it", "fr", "es", "gb", "ru"] };
+const WIXS = new Map(); // "<memo version>|<types>" → {rows, ix}
+function webIx(web, types) {
+  const key = web.v + "|" + types.join(",");
+  let x = WIXS.get(key); if (x) return x;
+  if (WIXS.size > 8) WIXS.clear();
+  const rows = web.rows.filter(r => types.includes(r.pub.type));
+  x = { rows, ix: buildIx(rows.length, i => [formsOf(rows[i].match), formsOf(rows[i].words)], [3, 2]) };
+  WIXS.set(key, x); return x;
+}
+const WEB_ST = { open: "مفتوحة", closing: "مفتوحة وبتقفل قريب", closed: "منتهية", unknown: "ميعادها مش معروف" };
+const WEB_TYPE = { tender: "مناقصة", rfq: "طلب عرض سعر", buyer: "شركة ممكن تبقى عميل", buyer_list: "قايمة مصانع ممكن تبقى عملاء", project: "مشروع جديد", news: "خبر" };
+const webPlace = it => [it.governorate, (WS_MARKETS[it.market] || {}).ar].filter(Boolean).join("، ");
+/* one published opportunity as the persona gets it: the opportunity only (no id, no link, no site) */
+function webLean(it) {
+  const st = it.status ? WEB_ST[it.status] + (it.deadline ? (it.status === "closed" ? "، آخر ميعاد كان " : "، آخر ميعاد ") + it.deadline : "") : undefined;
+  return { type: it.type, kind: WEB_TYPE[it.type], title: it.title || [WEB_TYPE[it.type], it.product].filter(Boolean).join(" "), entity: it.entity || undefined, product: it.product || undefined,
+    status: st, place: webPlace(it) || undefined, official: it.official || undefined, found: it.found || undefined };
+}
+function webOf(section, query, governorate, market, web, nowMs) {
+  const types = WEB_SECTIONS[section];
+  if (!types || !web || web.off || !web.lookup || !Array.isArray(web.rows) || !web.rows.length) return null;
+  const P = parse(query, governorate), C = lkConcepts(dropSectionWords(section, P.q), dirVocab).concepts;
+  if (!C.length) return null;
+  const X = webIx(web, types); if (!X.rows.length) return null;
+  const M = marketOf(market), pick = market != null && market !== "" && M.mk ? M.mk : "", G = P.gov ? norm(P.gov) : "";
+  const ok = i => { const p = X.rows[i].pub; if (G && !norm(p.governorate || "").includes(G)) return false; if (pick && WEB_MK[pick] && !WEB_MK[pick].includes(p.market)) return false; return !(pick === "intl" && p.market === "eg"); };
+  const rows = []; for (let i = 0; i < X.rows.length; i++) if (ok(i)) rows.push(i);
+  const items = rankRows(C, matchIx(X.ix, C.map(compile)), rows).filter(r => r.cls < 2).map(r => publicItem(X.rows[r.i], nowMs));
+  const ordered = items.filter(x => x.status !== "closed").concat(items.filter(x => x.status === "closed"));
+  return { count: ordered.length, items: ordered.slice(0, WEB_MAX).map(webLean) };
+}
+const WEB_N = { tenders: n => (n === 1 ? "مناقصة واحدة" : n === 2 ? "مناقصتين" : n + (n <= 10 ? " مناقصات" : " مناقصة")), rfqs: n => (n === 1 ? "طلب عرض سعر واحد" : n === 2 ? "طلبين عروض أسعار" : n + (n <= 10 ? " طلبات عروض أسعار" : " طلب عرض سعر")),
+  customers: n => (n === 1 ? "جهة واحدة ممكن تبقى عميل" : n === 2 ? "جهتين ممكن يبقوا عملاء" : n + (n <= 10 ? " جهات ممكن تبقى عملاء" : " جهة ممكن تبقى عميل")),
+  projects: n => (n === 1 ? "مشروع جديد واحد" : n === 2 ? "مشروعين جداد" : n + (n <= 10 ? " مشاريع جديدة" : " مشروع جديد")), news: n => (n === 1 ? "خبر واحد" : n === 2 ? "خبرين" : n + (n <= 10 ? " أخبار" : " خبر")) };
+function webLine(x) { return [x.title, x.entity, x.status, x.place].filter(Boolean).join(" — "); }
+/* the text the persona gets for them (m = Bassem: masculine). base = the platform's own count (0: «بس فيه …», else «وكمان فيه …») */
+function webText(section, w, m, base) {
+  const shown = w.items.length;
+  return ` ${base ? "وكمان فيه" : "بس فيه"} ${WEB_N[section](w.count)}${shown < w.count ? ` (أهم ${shown})` : ""}: ${w.items.map(webLine).join("؛ ")}. `
+    + (m ? "قولهم كمعلومة وخلاص: ماتقولش إنهم على المنصة ولا إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك، ولا تعدّهم مع نتايج المنصة؛ اللي «منتهية» خلصت، واللي «ميعادها مش معروف» ماتقولش إنها مفتوحة. ولو العميل سأل جايين منين أو أكيدين قول: «دي من متابعة فريق المنصة للسوق، وقبل ما تقدّم اتأكد من الجهة نفسها»."
+      : "قوليهم كمعلومة وخلاص: ماتقوليش إنهم على المنصة ولا إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك، ولا تعدّيهم مع نتايج المنصة؛ اللي «منتهية» خلصت، واللي «ميعادها مش معروف» ماتقوليش إنها مفتوحة. ولو العميل سأل جايين منين أو أكيدين قولي: «دي من متابعة فريق المنصة للسوق، وقبل ما تقدّم اتأكد من الجهة نفسها».");
+}
+function withWeb(section, o, query, governorate, market, web, m, nowMs) {
+  const w = o && typeof o === "object" ? webOf(section, query, governorate, market, web, nowMs) : null;
+  if (!w || !w.count) return o;
+  return { ...o, extra_count: w.count, extra: w.items, text: String(o.text || "") + webText(section, w, m, Number(o.count) || 0) };
 }
 
 /* ---------- section=customers (U2, src/lookup-customers.js) ----------
@@ -505,7 +573,7 @@ function itemLine(section, r, has) {
   const h = has(r), hp = h ? " (" + h.slice(2) + ")" : "";
   if (section === "tenders") return `${r.title}${r.entity && !r.legacy ? " — " + r.entity : ""} — ${statusSaid(r)}${hp}`;
   if (section === "events") return `${r.title} — ${r.date || "من غير تاريخ"}${r.status ? " (" + r.status + ")" : ""}${r.governorate ? "، " + r.governorate : ""}${hp}`;
-  if (section === "news") return `${r.title} — ${r.source || "من غير مصدر"}${r.date ? "، " + r.date : ""}${hp}`;
+  if (section === "news") return `${r.title}${r.date ? " — " + r.date : ""}${hp}`;
   if (section === "projects") return `${r.title} (${[r.governorate, r.stage].filter(Boolean).join("، ")}${h})`;
   if (section === "awards") return `${r.title}${r.winner && !String(r.title).includes(r.winner) ? " — الفايز " + r.winner : ""}${r.date ? "، " + r.date : ""}${hp}`;
   if (section === "rfqs") return `${r.title}${r.date ? " — " + r.date : ""}${hp}`;
@@ -515,9 +583,10 @@ function itemLine(section, r, has) {
 }
 /* the closing line of a text: what the data is and what the persona must not add */
 function tailOf(section, m) {
-  if (section === "news") return `دي أخبار منشورة على المنصة بمصدرها وتاريخها؛ ${m ? "قول المصدر والتاريخ زي ما هما، ومتضيفش" : "قولي المصدر والتاريخ زي ما هما، ومتضيفيش"} أرقام أو أسعار مش مكتوبة في الخبر.`;
-  if (section === "events") return `دي معارض من أجندة المنصة بمواعيدها المنشورة؛ ${m ? "قول التاريخ زي ما هو، واللي «بدأ» ممكن يكون لسه شغال، واللي «انتهى» قول إنه خلص" : "قولي التاريخ زي ما هو، واللي «بدأ» ممكن يكون لسه شغال، واللي «انتهى» قولي إنه خلص"}، والتسجيل والتفاصيل من موقع المعرض الرسمي.`;
-  if (section === "projects" || section === "awards") return `دي بيانات منشورة بمصادرها على المنصة؛ ${m ? "اذكر منها فقط ومتضيفش" : "اذكري منها فقط ومتضيفيش"} أرقام أو جهات مش مكتوبة، والتواصل مع الجهات دي مش من خلال المنصة.`;
+  /* owner 2026-11-20 «ميكتبش مصدر اي معلومه»: the date only — never a newspaper, a site or a link */
+  if (section === "news") return `دي أخبار منشورة على المنصة بتاريخها؛ ${m ? "قول التاريخ زي ما هو، ومتقولش اسم جريدة ولا موقع ولا مصدر، ومتضيفش" : "قولي التاريخ زي ما هو، ومتقوليش اسم جريدة ولا موقع ولا مصدر، ومتضيفيش"} أرقام أو أسعار مش مكتوبة في الخبر.`;
+  if (section === "events") return `دي معارض من أجندة المنصة بمواعيدها المنشورة؛ ${m ? "قول التاريخ زي ما هو، واللي «بدأ» ممكن يكون لسه شغال، واللي «انتهى» قول إنه خلص" : "قولي التاريخ زي ما هو، واللي «بدأ» ممكن يكون لسه شغال، واللي «انتهى» قولي إنه خلص"}، والتسجيل والتفاصيل عند الجهة المنظمة.`;
+  if (section === "projects" || section === "awards") return `دي بيانات منشورة على المنصة؛ ${m ? "اذكر منها فقط ومتضيفش" : "اذكري منها فقط ومتضيفيش"} أرقام أو جهات مش مكتوبة، والتواصل مع الجهات دي مش من خلال المنصة.`;
   return `هذه بيانات حقيقية من المنصة؛ ${m ? "اذكر منها فقط ولا تضيف" : "اذكري منها فقط ولا تضيفي"} بيانات تواصل (التواصل عبر زر «اطلب عرض سعر» في ملف المنشأة).`;
 }
 /* m = the caller is Bassem (his tool definition sends page / market — holo5 `paged`): the same text in the masculine; Janna keeps hers.
@@ -582,7 +651,7 @@ const LOOKUP_TEXT = {
 /* speed 2026-11-20: these read only the bundled data (data.json / items.json) or their own tables, never what ccBoot loads (plans matrix,
    mail config, service keys, feature switches) — a cold isolate saved 1.2–1.4 s of nine D1 reads on every Anam webhook */
 const BARE = new Set(["/api/janna/lookup", "/api/janna/item", "/api/janna/knowledge", "/api/janna/health", "/api/janna/timing",
-  "/api/janna/web", "/api/janna/hunt", "/api/advisor/web", "/api/advisor/hunt"]); // the web tools load their service keys and switches through their own memos
+  "/api/janna/web", "/api/janna/hunt", "/api/advisor/web", "/api/advisor/hunt", "/api/janna/opportunities"]); // the web tools and «فرص السوق» load their switches through their own memos
 
 const WORKER = {
   async fetch(req, env, ctx) {
@@ -626,6 +695,7 @@ const WORKER = {
     if (/^\/api\/janna\/media(\/|$)/.test(url.pathname)) return CHATMEDIA.handleJannaMedia(req, env, ctx); // 📎 photos of Janna's call + the «اكتبلي» bubble (chat-media.js)
     if (/^\/api\/janna\/web\/?$/.test(url.pathname)) return handleJannaWebSearch(req, env, ctx); // websearch.js (X-MIG-Tool: Janna's secret)
     if (/^\/api\/janna\/hunt\/?$/.test(url.pathname)) return handleJannaHunt(req, env, ctx);      // web-hunt.js
+    if (/^\/api\/janna\/opportunities\/?$/.test(url.pathname)) return handlePublicLeads(req, env, ctx); // «فرص السوق» (web-public.js): GET, public, never a source
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
     if (/^\/api\/janna\/health\/?$/.test(url.pathname)) return json({ ok: true, data: DATA.v, factories: DATA.f.length, products: DATA.p.length, tenders: DATA.t.length, rfqs: DATA.q.length, offers: DATA.o.length, zones: DATA.z.length, items: (DATA.i || []).length });
     if (!/^\/api\/janna\/lookup\/?$/.test(url.pathname)) return json({ error: "not found" }, 404);
@@ -637,8 +707,11 @@ const WORKER = {
     if (!a.query && !a.governorate) { if (post) toolSoftError("/api/janna/lookup", "query_required"); return json({ error: "query required", count: 0, results: [], text: LOOKUP_TEXT.no_query }, post ? 200 : 400); }
     /* U16: the members' approved products / companies (D1, at most one read per isolate per 10 minutes; fail-soft) for the sections that list
        them — only those approved since this bundle was built (data.json v): the older ones are in it already */
-    const members = /^(factories|suppliers|products|market|customers)$/.test(section) ? await memberData(env, Date.now(), DATA.v) : null;
-    const r = search(section, String(a.query || "").slice(0, 200), String(a.governorate || "").slice(0, 60), a.limit, a.page, a.market, { members });
+    /* the members' records and «فرص السوق» (the published web opportunities of the sections they belong to, with the owner's switch
+       web_leads_lookup): each ≤ 1 D1 round trip per isolate per 10 minutes, read side by side; fail-soft */
+    const [members, web] = await Promise.all([/^(factories|suppliers|products|market|customers)$/.test(section) ? memberData(env, Date.now(), DATA.v) : null,
+      Object.prototype.hasOwnProperty.call(WEB_SECTIONS, section) ? publishedLeads(env, Date.now()) : null]);
+    const r = search(section, String(a.query || "").slice(0, 200), String(a.governorate || "").slice(0, 60), a.limit, a.page, a.market, { members, web });
     return json(post ? leanLookup(r) : r);
   },
   /* Cloudflare Email Routing → replies to deal-<id>@reply.madeinegyptgate.com (AI Deal Advisor) */

@@ -20,6 +20,9 @@
                                web-hunt.js       POST /api/janna/hunt → feature_off (200)
      web_leads                 web-leads.js      the web results Janna / Bassem find are kept for the data desk (off → nothing stored;
                                                  locked until migration 0012)
+     web_leads_public          web-public.js     GET /api/janna/opportunities → {off: true} (the page «فرص السوق» says it is not available;
+                                                 data/flags.js hides its menu link); locked until migration 0012
+     web_leads_lookup          index.js          janna_lookup says no published opportunity (the platform's own results only); locked until 0012
      chat_photos               chat-media.js     POST /api/janna/media/look, /api/janna/media/ticket, /api/advisor/media/look → 503
                                                  feature_off; janna-session.js gives Janna's call no photo ticket (OFF by default; LOCKED
                                                  while the Worker has no AI binding: featureOn ignores locks, so the endpoints check env.AI too)
@@ -35,7 +38,7 @@
      app_janna_autovoice       (site only)       data/janna-welcome.js: Janna's voice waits for a tap in the app unless this is on
    Rows are LOCKED (effective off, cannot be switched ON from here; OFF is always allowed) while what they need is missing: whatsapp_send
    until the respond.io token test passed; bassem_web_search / janna_web_search until a web-search key + their tool secret exist (both in
-   «مفاتيح الخدمات»); web_leads, account_delete, visitor_erase_request until their migration is applied. chat_photos while the Worker has no AI binding (env.AI).
+   «مفاتيح الخدمات»); web_leads, web_leads_public, web_leads_lookup, account_delete, visitor_erase_request until their migration is applied. chat_photos while the Worker has no AI binding (env.AI).
    The two privacy rules are PERMANENT POLICY (POLICIES): shown, never switches.
    Reader: loadFeatures(env) — ≤ 1 D1 read per isolate per 30 s (memo per env.DB; acc.js ccBoot warms it at the start of every request /
    cron run), featureOn(env, key) async, featureSync(env, key) from the memo (the default before the first load). No 0006 tables → the
@@ -141,10 +144,25 @@ export const FEATURES = Object.freeze([
     enforced_by: ["POST /api/janna/web → feature_off (200)", "POST /api/janna/hunt → feature_off (200)"] },
   { key: "web_leads", default: true, scope: "server",
     label_ar: "حفظ نتايج الإنترنت لمكتب البيانات", label_en: "Keep web results for the data desk",
-    desc_ar: "الفرص اللي جنة وباسم بيلاقوها على الإنترنت (الرابط والعنوان والموقع ونبذة قصيرة، من غير تليفونات ولا إيميلات) بتتحفظ في «🌐 فرص من الإنترنت» على مكتب البيانات، علشان الفريق يراجعها ويحوّل الكويس منها لمحتوى على المنصة بمصدره. مابتظهرش للزوار. لو شروط مزود البحث بتاعك مابتسمحش بحفظ النتايج، اقفله: البحث نفسه بيفضل شغّال.",
-    desc_en: "The opportunities Janna and Bassem find on the web (link, title, site and a short snippet, without phone numbers or e-mails) are kept in «🌐 Web leads» on the data desk, so the team reviews them and turns the good ones into platform content with their source. Never shown to visitors. If your search provider's terms do not allow keeping results, switch it off: the search itself keeps working.",
+    desc_ar: "الفرص اللي جنة وباسم بيلاقوها على الإنترنت (الرابط والعنوان والموقع ونبذة قصيرة، من غير تليفونات ولا إيميلات) بتتحفظ في «🌐 فرص من الإنترنت» على مكتب البيانات — المصدر واللينك للفريق بس. الفرصة نفسها (من غير مصدر) بتتنشر على طول في «فرص السوق» وبتقولها جنة وباسم لو المفتاحين اللي تحت شغّالين، والفريق بيشيل الغلط بدوسة. لو شروط مزود البحث بتاعك مابتسمحش بحفظ النتايج، اقفله (ولو مابتسمحش بعرضها، اقفل المفتاحين اللي تحت): البحث نفسه بيفضل شغّال.",
+    desc_en: "The opportunities Janna and Bassem find on the web (link, title, site and a short snippet, without phone numbers or e-mails) are kept in «🌐 Web leads» on the data desk — the source and the link are for the team only. The opportunity itself (without any source) is published at once on «Market opportunities» and said by Janna and Bassem while the two switches below are on, and the team removes anything wrong with one press. If your search provider's terms do not allow keeping results, switch it off (if they do not allow showing them, switch the two below off): the search itself keeps working.",
     lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0012_web_leads.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0012_web_leads.sql is applied (GitHub → Actions → d1-migrate)",
     enforced_by: ["web results are stored for the data desk (web-leads.js)", "GET|PUT /api/team/desk/leads"] },
+  /* «فرص السوق» (owner 2026-11-20: web data «تظهر علطول», no review; «ميكتبش مصدر اي معلومه», «ميقولوش حاجه ولا من بره بيانات المنصه
+     ولاغيره هما يقولوا المعلومه وخلاص»): the web leads published on the platform (web-public.js) — the opportunity itself, never its source.
+     ON by default (the owner's decision), locked until migration 0012 like web_leads; the team hides a wrong one on the data desk. */
+  { key: "web_leads_public", default: true, scope: "both",
+    label_ar: "صفحة «فرص السوق» على المنصة", label_en: "The «Market opportunities» page on the platform",
+    desc_ar: "الفرص اللي جنة وباسم بيلاقوها على الإنترنت (مناقصات وطلبات أسعار وعملاء محتملين ومشاريع جديدة وأخبار) بتتنشر على طول، من غير مراجعة، في صفحة «فرص السوق» (/market-opportunities/) ولينكها في القايمة: الفرصة نفسها بس — نوعها وعنوان قصير والجهة أو الشركة والمنتج والسوق وحالتها وتاريخ ما المنصة لقيتها — من غير أي مصدر ولا لينك ولا تليفون ولا إيميل. المناقصة اللي ميعادها عدّى بتظهر «منتهية»، واللي ميعادها مش معروف بيتقال كده. فريق البيانات بيشيل أي فرصة غلط بدوسة «🙈 إخفاء من المنصة» في مكتب البيانات. لو قفلته، الصفحة ولينكها بيختفوا.",
+    desc_en: "The opportunities Janna and Bassem find on the web (tenders, RFQs, potential buyers, new projects, news) are published at once, without a review, on the «Market opportunities» page (/market-opportunities/) and its menu link: the opportunity itself only — its type, a short title, the entity or company, the product, the market, its status and the day the platform found it — with no source, link, phone number or e-mail. A tender whose deadline passed shows as «closed»; an unknown deadline is said as such. The data team removes any wrong opportunity with «🙈 Hide from the platform» on the data desk. Off: the page and its link disappear.",
+    lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0012_web_leads.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0012_web_leads.sql is applied (GitHub → Actions → d1-migrate)",
+    enforced_by: ["GET /api/janna/opportunities → off (web-public.js)", "site"] },
+  { key: "web_leads_lookup", default: true, scope: "server",
+    label_ar: "جنة وباسم بيقولوا «فرص السوق»", label_en: "Janna and Bassem say the «Market opportunities»",
+    desc_ar: "لما جنة أو باسم بيدوّروا في المنصة على مناقصات أو طلبات أسعار أو عملاء أو مشاريع أو أخبار، بيقولوا كمان فرص «فرص السوق» المنشورة اللي تطابق الكلام — بعد نتايج المنصة نفسها وبعددها لوحدها (أعداد المنصة ماتكبرش بيها) — كمعلومة وبس، من غير أي مصدر، ومن غير ما يقولوا إنها من بيانات المنصة أو إن الشركة مسجّلة. اللي اتخفت من مكتب البيانات مابتتقالش (خلال 10 دقايق). لو قفلته، بيقولوا نتايج المنصة بس.",
+    desc_en: "When Janna or Bassem search the platform for tenders, RFQs, customers, projects or news, they also say the published «Market opportunities» that match — after the platform's own results and counted apart (the platform's counts never grow with them) — as information only, with no source, and without saying they come from the platform's data or that the company is registered. What the data desk hides is no longer said (within 10 minutes). Off: they say the platform's results only.",
+    lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0012_web_leads.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0012_web_leads.sql is applied (GitHub → Actions → d1-migrate)",
+    enforced_by: ["POST /api/janna/lookup (sections tenders, rfqs, customers, projects, news): the published opportunities after the platform's results (index.js)"] },
   /* ---- the platform's own apps (app/: Android + iPhone, user agent «MIGApp/<v> (ios|android)», app-ua.js) and the store rules (app parity
      plan 2026-11-20). The defaults keep the apps EXACTLY like the website; the texts behind the rows that ship OFF wait for the owner's
      word-for-word approval (docs/app/OWNER-APPROVAL-AR.md). ---- */
@@ -303,7 +321,7 @@ export async function stateOf(env, d) {
     }
     // 📎 photos: the Worker's Workers AI binding ([ai] in worker/wrangler.toml) — without it nothing can read a photo
     if (d.key === "chat_photos") return env && env.AI && typeof env.AI.run === "function" ? NONE : { locked: T("no_ai", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
-    if (d.key === "web_leads") return (await leadsStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
+    if (d.key === "web_leads" || d.key === "web_leads_public" || d.key === "web_leads_lookup") return (await leadsStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
     // the app's store rows: the deletion requests need their table (migration 0010); the reviewer sign-in needs its address + code, unexpired
     if (d.key === "account_delete" || d.key === "visitor_erase_request") {
       return (await deleteStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };

@@ -160,12 +160,22 @@ describe("U15 the dated lists: events, news, projects, awards", () => {
     assert.equal(list.count, DATA.i.filter(x => x[0] === "event").length);
     const up = list.results.filter(x => x.status === "قادم").map(x => x.date); assert.deepEqual(up, [...up].sort());
   });
-  test("news «حديد»: dated items with their source names, the newest first; no invented numbers in the text", () => {
+  test("news «حديد»: dated items, the newest first, never their source (owner 2026-11-20 «ميكتبش مصدر اي معلومه»); no invented numbers in the text", () => {
     const r = search("news", "حديد", "");
     assert.ok(r.count >= 2);
-    for (const x of r.results) { assert.match(x.date, /^\d{4}-\d{2}-\d{2}$/); assert.ok(x.source, x.title); assert.ok(x.id && x.documents_url); }
+    for (const x of r.results) { assert.match(x.date, /^\d{4}-\d{2}-\d{2}$/); assert.ok(x.id && x.open_url, x.title); assert.equal(x.source, undefined); assert.equal(x.documents_url, undefined); }
     assert.deepEqual(r.results.map(x => x.date), [...r.results.map(x => x.date)].sort().reverse());
-    assert.match(r.text, /أخبار المنصة/); assert.match(r.text, /قولي المصدر والتاريخ زي ما هما/);
+    assert.match(r.text, /أخبار المنصة/); assert.match(r.text, /قولي التاريخ زي ما هو، ومتقوليش اسم جريدة ولا موقع ولا مصدر/);
+    assert.doesNotMatch(r.text, /المصدر والتاريخ|من غير مصدر|https?:|www\./);
+    const src = DATA.i.filter(x => x[0] === "news").map(x => x[9]).filter(n => n && n.length >= 4);
+    assert.ok(src.length > 0); for (const n of src) assert.ok(!JSON.stringify(r).includes(n), "no newspaper name in the answer: " + n);
+    assert.match(search("news", "حديد", "", undefined, 1).text, /قول التاريخ زي ما هو، ومتقولش اسم جريدة/, "Bassem's masculine");
+  });
+  test("events and projects say no source either: no source link, the organiser keeps the details", () => {
+    const e = search("events", "طاقة", "");
+    for (const x of e.results) assert.equal(x.documents_url, undefined);
+    assert.match(e.text, /التسجيل والتفاصيل عند الجهة المنظمة/); assert.doesNotMatch(e.text, /موقع المعرض/);
+    assert.doesNotMatch(search("projects", "محطة كهرباء", "").text, /بمصادرها/);
   });
   test("projects and awards: real records with the ids platform_item opens", () => {
     const p = search("projects", "محطة كهرباء", "");
@@ -181,7 +191,7 @@ describe("U15 the dated lists: events, news, projects, awards", () => {
     assert.equal(e.found, true); assert.equal(e.date, "2027-03-30"); assert.equal(e.status, "قادم"); assert.match(e.text, /30 مارس 2027/); assert.ok(e.open_url.endsWith("event.html#egypes-2027"));
     const ev = search("events", "طاقة", "").results[0]; assert.equal(findItem("events", { id: ev.id }, NOW).title, ev.title, "the lookup's id opens it");
     const n0 = search("news", "حديد", "").results[0], n = findItem("news", { id: n0.id }, NOW);
-    assert.equal(n.found, true); assert.equal(n.title, n0.title); assert.match(n.text, /منشور في/); assert.equal(n.source, n0.source);
+    assert.equal(n.found, true); assert.equal(n.title, n0.title); assert.match(n.text, /منشور في/); assert.equal(n0.source, undefined, "the lookup names no source");
     assert.equal(findItem("events", { title: "فود أفريكا" }, NOW).id, "food-africa-2026");
   });
   test("review: an event that started 2 days ago may still be running — «بدأ», listed first, never «انتهى» (the data keeps no end date)", () => {
