@@ -1,6 +1,7 @@
 // node --test: data/bassem-memory.js with the four web tools (review 2026-11-20 S12): Anam reports a SERVER webhook's arguments nested as
 // {bodyParams:{…}} in TOOL_CALL_STARTED — they are read (the loading card, the stored query), a webhook's headers never leave the event, a
-// hunt is remembered as «product · market» with the sites as its entities, and the existing web search / platform lookup records are still
+// hunt is remembered as «product · market» with its titles only — no site, no domain, no link (owner 2026-11-20 «ميكتبش مصدر اي معلومه»;
+// an older answer that still carries url / source / snippet is never read) — and the existing web search / platform lookup records are still
 // stored. The browser file runs in a vm sandbox with a fake page (no DOM body: the shared-screen card is skipped), fake timers, a mocked fetch.
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
@@ -61,7 +62,7 @@ describe("data/bassem-memory.js and the web tools", () => {
     assert.equal(page().M._t.huntQuery({ product: "درافيل", market: "world" }), "درافيل · العالم");
     assert.equal(page().M._t.queryOf("janna_web_hunt", { product: "سلندرات", market: "ae" }), "سلندرات · الإمارات");
   });
-  test("Janna's hunt with nested arguments: stored once to /api/janna/memory as «product · market», sites as entities, no header value anywhere", async () => {
+  test("Janna's hunt with nested arguments: stored once to /api/janna/memory as «product · market», no site / link as entities, no header value anywhere", async () => {
     const { win, posts, M } = page(), c = client();
     assert.equal(M.attach(c, "janna"), true);
     c.emit("TOOL_CALL_STARTED", { toolName: "janna_web_hunt", toolCallId: "t1", toolType: "server", arguments: { bodyParams: { product: "درافيل كاوتش", market: "sa" }, headers: { "X-MIG-Tool": "janna-secret-never-sent" } } });
@@ -71,7 +72,8 @@ describe("data/bassem-memory.js and the web tools", () => {
     assert.equal(s.length, 1, JSON.stringify(posts.map(p => p.url)));
     assert.ok(s[0].url.endsWith("/api/janna/memory"), s[0].url);
     assert.deepEqual([s[0].tool, s[0].query, s[0].count, s[0].visitor_id], ["janna_web_hunt", "درافيل كاوتش · السعودية", 2, VID]);
-    assert.deepEqual(s[0].results.map(r => r.entity), ["tenders.etimad.sa", "tradekey.com"]);
+    assert.deepEqual(s[0].results.map(r => [r.title, r.entity, r.url]), [["منافسة توريد سلندرات للمطابع", "", ""], ["RFQ: rubber rollers for printing", "", ""]]);
+    assert.ok(!/etimad|tradekey|https?:|snippet|توريد درافيل/i.test(JSON.stringify(posts)), "no site, link or snippet of an older answer leaves the page");
     assert.ok(!JSON.stringify(posts).includes("janna-secret-never-sent"), "the webhook header never leaves the event");
     await M.flush(true); await settle();
     const sum = posts.map(p => p.body).filter(b => b && b.kind === "summary").pop();
@@ -90,7 +92,28 @@ describe("data/bassem-memory.js and the web tools", () => {
     const s = searches(posts);
     assert.deepEqual(s.map(x => [x.tool, x.query]), [["bassem_web_search", "rubber rollers importers kenya"], ["janna_lookup", "مطابع · الجيزة"]]);
     assert.ok(s.every(x => x.url.endsWith("/api/advisor/memory")), "Bassem's memory");
-    assert.equal(s[0].results[0].entity, "kenyabuyers.example", "a web row keeps the site, never the page's own words as its entity");
+    assert.deepEqual([s[0].results[0].entity, s[0].results[0].url], ["", ""], "a web row keeps no site and no link (owner 2026-11-20)");
+    assert.ok(!/kenyabuyers/i.test(JSON.stringify(posts)), "the site never leaves the page");
+    assert.equal(s[1].results[0].url, "https://madeinegyptgate.com/factories/al-ahram/", "a platform row keeps its own page");
+  });
+  test("the hologram card of a web search / hunt (owner 2026-11-20): the opportunity itself — no domain, no link, no «من الإنترنت», nothing that opens another site; an older answer's url / source / snippet is never read", async () => {
+    for (const lang of ["ar", "en"]) {
+      const { win, M } = page({ lang }), c = client(), shown = [];
+      win.MIGHOLO = { badges: 1, result: o => { shown.push(J(o)); } };
+      M.attach(c, "janna");
+      const older = { ...HUNT, results: [...HUNT.results, { type: "buyer", title: "Rollers buyers — visit www.kenyabuyers.co.ke", url: "https://kenyabuyers.co.ke/b", source: "kenyabuyers.co.ke", snippet: "call +254 700 000000", market: "kenyabuyers.co.ke", entity: "Nairobi Prints Ltd (nairobiprints.com)" }] };
+      c.emit("TOOL_CALL_STARTED", { toolName: "janna_web_hunt", toolCallId: "h" + lang, toolType: "server", arguments: { bodyParams: { product: "درافيل", market: "sa" } } });
+      c.emit("TOOL_CALL_COMPLETED", { toolName: "janna_web_hunt", toolCallId: "h" + lang, result: JSON.stringify(older) });
+      await settle();
+      assert.equal(shown.length, 1, lang);
+      const o = shown[0], all = JSON.stringify(o);
+      assert.ok(o.items.length === 3 && o.items.every(x => x.href === ""), lang + ": nothing opens another site " + all);
+      assert.ok(!/https?:|www\.|etimad|tradekey|kenyabuyers|\.example|\+254|الإنترنت|internet|from the web|on the web|موقع|مواقع|site|المصدر|source|نتأكد|check/i.test(all), lang + ": " + all);
+      assert.equal(o.badge, lang === "en" ? "Opportunities" : "فرص");
+      assert.match(o.items[0].sub, lang === "en" ? /^Tender · official/ : /^مناقصة · رسمية/, all);
+      assert.equal(M._t.noLink("Rollers buyers — visit www.kenyabuyers.co.ke and kenyabuyers.de/x"), "Rollers buyers — visit and");
+      assert.equal(M._t.noLink("Steel 3.5 mm, Co. Ltd, e.g. bars"), "Steel 3.5 mm, Co. Ltd, e.g. bars", "ordinary words stay");
+    }
   });
   test("a failed or refused web answer is not a search record", async () => {
     const { posts, M } = page(), c = client();

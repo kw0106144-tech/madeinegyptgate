@@ -4,7 +4,8 @@ import { test, describe, mock } from "node:test";
 import assert from "node:assert/strict";
 import worker, { search, leanLookup, foreignQuery } from "../src/index.js";
 import ITEMS from "../src/items.json";
-import { findItem, sayMoney, sayDate, absUrl, statusOf, sectionOf } from "../src/janna-item.js";
+import { findItem, sayMoney, sayDate, absUrl, statusOf, sectionOf, sayItem, unsourced } from "../src/janna-item.js";
+import DATA from "../src/data.json";
 import { resumeContext, resumeTurns, cleanTurn, RESUME_MAX_CHARS } from "../src/resume.js";
 
 const S = "https://madeinegyptgate.com";
@@ -124,6 +125,30 @@ describe("/api/janna/item — one item in full + a spoken Egyptian summary", () 
     const a = findItem("awards", { id: "0" }, NOW); assert.equal(a.found, true); assert.ok(a.winner); assert.match(a.text, /مليون دولار/);
     const j = findItem("projects", { id: "r015" }, NOW); assert.equal(j.found, true); assert.equal(j.value_egp_million, 15000); assert.match(j.text, /15 مليار جنيه/); assert.ok(!/^مشروع مشروع/.test(j.text));
     assert.equal(j.progress, undefined); /* the research-only progress % is never served */
+  });
+  test("no source (owner 2026-11-20 «ميكتبش مصدر اي معلومه»): every item the persona gets names no paper, portal or site and links no source — only a tender keeps its official notice (the e-mails attach it)", async () => {
+    const SRC_WORDS = /المصدر|مصدره|مصدرها|المصادر|منقول|موقعه الرسمي|موقع المعرض|منشور في [^يا]/;
+    const ids = { tenders: ITEMS.t.map(x => x.id), rfqs: ITEMS.q.map(x => x.id), offers: ITEMS.o.map(x => x.id), cities: ITEMS.z.map(x => x.id), awards: ITEMS.a.map(x => x.id), projects: ITEMS.j.map(x => x.id),
+      news: (DATA.i || []).filter(x => x && x[0] === "news").map(x => x[1]), events: (DATA.i || []).filter(x => x && x[0] === "event").map(x => x[1]) };
+    let n = 0;
+    for (const [sec, list] of Object.entries(ids)) for (const id of list) {
+      const full = findItem(sec, { id: String(id) }, NOW); if (!full.found) continue;
+      const r = sayItem(full); n++;
+      assert.equal(r.source, undefined, sec + " " + id + ": no source's name");
+      if (sec !== "tenders") assert.equal(r.documents_url, undefined, sec + " " + id + ": no source link");
+      for (const k of ["text", "contact", "latest_news"]) if (r[k]) assert.doesNotMatch(r[k], SRC_WORDS, sec + " " + id + " " + k + ": " + r[k]);
+      if (full.source) assert.ok(!r.text.includes(full.source), sec + " " + id + ": " + r.text);
+    }
+    assert.ok(n > 300, "checked " + n + " items");
+    /* the HTTP answer is the same sayItem() */
+    const nw = ids.news[0], h = await call("/api/janna/item", { method: "POST", body: { section: "news", id: nw } });
+    assert.equal(h.status, 200); assert.equal(h.data.found, true); assert.equal(h.data.source, undefined); assert.equal(h.data.documents_url, undefined); assert.ok(h.data.open_url);
+    const t = await call("/api/janna/item", { method: "POST", body: { section: "tenders", id: "eg-tnd-003" } });
+    assert.equal(t.data.source, undefined); assert.equal(t.data.documents_url, TAIBA.docs, "a tender's official notice stays for the «ابعتلي» e-mail");
+    /* a stored sentence loses its attribution, the entity's own words stay */
+    assert.equal(unsourced("بدء التشغيل التجريبي للمرحلة الأولى وفق المصادر الحكومية في أكتوبر"), "بدء التشغيل التجريبي للمرحلة الأولى في أكتوبر");
+    assert.equal(unsourced("المناقصة منشورة في بوابة المشتريات الأوروبية في 3 نوفمبر"), "المناقصة منشورة في 3 نوفمبر");
+    assert.equal(unsourced("الافتتاح في يناير وفق المطور"), "الافتتاح في يناير وفق المطور");
   });
   test("errors: unknown item → POST 200 found:false (the Anam webhook hears it) / GET 404 (no invention); GET without section / key 400; a malformed POST 200 found:false + a text; method 405", async () => {
     const n = await call("/api/janna/item", { method: "POST", body: { section: "tenders", title: "طائرات فضائية حربية" } });

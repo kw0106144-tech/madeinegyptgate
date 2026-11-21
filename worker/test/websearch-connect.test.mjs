@@ -145,7 +145,21 @@ describe("websearch connect: the four tool definitions", () => {
       b.config.headers["X-MIG-Tool"] = t.body.config.headers["X-MIG-Tool"]; assert.deepEqual(b, s.body, "nothing else differs");
     }
     assert.deepEqual(WEB_TOOLS.map(t => t.body.config.url), ["https://madeinegyptgate.com/api/advisor/web", "https://madeinegyptgate.com/api/advisor/hunt", "https://madeinegyptgate.com/api/janna/web", "https://madeinegyptgate.com/api/janna/hunt"]);
-    assert.ok(WS_TOOL.description.startsWith("Search the OPEN WEB, beyond the platform") && WS_TOOL === WEB_TOOLS[0].body, "bassem_web_search: today's body");
+    assert.ok(WS_TOOL.description.startsWith("Search the OPEN WEB beyond the platform") && WS_TOOL === WEB_TOOLS[0].body, "bassem_web_search: today's body");
+    /* the owner's rule of 2026-11-20 («ميكتبش مصدر اي معلومه»; «ميقولوش حاجه ولا من بره بيانات المنصه ولاغيره هما يقولوا المعلومه وخلاص»)
+       in every description: the information itself; never a site / link / source, never «from the internet» / «outside the platform» /
+       «needs checking»; never «verified by the platform» / «registered on the platform»; asked where from: no source, no lie */
+    for (const t of WEB_TOOLS) {
+      const d = t.body.description;
+      assert.ok(d.length <= 1024, t.key + ": " + d.length + " characters");
+      assert.match(d, /Never (?:say|name) a site, portal, newspaper, domain, link or (?:any )?source/, t.key);
+      assert.match(d, /from the internet/, t.key); assert.match(d, /outside the platform/, t.key); assert.match(d, /need(?:s)? checking/, t.key);
+      assert.match(d, /Never say the platform verified/, t.key); assert.match(d, /(?:registered on|is on) the platform/, t.key);
+      assert.match(d, /[Aa]sked where (?:it is )?from|asks where it is from/, t.key); assert.match(d, /name no source/, t.key); assert.match(d, /never lie/, t.key);
+      assert.match(d, /Never invent|no contacts/, t.key);
+      assert.doesNotMatch(d, /site name|name the site|checked at the source|always say it comes|always from the internet|websites on the internet|not from the platform's data/i, t.key + ": no older wording");
+      for (const p of Object.values(t.body.config.parameters.properties)) assert.doesNotMatch(p.description || "", /websites?|on the internet|source/i, t.key + ": a parameter's words");
+    }
     assert.deepEqual(specOf("janna_web_hunt").body.config.parameters.required, ["product"]);
     for (const k of ["janna_web_search", "janna_web_hunt", "bassem_web_hunt"]) assert.deepEqual(specOf(k).body.config.parameters.properties.lang.enum, ["ar", "en"], k);
     assert.match(specOf("janna_web_search").body.description, /never search for a person/);
@@ -242,6 +256,26 @@ describe("websearch connect: create, update, attach (mocked Anam)", () => {
     assert.equal(x.status, 200, x.text);
     assert.equal(x.data.tools[1].done, "created");
     assert.deepEqual(writes().slice(0, 3).map(w => w.method + " " + w.url.slice(ANAM.length)), ["POST tools", "PUT tools/" + EXIST, "POST tools"]);
+  });
+  test("a press after the descriptions changed (owner 2026-11-20): the four tools an earlier press wrote with the older words are PUT in place with today's body, nothing created, no persona write", async () => {
+    const env = wsEnv(), o = await owner(env);
+    assert.equal((await press(env, o)).status, 200);
+    /* what an earlier press left: the same tools and state, but its bodies (and so their fingerprints) had the older descriptions */
+    const st = JSON.parse((await state(env)).v);
+    for (const t of A.tools) t.description = "Say ONLY what `text` and `results` contain: 2 or 3 by type and site name, never links, always from the internet, not the platform's data, to be checked at the source.";
+    for (const k of Object.keys(st.tools)) st.tools[k].body_fp = "0".repeat(32);
+    await env.DB.prepare("UPDATE cc_settings SET v = ? WHERE k = 'websearch.connect'").bind(JSON.stringify(st)).run();
+    const ids = Object.fromEntries(WEB_TOOLS.map(t => [t.key, toolOf(t.key).id]));
+    calls.length = 0;
+    const r = await press(env, o);
+    assert.equal(r.status, 200, r.text);
+    assert.deepEqual(r.data.tools.map(x => [x.key, x.done]), WEB_TOOLS.map(t => [t.key, "updated"]));
+    assert.deepEqual(writes().map(w => w.method + " " + w.url.slice(ANAM.length)), WEB_TOOLS.map(t => "PUT tools/" + ids[t.key]), "the same records, no new tool, no persona write");
+    for (const t of WEB_TOOLS) { const a = toolOf(t.key); assert.equal(a.id, ids[t.key]); assert.equal(a.description, t.body.description, t.key + ": today's words"); assert.doesNotMatch(a.description, /site name|checked at the source/); }
+    calls.length = 0;
+    const r2 = await press(env, o);
+    assert.deepEqual(r2.data.tools.map(x => x.done), ["unchanged", "unchanged", "unchanged", "unchanged"], "then nothing until they change again");
+    assert.equal(writes().length, 0);
   });
   test("a persona changed meanwhile (409) → read again once, keep the id someone else added; twice → 409 persona_changed + persona + tools_done; the next press finishes", async () => {
     const env = wsEnv(), o = await owner(env);

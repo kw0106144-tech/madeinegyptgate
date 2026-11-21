@@ -270,8 +270,8 @@
     "intro.factory": { m: "proud", ar: "ده مثال لملف مصنع كامل: منتجات وشهادات وصور وطلب عرض سعر مباشر. ملف مصنعك هيبقى كده بعد التسجيل.", en: "This is a sample full factory profile: products, certificates, photos and a direct RFQ form. Your factory's profile will look like this after you register." },
     "intro.market": { m: "happy", ar: "ده السوق: منتجات المصانع المصرية بأسعار المصنع. قولّي اسم المنتج وأنا أطلّعهولك.", en: "This is the marketplace: Egyptian factory products at factory prices. Tell me the product and I'll pull it up." },
     "intro.offers": { m: "happy", ar: "دي أحدث العروض في منافذ البيع: أغذية وملابس ومفروشات ومواد بناء وأجهزة.", en: "These are the latest retail offers: food, clothing, home textiles, building materials and appliances." },
-    "intro.offer": { m: "calm", ar: "دي تفاصيل العرض: السعر قبل وبعد الخصم، والمتجر، والفروع، ورابط المصدر.", en: "Here are the offer details: price before and after discount, the store, its branches and the source link." },
-    "intro.tenders": { m: "calm", ar: "دي المناقصات المصرية: كل مناقصة معاها موعد الإغلاق ورابط إعلانها الرسمي. قولّي النشاط أو المحافظة وأنا أفلترهالك.", en: "These are Egyptian tenders, each with its closing date and official announcement link. Tell me the activity or governorate and I'll filter them." },
+    "intro.offer": { m: "calm", ar: "دي تفاصيل العرض: السعر قبل وبعد الخصم، والمتجر، والفروع.", en: "Here are the offer details: price before and after discount, the store and its branches." },
+    "intro.tenders": { m: "calm", ar: "دي المناقصات المصرية: كل مناقصة معاها الجهة صاحبتها وموعد الإغلاق. قولّي النشاط أو المحافظة وأنا أفلترهالك.", en: "These are Egyptian tenders, each with its buyer and closing date. Tell me the activity or governorate and I'll filter them." },
     "intro.rfqs": { m: "calm", ar: "دي طلبات عروض الأسعار من الشركات والمقاولين. لو إنت مشتري ابعت طلبك ببلاش، ولو مصنع سجّل عشان توصلك الطلبات.", en: "These are real requests for quotation from companies and contractors. Buyers can post one for free; factories should register to receive them." },
     "intro.opportunity": { m: "calm", ar: "دي كل الفرص المفتوحة: مناقصات محلية وخارجية. افتح أي فرصة تشوف تفاصيلها وموعدها.", en: "These are all open opportunities: local and international tenders. Open any of them for details and deadlines." },
     "intro.projects": { m: "calm", ar: "دي مشاريع مصر الكبيرة ومراحلها والمواد اللي محتاجاها. اختار مشروع وقدّم عرض توريد.", en: "These are Egypt's major projects, their stages and the materials they need. Open a project and offer to supply." },
@@ -287,7 +287,7 @@
     "intro.export-market": { m: "calm", ar: "دي أسواق التصدير الخمسة: المحلي، والخليجي والعربي، والأفريقي، والآسيوي، والأوروبي.", en: "These are the five export markets: local, Gulf & Arab, African, Asian and European." },
     "intro.intl": { m: "calm", ar: "دي المنصات الدولية لمنظومة صنع في: السعودية والإمارات والخليج وأفريقيا وآسيا وأوروبا.", en: "These are the international 'Made in' platforms: Saudi Arabia, the UAE, the Gulf, Africa, Asia and Europe." },
     "intro.news": { m: "calm", ar: "دي أخبار الصناعة المصرية. دوس على أي خبر تقراه كامل.", en: "This is Egyptian industry news. Click any story to read it." },
-    "intro.article": { m: "calm", ar: "ده الخبر كامل، ولينك المصدر الأصلي تحت.", en: "Here's the full story, with the original source link below." },
+    "intro.article": { m: "calm", ar: "ده الخبر كامل.", en: "Here's the full story." },
     "intro.events": { m: "happy", ar: "دي رزنامة المعارض الصناعية في مصر، وتقدر تضيف أي معرض لتقويمك.", en: "This is the calendar of industrial exhibitions in Egypt. You can add any of them to your calendar." },
     "intro.media-center": { m: "calm", ar: "ده المركز الإعلامي: الأخبار والفيديوهات والمعارض.", en: "This is the media centre: news, videos and exhibitions." },
     "intro.suppliers": { m: "calm", ar: "ده دليل الموردين والشركات. قولّي بتدوّر على إيه وأنا أدوّرلك.", en: "This is the suppliers directory. Tell me what you need and I'll search it." },
@@ -2425,15 +2425,15 @@
   function rfqShown() {
     return (window.MIGRFQ || []).filter(function (x) { if (!/^طلب سعر مجمع/.test(x[2])) return true; var d = String(x[3] || "").replace(/[\s….]+/g, " ").trim(), co = (/:\s*(.+?)\s*\(/.exec(x[2]) || [])[1] || ""; return d.length >= 30 && !(co && d.split(co).join("").trim() === ""); });
   }
-  /* a researched tender: its facts in the bubble (the official source link included) */
+  /* a researched tender: its facts in the bubble — no source link (owner 2026-11-20 «ميكتبش مصدر اي معلومه»: Janna never shows or opens a
+     source; the platform's own page is one tap away) */
   function tenderCard(x, i, intl) {
     var ttl = L === "en" && x.title_en ? x.title_en : trd(x.title_ar), ent = L === "en" && x.entity_en ? x.entity_en : trd(x.entity_ar);
     var where = intl ? (L === "en" ? (x.city ? x.city + ", " : "") + (x.country_en || "") : (x.city ? x.city + " – " : "") + (x.country_ar || "")) : trd(x.city || (window.MIGREG ? MIGREG.name(x.region_code) : ""));
     var rows = [[L === "ar" ? "الجهة" : "Entity", ent], [L === "ar" ? "المكان" : "Location", where], [L === "ar" ? "الرقم" : "Ref.", x.ref], [L === "ar" ? "النشر" : "Published", x.publish_date], [L === "ar" ? "الإغلاق" : "Closing", x.closing_date]];
     var html = '<dl class="jn-dl">' + rows.filter(function (r) { return r[1]; }).map(function (r) { return "<dt>" + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd>"; }).join("") + "</dl>";
     var id = intl ? "in" + (i + 1) : (window.MIGOID ? MIGOID(x, i) : "MD" + (i + 1)).toLowerCase(), acts = [];
-    if (x.source_url) acts.push(linkBtn(t("source"), x.source_url, true));
-    acts.push(linkBtn(t("details"), "opportunity.html#" + id)); acts.push(chip(["reg"]));
+    acts.push(linkBtn(t("details"), "opportunity.html#" + id, true)); acts.push(chip(["reg"]));
     show({ segs: [seg((L === "ar" ? "دي المناقصة: «" : "Here is the tender: “") + ttl + (L === "ar" ? "»." : "”."), "proud")], html: html, acts: acts });
   }
   function findNews(q) {
@@ -2456,7 +2456,7 @@
   function eventCard(x, q) {
     var nm = L === "en" && x.name_en ? x.name_en : x.name_ar, when = x.start_date ? fdate(x.start_date) + (x.end_date && x.end_date !== x.start_date ? (L === "ar" ? " لحد " : " to ") + fdate(x.end_date) : "") : "";
     var line = (L === "ar" ? "«" + nm + "»" : "“" + nm + "”") + (when ? (L === "ar" ? " من " : " runs from ") + when : "") + (x.venue ? (L === "ar" ? "، في " : ", at ") + trd(x.venue) : "") + ".";
-    var acts = [linkBtn(t("details"), "event.html#" + x.id, true)]; if (x.url || x.source_url) acts.push(linkBtn(t("source"), x.url || x.source_url)); acts.push(linkBtn(nameOf("events"), "events.html"));
+    var acts = [linkBtn(t("details"), "event.html#" + x.id, true)]; acts.push(linkBtn(nameOf("events"), "events.html")); /* no source link (owner 2026-11-20) */
     show({ segs: [seg(line, "happy")], q: q ? orig(q) : "", acts: acts });
   }
   function findEvent(q, ask) {

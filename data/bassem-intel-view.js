@@ -4,7 +4,9 @@
       data/janna-live.js re-dispatches the SDK's TOOL_CALL_COMPLETED as "anam-agent:tool-call-completed" {toolName, toolCallId, result}
       and result = the webhook's JSON {count, results[], market, widened, text}: the same count, the same items, the same widening note
       Bassem is speaking from, on
-        - the hologram: MIGHOLO.show({kind:"results", count, items:[{title, sub:"الجهة · السوق · آخر ميعاد …", href: official url}]})
+        - the hologram: MIGHOLO.show({kind:"results", count, items:[{title, sub:"الجهة · السوق · آخر ميعاد …", href: its Information
+          Center page}]}) — never the official / source link of another site, and no «المصادر الرسمية» line (owner 2026-11-20
+          «ميكتبش مصدر اي معلومه»: nothing in the call names or opens a source)
         - the call's shared screen: the FIRST result's own page on the Information Center (/intel/<seg>/<slug>-<id>/) — not a list
           page, whose own window (120 days) and count would differ from what Bassem says. The screen is never replaced while it holds
           work (the deal room / an edited form: JANNA_LIVE.show refuses); then, and on phones, a results card under the video offers it.
@@ -95,7 +97,7 @@
   function fmtDay(s) { var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s || "")); if (!m) return ""; try { return new Intl.DateTimeFormat(EN ? "en-GB" : "ar-EG-u-ca-gregory-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(new Date(+m[1], +m[2] - 1, +m[3])); } catch (e) { return m[0]; } }
   var ISNEWS = function (it) { return it && it.kind === "news" && it.tag !== "tender_news"; };
   /* an item's own page on the Information Center as a same-site path ("" when it has none — or while the owner switched the links to the
-     Information Center off: «🛠️ المطوّر» → intel_pages, data/flags.js; then the screen opens nothing and a line links its official source only) */
+     Information Center off: «🛠️ المطوّر» → intel_pages, data/flags.js; then the screen opens nothing and the line links nothing) */
   function intelOff() { var F = W.MIGFLAGS; return !!(F && F.on && F.on("intel_pages") === false); }
   function pagePath(it) {
     if (intelOff()) return "";
@@ -103,10 +105,10 @@
     /* the tool gives the Arabic page; an English call shows the item's English twin (/intel/en/…) */
     return m ? (EN ? m[1].replace(/^\/intel\/(?!en\/)/, "/intel/en/") : m[1]) : "";
   }
-  /* one result line: title · «الجهة · السوق · آخر ميعاد …» · the official link (else its page on the Information Center) */
+  /* one result line: title · «الجهة · السوق · آخر ميعاد …» · its page on the Information Center — never a link to another site */
   function item(it) {
     var sub = [str(it.entity, 60), str(it.market_name, 30), it.deadline ? T("آخر ميعاد ", "deadline ") + fmtDay(it.deadline) : str(it.kind_label, 30)].filter(Boolean).join(" · ");
-    var href = /^https?:\/\//i.test(String(it.url || "")) ? String(it.url) : pagePath(it);
+    var href = pagePath(it);
     return { title: str(it.title || it.title_ar || it.title_orig, 140), sub: sub, href: href, kind: it.kind || "", page: pagePath(it) };
   }
   function arN(n) { return n === 1 ? "نتيجة واحدة" : n === 2 ? "نتيجتين" : n.toLocaleString("en-US") + (n >= 3 && n <= 10 ? " نتايج" : " نتيجة"); }
@@ -215,9 +217,9 @@
     var wide = r.widenedTo === "all" ? T("كل الأسواق", "all markets") : r.widenedTo ? T("أسواق باقتك", "your plan's markets") : T("أسواق تانية", "other markets");
     var note = r.widenedFrom ? T("مفيش في " + mkName(r.widenedFrom) + " — دي نتايج من " + wide, "Nothing in " + mkName(r.widenedFrom) + " — results from " + wide) : "";
     var qt = r.q ? ": «" + str(r.q, 40) + "»" : "", mt = r.market ? " · " + mkName(r.market) : "";
-    var title = r.brief ? T("الجديد النهارده من المصادر الرسمية", "New today from official sources") : tool ? T("باسم لقى في مركز المعلومات", "Bassem found in the Information Center") + qt + mt : T("في مركز المعلومات", "In the Information Center") + qt + mt;
+    var title = r.brief ? T("الجديد النهارده في مركز المعلومات", "New today in the Information Center") : tool ? T("باسم لقى في مركز المعلومات", "Bassem found in the Information Center") + qt + mt : T("في مركز المعلومات", "In the Information Center") + qt + mt;
     var first = items.length ? str(items[0].title, 70) : "";
-    var last = !items.length ? { text: T("مفيش نتايج مطابقة في المصادر الرسمية", "No matching results in the official sources"), state: "done" }
+    var last = !items.length ? { text: T("مفيش نتايج مطابقة في مركز المعلومات", "No matching results in the Information Center"), state: "done" }
       : tool ? (r.brief ? T("فيه " + n.toLocaleString("en-US") + " فرصة وخبر جديد في آخر 24 ساعة — أهمها: ", n + " new items in the last 24 hours — first: ") + first : T("لقيت " + arN(n) + " — أولها: ", "Found " + n + (n === 1 ? " result" : " results") + " — first: ") + first)
       : T("دي أحدث القايمة في مركز المعلومات — أولها: ", "The latest in the Information Center — first: ") + first;
     if (H && H.show) try {
@@ -232,7 +234,7 @@
     if (url && W.JANNA_LIVE && W.JANNA_LIVE.show) { try { shown = !!W.JANNA_LIVE.show(url); busy = !shown && !!(W.JANNA_LIVE.screenBusy && W.JANNA_LIVE.screenBusy()); } catch (e) {} }
     if (shown) flashScreenButton();
     /* phones (the screen sits under the video) and a screen that holds work (the e-mail draft stays): the card offers the page */
-    if (own ? !stacked() && !!url && !shown : stacked() || (url && !shown)) card({ title: title, count: n, items: items, note: [note, !items.length ? T("مفيش نتايج مطابقة في المصادر الرسمية", "No matching results in the official sources") : "", busy ? T("سيبت الشاشة زي ما هي علشان شغلك اللي عليها", "I left the screen as it is so your work on it stays") : ""].filter(Boolean).join(" · "), more: url, busy: busy });
+    if (own ? !stacked() && !!url && !shown : stacked() || (url && !shown)) card({ title: title, count: n, items: items, note: [note, !items.length ? T("مفيش نتايج مطابقة في مركز المعلومات", "No matching results in the Information Center") : "", busy ? T("سيبت الشاشة زي ما هي علشان شغلك اللي عليها", "I left the screen as it is so your work on it stays") : ""].filter(Boolean).join(" · "), more: url, busy: busy });
   }
 
   /* ---------- one result: action "item" (its details) / "doc" (its official document) ---------- */
@@ -255,7 +257,7 @@
     var found = r.sections && isArr(r.sections.found) ? r.sections.found : [];
     var what = { pdf: "PDF", docx: "Word", html: T("صفحة الإعلان", "the notice page"), text: T("نص الإعلان", "the notice text") }[(r.doc && r.doc.type) || ""] || T("المستند", "the document");
     var steps = doc
-      ? [T("بفتح المستند الرسمي للفرصة من موقع الجهة", "Opening the item's official document on the buyer's site"),
+      ? [T("بفتح المستند الرسمي للفرصة", "Opening the item's official document"),
          r.ok ? { text: T("قريت ", "Read ") + what + (found.length ? T(" — فيه: ", " — it covers: ") + found.join(T("، ", ", ")) : ""), state: "done" } : { text: firstSentence(r.text) || T("مقدرتش أقرا المستند", "Could not read the document"), state: "fail" }]
       : [T("بفتح تفاصيل الفرصة من مركز المعلومات", "Opening the item's details from the Information Center"), { text: it.sub || it.title, state: "done" }];
     if (H && H.show) try { H.show({ who: "bassem", kind: "results", title: doc ? T("مستند الفرصة الرسمي", "The item's official document") : T("تفاصيل الفرصة", "Item details"), steps: steps, items: [it], count: null, done: true }); } catch (e) {}

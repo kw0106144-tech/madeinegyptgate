@@ -126,11 +126,15 @@
     for (var i = l.length - 1; i >= 0; i--) if (shown(l[i]) && tx(l[i]).length > 20) return l[i]; /* the newest one */
     return null;
   }
+  /* a facts row that only says where the item was published («المصدر: …», "Official source: …"): never read to Bassem nor pointed at
+     (owner 2026-11-20 «ميكتبش مصدر اي معلومه»; the page itself shows it until the owner decides about the pages' source links) */
+  var SRC_KEY = /^\s*(?:ال)?(?:مصدر|مصادر)(?:\s|$)|^\s*(?:official\s+)?sources?\b|^\s*(?:via|data source)\b/i;
   function pairs(root, page) {
     var out = [], dts = root.querySelectorAll("dt");
     if (page) { var dls = root.querySelectorAll("dl"), bestDl = null, bn = 0; for (var b = 0; b < dls.length; b++) { if (dls[b].closest && dls[b].closest("a, .pj, .fc, .sc, .pc, .ol-it")) continue; var nn = dls[b].querySelectorAll("dt").length; if (nn > bn && shown(dls[b])) { bn = nn; bestDl = dls[b]; } } if (bestDl) dts = bestDl.querySelectorAll("dt"); }
     for (var i = 0; i < dts.length && out.length < 16; i++) {
       var dd = dts[i].nextElementSibling; if (!dd || dd.tagName !== "DD" || !shown(dts[i])) continue; var v = tx(dd), k = tx(dts[i]);
+      if (SRC_KEY.test(k)) continue;
       if (v && v !== "—" && v !== "-") out.push({ k: k, v: cut(v, 140), el: dd, lb: dts[i] });
       else if (AMT_RE.test(k)) out.push({ k: k, v: T("مش منشور على الشاشة دي", "not published on this screen"), el: dd, lb: dts[i], none: true }); /* QA M1: «كام المبلغ؟» has an honest answer */
     }
@@ -151,15 +155,16 @@
     var h = root.querySelector("h1, h2, h3"), out = { root: root, dialog: !!dlg, title: cut(tx(h) || c.title || titleOf(d), 160), titleEl: h, facts: [], docs: [], marks: [] };
     var P = pairs(root, !dlg); out.facts = P;
     var st = root.querySelector(".st2"); if (st) out.status = tx(st);
-    /* sources / documents of the item (the notice, the tender booklet …): only links that are really on it */
+    /* documents of the item (the notice, the tender booklet …): only links that are really on it — a «source» link is said as the official
+       notice, never by its name (owner 2026-11-20) */
     var as = root.querySelectorAll("a[href]");
-    for (var i = 0; i < as.length && out.docs.length < 3; i++) { var a = as[i], t = tx(a); if (!shown(a)) continue; if (/(كراسة|الشروط|المصدر|مصدر|صفحة المناقصة|الإعلان|Source|Documents?|Notice|PDF)/i.test(t) || /\.pdf(\?|$)/i.test(a.href)) out.docs.push({ t: cut(t, 60), el: a }); }
+    for (var i = 0; i < as.length && out.docs.length < 3; i++) { var a = as[i], t = tx(a); if (!shown(a)) continue; if (/(كراسة|الشروط|المصدر|مصدر|صفحة المناقصة|الإعلان|Source|Documents?|Notice|PDF)/i.test(t) || /\.pdf(\?|$)/i.test(a.href)) out.docs.push({ t: /(المصدر|مصدر|Source)/i.test(t) || /^https?:\/\//i.test(t) || /\.[a-z]{2,6}\/?$/i.test(t) ? T("الإعلان الرسمي", "the official notice") : cut(t, 60), el: a }); }
     var big = root.querySelector(".big-val"); if (big && shown(big)) out.value = tx(big);
     /* key fields, in the order Bassem walks the member through them */
     var seen = {}; if (h && shown(h)) out.marks.push({ el: h, lab: T("البند", "Item") });
     KEYS.forEach(function (K) { for (var j = 0; j < P.length; j++) if (!seen[j] && K[1].test(P[j].k) && (K[0] !== "ref" || out.marks.length < 2)) { seen[j] = 1; out.marks.push({ el: P[j].el, lab: P[j].none ? P[j].k + ": " + T("مش منشور", "not published") : P[j].k, key: K[0] }); if (K[0] !== "amount") break; } });
     if (big && shown(big)) out.marks.splice(Math.min(2, out.marks.length), 0, { el: big, lab: T("القيمة", "Value"), key: "amount" });
-    out.docs.forEach(function (x) { out.marks.push({ el: x.el, lab: T("المستندات / المصدر", "Documents / source"), key: "docs" }); });
+    out.docs.forEach(function (x) { out.marks.push({ el: x.el, lab: T("المستندات الرسمية", "Official documents"), key: "docs" }); });
     /* a company profile: its products and the quote button */
     if (!dlg && /company|factory|supplier/.test(String(c.type || ""))) {
       var hs = root.querySelectorAll("h2, h3"); for (var k = 0; k < hs.length; k++) if (/المنتجات|Products/i.test(tx(hs[k]))) { out.prodEl = hs[k]; out.marks.push({ el: hs[k], lab: T("المنتجات", "Products") }); var lis = [], sec2 = (hs[k].closest && hs[k].closest("section")) || hs[k].parentNode, sib = sec2 ? sec2.querySelectorAll("article h3, article h4, li") : []; for (var m = 0; m < sib.length && lis.length < 8; m++) { var s2 = tx(sib[m]); if (s2 && s2.length < 80 && lis.indexOf(s2) < 0) lis.push(s2); } out.products = lis; break; }
@@ -571,12 +576,12 @@
     }
     var off = main.querySelector("a.btn-gold[href]"); o.official = off || null; o.url = off ? String(off.href || "") : "";
     var notes = card ? card.querySelectorAll("p.note") : [];
-    for (var j = 0; j < notes.length; j++) if (/(مصدر رسمي|Official source|خبر عن طرح|News about a tender)/i.test(tx(notes[j]))) { o.source = cut(tx(notes[j]), 160); break; }
+    /* the page's «مصدر رسمي: …» line is never read to Bassem (owner 2026-11-20 «ميكتبش مصدر اي معلومه») */
     /* the walk: the item, what is requested, who, where, the deadline, the value, the official document */
     var fk = function (re) { for (var k = 0; k < o.facts.length; k++) if (re.test(o.facts[k].k)) return o.facts[k]; return null; };
     var mk = [], h = main.querySelector("h1");
     if (h && shown(h)) mk.push({ el: h, lab: T("الفرصة", "Opportunity") });
-    if (o.sumEl && shown(o.sumEl)) mk.push({ el: o.sumEl, lab: o.sumOrig ? T("من نص المصدر", "From the source") : T("المطلوب", "What is requested") });
+    if (o.sumEl && shown(o.sumEl)) mk.push({ el: o.sumEl, lab: o.sumOrig ? T("من نص الإعلان", "From the notice") : T("المطلوب", "What is requested") });
     [[/^(الجهة|Entity)/i, "entity", ["الجهة", "Buyer"]], [/^(السوق|Market)/i, "place", ["البلد", "Country"]], [/(آخر موعد|Deadline)/i, "deadline", ["آخر موعد", "Deadline"]], [/(القيمة|Value)/i, "amount", ["القيمة", "Value"]]].forEach(function (K) { var f = fk(K[0]); if (f && f.el && shown(f.el)) mk.push({ el: f.el, lab: T(K[2][0], K[2][1]), key: K[1] }); });
     if (off && shown(off)) mk.push({ el: off, lab: T("المستند الرسمي", "Official document"), key: "docs" });
     o.marks = mk;
@@ -585,10 +590,9 @@
   function intelText(o) {
     var L = [T("مفتوح دلوقتي على الشاشة", "Now open on the shared screen") + " (" + T("مركز المعلومات", "Information Center") + "): " + o.title];
     if (o.status) L.push(T("الحالة: ", "Status: ") + o.status);
-    if (o.summary) L.push((o.sumOrig ? T("من نص المصدر: ", "From the source's text: ") : T("المطلوب: ", "What is requested: ")) + o.summary);
+    if (o.summary) L.push((o.sumOrig ? T("من نص الإعلان: ", "From the notice's text: ") : T("المطلوب: ", "What is requested: ")) + o.summary);
     o.facts.forEach(function (p) { L.push(p.k + ": " + p.v); });
-    if (o.source) L.push(o.source);
-    if (!o.facts.some(function (p) { return AMT_RE.test(p.k) && !p.none; })) L.push(T("(القيمة مش منشورة في المصدر: لو سأل «كام؟» قول كده بصراحة، وماتخمّنش رقم)", "(no value is published at the source: if asked, say so — never guess a figure)"));
+    if (!o.facts.some(function (p) { return AMT_RE.test(p.k) && !p.none; })) L.push(T("(القيمة مش منشورة: لو سأل «كام؟» قول إنها مش منشورة، وماتخمّنش رقم)", "(no value is published: if asked, say so — never guess a figure)"));
     if (o.id) L.push(T("(id الفرصة: " + o.id + " — شروطها ومستنداتها والتأمين من مستندها الرسمي نفسه: bassem_intel بـ action=\"doc\" و id=\"" + o.id + "\")", "(item id: " + o.id + " — its requirements, documents and bid bond from its own official document: bassem_intel with action=\"doc\" and id=\"" + o.id + "\")"));
     L.push(T("(بيانات حقيقية من الشاشة — اذكر منها بس، بإيجاز: الجهة والبلد وآخر ميعاد والمطلوب)", "(real data from the screen — mention only these, briefly: buyer, country, deadline, what is requested)"));
     return L.join("\n").slice(0, 2000);
@@ -772,7 +776,7 @@
     var H2 = W.MIGHOLO; if (!H2 || !H2.result) return;
     var items = [{ title: o.title, sub: T(S.noun[0], S.noun[1]) + (o.status ? " · " + o.status : "") }];
     o.marks.forEach(function (m) { if (!m.key || m.key === "docs") return; var p = null; for (var i = 0; i < o.facts.length; i++) if (o.facts[i].el === m.el) p = o.facts[i]; if (p) items.push({ title: p.v, sub: p.k }); else if (m.key === "amount" && o.value) items.push({ title: o.value, sub: m.lab }); });
-    if (o.docs.length) items.push({ title: o.docs[0].t, sub: T("المستندات / المصدر", "Documents / source") });
+    if (o.docs.length) items.push({ title: o.docs[0].t, sub: T("المستندات الرسمية", "Official documents") });
     try { H2.result({ tool: "bassem_open_item", count: null, items: items.slice(0, 6) }); } catch (e) {}
   }
 

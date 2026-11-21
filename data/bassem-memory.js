@@ -22,11 +22,13 @@
       text goes back to the LLM (≤ 1,000 characters, ≤ 6.5 s; any failure is said as it is, never a guess); the hits fly out on the
       hologram («من الذاكرة»).
    3) the web tools (SERVER webhooks, worker/src/websearch.js + web-hunt.js): bassem_web_search / bassem_web_hunt in Bassem's calls,
-      janna_web_search / janna_web_hunt in Janna's — their answer {count, results[{title, url, snippet, source, date, type?}], text} |
-      {error, text} arrives in TOOL_CALL_COMPLETED: the hologram shows the titles with their source domain («من الإنترنت»: MIGHOLO.result;
-      skipped when data/call-holo.js MIG_CALL_HOLO.owns(tool) says its cards show it), and a clickable list sits on the shared screen
-      (a hunt's results with their type: مناقصة / طلب عرض سعر / عميل محتمل / مشروع جديد / خبر) — links open in a NEW TAB (other sites
-      cannot be shown inside the shared-screen iframe). A hunt is remembered as query «product · market», its entities = the sites.
+      janna_web_search / janna_web_hunt in Janna's — their answer {count, results[{type, title, date?, market?, entity?, official?}], text}
+      | {error, text} arrives in TOOL_CALL_COMPLETED: the hologram shows the titles with their type, place and date (MIGHOLO.result;
+      skipped when data/call-holo.js MIG_CALL_HOLO.owns(tool) says its cards show it), and a list sits on the shared screen (a hunt's
+      results with their type: مناقصة / طلب عرض سعر / عميل محتمل / مشروع جديد / خبر). NO SOURCE (owner 2026-11-20 «ميكتبش مصدر اي
+      معلومه»; «ميقولوش حاجه ولا من بره بيانات المنصه ولاغيره هما يقولوا المعلومه وخلاص»): no site, no domain, no link to another site,
+      no «من الإنترنت» badge and no «لازم نتأكد» note — nothing on the card opens another site; a link, a site or a snippet an older
+      answer may still carry is never read here. A hunt is remembered as query «product · market» with its titles only (no site).
       Webhook arguments arrive nested in TOOL_CALL_STARTED ({bodyParams:{…}}, review 2026-11-20 S12): args() unwraps them.
    4) the OUTCOME of each action (consolidation 2026-11-18, critic D): data/janna-live.js reports it on window "mig:tool-outcome"
       {tool, outcome: ok|refused|failed} (its done() sends a success there too); server tools report it in
@@ -105,7 +107,6 @@
     if (!/^https?:$/.test(a.protocol) || !a.hostname || a.username || a.password) return "";
     return a.href.length > 300 ? "" : a.href;
   }
-  function host(u) { if (!u) return ""; var a = D.createElement("a"); a.href = u; return String(a.hostname || "").replace(/^www\./i, "").toLowerCase(); }
   /* tool arguments → the KEEP fields only, ≤ 80 characters each (an address / a message body never leaves the page from here) */
   function scal(a) {
     var o = {}, n = 0;
@@ -306,7 +307,7 @@
     var C = part.call; if (!C || !p) return;
     var id = String(p.toolCallId || ""), name = String(p.toolName || (C.pend[id] && C.pend[id].name) || "");
     if (id) { C.done[id] = "fail"; setOutcome(C, C.recs[id], "failed"); }
-    if (WEB[name]) { var t = T("البحث على الإنترنت مش متاح دلوقتي.", "Web search is not available right now."), pa = (C.pend[id] && C.pend[id].args) || {}; webCard({ state: "error", query: clip(HUNT[name] ? huntQuery(pa) : pa.query || "", 120), text: t }); holoFail(t); }
+    if (WEB[name]) { var t = T("البحث ده مش متاح دلوقتي.", "That search isn't available right now."), pa = (C.pend[id] && C.pend[id].args) || {}; webCard({ state: "error", query: clip(HUNT[name] ? huntQuery(pa) : pa.query || "", 120), text: t }); holoFail(t); }
   }
   /* a visitor's e-mail / mobile from Janna's tool arguments → once per call to the Worker, which keeps only a keyed hash */
   function contact(C, name, a) {
@@ -360,8 +361,8 @@
     if (!r || typeof r !== "object") return null;
     var title = clip(r.title || r.title_ar || r.name || r.title_en || r.product || r.label || "", 200);
     if (!title) return null;
-    var u = abs(r.open_url || r.url || r.link || r.href || ""), web = !!WEB[tool]; /* open_url = the item's own page (janna_lookup): unique, unlike a list link */
-    var ent = web ? clip(host(u) || r.source || r.site, 80) : clip(r.entity || r.maker || r.company || r.buyer || r.market_name || r.governorate || r.location || "", 120);
+    var web = !!WEB[tool], u = web ? "" : abs(r.open_url || r.url || r.link || r.href || ""); /* open_url = the item's own page (janna_lookup): unique, unlike a list link; a web row: no link, no site (owner 2026-11-20) */
+    var ent = web ? "" : clip(r.entity || r.maker || r.company || r.buyer || r.market_name || r.governorate || r.location || "", 120);
     var dl = web ? "" : clip(r.deadline || r.closing_date || r.valid_to || "", 25);
     var ref = typeof r.ref === "string" ? r.ref : typeof r.id === "string" ? r.id : "";
     if (!/^[A-Za-z0-9#:_.\/-]{1,64}$/.test(ref)) ref = "";
@@ -434,34 +435,40 @@
   }
   W.addEventListener("mig:screen-result", function (e) { try { screenResult((e && e.detail) || {}); } catch (x) {} });
 
-  /* ---------- web search: the hologram + the clickable list on the shared screen ---------- */
+  /* ---------- web search: the hologram + the list on the shared screen — the information itself, never its source ---------- */
+  /* a shown string without a link or a domain (an older Worker's answer could still carry one in a title) — the TLDs of worker/src/websearch.js */
+  var NOLINK_RX = /(?:https?:\/\/|www\.)\S+|(?:^|\s)[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.(?:com|net|org|info|biz|gov|edu|mil|int|io|co|me|tv|news|online|site|store|shop|app|xyz|top|global|eu|uk|us|ca|au|de|fr|it|es|nl|be|ch|at|pl|pt|gr|se|no|dk|fi|ie|ru|ua|cn|hk|tw|in|jp|kr|sg|my|id|th|vn|ph|tr|ir|pk|bd|ng|ke|za|gh|et|tz|ug|rw|sn|ci|cm|ma|dz|tn|ly|eg|sd|sa|ae|kw|qa|om|bh|jo|iq|lb|sy|ps|ye)(?![A-Za-z0-9-])\S*/gi;
+  function noLink(s) { return String(s == null ? "" : s).replace(NOLINK_RX, " ").replace(/\(\s*\)|\[\s*\]/g, " ").replace(/\s+/g, " ").replace(/^[\s|\-–—:،,.]+|[\s|\-–—:،,]+$/g, ""); }
+  var TYPE_IC = { tender: "📋", rfq: "📝", buyer: "🏭", buyer_list: "🗂️", project: "🏗️", news: "📰" };
   function web(C, a, o, name) {
     name = name || "bassem_web_search";
     var hunt = !!HUNT[name], q = clip(hunt ? huntQuery(a) || o.query || "" : a.query || o.query || "", 120);
     if (o.error || !(o.results instanceof Array)) {
-      var t = clip(o.text, 300) || T("البحث على الإنترنت مش متاح دلوقتي.", "Web search is not available right now.");
+      var t = clip(o.text, 300) || T("البحث ده مش متاح دلوقتي.", "That search isn't available right now.");
       webCard({ state: "error", query: q, text: t }); holoFail(t); return;
     }
     var items = [], max = hunt ? 6 : 5;
     for (var i = 0; i < o.results.length && items.length < max; i++) {
-      var r = o.results[i] || {}, u = abs(r.url), title = clip(r.title, 160);
-      if (!u || !title) continue;
-      items.push({ title: title, url: u, domain: host(u), source: clip(r.source, 60), snippet: clip(r.snippet, 220), date: clip(r.date, 30), type: TYPE_L[r.type] ? r.type : "", official: r.official === true });
+      var r = o.results[i] || {}, title = clip(noLink(r.title), 160); /* never r.url / r.source / r.snippet */
+      if (!title) continue;
+      items.push({ title: title, date: clip(r.date, 30), market: clip(noLink(r.market), 40), entity: clip(noLink(r.entity), 80), type: TYPE_L[r.type] ? r.type : "", official: r.official === true });
     }
     var count = typeof o.count === "number" ? o.count : items.length;
     webCard({ state: "ok", hunt: hunt, query: q, count: count, items: items, text: clip(o.text, 300) });
-    holoWeb(name, C.agent, q, count, items);
-    if (q) store(C, name, q, clip(a.market || o.market || "", 30), count, items.map(function (x) { return { title: x.title, entity: x.domain, deadline: "", url: x.url, ref: "" }; }));
+    holoWeb(name, C.agent, q, count, items, hunt);
+    if (q) store(C, name, q, clip(a.market || o.market || "", 30), count, items.map(function (x) { return { title: x.title, entity: "", deadline: "", url: "", ref: "" }; }));
   }
   function holoOn() { return !!(W.MIGHOLO && MIGHOLO.result); }
   /* the call's cards (data/call-holo.js) show this tool already: no second scene of it */
   function cardsOwn(tool) { try { return !!(W.MIG_CALL_HOLO && typeof MIG_CALL_HOLO.owns === "function" && MIG_CALL_HOLO.owns(tool)); } catch (e) { return false; } }
-  function holoWeb(tool, who, q, count, items) {
+  function typeWord(x) { return x.type ? T(TYPE_L[x.type][0], TYPE_L[x.type][1]) + (x.official ? T(" · رسمية", " · official") : "") : ""; }
+  function metaOf(x) { var m = [x.entity, x.market, x.date], o = []; for (var i = 0; i < m.length; i++) if (m[i]) o.push(m[i]); return o.join(" · "); }
+  function holoWeb(tool, who, q, count, items, hunt) {
     if (!holoOn() || cardsOwn(tool)) return;
-    var badge = !!MIGHOLO.badges, J = who === "janna"; /* holo.js with result badges shows «من الإنترنت» in the panel's header */
+    var J = who === "janna";
     try {
-      MIGHOLO.result({ who: J ? "janna" : "bassem", tool: tool, count: count, badge: T("من الإنترنت", "From the web"), title: (J ? T("جنة دوّرت في الإنترنت: ", "Janna searched the web: ") : T("باسم دوّر في الإنترنت: ", "Bassem searched the web: ")) + q,
-        items: items.map(function (x) { return { title: x.title, sub: (x.type ? T(TYPE_L[x.type][0], TYPE_L[x.type][1]) + " · " : "") + x.domain + (x.date ? " · " + x.date : "") + (badge ? "" : T(" · من الإنترنت", " · from the web")), href: x.url }; }) });
+      MIGHOLO.result({ who: J ? "janna" : "bassem", tool: tool, count: count, badge: hunt ? T("فرص", "Opportunities") : T("نتايج", "Results"), title: (J ? T("جنة دوّرت على: ", "Janna looked for: ") : T("باسم دوّر على: ", "Bassem looked for: ")) + q,
+        items: items.map(function (x) { var t = typeWord(x), m = metaOf(x); return { title: x.title, sub: t + (t && m ? " · " : "") + m, href: "" }; }) }); /* no link: nothing opens another site */
     } catch (e) {}
   }
   function holoFail(t) { try { if (W.MIGHOLO && MIGHOLO.step) MIGHOLO.step(clip(t, 120), "fail"); } catch (e) {} }
@@ -474,14 +481,12 @@
     + '.bmm-badge{flex:none;display:inline-flex;align-items:center;gap:6px;padding:2px 10px 3px;border-radius:999px;background:#04121a;color:#bff3ff;font-weight:800;font-size:.74rem;line-height:1.5;box-shadow:0 0 0 1px rgba(63,224,255,.55)}'
     + '.bmm-badge i{width:12px;height:12px;border-radius:50%;border:2px solid #3fe0ff;box-sizing:border-box;background:radial-gradient(circle at 50% 50%,transparent 40%,rgba(63,224,255,.55) 41%,transparent 60%)}'
     + '.bmm-hd b{flex:1;min-width:0;font-weight:800;color:#04121a;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}.bmm-hd b bdi{font-weight:800}.bmm-hd small{flex:none;color:#5b6b72;font-size:.76rem}'
-    + '.bmm-x{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:#eef3f5;color:#04121a;font:inherit;font-weight:800;cursor:pointer}.bmm-x:focus-visible,.bmm-web a:focus-visible{outline:3px solid #e9c46a;outline-offset:2px}'
-    + '.bmm-note{margin:0;padding:6px 12px;background:#fff8e6;color:#6b4e00;font-size:.76rem;line-height:1.6;border-bottom:1px solid #f3e3b5}'
+    + '.bmm-x{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:#eef3f5;color:#04121a;font:inherit;font-weight:800;cursor:pointer}.bmm-x:focus-visible{outline:3px solid #e9c46a;outline-offset:2px}'
     + '.bmm-web ol{list-style:none;margin:0;padding:6px;overflow-y:auto;overscroll-behavior:contain}.bmm-web li{margin:0}'
-    + '.bmm-web li a{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"av dm" "av ty" "av t" "av s";column-gap:10px;padding:8px 8px 9px;border-radius:12px;text-decoration:none;color:inherit}'
-    + '.bmm-web li a:hover{background:#f1f7f9}.bmm-av{grid-area:av;width:30px;height:30px;border-radius:9px;background:#04121a;color:#bff3ff;display:flex;align-items:center;justify-content:center;font:800 .8rem/1 system-ui,sans-serif;text-transform:uppercase;margin-top:3px}'
-    + '.bmm-dm{grid-area:dm;font-size:.74rem;color:#0b5d47;font-weight:700;direction:ltr;unicode-bidi:isolate;text-align:start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-    + '.bmm-dm em{font-style:normal;color:#5b6b72;font-weight:400}.bmm-t{grid-area:t;font-weight:800;color:#0a3d8f;line-height:1.45;overflow-wrap:anywhere}.bmm-web li a:hover .bmm-t{text-decoration:underline}'
-    + '.bmm-s{grid-area:s;color:#4a5a61;font-size:.8rem;line-height:1.55;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}'
+    + '.bmm-web .bmm-it{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"av ty" "av t" "av dm";column-gap:10px;padding:8px 8px 9px;border-radius:12px}'
+    + '.bmm-av{grid-area:av;width:30px;height:30px;border-radius:9px;background:#04121a;color:#bff3ff;display:flex;align-items:center;justify-content:center;font:400 .95rem/1 system-ui,sans-serif;margin-top:3px}'
+    + '.bmm-dm{grid-area:dm;font-size:.74rem;color:#5b6b72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '.bmm-t{grid-area:t;font-weight:800;color:#0a3d8f;line-height:1.45;overflow-wrap:anywhere}'
     + '.bmm-ty{grid-area:ty;justify-self:start;margin:2px 0;padding:0 8px;border-radius:999px;background:#eaf6f0;color:#0b5d47;font-size:.72rem;font-weight:800;line-height:1.7}'
     + '.bmm-st{padding:14px 14px 16px;color:#33444b}.bmm-st.wait::before{content:"";display:inline-block;width:12px;height:12px;margin-inline-end:8px;vertical-align:-1px;border-radius:50%;border:2px solid #cfe6ee;border-top-color:#0b5d47;animation:bmmSpin .9s linear infinite}'
     + '@keyframes bmmSpin{to{transform:rotate(360deg)}}'
@@ -500,39 +505,32 @@
       (host0 || D.body).appendChild(card);
     }
     card.dir = EN() ? "ltr" : "rtl"; card.hidden = false; card.innerHTML = "";
-    card.setAttribute("aria-label", T("نتايج من الإنترنت", "Results from the web"));
-    var hd = el("div", "bmm-hd"), bd = el("span", "bmm-badge"); bd.appendChild(el("i")); bd.appendChild(D.createTextNode(T("من الإنترنت", "From the web")));
+    card.setAttribute("aria-label", o.hunt ? T("فرص", "Opportunities") : T("نتايج البحث", "Search results"));
+    var hd = el("div", "bmm-hd"), bd = el("span", "bmm-badge"); bd.appendChild(el("i")); bd.appendChild(D.createTextNode(o.hunt ? T("فرص", "Opportunities") : T("نتايج", "Results")));
     hd.appendChild(bd);
-    var ttl = el("b", null, o.query ? (o.hunt ? T("فرص: ", "Opportunities: ") : T("بحث: ", "Search: ")) : T("بحث الإنترنت", "Web search"));
+    var ttl = el("b", null, o.query ? (o.hunt ? T("فرص: ", "Opportunities: ") : T("بحث: ", "Search: ")) : T("بحث", "Search"));
     if (o.query) { var qb = el("bdi", null, o.query); qb.setAttribute("dir", "auto"); ttl.appendChild(qb); } /* an English query stays whole inside the Arabic line */
     hd.appendChild(ttl);
-    if (o.state === "ok") {
-      var sites = {}, ns = 0; for (var i = 0; i < o.items.length; i++) if (!sites[o.items[i].domain]) { sites[o.items[i].domain] = 1; ns++; }
-      hd.appendChild(el("small", null, o.items.length ? T(arN(o.items.length) + " من " + (ns === 1 ? "موقع واحد" : ns + " مواقع"), o.items.length + " results from " + ns + (ns === 1 ? " site" : " sites")) : ""));
-    }
+    if (o.state === "ok") hd.appendChild(el("small", null, o.items.length ? T(arN(o.items.length), o.items.length + (o.items.length === 1 ? " result" : " results")) : ""));
     var x = el("button", "bmm-x", "✕"); x.type = "button"; x.title = T("اقفل النتايج", "Close the results"); x.setAttribute("aria-label", x.title);
     x.onclick = function () { card.hidden = true; };
     hd.appendChild(x); card.appendChild(hd);
     if (o.state === "loading") {
       var J = o.who === "janna";
-      card.appendChild(el("div", "bmm-st wait", o.hunt ? (J ? T("جنة بتدوّر على فرص في مواقع على الإنترنت…", "Janna is looking for opportunities on websites…") : T("باسم بيدوّر على فرص في مواقع على الإنترنت…", "Bassem is looking for opportunities on websites…"))
-        : J ? T("جنة بتدوّر في مواقع على الإنترنت…", "Janna is searching websites…") : T("باسم بيدوّر في مواقع على الإنترنت…", "Bassem is searching websites…")));
+      card.appendChild(el("div", "bmm-st wait", o.hunt ? (J ? T("جنة بتدوّر على فرص…", "Janna is looking for opportunities…") : T("باسم بيدوّر على فرص…", "Bassem is looking for opportunities…"))
+        : J ? T("جنة بتدوّر…", "Janna is searching…") : T("باسم بيدوّر…", "Bassem is searching…")));
       ping(); return;
     }
-    if (o.state === "error") { card.appendChild(el("div", "bmm-st", o.text || T("البحث على الإنترنت مش متاح دلوقتي.", "Web search is not available right now."))); return; }
-    if (!o.items.length) { card.appendChild(el("div", "bmm-st", o.text || T("مالقيتش نتايج على الإنترنت للبحث ده.", "No web results for this search."))); return; }
-    card.appendChild(el("p", "bmm-note", T("دي مواقع على الإنترنت، مش من بيانات المنصة — لازم نتأكد من المصدر. كل رابط بيفتح في تاب جديد.", "These are websites, not the platform's data — check each source. Every link opens in a new tab.")));
+    if (o.state === "error") { card.appendChild(el("div", "bmm-st", o.text || T("البحث ده مش متاح دلوقتي.", "That search isn't available right now."))); return; }
+    if (!o.items.length) { card.appendChild(el("div", "bmm-st", o.text || T("مالقيتش نتايج للبحث ده.", "No results for this search."))); return; }
     var ol = el("ol");
     for (var j = 0; j < o.items.length; j++) {
-      var it = o.items[j], li = el("li"), a = el("a");
-      a.href = it.url; a.target = "_blank"; a.rel = "noopener noreferrer"; a.referrerPolicy = "no-referrer";
-      a.setAttribute("aria-label", it.title + " — " + it.domain + T(" (يفتح في تاب جديد)", " (opens in a new tab)"));
-      a.appendChild(el("span", "bmm-av", (it.domain || "?").charAt(0)));
-      var dm = el("span", "bmm-dm", it.domain); if (it.date) { dm.appendChild(D.createTextNode(" ")); dm.appendChild(el("em", null, "· " + it.date)); } a.appendChild(dm);
-      if (it.type) { var ty = el("span", "bmm-ty", T(TYPE_L[it.type][0], TYPE_L[it.type][1]) + (it.official ? T(" · بوابة رسمية", " · official portal") : "")); a.appendChild(ty); } /* a hunt: what kind of opportunity */
-      var tt = el("span", "bmm-t", it.title); tt.setAttribute("dir", "auto"); a.appendChild(tt);
-      if (it.snippet) { var sn = el("span", "bmm-s", it.snippet); sn.setAttribute("dir", "auto"); a.appendChild(sn); }
-      li.appendChild(a); ol.appendChild(li);
+      var it = o.items[j], li = el("li"), d = el("div", "bmm-it"), tw = typeWord(it), m = metaOf(it); /* no link: nothing on the card opens another site */
+      d.appendChild(el("span", "bmm-av", TYPE_IC[it.type] || "🔎")).setAttribute("aria-hidden", "true");
+      if (tw) d.appendChild(el("span", "bmm-ty", tw)); /* a hunt: what kind of opportunity */
+      var tt = el("span", "bmm-t", it.title); tt.setAttribute("dir", "auto"); d.appendChild(tt);
+      if (m) { var dm = el("span", "bmm-dm", m); dm.setAttribute("dir", "auto"); d.appendChild(dm); }
+      li.appendChild(d); ol.appendChild(li);
     }
     card.appendChild(ol);
     ping();
@@ -668,6 +666,6 @@
     flush: function (final) { return final ? endCall(false) : flush(false); },
     /* no forget(): the owner's memory policy keeps Bassem's memory (see the header) */
     outcome: function (tool, st) { return outcome(String(tool || ""), String(st || "")); },
-    _t: { parse: parse, item: item, textItems: textItems, abs: abs, queryOf: queryOf, scal: scal, args: args, huntQuery: huntQuery, chunks: function () { return CALL ? chunks(CALL).map(function (ch) { return ch.length; }) : []; }, mem: MEM, vmem: VMEM, vid: vid }
+    _t: { parse: parse, item: item, textItems: textItems, abs: abs, queryOf: queryOf, scal: scal, args: args, huntQuery: huntQuery, noLink: noLink, chunks: function () { return CALL ? chunks(CALL).map(function (ch) { return ch.length; }) : []; }, mem: MEM, vmem: VMEM, vid: vid }
   };
 })();

@@ -8,9 +8,9 @@
              industries whose plants buy it («ورق، كرتون، سكر»); market?: eg (default) | a country | gulf | arab | africa | asia | europe |
              world; governorate?: an Egyptian governorate; intents?: tenders, rfq, buyers, projects (default all four); service?: the seller
              offers a service (detected from «صيانة / كسوة / تجليخ …» too); lang?: ar | en — the language the persona SPEAKS (both)}
-       200  {count, counts: {tender, rfq, buyer, buyer_list, project, news}, results: [{type, title, url, snippet ≤ 140, source, date,
-             official?, aggregator?}] grouped by type, text, query, market, queries, sent, cached, partial, origin: "web", note, hint?,
-             ambiguous?}
+       200  {count, counts: {tender, rfq, buyer, buyer_list, project, news}, results: [{type, title, date?, market?, entity?, official?}]
+             grouped by type (websearch.js sayResult: the opportunity itself — never its url, site, source or snippet; owner 2026-11-20
+             «ميكتبش مصدر اي معلومه»), text, query, market, queries, sent, cached, partial, note, hint?, ambiguous?}
        errors: HTTP 200 soft errors exactly like websearch.js (product_required, product_ambiguous, …); 401 wrong / missing X-MIG-Tool,
              405 wrong method.
    How (deterministic, never an LLM): the query PLAN (planHunt: 3–6 templates by intent and market — Arabic first for Arab markets, English
@@ -19,9 +19,11 @@
    is given back) → the granted queries in parallel under ONE deadline of HUNT_MS (Brave one at a time — review S10; a slow or refused query
    is skipped: partial) → the same result hygiene as a search (cleanResults) → classify + relevance (web-classify.js: competitors, job ads,
    awards, other meanings of the product's words dropped) → the team's rejections (web-leads.js rejectedOf) → de-duplication, score, ≤ 6
-   results (≤ 2 per site, per-type caps, news only fills what is left) → the spoken text (≤ 3 sentences, counts by type, site names from
-   the hosts, never a link / contact / «موثّق», always «من الإنترنت … لازم نتأكد منها ومن مواعيدها من المصدر»). After the answer
-   (ctx.waitUntil): the cache puts, the leads of the provider answers (web-leads.js), the give-back. One log line of numbers per hunt.
+   results (≤ 2 per site, per-type caps, news only fills what is left) → the spoken text (≤ 3 sentences: the counts by type, the product
+   and the market — «لقيت ٣ مناقصات …»; «رسمية» as an adjective; never a site, a portal's name, a link, a contact or «موثّق», never «على
+   الإنترنت», «مش من بيانات المنصة» or «لازم نتأكد»: owner 2026-11-20 «ميقولوش حاجه ولا من بره بيانات المنصه ولاغيره هما يقولوا المعلومه
+   وخلاص»). After the answer (ctx.waitUntil): the cache puts, the leads of the provider answers WITH their link and site (web-leads.js —
+   the data team's only), the give-back. One log line of numbers per hunt.
    Cost: 1 cap unit per provider query sent (≤ 6 a hunt; cached queries free). An ambiguous product word («سلندرات» alone) is a question,
    not a search: product_ambiguous costs nothing (with buyer industries the buyers / projects part still runs). */
 import DATA from "./data.json";
@@ -30,11 +32,11 @@ import { norm, instructionLike, EN as EN_AR } from "./text.js";
 import { webSearchConfig } from "./service-keys.js";
 import { featureOn } from "./flags.js";
 import { WS_HEADER, WS_MAX_BODY, WS_NOTE, WS_MARKETS, voiceOf, isEn, soft, refusal, out, argsOf, queryHygiene, marketOf, runProvider, cleanResults, cacheKey, cacheGet, cachePut,
-  reserveUnits, giveBack, sayable, sitesOf, fromAr, fromEn, plain } from "./websearch.js";
+  reserveUnits, giveBack, sayable, sayResult } from "./websearch.js";
 import { productNeed, industryNeed, classify, relevant, namedIn, canonUrl, bareHost, SERVICE_RX } from "./web-classify.js";
 import { recordLeads, rejectedOf, leadHash, productKey } from "./web-leads.js";
 
-export const HUNT_MS = 4500, HUNT_MAX = 6, HUNT_RESULTS = 6, HUNT_PER_SITE = 2, HUNT_SNIPPET = 140, HUNT_REJECT_WAIT_MS = 400;
+export const HUNT_MS = 4500, HUNT_MAX = 6, HUNT_RESULTS = 6, HUNT_PER_SITE = 2, HUNT_REJECT_WAIT_MS = 400;
 export const INTENTS = Object.freeze(["tenders", "rfq", "buyers", "projects"]);
 const INTENT_ALIAS = { tender: "tenders", tenders: "tenders", rfq: "rfq", rfqs: "rfq", buyer: "buyers", buyers: "buyers", customer: "buyers", customers: "buyers", client: "buyers", clients: "buyers",
   project: "projects", projects: "projects", "مناقصات": "tenders", "مناقصة": "tenders", "مناقصه": "tenders", "طلبات أسعار": "rfq", "طلبات اسعار": "rfq", "طلب عرض سعر": "rfq", "عملاء": "buyers",
@@ -130,7 +132,7 @@ export function scoreOf(r, c, q, need, inds, nowMs) {
   return (TYPE_OF_INTENT[q.intent].includes(c.type) ? 3 : 0) + (c.official ? 2 : 0) + (namedIn(r.title, need, inds) ? 2 : namedIn(r.snippet, need, inds) ? 1 : 0)
     + ((c.type === "tender" || c.type === "rfq") && age <= 45 ? 1 : c.type === "project" && age <= 365 ? 1 : 0) - (c.type === "news" ? 1 : 0) - (c.aggregator ? 1 : 0) - (c.type === "buyer_list" ? 1 : 0);
 }
-/* the Information Center's own items (their source links): never said twice — once as the platform's, once «من الإنترنت» (nit 12) */
+/* the Information Center's own items (their stored links): never said twice — once as the platform's, once from this hunt (nit 12) */
 let OWN = null;
 const ownLinks = () => { if (!OWN) { OWN = new Set(); for (const x of DATA.i || []) if (x && typeof x[10] === "string" && /^https?:/i.test(x[10])) OWN.add(canonUrl(x[10])); } return OWN; };
 /* de-duplicate (the same canonical link; the same site + title; the same long title on another site = syndication), then pick ≤ max:
@@ -160,31 +162,32 @@ export function pickResults(cands, max = HUNT_RESULTS) {
 /* ---------- the spoken text (≤ 3 sentences, no links; Arabic voices share it, «لقيت / مالقيتش» are the same for Janna and Bassem) ---------- */
 const NOUN_AR = { tender: n => (n === 1 ? "مناقصة واحدة" : n === 2 ? "مناقصتين" : n + " مناقصات"), rfq: n => (n === 1 ? "طلب عرض سعر واحد" : n === 2 ? "طلبين عروض أسعار" : n + " طلبات عروض أسعار"),
   buyer: n => (n === 1 ? "شركة واحدة ممكن تبقى عميل" : n === 2 ? "شركتين ممكن يبقوا عملاء" : n + " شركات ممكن تبقى عملاء"),
-  buyer_list: n => (n === 1 ? "صفحة واحدة فيها مصانع ممكن تبقى عملاء" : n === 2 ? "صفحتين فيهم مصانع ممكن تبقى عملاء" : n + " صفحات فيها مصانع ممكن تبقى عملاء"),
+  buyer_list: n => (n === 1 ? "قايمة واحدة بمصانع ممكن تبقى عملاء" : n === 2 ? "قايمتين بمصانع ممكن تبقى عملاء" : n + " قوايم بمصانع ممكن تبقى عملاء"),
   project: n => (n === 1 ? "مشروع جديد واحد" : n === 2 ? "مشروعين جداد" : n + " مشاريع جديدة"), news: n => (n === 1 ? "خبر واحد" : n === 2 ? "خبرين" : n + " أخبار") };
 const NOUN_EN = { tender: n => (n === 1 ? "1 tender" : n + " tenders"), rfq: n => (n === 1 ? "1 RFQ" : n + " RFQs"),
   buyer: n => (n === 1 ? "1 company that could become a customer" : n + " companies that could become customers"),
-  buyer_list: n => (n === 1 ? "1 page listing plants that could become customers" : n + " pages listing plants that could become customers"),
+  buyer_list: n => (n === 1 ? "1 list of plants that could become customers" : n + " lists of plants that could become customers"),
   project: n => (n === 1 ? "1 new project" : n + " new projects"), news: n => (n === 1 ? "1 news item" : n + " news items") };
 const NONE_AR = { tenders: "مناقصات", rfq: "طلبات أسعار", buyers: "عملاء جداد", projects: "مشاريع جديدة" }, NONE_EN = { tenders: "tenders", rfq: "RFQs", buyers: "buyers", projects: "projects" };
-export const HUNT_DISCLAIMER = "دي معلومات من مواقع على الإنترنت، مش من بيانات المنصة، فلازم نتأكد منها ومن مواعيدها من المصدر.";
-export const HUNT_DISCLAIMER_EN = "This comes from websites, not from the platform's data, so it has to be checked — dates too — at the source.";
 const joinAr = l => (l.length <= 1 ? l[0] || "" : l.slice(0, -1).join(" و") + " و" + l[l.length - 1]);
 const joinEn = (l, w = "and") => (l.length <= 1 ? l[0] || "" : l.slice(0, -1).join(", ") + " " + w + " " + l[l.length - 1]);
+/* the opportunities themselves (owner 2026-11-20): counts by type, the product, the market; the official ones as «رسمية» — an adjective,
+   never the portal's name (an official RFQ makes it «فرصة رسمية»); no site, no link, no «على الإنترنت», no disclaimer */
 export function huntText(picked, h, need, voice, asked) {
   const counts = {}; for (const x of picked) counts[x.c.type] = (counts[x.c.type] || 0) + 1;
-  const types = TYPE_ORDER.filter(t => counts[t]), off = picked.filter(x => x.c.official).length, { shown, more } = sitesOf(picked.map(x => x.r));
+  const types = TYPE_ORDER.filter(t => counts[t]), offs = picked.filter(x => x.c.official && (x.c.type === "tender" || x.c.type === "rfq"));
+  const off = offs.length, tenders = off > 0 && offs.every(x => x.c.type === "tender");
   const want = (asked && asked.length ? asked : INTENTS);
   if (isEn(voice)) {
     const name = need.en && !ARABIC.test(need.en) ? `“${sayable(need.en, 40)}”` : "your product", where = h.gov ? " in " + h.gov.en : h.market ? " in " + h.market.en : "";
-    if (!picked.length) return `I found no new ${joinEn(want.map(i => NONE_EN[i]), "or")} on the web for ${name}${where} right now.`;
-    return `I found on the web ${joinEn(types.map(t => NOUN_EN[t](counts[t])))} for ${name}${where}${fromEn(shown, more)}. `
-      + (off ? (off === 1 ? "One of them is on an official tender portal. " : off + " of them are on official tender portals. ") : "") + HUNT_DISCLAIMER_EN;
+    if (!picked.length) return `I found no new ${joinEn(want.map(i => NONE_EN[i]), "or")} for ${name}${where} right now.`;
+    return `I found ${joinEn(types.map(t => NOUN_EN[t](counts[t])))} for ${name}${where}.`
+      + (!off ? "" : picked.length === 1 ? ` It is an official ${tenders ? "tender" : "opportunity"}.` : off === 1 ? ` One of them is an official ${tenders ? "tender" : "opportunity"}.` : ` ${off} of them are official ${tenders ? "tenders" : "opportunities"}.`);
   }
   const name = sayable(h.product, 40) || "منتجك", where = h.gov ? " في " + h.gov.ar : h.market ? " في " + h.market.ar : "";
-  if (!picked.length) return `مالقيتش على الإنترنت دلوقتي ${want.map(i => NONE_AR[i]).join(" أو ")} لـ «${name}»${where}.`;
-  return `لقيت على الإنترنت ${joinAr(types.map(t => NOUN_AR[t](counts[t])))} لـ «${name}»${where}${shown.length ? "،" + fromAr(shown, more) : ""}. `
-    + (off ? (off === 1 ? "واحدة منها على بوابة مناقصات رسمية. " : `منها ${off} على بوابات مناقصات رسمية. `) : "") + HUNT_DISCLAIMER;
+  if (!picked.length) return `مالقيتش دلوقتي ${want.map(i => NONE_AR[i]).join(" أو ")} لـ «${name}»${where}.`;
+  return `لقيت ${joinAr(types.map(t => NOUN_AR[t](counts[t])))} لـ «${name}»${where}.`
+    + (!off ? "" : picked.length === 1 ? ` ودي ${tenders ? "مناقصة رسمية" : "فرصة رسمية"}.` : off === 1 ? ` واحدة منها ${tenders ? "مناقصة رسمية" : "فرصة رسمية"}.` : ` ${off === 2 ? "اتنين" : off} منها ${tenders ? "مناقصات رسمية" : "فرص رسمية"}.`);
 }
 /* an ambiguous product word: ONE question first (review S1 / S11) */
 export function ambiguousText(amb, voice) {
@@ -204,7 +207,7 @@ export async function runHunt(env, cfg, h, { who = "bassem", voice = "bassem", n
   if (need.amb) { ambiguous = need.amb; intents = inds.length ? intents.filter(i => i === "buyers" || i === "projects") : []; if (!intents.length) return { error: "product_ambiguous", ambiguous }; }
   const plan = planHunt({ ...h, intents }, need, inds, nowMs);
   if (!plan.length) return { error: "industries_required" }; // a service without industries, asked only for buyers / projects: nothing to search
-  if (!need.en) hints.push("call again with product_en (the usual English trade name) to search English and foreign sites too");
+  if (!need.en) hints.push("call again with product_en (the usual English trade name) to search in English too");
   if (!inds.length && (intents.includes("buyers") || intents.includes("projects"))) hints.push("send buyer_industries (1-3 industries whose plants buy or use the product) to find buyers and new projects");
   if (h.unknown_market) hints.push("unknown market: searched without a country");
   /* the cache (all reads at once), then ONE reservation for the misses */
@@ -258,20 +261,23 @@ export async function runHunt(env, cfg, h, { who = "bassem", voice = "bassem", n
   const partial = misses.length > res.granted || skipped > 0 || failed.length > 0;
   if (partial) hints.push("some searches did not run or answer in time: say only what came back");
   if (ambiguous) hints.push(`ask ONE question first: which meaning of «${ambiguous.word}» — tenders and RFQs wait for the answer`);
-  /* the data desk keeps the opportunities of the PROVIDER answers (review S8) */
+  /* the data desk keeps the opportunities of the PROVIDER answers, with their link and site (review S8) — inside only */
   const rows = picked.filter(x => x.fresh).map(x => ({ ...x.r, type: x.c.type, official: x.c.official, aggregator: x.c.aggregator, query: x.q.q, lang: x.q.lang }));
   if (rows.length) wait(recordLeads(env, rows, { persona: who, via: "hunt", product: h.product, market: h.market ? h.market.code : "", governorate: h.gov ? h.gov.ar : "", nowMs }));
   console.log("web-hunt", who, "planned", plan.length, "sent", send.length - skipped, "cached", plan.length - misses.length, "kept", picked.length, "ms", Date.now() - t0);
   return { body: answer(picked, h, need, voice, { plan, sent: send.length - skipped, cached: plan.length - misses.length, partial, hints, ambiguous, asked: intents }) };
 }
+/* the persona and the call get the opportunities themselves: sayResult (type, the platform's short title, date, market, entity?, official?)
+   — never the link, the site, the source or the copied snippet (owner 2026-11-20; those stay in web_leads for the data team) */
 function answer(picked, h, need, voice, m) {
   const counts = {}; for (const x of picked) counts[x.c.type] = (counts[x.c.type] || 0) + 1;
   let text = huntText(picked, h, need, voice, m.asked);
   if (m.ambiguous) text += " " + ambiguousText(m.ambiguous, voice);
+  const en = isEn(voice), where = h.gov ? (en ? h.gov.en : h.gov.ar) : h.market ? (en ? h.market.en : h.market.ar) : "";
   return { count: picked.length, counts,
-    results: picked.map(x => ({ type: x.c.type, title: x.r.title, url: x.r.url, snippet: plain(x.r.snippet, HUNT_SNIPPET), source: x.r.source, date: x.r.date, ...(x.c.official ? { official: true } : {}), ...(x.c.aggregator ? { aggregator: true } : {}) })),
+    results: picked.map(x => sayResult(x.r, x.c, { market: where, product: en && need.en ? need.en : h.product, en })),
     text, query: [h.product, h.market ? h.market.ar : "العالم"].join(" · "), market: h.market ? h.market.code : "world", queries: m.plan.length, sent: m.sent, cached: m.cached, partial: !!m.partial,
-    origin: "web", note: WS_NOTE, ...(m.hints.length ? { hint: m.hints.join("; ") } : {}), ...(m.ambiguous ? { ambiguous: m.ambiguous } : {}) };
+    note: WS_NOTE, ...(m.hints.length ? { hint: m.hints.join("; ") } : {}), ...(m.ambiguous ? { ambiguous: m.ambiguous } : {}) };
 }
 
 /* ---------- HTTP: POST /api/janna/hunt (Janna) · POST /api/advisor/hunt (Bassem) ---------- */
@@ -294,7 +300,7 @@ async function serveHunt(req, env, ctx, nowMs, who) {
   if (h.error) return soft(W.path, voice, h.error, 400);
   const r = await runHunt(env, cfg, h, { who, voice, nowMs, ctx });
   if (r.error === "product_required" || r.error === "industries_required") return soft(W.path, voice, r.error, 400);
-  if (r.error === "product_ambiguous") { toolSoftError(W.path, "product_ambiguous"); return out({ error: "product_ambiguous", code: "product_ambiguous", http: 200, ambiguous: r.ambiguous, count: 0, results: [], text: ambiguousText(r.ambiguous, voice), origin: "web", note: WS_NOTE }); }
+  if (r.error === "product_ambiguous") { toolSoftError(W.path, "product_ambiguous"); return out({ error: "product_ambiguous", code: "product_ambiguous", http: 200, ambiguous: r.ambiguous, count: 0, results: [], text: ambiguousText(r.ambiguous, voice), note: WS_NOTE }); }
   const refused = r.error ? refusal(W.path, voice, r, nowMs) : null; if (refused) return refused;
   if (r.error) return soft(W.path, voice, "websearch_failed", 502);
   return out(r.body);

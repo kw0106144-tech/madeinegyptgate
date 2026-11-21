@@ -198,7 +198,7 @@ Why it is needed:
 | b | «بنعمل بارات حديد ٣ و٤ مللي» | `bassem_save_profile`, then «سجّلت ده في ملف مصنعك» only after «اتسجّل». Then a search. |
 | c | «مناقصات حديد في مصر» | `janna_lookup` + `janna_search` (awaited). «افتحها» → `platform_item` + `bassem_open_item url=open_url` → entity, amount and deadline from the result. «اللي بعدها» → `bassem_screen next_result`. |
 | d | «والخليج؟» | `bassem_intel`. The first result shows on its own. No `bassem_open_opportunity` for it. |
-| e | «دوّرلي على مستوردين في كينيا» | `bassem_web_search`, said as «من مواقع على الإنترنت…» with site names only. Without a key: «مش متفعّل». |
+| e | «دوّرلي على مستوردين في كينيا» | `bassem_web_search`, said as the information itself («لقيت …»): no site, no link, never «من الإنترنت» or «لازم نتأكد» (owner 2026-11-20; tool descriptions in `tools.create.json`, Bassem's prompt lines in `rounds/2026-11-21-no-sources/`). Without a key: «مش متفعّل». |
 | f | «اكتبلي إيميل تعريفي بالصيني» | `language:"zh"`, no `to`. The composer opens. «راجعه ولو تمام دوس ابعت». Never «بعته». |
 | g | «تابعلي حديد الصلب» | `janna_follow {kind:"sector", label}` → it says saved only if the result says so. |
 | h | «فكّرني بكرة الساعة ١٠ نكمّل» | `bassem_tasks add`. «امبارح دورنا على إيه؟» (in a next-day call) → `bassem_recall`, with the date. |

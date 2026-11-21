@@ -191,7 +191,9 @@ function itemSpoken(r, nowMs) {
   if (r.deadline) s += "، آخر ميعاد " + spokenDay(r.deadline, nowMs);
   return s;
 }
-/* short Egyptian Arabic for the avatar: at most 2 sentences + up to 3 items, no URLs, Arabic digits, deadlines in words («٢ ديسمبر») */
+/* short Egyptian Arabic for the avatar: at most 2 sentences + up to 3 items, no URLs, Arabic digits, deadlines in words («٢ ديسمبر»).
+   NO SOURCE (owner 2026-11-20: «ميكتبش مصدر اي معلومه»; «ميقولوش حاجه ولا من بره بيانات المنصه ولاغيره هما يقولوا المعلومه وخلاص»; and
+   2026-11-18 «شيل كلمة من المصادر الرسمية»): the Information Center is named, never «المصادر الرسمية», a portal, a site or a link */
 export function toolText(action, total, results, p = {}) {
   const nowMs = p.nowMs || Date.now(), days = p.days || (action === "brief" ? 1 : 30), win = daysAr(days);
   const about = p.query ? " عن «" + clip(stripUrls(String(p.query)), 40) + "»" : p.sectorName ? " في قطاع «" + p.sectorName + "»" : "";
@@ -201,13 +203,13 @@ export function toolText(action, total, results, p = {}) {
   const found = p.query && p.partial ? " قريبة من «" + clip(stripUrls(String(p.query)), 40) + "»" : about, near = (p.partial ? " قريبة من طلبك" : "") + older;
   const where = p.where ? " في " + p.where : "";
   const items = results.slice(0, 3).map(r => itemSpoken(r, nowMs)).join("؛ ");
-  const tail = " التفاصيل والرابط الرسمي على صفحة مركز المعلومات.";
+  const tail = " التفاصيل على صفحة كل فرصة في مركز المعلومات.";
   let head;
   if (action === "brief") {
-    if (!total) return "مفيش حاجة جديدة" + where + " في المصادر الرسمية خلال آخر ٢٤ ساعة. ممكن أدوّرلك على منتجك في آخر ٣٠ يوم.";
-    head = "ملخص النهارده: فيه " + arDigits(total) + " فرصة وخبر جديد من المصادر الرسمية" + where + " في آخر ٢٤ ساعة" + (items ? "، أهمها: " : ".");
+    if (!total) return "مفيش حاجة جديدة" + where + " في مركز المعلومات خلال آخر ٢٤ ساعة. ممكن أدوّرلك على منتجك في آخر ٣٠ يوم.";
+    head = "ملخص النهارده: فيه " + arDigits(total) + " فرصة وخبر جديد في مركز المعلومات" + where + " في آخر ٢٤ ساعة" + (items ? "، أهمها: " : ".");
   } else if (!total) {
-    return "مالقيتش حاجة" + about + where + (p.widenedTo ? " ولا في " + p.widenedTo : "") + " خلال " + win + " في المصادر الرسمية. ممكن نجرب كلمة تانية أو مدة أطول، ومش هقول أرقام مش موجودة.";
+    return "مالقيتش حاجة" + about + where + (p.widenedTo ? " ولا في " + p.widenedTo : "") + " خلال " + win + " في مركز المعلومات. ممكن نجرب كلمة تانية أو مدة أطول، ومش هقول أرقام مش موجودة.";
   } else if (p.widenedTo && p.inMarket) {
     head = "مالقيتش مناقصات ولا طلبات أسعار" + about + where + " خلال " + win + " (فيه بس " + countAr(p.inMarket, PROJECT_NEWS) + ")، فوسّعت البحث على " + p.widenedTo + " ولقيت " + countAr(total - p.inMarket, OPP_WORDS) + near + "، أهمها: ";
   } else if (p.widenedTo) {
@@ -276,7 +278,8 @@ function placeOf(r, pi) {
   const group = /^(?:africa|asia|eu|gcc)$/.test(r.market);
   return "في " + pi.market_name + (group && r.country ? " (" + clip(r.country, 30) + ")" : "");
 }
-/* the item as the tool gives it in full (what the persona may say: only these fields) */
+/* the item in full (mailPack's card too, which keeps its source for the «ابعتلي» e-mail until the owner decides); the persona gets it
+   through sayIntel (no source name) */
 function itemFull(r, src) {
   const pi = publicItem(r, "ar", src), srcName = src ? src.name_ar || src.name : "";
   return { id: r.id, kind: r.kind, kind_label: pi.kind_label, title: pi.title, title_orig: r.title_orig, entity: r.entity || null, market: r.market, market_name: pi.market_name, country: r.country || null,
@@ -284,20 +287,23 @@ function itemFull(r, src) {
     summary: r.summary_ar ? stripContacts(stripUrls(r.summary_ar)) : null, summary_original: r.summary_orig ? clip(stripContacts(stripUrls(r.summary_orig)), 600) : null,
     source: srcName || null, page: pi.page, open_url: pi.page, url: r.url, official_link: officialKind(r.url) };
 }
-/* short Egyptian Arabic for the avatar: what, who, where, the deadline, the value, what is requested, the source — nothing else */
+/* the item as the persona gets it: everything but the name of its source (owner 2026-11-20) — `url` (its official link, never read aloud)
+   stays: the «ابعتلي» / opportunity e-mails attach it (data/janna-live.js harvest), unchanged until the owner decides about them */
+export const sayIntel = it => { if (!it || typeof it !== "object") return it; const { source, ...x } = it; void source; return x; };
+/* short Egyptian Arabic for the avatar: what, who, where, the deadline, the value, what is requested — never the source (owner 2026-11-20) */
 export function itemText(r, src, nowMs = Date.now()) {
   const it = itemFull(r, src);
   let s = (KIND_SPOKEN[r.kind] || "فرصة") + " «" + clip(stripUrls(it.title || ""), 90) + "»" + (it.entity ? " من " + clip(stripUrls(it.entity), 60) : "") + " " + placeOf(r, it);
   const facts = [];
   if (r.deadline) facts.push("آخر ميعاد " + spokenDay(r.deadline, nowMs) + (STATUS_AR[r.status] ? " (" + STATUS_AR[r.status] + ")" : ""));
-  else if (/^tender_|^rfq$/.test(r.kind)) facts.push("ميعاد التقديم مش منشور في المصدر");
+  else if (/^tender_|^rfq$/.test(r.kind)) facts.push("ميعاد التقديم مش منشور");
   const money = moneyAr(r.value, r.currency);
-  facts.push(money ? "القيمة التقديرية " + money : "القيمة مش منشورة في المصدر");
+  facts.push(money ? "القيمة التقديرية " + money : "القيمة مش منشورة");
   s += "، " + facts.join("، ") + ".";
   if (it.summary) s += " المطلوب: " + clip(it.summary, 260) + ".";
-  else if (it.summary_original) s += " من نص المصدر: " + clip(it.summary_original, 240) + ".";
-  else s += " المصدر مانشرش وصف أكتر من العنوان.";
-  s += (it.source ? " المصدر الرسمي: " + clip(it.source, 60) + "." : "") + " التفاصيل والرابط الرسمي على صفحتها في مركز المعلومات.";
+  else if (it.summary_original) s += (/news/.test(r.kind) ? " من نص الخبر: " : " من نص الإعلان: ") + clip(it.summary_original, 240) + ".";
+  else s += " مفيش وصف منشور أكتر من العنوان.";
+  s += " التفاصيل كاملة على صفحتها في مركز المعلومات.";
   return s.replace(/https?:\/\/\S+/g, "").replace(/\s{2,}/g, " ").replace(/\.\./g, ".").trim();
 }
 const DOC_FLAG = {
@@ -316,8 +322,8 @@ const DOC_FLAG = {
   scanned: "المستند صورة متصوّرة (سكان) ومفيهوش نص أقدر أقراه",
   unreadable: "مقدرتش أطلع نص مفهوم من المستند",
   encrypted: "المستند مقفول بكلمة سر",
-  empty: "صفحة المصدر مافيهاش نص أقدر أقراه",
-  no_document: "مفيش مستند رسمي مربوط بالفرصة دي غير صفحة المصدر",
+  empty: "صفحة الإعلان مافيهاش نص أقدر أقراه",
+  no_document: "مفيش مستند رسمي مربوط بالفرصة دي غير صفحة الإعلان نفسها",
 };
 const joinAr = list => (list.length < 2 ? list[0] || "" : list.slice(0, -1).join("، ") + " و" + list[list.length - 1]);
 const TRANSIENT = new Set(["unreachable", "timeout", "busy"]);
@@ -337,8 +343,8 @@ async function itemTool(env, body, nowMs, action, o = {}) {
   const src = await db.prepare("SELECT id, name, name_ar FROM intel_sources WHERE id=?").bind(r.source_id).first();
   const sm = new Map(src ? [[src.id, src]] : []), it = itemFull(r, src), res = [toolItem(r, sm)];
   if (action === "item") {
-    return { action, found: true, id: r.id, count: 1, results: res, item: it, text: itemText(r, src, nowMs),
-      note: "Say only what `text` and `item` contain (a missing field is not published at the source: say so). In Bassem's calls its page opens on the shared screen by itself. Its own official document (requirements, documents, bid bond): bassem_intel action=doc with this id. Never read links aloud." };
+    return { action, found: true, id: r.id, count: 1, results: res, item: sayIntel(it), text: itemText(r, src, nowMs),
+      note: "Say only what `text` and `item` contain (a missing field is not published: say so). In Bassem's calls its page opens on the shared screen by itself. Its own official document (requirements, documents, bid bond): bassem_intel action=doc with this id. Never read links aloud; never name where it was published (no site, portal or source)." };
   }
   /* action "doc": cached per item and link (12 h; a failure 30 min, a timeout / an unreachable site 5 min) */
   const key = docKey(r);
@@ -354,7 +360,7 @@ async function itemTool(env, body, nowMs, action, o = {}) {
     const f = d.flags.find(x => DOC_FLAG[x]) || "unreadable";
     const why = DOC_FLAG[f] + (d.ai_skip === "cap" && (f === "unreadable" || f === "scanned") ? " (وتحويل المستندات بالذكاء الاصطناعي خلص النهارده)" : "");
     return { ...head, ok: false, flags: d.flags, doc: d.doc ? { type: d.doc.type || null, url: d.doc.url || null } : null,
-      text: why + "." + (facts ? " اللي عندي من صفحة الفرصة في مركز المعلومات: " + facts + "." : "") + " المستند نفسه على الرابط الرسمي في صفحتها.",
+      text: why + "." + (facts ? " اللي عندي من صفحة الفرصة في مركز المعلومات: " + facts + "." : "") + " المستند نفسه موجود على صفحتها في مركز المعلومات.",
       note: "The document was NOT read: say the reason in `text` honestly, then only the facts in `item`. Never guess its requirements, documents, bid bond or dates." };
   }
   const lang = d.doc && d.doc.lang, found = d.found.map(k => TOPIC_AR[k]), missing = d.missing.map(k => TOPIC_AR[k]);
@@ -468,7 +474,7 @@ export async function tool(env, body = {}, nowMs = Date.now(), o = {}) {
     return { count: total, results, text: toolText("brief", total, results, { where: markets.length ? askedWhere : "", nowMs }) };
   }
   const days = Math.min(Math.max(parseInt(body.days, 10) || 30, 1), 90);
-  if (noProduct && sec < 0) return { count: 0, results: [], text: "مش واضح لي اسم المنتج في «" + spokenQ + "». قولّي المنتج نفسه (مثلاً حديد تسليح أو مواسير بلاستيك) وأنا أدوّرلك عليه في المصادر الرسمية.", days, market: markets.length ? markets.join(",") : scope ? "plan" : "all", widened: null, ...(plan ? { plan } : {}) };
+  if (noProduct && sec < 0) return { count: 0, results: [], text: "مش واضح لي اسم المنتج في «" + spokenQ + "». قولّي المنتج نفسه (مثلاً حديد تسليح أو مواسير بلاستيك) وأنا أدوّرلك عليه في مركز المعلومات.", days, market: markets.length ? markets.join(",") : scope ? "plan" : "all", widened: null, ...(plan ? { plan } : {}) };
   const base = { kind, q, days, sector, boostSector: sec };
   const askedMf = markets.length ? marketsFilter(markets) : scope ? marketsFilter(scope) : null;
   const split = rows => { rows = dedupe(rows); const opp = rows.filter(r => !isPureNews(r)); return { all: rows, opp, top: opp.filter(r => tierOf(r) === 0), news: rows.filter(isPureNews) }; };
