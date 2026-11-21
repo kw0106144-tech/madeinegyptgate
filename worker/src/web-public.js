@@ -237,7 +237,7 @@ export function publicOf(r) {
   if (!title && !product) return null; // nothing to say in the platform's words
   const dated = DATED.has(type), text = t0 + " . " + String(r.snippet || "");
   const deadline = dated ? deadlineOf(text) : "", cancelled = dated && CANCELLED.test(norm(text) + " " + text);
-  const gov = String(r.governorate || "").slice(0, 40), found = String(r.first_seen || "").slice(0, 10);
+  const gov = String(r.governorate || "").slice(0, 40), found = (() => { const t = Date.parse(String(r.first_seen || "")); return Number.isFinite(t) ? cairoDay(t) : String(r.first_seen || "").slice(0, 10); })(); // the Cairo day it was found (a UTC slice is yesterday after 22:00 UTC)
   const pub = { id: Number(r.id) || 0, type, title, ...(entity ? { entity } : {}), ...(product ? { product } : {}), market: String(r.market || "").slice(0, 20),
     ...(gov ? { governorate: gov, ...(GOV_EN.get(norm(gov)) ? { governorate_en: GOV_EN.get(norm(gov)) } : {}) } : {}),
     ...(dated ? { deadline } : {}), ...(officialOf(r) ? { official: true } : {}), found: /^\d{4}-\d{2}-\d{2}$/.test(found) ? found : "" };

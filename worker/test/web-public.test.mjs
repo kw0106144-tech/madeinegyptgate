@@ -246,8 +246,8 @@ describe("janna_lookup: the published opportunities after the platform's own res
     assert.match(extraText, /Egypt: tender for supply of power cables — منتهية، آخر ميعاد كان /);
     assert.match(extraText, /الشركة المصرية لنقل الكهرباء — ميعادها مش معروف/);
     assert.match(extraText, /ماتقوليش إنهم على المنصة ولا إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك/);
-    assert.match(extraText, /«دي من متابعة فريق المنصة للسوق، وقبل ما تقدّم اتأكد من الجهة نفسها»/);
-    assert.ok(!SOURCE_RX.test(extraText) && !/من الإنترنت|من برّه|مش متحقق/.test(extraText.replace(/«دي من متابعة فريق المنصة للسوق[^»]*»/, "")), "no mark of where they came from");
+    assert.match(extraText, /«ده اللي عندي عنها، والشروط والمواعيد النهائية عند الجهة نفسها»/);
+    assert.ok(!SOURCE_RX.test(extraText) && !/من الإنترنت|من برّه|مش متحقق/.test(extraText.replace(/«ده اللي عندي عنها[^»]*»/, "")), "no mark of where they came from");
     assert.equal(d.extra.findIndex(x => /منتهية/.test(x.status || "")), d.extra.length - 1, "the closed one last");
     /* Bassem (his tool pages / picks markets): masculine; a market keeps only that market's */
     const b = (await lookup(env, { section: "tenders", query: "كابلات", page: 1, market: "gulf" })).data;
