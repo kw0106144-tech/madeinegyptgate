@@ -1076,7 +1076,42 @@ CREATE INDEX IF NOT EXISTS cc_delete_requests_status ON cc_delete_requests(statu
 CREATE UNIQUE INDEX IF NOT EXISTS cc_delete_requests_member_open ON cc_delete_requests(member_id) WHERE kind = 'member' AND status = 'pending';
 CREATE UNIQUE INDEX IF NOT EXISTS cc_delete_requests_visitor_open ON cc_delete_requests(visitor_id) WHERE kind = 'visitor' AND status = 'pending';
 
--- 0011 — web leads «🌐 فرص من الإنترنت» (owner 2026-11-20: Janna and Bassem as data-pulling machines): the opportunities their web search /
+-- 0011 — the daily calls report («تقرير مكالمات جنة وباسم اليومي», src/calls-report.js): call_sessions = the random tag of each live-call
+-- token's Anam clientLabel and whose call it was (the member only with that request's own full sign-in; never an e-mail, a phone, an IP or
+-- a user agent); call_reviews = one row per reviewed conversation (phase 2). Applied to the live database ONLY by the manual d1-migrate
+-- workflow: Actions → d1-migrate → Run workflow: migration = 0011_calls_report.sql, confirm = migate-db
+CREATE TABLE IF NOT EXISTS call_sessions (
+  tag         TEXT PRIMARY KEY,                         -- 12 random base32 characters, the end of the call's Anam clientLabel
+  agent       TEXT NOT NULL CHECK (agent IN ('janna', 'bassem')),
+  lang        TEXT NOT NULL DEFAULT 'ar',
+  subject     TEXT NOT NULL DEFAULT '',                 -- 'v:' + Janna's random page visitor id, else ''
+  member_id   TEXT NOT NULL DEFAULT '',                 -- members.id ONLY with that request's own full sign-in (Bearer v2, not an e-mailed link)
+  staff       INTEGER NOT NULL DEFAULT 0,               -- 1 = the platform's team (Control Center staff / ADMIN_EMAILS)
+  app         TEXT NOT NULL DEFAULT '',                 -- ios | android (the platform's own apps, MIGApp user agent) | '' (a browser)
+  ctx         TEXT NOT NULL DEFAULT '',                 -- member | visitor | knowledge | '' — the context block the persona got
+  created_at  TEXT NOT NULL,
+  session_id  TEXT NOT NULL DEFAULT ''                  -- the Anam session id, filled by the report
+);
+CREATE INDEX IF NOT EXISTS call_sessions_created ON call_sessions(created_at);
+CREATE INDEX IF NOT EXISTS call_sessions_subject ON call_sessions(subject, created_at);
+CREATE INDEX IF NOT EXISTS call_sessions_member ON call_sessions(member_id, created_at);
+CREATE INDEX IF NOT EXISTS call_sessions_session ON call_sessions(session_id);
+
+CREATE TABLE IF NOT EXISTS call_reviews (
+  session_id    TEXT PRIMARY KEY,                       -- the conversation's first Anam session id
+  day           TEXT NOT NULL,                          -- the Cairo day of the report
+  agent         TEXT NOT NULL,
+  subject       TEXT NOT NULL DEFAULT '',               -- members.id, or 'v:' + a Janna visitor id ('' = not known)
+  kind          TEXT NOT NULL DEFAULT '',               -- customer | team | outside
+  verdict       TEXT NOT NULL DEFAULT '',               -- the automatic rating (calls-review.js)
+  flags         TEXT NOT NULL DEFAULT '',               -- rule codes with their turns
+  summary_json  TEXT NOT NULL DEFAULT '{}',             -- masked like the report (no transcript, no contact data from a call)
+  created_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS call_reviews_day ON call_reviews(day, verdict);
+CREATE INDEX IF NOT EXISTS call_reviews_subject ON call_reviews(subject, day);
+
+-- 0012 — web leads «🌐 فرص من الإنترنت» (owner 2026-11-20: Janna and Bassem as data-pulling machines): the opportunities their web search /
 -- opportunity hunt returned, for the data desk to review (src/web-leads.js, never public, owner switch web_leads). Applied to the live
 -- database ONLY by the manual d1-migrate workflow:
 --   Actions → d1-migrate → Run workflow: migration = 0012_web_leads.sql, confirm = migate-db

@@ -200,6 +200,11 @@ export const TEMPLATES = Object.freeze([
     about_ar: "اجتماع تعريفي جديد اتحجز مع جنة.", about_en: "A new introductory meeting was booked with Janna.", sample_ar: "اجتماع جديد — ‹name›", sample_en: "اجتماع جديد — ‹name›" }),
   T({ key: "team_meeting_summary", group: "team", to: "team", via: "send", prefixes: ["mf-"], name_ar: "إشعار الفريق: ملخص اجتماع", name_en: "Team: meeting summary",
     about_ar: "ملخص اجتماع تعريفي خلص مع جنة.", about_en: "The summary of a finished introductory meeting with Janna.", sample_ar: "ملخص اجتماع — ‹name›", sample_en: "ملخص اجتماع — ‹name›" }),
+  // the daily calls report (calls-report.js): built and sent by the Worker itself (via "send"), with the CSV attachment
+  T({ key: "team_calls_report", group: "team", to: "team", via: "send", prefixes: ["callrep-"], name_ar: "تقرير مكالمات جنة وباسم اليومي", name_en: "Daily Janna & Bassem calls report",
+    about_ar: "كل صباح: مكالمات جنة وباسم في اليوم اللي فات وتقييمها التلقائي — لمستلمي التقرير اللي المالك حددهم بس («🛠️ المطوّر» ← «تقرير المكالمات»؛ الافتراضي إيميلات المنصة). فيه بيانات أشخاص محجوبة.",
+    about_en: "Every morning: yesterday's Janna and Bassem calls and their automatic rating — only to the report recipients the owner set («🛠️ Developer» → «Calls report»; default: the platform's own mailboxes). It holds masked personal data.",
+    sample_ar: "تقرير مكالمات جنة وباسم — ‹day›: ‹n› مكالمة", sample_en: "Calls report ‹day›: ‹n› calls" }),
   // ---- follows & reminders ----
   T({ key: "follow_digest", group: "digest", to: "member", list: "digest", prefixes: ["digest-"], name_ar: "ملخص المتابعات اليومي", name_en: "Daily follows digest",
     about_ar: "العناصر الجديدة اللي تطابق متابعات العضو (مرة في اليوم).", about_en: "New items matching the member's follows (once a day).",

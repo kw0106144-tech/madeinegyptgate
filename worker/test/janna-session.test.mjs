@@ -5,7 +5,7 @@ import { test, describe, beforeEach, afterEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import worker from "../src/index.js";
-import { handleJannaSession, PERSONAS, ANAM_TOKEN_URL, MAX_SESSION_SEC, TOKEN_TTL_SEC, ANAM_TIMEOUT_MS, originOf, originOk, perHour, dailyCap } from "../src/janna-session.js";
+import { handleJannaSession, PERSONAS, ANAM_TOKEN_URL, MAX_SESSION_SEC, TOKEN_TTL_SEC, ANAM_TIMEOUT_MS, originOf, originOk, perHour, dailyCap, tagsOff, forgetTagsOff } from "../src/janna-session.js";
 import { issueSession } from "../src/auth.js";
 import { signToken } from "../src/advisor.js";
 import { putSecret } from "../src/crypto.js";
@@ -54,6 +54,9 @@ async function member(env, { id, email, plan = "visitor", role = "user", verifie
 }
 const tokenFor = async (env, m, scope = "full") => (await issueSession(env, m, { scope })).token;
 const dayCount = async env => (await env.DB.prepare("SELECT n FROM rl WHERE k = ?").bind("jsessday|" + cairoDay()).first("n")) || 0;
+/* the daily calls report's tag (migration 0011): «madeinegyptgate-<agent>-<lang>.<12 base32 characters>» — checked, then compared without it */
+const TAGGED = /^(madeinegyptgate-(?:janna|bassem)-(?:ar|en))\.([a-z2-7]{12})$/;
+const untag = b => { assert.match(String(b.clientLabel), TAGGED); return { ...b, clientLabel: TAGGED.exec(b.clientLabel)[1] }; };
 
 beforeEach(() => { realFetch = globalThis.fetch; mockAnam(); });
 afterEach(() => { globalThis.fetch = realFetch; });
@@ -71,7 +74,7 @@ describe("janna session: the Anam request", () => {
     assert.equal(c.headers.Authorization, "Bearer " + KEY);
     assert.equal(c.headers["Content-Type"], "application/json");
     assert.ok(c.signal, "the upstream call can time out");
-    assert.deepEqual(c.body, { personaConfig: { personaId: JANNA_AR }, sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: "madeinegyptgate-janna-ar" });
+    assert.deepEqual(untag(c.body), { personaConfig: { personaId: JANNA_AR }, sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: "madeinegyptgate-janna-ar" });
     assert.ok(TOKEN_TTL_SEC >= 120 && TOKEN_TTL_SEC <= 3600, "Anam accepts 120–3600 s");
     assert.equal(r.headers.get("Cache-Control"), "no-store");
     assert.equal(r.headers.get("Access-Control-Allow-Origin"), SITE); // reflected, never "*"
@@ -82,7 +85,7 @@ describe("janna session: the Anam request", () => {
     const env = env0();
     assert.equal((await call(env, { agent: "janna", lang: "en" })).status, 200);
     assert.equal(calls[0].body.personaConfig.personaId, JANNA_EN);
-    assert.equal(calls[0].body.clientLabel, "madeinegyptgate-janna-en");
+    assert.equal(untag(calls[0].body).clientLabel, "madeinegyptgate-janna-en");
     const d = await call(env, {});
     assert.deepEqual([d.status, d.data.agent, d.data.lang, calls[1].body.personaConfig.personaId], [200, "janna", "ar", JANNA_AR]);
     assert.equal((await call(env, { agent: "JANNA", lang: "EN" })).data.lang, "en"); // case-insensitive
@@ -91,7 +94,7 @@ describe("janna session: the Anam request", () => {
     const env = env0();
     const r = await call(env, { agent: "janna", lang: "ar", personaId: "11111111-1111-1111-1111-111111111111", persona_id: "x", personaConfig: { personaId: "evil" }, sessionOptions: { showAIAvatarDisclosure: true }, maxSessions: 99 });
     assert.equal(r.status, 200);
-    assert.deepEqual(calls[0].body, { personaConfig: { personaId: JANNA_AR }, sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: "madeinegyptgate-janna-ar" });
+    assert.deepEqual(untag(calls[0].body), { personaConfig: { personaId: JANNA_AR }, sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: "madeinegyptgate-janna-ar" });
   });
   test("the allow-list holds exactly the three live personas", () => {
     assert.deepEqual(PERSONAS, { janna: { ar: JANNA_AR, en: JANNA_EN }, bassem: { ar: BASSEM, en: BASSEM } });
@@ -289,7 +292,7 @@ describe("janna session: Bassem (members' advisor) — partner / strategic or st
     const r2 = await call(env, { agent: "bassem", lang: "en" }, { token: await tokenFor(env, s), ip: "203.0.113.20" });
     assert.equal(r2.status, 200);
     assert.deepEqual(calls.map(c => c.body.personaConfig.personaId), [BASSEM, BASSEM]);
-    assert.equal(calls[1].body.clientLabel, "madeinegyptgate-bassem-en");
+    assert.equal(untag(calls[1].body).clientLabel, "madeinegyptgate-bassem-en");
   });
   test("other plans, an expired plan → 403 plan; an e-mailed login link → 403 full_login_required", async () => {
     const env = env0();
@@ -441,5 +444,88 @@ describe("janna session: routing in index.js", () => {
     assert.equal((await worker.fetch(new Request(SITE + "/api/janna/sessions", { method: "POST" }), env, {})).status, 404);
     const direct = await handleJannaSession(rq({ agent: "janna" }), env);
     assert.equal(direct.status, 200);
+  });
+});
+
+describe("janna session: the daily calls report's row (migration 0011)", () => {
+  afterEach(() => forgetTagsOff());
+  const VID = "0123456789abcdef0123456789abcdef";
+  /* the call with an execution context that keeps its waitUntil promises (the row is written there, after the answer) */
+  async function callW(env, body, opts) {
+    const p = [], res = await worker.fetch(rq(body, opts), env, { waitUntil: x => p.push(x) });
+    const text = await res.text(); let data = null; try { data = JSON.parse(text); } catch (e) { /* empty */ }
+    await Promise.all(p);
+    return { status: res.status, data, text, waits: p.length };
+  }
+  const rows = async env => (await env.DB.prepare("SELECT * FROM call_sessions ORDER BY rowid").all()).results;
+  test("one row per token: the label's tag, agent, language, Janna's page visitor id as the subject — never an IP, a user agent or an e-mail", async () => {
+    const env = env0();
+    const r = await callW(env, { agent: "janna", lang: "en", visitor_id: VID });
+    assert.equal(r.status, 200, r.text);
+    const [row] = await rows(env), tag = TAGGED.exec(calls[0].body.clientLabel)[2];
+    assert.deepEqual([row.tag, row.agent, row.lang, row.subject, row.member_id, row.staff, row.app, row.session_id], [tag, "janna", "en", "v:" + VID, "", 0, "", ""]);
+    assert.ok(Date.parse(row.created_at) > 0);
+    assert.ok(!Object.values(row).some(v => /198\.51|Mozilla|@/.test(String(v))), "no IP, no user agent, no e-mail");
+    await callW(env, { agent: "janna", visitor_id: "not-a-visitor-id" }, { ip: "198.51.100.8" });
+    assert.equal((await rows(env))[1].subject, "", "a malformed visitor id is not stored");
+    assert.notEqual((await rows(env))[1].tag, tag, "a new tag per token");
+  });
+  test("Janna: a member only with this request's own full sign-in (Bearer v2); an e-mailed link session or a bad token → no member; staff flagged", async () => {
+    const env = env0();
+    await env.DB.exec(CC_SQL);
+    const m = await member(env, { id: "m-j1", email: "j1@co.test" }), boss = await member(env, { id: "m-boss", email: "boss@mig.test" }); // ADMIN_EMAILS
+    const s1 = await callW(env, { agent: "janna", visitor_id: VID }, { token: await tokenFor(env, m), ip: "192.0.2.61" });
+    const s2 = await callW(env, { agent: "janna" }, { token: await tokenFor(env, m, "link"), ip: "192.0.2.62" });
+    const s3 = await callW(env, { agent: "janna" }, { token: "v2.bad.token.1.2", ip: "192.0.2.63" });
+    const s4 = await callW(env, { agent: "janna" }, { token: await tokenFor(env, boss), ip: "192.0.2.64" });
+    assert.deepEqual([s1.status, s2.status, s3.status, s4.status], [200, 200, 200, 200]);
+    assert.deepEqual((await rows(env)).map(x => [x.member_id, x.staff]), [["m-j1", 0], ["", 0], ["", 0], ["m-boss", 1]]);
+  });
+  test("a visitor id linked to a member: his own signed-in call keeps it; anyone else's call on it (rotate_visitor) gets no subject at all", async () => {
+    const env = env0(), m = await member(env, { id: "m-lv", email: "lv@co.test" });
+    await env.DB.prepare("INSERT INTO janna_visitors (visitor_id, member_id, link_via, first_at, last_at) VALUES (?, 'm-lv', 'session', ?, ?)").bind(VID, NOW, NOW).run();
+    const own = await callW(env, { agent: "janna", visitor_id: VID }, { token: await tokenFor(env, m), ip: "192.0.2.91" });
+    const other = await callW(env, { agent: "janna", visitor_id: VID }, { ip: "192.0.2.92" });
+    assert.deepEqual([own.status, own.data.rotate_visitor, other.status, other.data.rotate_visitor], [200, undefined, 200, true]);
+    assert.deepEqual((await rows(env)).map(x => [x.subject, x.member_id]), [["v:" + VID, "m-lv"], ["", ""]]);
+  });
+  test("Bassem: the member with a full sign-in (v2); with his own advisor token (an e-mailed activation link) → no member", async () => {
+    const env = env0();
+    const p = await member(env, { id: "m-bp", email: "bp@co.test", plan: "partner" }), exp = Math.floor(Date.now() / 1000) + 3600;
+    assert.equal((await callW(env, { agent: "bassem" }, { token: await tokenFor(env, p), ip: "192.0.2.71" })).status, 200);
+    assert.equal((await callW(env, { agent: "bassem" }, { token: await signToken(env.ADVISOR_SECRET, p.id, "partner", exp), ip: "192.0.2.72" })).status, 200);
+    assert.deepEqual((await rows(env)).map(x => [x.agent, x.subject, x.member_id, x.staff]), [["bassem", "", "m-bp", 0], ["bassem", "", "", 0]]);
+  });
+  test("without migration 0011 nothing is written and nothing fails; the insert never holds up the token (it runs after the answer)", async () => {
+    const env = env0();
+    env.DB.db.exec("DROP TABLE call_sessions");
+    const r = await callW(env, { agent: "janna", visitor_id: VID });
+    assert.deepEqual([r.status, typeof r.data.sessionToken, r.waits], [200, "string", 1]);
+    const e2 = env0(); let release; const held = new Promise(res => { release = res; });
+    const prep = e2.DB.prepare.bind(e2.DB);
+    e2.DB.prepare = sql => { const st = prep(sql); return /^INSERT INTO call_sessions/.test(sql) ? { bind: (...a) => { const b = st.bind(...a); return { run: async () => { await held; return b.run(); } }; } } : st; };
+    const p = [], res = await worker.fetch(rq({ agent: "janna" }), e2, { waitUntil: x => p.push(x) });
+    assert.equal(res.status, 200, "the answer came while the row's insert was still waiting");
+    assert.equal(await e2.DB.prepare("SELECT COUNT(*) AS n FROM call_sessions").first("n"), 0);
+    release(); await Promise.all(p);
+    assert.equal(await e2.DB.prepare("SELECT COUNT(*) AS n FROM call_sessions").first("n"), 1);
+  });
+  test("Anam refuses the tagged label (4xx) → the same request once with the plain label: the call works, no row, the isolate stops tagging", async () => {
+    const env = env0(), json = (o, status) => new Response(JSON.stringify(o), { status, headers: { "Content-Type": "application/json" } });
+    mockAnam(init => (TAGGED.test(JSON.parse(init.body).clientLabel) ? json({ error: "clientLabel" }, 400) : json({ sessionToken: "tok-plain" }, 200)));
+    const err = mock.method(console, "error", () => {});
+    try {
+      const r = await callW(env, { agent: "janna", visitor_id: VID });
+      assert.deepEqual([r.status, r.data.sessionToken], [200, "tok-plain"], r.text);
+      assert.deepEqual(calls.map(c => c.body.clientLabel.replace(/\.[a-z2-7]{12}$/, ".TAG")), ["madeinegyptgate-janna-ar.TAG", "madeinegyptgate-janna-ar"]);
+      assert.equal((await rows(env)).length, 0, "no tag reached Anam → no row");
+      assert.ok(tagsOff());
+      const r2 = await callW(env, { agent: "janna" }, { ip: "192.0.2.81" });
+      assert.equal(r2.status, 200);
+      assert.deepEqual(calls.slice(2).map(c => c.body.clientLabel), ["madeinegyptgate-janna-ar"], "one plain request for the next hour");
+      mockAnam(() => json({ error: "upstream" }, 500)); forgetTagsOff();
+      const r3 = await callW(env, { agent: "janna" }, { ip: "192.0.2.82" });
+      assert.deepEqual([r3.status, calls.length], [502, 1], "a 5xx is not about the label: no second request");
+    } finally { err.mock.restore(); }
   });
 });

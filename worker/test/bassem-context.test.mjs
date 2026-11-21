@@ -77,6 +77,9 @@ async function member(env, f) {
 const tokenFor = async (env, m) => (await issueSession(env, m, { scope: "full" })).token;
 const dayCount = async env => (await env.DB.prepare("SELECT n FROM rl WHERE k = ?").bind("jsessday|" + cairoDay()).first("n")) || 0;
 const PLAIN = lang => ({ personaConfig: { personaId: BASSEM }, sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: "madeinegyptgate-bassem-" + lang });
+/* the daily calls report's tag (migration 0011): «madeinegyptgate-bassem-<lang>.<12 base32 characters>» — checked, then compared without it */
+const TAGGED = /^(madeinegyptgate-bassem-(?:ar|en))\.([a-z2-7]{12})$/;
+const untag = b => { assert.match(String(b.clientLabel), TAGGED); return { ...b, clientLabel: TAGGED.exec(b.clientLabel)[1] }; };
 const quiet = () => mock.method(console, "error", () => {});
 const without = (o, ...keys) => { const c = { ...o }; for (const k of keys) delete c[k]; return c; };
 const abortErr = () => Object.assign(new Error("aborted"), { name: "AbortError" });
@@ -95,7 +98,7 @@ describe("bassem member context: the enriched token", () => {
     assert.equal(calls[0].headers.Authorization, "Bearer " + KEY, "the persona is read with the server's key");
     const b = calls[1].body, pc = b.personaConfig, P = persona();
     // the same session options as today; only the persona config changes
-    assert.deepEqual({ ...b, personaConfig: undefined }, { ...PLAIN("ar"), personaConfig: undefined });
+    assert.deepEqual({ ...untag(b), personaConfig: undefined }, { ...PLAIN("ar"), personaConfig: undefined });
     assert.equal(pc.personaId, undefined, "an ephemeral config: a saved persona cannot take a per-session prompt or first message");
     assert.deepEqual([pc.avatarId, pc.avatarModel, pc.voiceId, pc.llmId, pc.languageCode], [P.avatar.id, "cara-4-latest", P.voice.id, P.llmId, "ar"]);
     assert.deepEqual(pc.voiceDetectionOptions, P.voiceDetectionOptions);
@@ -125,7 +128,7 @@ describe("bassem member context: the enriched token", () => {
     assert.equal(pc.languageCode, "ar");
     assert.ok(pc.systemPrompt.includes("وبالإنجليزي: Dr. Mohamed") && pc.systemPrompt.includes("القطاع: الصناعات التكنولوجية"), "the sector in Arabic (bassem_intel takes it in Arabic)");
     for (const s of ["Welcome", "كمّل إنجليزي", "رحّبت بيه بالإنجليزي", "Technology industries"]) assert.ok(!pc.systemPrompt.includes(s) && !pc.initialMessage.includes(s), "not on the English page: " + s);
-    assert.equal(posts()[0].body.clientLabel, "madeinegyptgate-bassem-en");
+    assert.equal(untag(posts()[0].body).clientLabel, "madeinegyptgate-bassem-en");
   });
   test("a partner member: «الشريك الأساسي» and its markets only (no Asia / Europe); a feminine title gets the feminine greeting", async () => {
     const env = env0();
@@ -156,7 +159,7 @@ describe("bassem member context: today's behaviour is kept", () => {
       const r = await call(env, { agent: "bassem", lang: "ar" }, { token: await tokenFor(env, m), ip: "192.0.2." + ip++ });
       assert.equal(r.status, 200, id);
       assert.equal(r.data.member_context, undefined, id);
-      assert.deepEqual(calls.map(c => c.body), [PLAIN("ar")], id);
+      assert.deepEqual(calls.map(c => untag(c.body)), [PLAIN("ar")], id);
     }
   });
   test("staff allowed only as staff (no Bassem plan) → today's plain request, even with a name and a title", async () => {
@@ -164,7 +167,7 @@ describe("bassem member context: today's behaviour is kept", () => {
     const a = await member(env, { ...DR, id: "m-admin", email: "ops@co.test", role: "admin", plan: "visitor" });
     const r = await call(env, { agent: "bassem" }, { token: await tokenFor(env, a) });
     assert.equal(r.status, 200, r.text);
-    assert.deepEqual(calls.map(c => c.body), [PLAIN("ar")]);
+    assert.deepEqual(calls.map(c => untag(c.body)), [PLAIN("ar")]);
   });
   test("Janna never reads a persona or a member, whatever the page sends", async () => {
     const env = env0();
@@ -190,14 +193,22 @@ describe("bassem member context: failures never break the call", () => {
     const err = quiet();
     try {
       let ip = 30;
-      for (const refuse of [() => okJson({ error: "bad personaConfig" }, 400), () => okJson({ error: "x" }, 422), () => new Response("oops", { status: 500 }), () => okJson({ nope: 1 })]) {
+      for (const [refuse, http4xx] of [[() => okJson({ error: "bad personaConfig" }, 400), true], [() => okJson({ error: "x" }, 422), true], [() => new Response("oops", { status: 500 }), false], [() => okJson({ nope: 1 }), false]]) {
         const m = await member(env, { ...DR, id: "m-r" + ip, email: "r" + ip + "@co.test" });
         mockAnam({ token: c => (c.body.personaConfig.personaId ? okJson({ sessionToken: "plain-tok" }) : refuse()) });
         const r = await call(env, { agent: "bassem", lang: "ar" }, { token: await tokenFor(env, m), ip: "192.0.2." + ip++ });
         assert.deepEqual([r.status, r.data.sessionToken, r.data.member_context], [200, "plain-tok", undefined], r.text);
-        assert.equal(posts().length, 2);
         assert.ok(posts()[0].body.personaConfig.initialMessage && !posts()[0].body.personaConfig.personaId, "first the enriched config");
-        assert.deepEqual(posts()[1].body, PLAIN("ar"), "then exactly today's request");
+        assert.match(posts()[0].body.clientLabel, TAGGED, "with the calls report's tag");
+        if (http4xx) { // a 4xx with the tag: the same enriched config once more with the plain label (the calls report never fails a call), then today's request
+          assert.equal(posts().length, 3);
+          assert.deepEqual({ ...posts()[1].body, clientLabel: undefined }, { ...posts()[0].body, clientLabel: undefined });
+          assert.equal(posts()[1].body.clientLabel, "madeinegyptgate-bassem-ar");
+          assert.deepEqual(posts()[2].body, PLAIN("ar"), "then exactly today's request (the plain label)");
+        } else {
+          assert.equal(posts().length, 2);
+          assert.deepEqual(untag(posts()[1].body), PLAIN("ar"), "then exactly today's request");
+        }
       }
       assert.equal(await dayCount(env), 4, "each call counted once");
     } finally { err.mock.restore(); }
@@ -210,7 +221,7 @@ describe("bassem member context: failures never break the call", () => {
       mockAnam({ token: c => (c.body.personaConfig.personaId ? okJson({ error: "down" }, 503) : okJson({ error: "bad" }, 400)) });
       const r = await call(env, { agent: "bassem" }, { token: await tokenFor(env, m) });
       assert.deepEqual([r.status, r.data.error, r.data.upstream_status], [502, "upstream", 503]);
-      assert.equal(posts().length, 2, "one retry only");
+      assert.equal(posts().length, 3, "the enriched config once more with the plain label (the calls report's tag), then today's request once");
       assert.equal(await dayCount(env), 0);
       assert.ok(logs.length >= 2);
       for (const s of ["محمد", "دكتور", "الحسيني", "ELhouseni", DR.email, DR.phone, KEY]) assert.ok(logs.every(l => !l.includes(s)), "not logged: " + s);
@@ -233,7 +244,7 @@ describe("bassem member context: failures never break the call", () => {
         mockAnam({ persona: p });
         const r = await call(env, { agent: "bassem", lang: "ar" }, { token: await tokenFor(env, m), ip: "192.0.2." + ip++ });
         assert.deepEqual([r.status, r.data.member_context], [200, undefined], r.text);
-        assert.deepEqual(posts().map(c => c.body), [PLAIN("ar")]);
+        assert.deepEqual(posts().map(c => untag(c.body)), [PLAIN("ar")]);
       }
     } finally { err.mock.restore(); }
   });
@@ -250,7 +261,7 @@ describe("bassem member context: failures never break the call", () => {
       mock.timers.tick(PERSONA_TIMEOUT_MS);
       const r = await p;
       assert.deepEqual([r.status, r.data.member_context], [200, undefined], r.text);
-      assert.deepEqual(posts().map(c => c.body), [PLAIN("ar")]);
+      assert.deepEqual(posts().map(c => untag(c.body)), [PLAIN("ar")]);
     } finally { mock.timers.reset(); err.mock.restore(); }
   });
   test("the enriched request does not answer at all (network) → 502 upstream_unreachable, not counted", async () => {
@@ -355,7 +366,7 @@ describe("bassem member context: review fixes", () => {
       const r = await call(env, { agent: "bassem", lang: "ar", ...body }, { token: await tokenFor(env, m), ip: "192.0.2." + ip++ });
       assert.deepEqual([r.status, r.data.member_context], [200, undefined], r.text);
       assert.deepEqual(calls.map(c => c.method + " " + c.url), ["POST " + ANAM_TOKEN_URL], "the persona is not even read");
-      assert.deepEqual(calls[0].body, PLAIN("ar"));
+      assert.deepEqual(untag(calls[0].body), PLAIN("ar"));
     }
   });
   test("review 4: a title outside the dashboard's list (its free «لقب تاني…» text) or a name that is not letters → today's plain request", async () => {
@@ -365,7 +376,7 @@ describe("bassem member context: review fixes", () => {
     const m = await member(env, { ...DR, title: "يا نصاب" });
     const r = await call(env, { agent: "bassem" }, { token: await tokenFor(env, m) });
     assert.deepEqual([r.status, r.data.member_context], [200, undefined], r.text);
-    assert.deepEqual(calls.map(c => c.body), [PLAIN("ar")], "the persona is not even read");
+    assert.deepEqual(calls.map(c => untag(c.body)), [PLAIN("ar")], "the persona is not even read");
   });
   test("review 4: invisible TAG characters, variation selectors and fillers never reach the prompt", () => {
     const tags = s => Array.from(s).map(c => String.fromCodePoint(0xE0000 + c.charCodeAt(0))).join("");
@@ -488,7 +499,7 @@ describe("bassem member context: the time budget (review 6, 7) — ANAM_BUDGET_M
       const at = abortedAt;
       const r = await settle(p);
       assert.ok(readFirst, "the persona read is already on its way while the day is counted");
-      assert.deepEqual(bodies, [PLAIN("ar")], "no enriched request with 1.5 s left");
+      assert.deepEqual(bodies.map(untag), [PLAIN("ar")], "no enriched request with 1.5 s left");
       assert.equal(early, 0);
       assert.equal(at - t0, 11500 + RETRY_MIN_MS, "max(2000, 13000 − 11500)");
       assert.equal(r.status, 502);

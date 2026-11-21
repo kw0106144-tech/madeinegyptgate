@@ -13,8 +13,9 @@
    → {ok, erased: {memory_rows, tasks, briefs, visitors, knowledge_askers, knowledge_removed}} — Bassem's memory of the member
    (advisor_memory), Janna's memory of every visitor id linked to him (or of the confirmed visitor ids), their tasks (memory_tasks) and
    briefs (memory_briefs), the janna_visitors rows, the person's short keyed hash in «بنك المعلومات», and the bank entries only HE asked
-   (knowledge.js kbEraseStmts). The factory profile and the account itself stay (that is the account deletion). One cc_audit row
-   (memory.erase, counts + the reason) in the SAME batch as the deletes: no audit row → nothing is erased. */
+   (knowledge.js kbEraseStmts) and (0011) the person's rows of the daily calls report (call_sessions, call_reviews). The factory profile and
+   the account itself stay (that is the account deletion). One cc_audit row (memory.erase, counts + the reason) in the SAME batch as the
+   deletes: no audit row → nothing is erased. */
 import { line, isEmail } from "./common.js";
 import { fail, body as readBody, hasTable, batch, first, all, countOf } from "./acc-base.js";
 import { vidOk, subjectOf, contactHash } from "./visitor.js";
@@ -57,23 +58,33 @@ export async function eraseMemory(req, env, ctx, adm) {
     if (!visitors.length) fail(404, "not_found", "no visitor memory for that id / e-mail / phone");
     subjects = visitors.map(subjectOf); target = { type: "visitor", id: visitors.length === 1 ? "v:" + visitors[0].slice(0, 8) + "…" : visitors.length + " visitor ids" };
   }
-  const has = { mem: await hasTable(env, "advisor_memory"), tsk: await hasTable(env, "memory_tasks"), brf: await hasTable(env, "memory_briefs"), kb: await hasTable(env, "knowledge_bank") };
+  const has = { mem: await hasTable(env, "advisor_memory"), tsk: await hasTable(env, "memory_tasks"), brf: await hasTable(env, "memory_briefs"), kb: await hasTable(env, "knowledge_bank"),
+    cs: await hasTable(env, "call_sessions"), cr: await hasTable(env, "call_reviews") }; // 0011: the calls report's rows of this person
+  /* call_sessions: a member's own calls (member_id) + every subject's ('v:' visitor ids) — ≤ 52 bound values (D1 allows 100) */
+  const csWhere = target.type === "member" ? `member_id = ? OR subject IN (${IN(subjects.length)})` : `subject IN (${IN(subjects.length)})`, csArgs = target.type === "member" ? [target.id, ...subjects] : subjects;
   const counts = {
     memory_rows: has.mem ? (await countOf(env, `SELECT COUNT(*) AS n FROM advisor_memory WHERE member_id IN (${IN(subjects.length)})`, ...subjects)) || 0 : 0,
     tasks: has.tsk ? (await countOf(env, `SELECT COUNT(*) AS n FROM memory_tasks WHERE subject IN (${IN(subjects.length)})`, ...subjects)) || 0 : 0,
     briefs: has.brf ? (await countOf(env, `SELECT COUNT(*) AS n FROM memory_briefs WHERE subject IN (${IN(subjects.length)})`, ...subjects)) || 0 : 0,
     visitors: visitors.length, knowledge_askers: 0 };
+  /* the calls report's rows (0011) are counted only when there are some (the answer of a person without any stays as it was) */
+  const callS = has.cs ? (await countOf(env, `SELECT COUNT(*) AS n FROM call_sessions WHERE ${csWhere}`, ...csArgs)) || 0 : 0;
+  const callR = has.cr ? (await countOf(env, `SELECT COUNT(*) AS n FROM call_reviews WHERE subject IN (${IN(subjects.length)})`, ...subjects)) || 0 : 0;
+  if (callS) counts.call_sessions = callS;
+  if (callR) counts.call_reviews = callR;
   /* the person's short keyed hash in the knowledge bank's asker lists; an entry only HE asked goes too (review 2026-11-19 #8) */
   const kb = has.kb ? await kbEraseStmts(env, subjects) : { stmts: [], askers: 0, removed: 0 }, kbFix = kb.stmts;
   counts.knowledge_askers = kb.askers; counts.knowledge_removed = kb.removed;
   if (b.dry_run === true) return { body: { ok: true, dry_run: true, counts, subject: target, ...(matches ? { matches } : {}) } };
-  if (!counts.memory_rows && !counts.tasks && !counts.briefs && !counts.visitors && !kbFix.length) fail(404, "nothing_to_erase", "there is no memory of this person");
+  if (!counts.memory_rows && !counts.tasks && !counts.briefs && !counts.visitors && !kbFix.length && !callS && !callR) fail(404, "nothing_to_erase", "there is no memory of this person");
   await batch(env, [
     ...(has.mem ? [env.DB.prepare(`DELETE FROM advisor_memory WHERE member_id IN (${IN(subjects.length)})`).bind(...subjects)] : []),
     ...(has.tsk ? [env.DB.prepare(`DELETE FROM memory_tasks WHERE subject IN (${IN(subjects.length)})`).bind(...subjects)] : []),
     ...(has.brf ? [env.DB.prepare(`DELETE FROM memory_briefs WHERE subject IN (${IN(subjects.length)})`).bind(...subjects)] : []),
     ...(visitors.length ? [env.DB.prepare(`DELETE FROM janna_visitors WHERE visitor_id IN (${IN(visitors.length)})`).bind(...visitors)] : []),
     ...kbFix,
+    ...(callS ? [env.DB.prepare(`DELETE FROM call_sessions WHERE ${csWhere}`).bind(...csArgs)] : []),
+    ...(callR ? [env.DB.prepare(`DELETE FROM call_reviews WHERE subject IN (${IN(subjects.length)})`).bind(...subjects)] : []),
     adm.auditStmt("memory.erase", target.type, target.id, { counts, ...(matches ? { via: vEmail ? "visitor_email" : "visitor_phone", confirmed_ids: visitors.length, matching_ids: matches.length } : {}) }, { reason },
       `memory erased (${counts.memory_rows} rows, ${counts.tasks} tasks, ${counts.briefs} briefs, ${counts.visitors} visitor ids${matches ? " confirmed of " + matches.length : ""}) · legal request: ${reason}`),
   ]);
