@@ -11,12 +11,60 @@ previous text back (the version of the file before that write, in git history).
 
 | File | Persona / tool | `updatedAt` (live since) | sha256 | Characters |
 |---|---|---|---|---|
-| `janna-ar.systemPrompt.md` | Janna AR `5f06d835-22cc-4460-b412-84cefa9e565b` | `2026-11-20T12:27:47.252Z` | `58ca004ed8542ddea43ad62dbe6b13bae45404813dde00913b649d851df8ac8a` | 26,336 |
-| `janna-en.systemPrompt.md` | Janna EN `e5101653-65b4-44a6-85e5-ec2e78f82685` | `2026-11-20T12:32:29.328Z` | `59715d3e6ff495840c97f8262246dbac9f671ebf64fb3f9ce4bf47c7c629a5fa` | 30,787 (a read says 30,788: see Janna AR and Janna EN) |
-| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-21T22:09:50.514Z` | `98ac9016017cddfb41e2ce6065108d540afe78827d259b31eb7272fd56c3a047` | 32,051 (the API says 32,052: see Bassem) |
+| `janna-ar.systemPrompt.md` | Janna AR `5f06d835-22cc-4460-b412-84cefa9e565b` | `2026-11-21T22:23:03.777Z` | `460fdeee003b17fae25e97204358e1aeb2f7fdafe3d1292bbbbac57f2c3897c8` | 28,073 (a read says 28,074: see round 3) |
+| `janna-en.systemPrompt.md` | Janna EN `e5101653-65b4-44a6-85e5-ec2e78f82685` | `2026-11-21T22:24:43.882Z` | `56a2af3e44492fd3649d7c8b0878ed42c4841dd50805bff1ee853809f48edff8` | 32,691 (a read says 32,692: see round 3) |
+| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-21T22:27:48.673Z` | `d79fb363221e02f2f1840d6bfd5886162828f0c5ea80426518cc3d82615c19e4` | 33,239 (the API says 33,240: see round 3) |
 | `bassem_save_profile.description.md` | tool `bassem_save_profile` `4c3b35f3-0590-44d7-85d1-321eeb21c79e` | `2026-11-20T08:37:02.665Z` | `41eaa3ade439de9372710286ac29e0594d4f884b1ac0478777e5a068b829c55a` | 894 |
 | `bassem-notify-send.tools.md` | tools `bassem_notify_member` `325b182c-e5e0-42d0-a130-658919faf12f` and `bassem_send_email` `a00e4d99-df41-4a43-8c66-39bdfa3d2495` | `2026-11-21T22:06:40.549Z` / `2026-11-21T22:06:43.489Z` | (the bodies are in the file) | |
 | `janna_lookup.tool.json` | tool `janna_lookup` `29fd5087-5eff-4919-afb2-3d01b8cc70de` (Janna AR and Janna EN) | `2026-11-20T12:49:00.983Z` | `9d52be6431fcf1dcd9ecd39b301e4758b20553adba47a7956de9a8aac7f0f0b5` (the file) | description 909 |
+
+## Round 3 (hunt + search, «no source», no bare «مفيش»), applied on 2026-11-21
+
+The owner asked for it and approved it for Anam (his rules: «ميكتبش مصدر اي معلومه»، «ميقولوش حاجه ولا من بره بيانات المنصه ولاغيره هما
+يقولوا المعلومه وخلاص»، short replies, and the answer to «جاية منين؟»: «ده اللي عندي عنها، والشروط والمواعيد النهائية عند الجهة نفسها»). The four
+search tools (`janna_web_search` `d3f439d5`, `janna_web_hunt` `2248338e`, `bassem_web_search` `ba72bdcb`, `bassem_web_hunt` `7175f080`) were already
+attached with their «no source» descriptions. Only `systemPrompt` was sent; tools, `toolIds`, LLM, voice, avatar, director notes and
+`voiceDetectionOptions` were not touched.
+
+| UTC | Write | `updatedAt` before → after | Characters (UTF-16 units in a read) |
+|---|---|---|---|
+| 22:23:03 | Janna AR | `2026-11-20T23:07:40.507Z` → `2026-11-21T22:23:03.777Z` | 26,336 → 28,073 (28,074) |
+| 22:24:43 | Janna EN | `2026-11-20T23:07:41.044Z` → `2026-11-21T22:24:43.882Z` | 30,787 → 32,691 (32,692) |
+| 22:27:48 | Bassem | `2026-11-21T22:09:50.514Z` → `2026-11-21T22:27:48.673Z` | 32,051 → 33,239 (33,240) |
+
+- **The text before.** The Jannas' `updatedAt` had moved to 2026-11-20 23:07:40/41 UTC with a `toolIds` change only (the owner's «🔗 وصّل البحث»
+  attached the two web tools: 17 tool ids each). Their prompts were unchanged: Janna AR's read (now trimmed too) showed a total of 26,337 units and a
+  visible 18,930 units identical to the start of the previous file; Janna EN 30,788 and 18,964 identical. Bassem: `updatedAt` 22:09:50.514Z, total
+  32,052, visible 4,499 identical.
+- **What changed.** The design of `scratchpad/round3/prompts` (built on the texts of `58e98a7`), applied with its own `apply_patch.py` checks
+  (each `old` exactly once, nothing in a protected span, the text around byte-identical, the price sync finds its block unchanged, no square
+  bracket added, the owner / operator / registration / price / contact strings counted the same, every source-like word audited):
+  - **Janna AR / EN** (8 replacements each, as designed: JA/JE-LEN, -TOUR, -PLAN, -FIT, -CUST, -NONE, -HUNT, -WHAT): shorter replies; seller's
+    customers as ONE `janna_lookup section=customers`; `janna_web_hunt` in the same step; no bare «مفيش» (hunt or search results, what the platform
+    has, then a task and a next step); the new «الصيد والبحث» / HUNT AND SEARCH section (no site, link, «حسب», «من الإنترنت / من برّه المنصة /
+    من مصادر عامة / محتاجة تتأكد»; honesty: not the platform's, not verified, not a member, no added counts, no contacts, a deadline or «مفتوحة»
+    only from the result); Bassem «يكلمك ويديك ملخص» (no WhatsApp promise in the tour). Two changes on top of the design: the «جاية منين؟» answer
+    is the owner's sentence word for word (Janna EN: its meaning in English plus the Arabic sentence), and the expert line no longer says «هتتأكد
+    منه من المصدر الرسمي» / "confirm it from the official source": an exact figure is looked up with `janna_web_search`, never guessed (JA/JE-EXPERT).
+  - **Bassem** (16 replacements), rebuilt on the live text of 22:09:50 (BQ + NS): BA-R5, BA-FIRST, BA-CUST, BA-NONE, BA-NOTIFY, BA-SCREEN,
+    BA-INTEL-SRC, BA-INTEL-EMPTY, BA-PORTAL, BA-ITEM, BA-WA, BA-HONEST unchanged; BA-DOC with its `old` rebuilt («صفحة الإعلان نفسها», NS);
+    BA-WEB replaces the whole NS section «# البحث عن معلومة أو فرصة مش في المنصة …» (all of its lines are in the new «# الصيد والبحث»);
+    BA-R8 not applied (BQ-R8 is live in its place). Added: the «جاية منين؟» answer = the owner's sentence; BA-NONAME («ثواني، بفتحلك المناقصة…»
+    without «يا دكتور محمد», like BQ-R9); BA-EXPERT (as above, with `bassem_web_search`).
+  - Untouched: the emotion tags and # STYLE CUES, the owner / operator lines, the facts and price blocks (the Worker's price sync, run offline on old
+    and new, finds the same section), the language, barge-in, noise and memory sections.
+- **Checked.** `anam_session_list active=true` was empty right before each write. Each write carried `expectedUpdatedAt` and got no 409. The text
+  sent, taken from this session's record of each call, is byte-identical to the new file (sha256 in the table at the top). Each reply shows the new
+  `updatedAt`, a trim total equal to the file (characters + 1 for 🌐) and a visible part identical to the start of the file (18,922 / 18,924 /
+  4,495 units); LLM, `languageCode`, director notes, `voiceDetectionOptions` and `toolIds` (17 / 17 / 25) are unchanged.
+- **Seen, not changed here.** The descriptions of `janna_web_search` and `bassem_web_search` still give the older answer to «جاية منين؟» («دي من متابعة
+  فريق المنصة للسوق، وقبل ما تقدّم اتأكد من الجهة نفسها»); the prompts now give the owner's sentence, so the two tool texts should follow in a tool
+  round. Left as designed (protected or judged allowed): «من مصادر عامة رسمية» in the directory facts line, «فرص دولية من مصادر رسمية», Bassem's
+  «إحنا بنغطي المصادر الرسمية الكبيرة» and the # STYLE CUES example «… في المصادر الرسمية …».
+- **Rollback.** Send the previous text, `systemPrompt` only, with `expectedUpdatedAt` = the `updatedAt` above (or whatever is live then):
+  Janna AR and Janna EN = these files at `4790a5d` (sha256 `58ca004e…f8ac8a`, `59715d3e…29a5fa`, `git show 4790a5d:anam/live/janna-ar.systemPrompt.md`);
+  Bassem = this file at `4790a5d` (sha256 `98ac9016…a047`). The web tools can stay attached: the older prompts do not name `*_web_hunt` and the
+  tool descriptions say «no source» by themselves.
 
 ## The call-quality + «no source» round for Bassem, applied on 2026-11-21
 
@@ -228,7 +276,7 @@ How each write was checked:
 
 Both were read again on 2026-11-20 right after their writes (`anam_persona_get`).
 
-- The API returns Janna AR's prompt whole.
+- The API returned Janna AR's prompt whole until round 3; since 2026-11-21 it trims hers too (28,074 units; 18,922 shown after the write).
 - Since the expressions + usefulness round, Janna EN's read is trimmed: 24,366 of 30,788 units are shown. The notice counts UTF-16
   units, so 30,788 is the file's 30,787 characters + 1 for 🌐. For her, as for Bassem, the sha256 cannot be checked from a read.
 
@@ -259,7 +307,7 @@ writes, and are **not** what is live.
 
 ## Bassem
 
-**Since 2026-11-21 22:09 UTC** his prompt is the expressions + usefulness text plus the call-quality + «no source» round (both sections above). His director notes are `warm` 0.5
+**Since 2026-11-21 22:27 UTC** his prompt is the expressions + usefulness text plus the call-quality + «no source» round and round 3 (sections above). His director notes are `warm` 0.5
 (before them: 0.55), and his avatar model has been `cara-4.1-express` since 09:30 UTC.
 
 That text is built on his text of 08:57–12:47 UTC (sha256 `fadcad2a…`). That one is `anam/calls/bassem.new.md` of the «calls» round
@@ -313,7 +361,7 @@ The API trims Bassem's and Janna EN's prompts, so their sha256 cannot be checked
 file:
 
 - the `updatedAt`;
-- the total in the trim notice, which counts UTF-16 units: today 32,052 for Bassem's 32,051 characters (since 2026-11-21 22:09 UTC) and 30,788 for Janna EN's 30,787;
+- the total in the trim notice, which counts UTF-16 units: today 33,240 for Bassem's 33,239 characters, 32,692 for Janna EN's 32,691 and 28,074 for Janna AR's 28,073 (all since round 3, 2026-11-21; Janna AR's read is trimmed now too);
 - the part that is shown.
 
 The Worker's price sync (`worker/src/acc-plans.js` `personaSync`, after a plans change, retried hourly) can rewrite each persona's price
