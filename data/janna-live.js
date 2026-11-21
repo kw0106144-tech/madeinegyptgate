@@ -757,6 +757,12 @@
       ["bassem_draft_email", "bassem_send_email"].forEach(function (tn) {
         try { c.registerToolCallHandler(tn, { onStart: function (pl) { return LV !== me || me.closed ? T("مااتعملش: المكالمة اتقفلت.", "Not done: the call was closed.") : mailTool(tn, pl && pl.arguments); } }); me.own[tn] = 1; } catch (e) {}
       });
+      /* «ابعتلي» (bassem_notify_member): the send itself takes up to a minute (the official files), so what the platform answered reaches
+         Bassem afterwards as context (notifyDone → tellBassem). Review 2026-11-21 (call f75d15f4: «بعت لحضرتك ملخص التقرير على الإيميل»
+         in the very reply that called the tool, before any answer): this handler starts the same send and answers AT ONCE that it is
+         being sent, not sent — Bassem hears that answer once the tool waits for a result in Anam (awaitResult); while it does not, the SDK
+         still runs the handler (ToolCallManager calls onStart for every registered client tool) and the send is exactly as before */
+      try { c.registerToolCallHandler("bassem_notify_member", { onStart: function (pl) { var x = pl && pl.arguments; if (typeof x === "string") { try { x = JSON.parse(x); } catch (e) { x = {}; } } if (LV !== me || me.closed) return T("مااتبعتتش: المكالمة اتقفلت.", "Not sent: the call was closed."); return notifyStart(x || {}); } }); me.own.bassem_notify_member = 1; } catch (e) {}
     }
     on("CONNECTION_CLOSED", function (code, details) { sdkClosed(me, String(code || ""), String(details || "")); });
     /* our own microphone (echo cancellation, noise suppression, voice isolation where offered) goes with the stream: the session starts
@@ -1531,8 +1537,20 @@
   var LG = { mem: {}, asked: {}, prev: "", sentT: 0, sentTo: "", applied: false, warn: "", ask: "", askUntil: 0, fail: 0, el: null, menu: null, doc: null, key: null, rz: 0 };
   function langOn() { var F = window.MIGFLAGS; return !!sdkBox() && !(F && F.on && F.on("call_languages") === false); }
   function langDef() { return persona === "janna" && EN ? "en" : "ar"; }
-  function langStored() { var s = ""; try { s = sessionStorage.getItem("mig-jnl-lang:" + persona) || ""; } catch (e) { s = LG.mem[persona] || ""; } return langRow(s) && s !== langDef() ? s : ""; }
-  function langStore(code) { code = langRow(code) && code !== langDef() ? code : ""; LG.mem[persona] = code; try { if (code) sessionStorage.setItem("mig-jnl-lang:" + persona, code); else sessionStorage.removeItem("mig-jnl-lang:" + persona); } catch (e) {} }
+  /* the stored value is "<code>|<ms>": the choice and when it was last used (chosen, a part of a call started with it, a sentence heard in
+     a call with it). Review 2026-11-21 (Bassem's call f75d15f4): the owner chose English on 🌐 on 2026-11-20 in this browser tab; the next
+     day's Arabic call still sent persona_config {languageCode: "en"} at DATA_CHANNEL_OPEN, so every Egyptian sentence reached Bassem as an
+     English translation («I swear, everything is fine, Bassem…») and «خلينا عرب يا باسم» could not undo it. Now a choice not used for
+     LANG_TTL is dropped before a NEW call starts and while no call is on (langExpire); a continuation part of the same call always keeps
+     it. A value stored without a time (before this change) counts as old. */
+  var LANG_TTL = 30 * 60000;
+  function langVal() { var v = ""; try { v = sessionStorage.getItem("mig-jnl-lang:" + persona) || ""; } catch (e) { v = LG.mem[persona] || ""; } var p = String(v).split("|"); return { s: p[0] || "", at: +p[1] || 0 }; }
+  function langStored() { var s = langVal().s; return langRow(s) && s !== langDef() ? s : ""; }
+  function langStore(code) { code = langRow(code) && code !== langDef() ? code : ""; var v = code ? code + "|" + Date.now() : ""; LG.mem[persona] = v; try { if (code) sessionStorage.setItem("mig-jnl-lang:" + persona, v); else sessionStorage.removeItem("mig-jnl-lang:" + persona); } catch (e) {} }
+  /* the choice is still in use: its time moves on */
+  function langTouch() { var s = langStored(); if (s) langStore(s); }
+  /* a choice not used for LANG_TTL goes back to the persona's own language (never during a live part: langPart / langUi only) */
+  function langExpire() { var v = langVal(); if (v.s && Date.now() - v.at > LANG_TTL) { langStore(""); LG.expired = v.s; } }
   /* what the persona hears now: the person's 🌐 choice in this tab, else the persona's own language */
   function callLang() { return (langOn() && langStored()) || langDef(); }
   function langLabel(c) { return c === "ar" ? "ع" : String(c).toUpperCase(); }
@@ -1568,8 +1586,9 @@
   function langPart(me) {
     if (me.langDone || !me.ready || !me.dc || !me.client || me.closed || me.swapped || LV !== me || !langOn()) return;
     me.langDone = true;
+    if (!me.cont) langExpire(); /* a new call: yesterday's choice is not today's (review 2026-11-21) */
     var stored = langStored();
-    if (stored && stored !== langDef()) { LG.prev = langDef(); langSend(me, stored, me.cont ? 0 : 2); }
+    if (stored && stored !== langDef()) { LG.prev = langDef(); langSend(me, stored, me.cont ? 0 : 2); langTouch(); }
     langUi();
   }
   function langWire(me, on) {
@@ -1611,6 +1630,7 @@
   function langTyped(t) { var c = ""; try { c = scriptLang(t); } catch (e) { c = ""; } if (c && c !== callLang()) langAsk(c); }
   /* the 🌐 button, its link under «ابدأ», the menu and the chip follow the state */
   function langUi() {
+    if (!LV || LV.closed) langExpire(); /* no call on: the 🌐 link under «ابدأ» shows what the next call will hear */
     var bx = sdkBox(), me = LV, on = langOn(), cur = callLang(), r = langRow(cur) || langRow("ar"), tl = langHead() + ": " + r[1];
     if (bx) {
       var b = bx.querySelector(".jv-lang"), g = bx.querySelector(".jv-lgo");
@@ -2445,6 +2465,12 @@
     s = spokenMail(raw);
     return s ? { addr: s, raw: raw, spoken: true } : { bad: raw.slice(0, 80), raw: raw };
   }
+  /* «ابعتهولي» / «على إيميلي» / "me" in bassem_send_email's to: the member HIMSELF (review 2026-11-21: in call f75d15f4 the owner asked
+     for the draft himself and nothing could send it to him) — the whole value, never a word inside an address or a sentence */
+  function selfTo(v) {
+    var s = String(v == null ? "" : v).toLowerCase().replace(/[\s.,!?؟،:;«»"'()\-]+/g, " ").replace(/^\s+|\s+$/g, "").replace(/[أإآ]/g, "ا");
+    return /^(?:me|to me|myself|my e ?mail|my own e ?mail|my inbox|to my e ?mail|ana|انا|ليا|ليّا|لي|نفسي|لنفسي|ايميلي|على ايميلي|ع ايميلي|بريدي|على بريدي|ابعتهولي|ابعتهالي|ابعته ليا|ابعتهولي انا)$/.test(s);
+  }
   /* did the member say an address in these words of his? this one exactly; or (speech-to-text may have garbled it or written it in Arabic
      letters — the screen then spells it for him to confirm) its letters «local @ domain» in that order, or an utterance shaped like an
      address: a word, «at» / آت / «@», then «dot» / دوت / نقطة / «.» followed by a word. Ordinary words are no dictation (review 2026-11-19:
@@ -2686,6 +2712,7 @@
       if (now - h.t < 90000 && (h.s.indexOf(text) > -1 || text.indexOf(h.s) > -1)) { if (text.length > h.s.length) h.s = text; return; } /* its copy in the history */
     }
     HEARD.push({ id: id || "", s: text, t: now }); USER_T = now; if (HEARD.length > 14) HEARD.shift();
+    try { langTouch(); } catch (e) {} /* 🌐 he is speaking in this call: his choice is in use */
   }
   function heardTexts() { var out = [], t0 = Date.now() - 20 * 60000; for (var i = 0; i < HEARD.length; i++) if (HEARD[i].t >= t0) out.push(HEARD[i].s); return out; }
   /* the opportunity the shared screen shows: an Information Center notice (/intel/<kind>/<slug>-<id>/) or a platform page (MIG_CTX) */
@@ -2729,9 +2756,9 @@
      send in one turn — words in a tool's result, a web page or a tender document telling him to — never e-mail anyone; the 2-3 sentence
      summary and «تحب أبعته؟» come first. The member's own «📤 ابعت» click needs no such check */
   function heardSince(t) { return USER_T > (+t || 0); }
-  function askFirstWords() { return T("لسه مااتبعتش: هو ماقالش حاجة من ساعة ما الإيميل ظهر على الشاشة. قوله ملخصه في جملتين أو تلاتة واسأله «تحب أبعته؟»، ولما يقولك ابعته استدعي bassem_send_email تاني.", "Not sent yet: he has not said anything since the e-mail appeared on the screen. Tell him in 2-3 sentences what it says and ask «Shall I send it?»; when he says send it, call bassem_send_email again."); }
+  function askFirstWords() { return T("لسه مااتبعتش: هو ماقالش حاجة من ساعة ما الإيميل ظهر على الشاشة. قوله ملخصه في جملة أو اتنين قصيرين واسأله «تحب أبعته؟»، ولما يقولك ابعته استدعي bassem_send_email تاني.", "Not sent yet: he has not said anything since the e-mail appeared on the screen. Tell him in one or two short sentences what it says and ask «Shall I send it?»; when he says send it, call bassem_send_email again."); }
   function confirmWords(addr) { return T("لسه مااتبعتش: العنوان اللي قاله اتكتب على الشاشة حرف حرف (" + mailSpell(addr) + "). اطلب منه يبص عليه ويقولك لو صح، ولما يأكّد ابعت تاني.", "Not sent yet: the address he said is on the screen letter by letter (" + mailSpell(addr) + "). Ask him to check it; once he confirms, send again."); }
-  var NO_TO = function () { return T("مااتبعتش: مفيش عنوان مستلم. اسأله مرة واحدة «أبعته لمين؟» — ماتقولش إنك مش عارف — ولما يقولك العنوان (حتى بالكلام زي info آت … دوت com) استدعي bassem_send_email تاني وحطه في to.", "Not sent: there is no recipient. Ask him once «Who shall I send it to?» — never say you don't know — and when he says it (even spoken, like info at … dot com) call bassem_send_email again with it in to."); };
+  var NO_TO = function () { return T("مااتبعتش: مفيش عنوان مستلم. اسأله مرة واحدة «أبعته لمين؟» — ماتقولش إنك مش عارف — ولما يقولك العنوان (حتى بالكلام زي info آت … دوت com) استدعي bassem_send_email تاني وحطه في to. ولو قال «ابعتهولي» أو «على إيميلي» (عايزه لنفسه): استدعي bassem_send_email وفي to كلمة me، وبيروحله نسخة على إيميله المسجّل على المنصة.", "Not sent: there is no recipient. Ask him once «Who shall I send it to?» — never say you don't know — and when he says it (even spoken, like info at … dot com) call bassem_send_email again with it in to. If he says «send it to me» or «to my e-mail» (he wants it himself): call bassem_send_email with to = me, and a copy goes to his own e-mail registered on the platform."); };
   var SRCW = { data: ["من بيانات الفرصة", "from the opportunity's data"], deal: ["من بيانات الصفقة", "from the deal"], typed: ["هو كتبه بنفسه", "he typed it himself"], said: ["هو قاله", "he said it"], sent: ["بعتناله قبل كده في المكالمة دي", "already e-mailed in this call"] };
   /* an address the platform sent to in this call (confirmed then): known from now on, «sent» */
   function mailSent(addr, item) { if (!mailOk(addr)) return; if (!MAILS[addr] || MAILS[addr].src !== "data") { if (!MAILS[addr]) MAILS_N++; MAILS[addr] = { src: "sent", at: Date.now(), item: item || "" }; } }
@@ -2743,20 +2770,24 @@
       "Recipient: " + i.addr + " (" + (SRCW[i.src] || SRCW.typed)[1] + ")" + (i.offered ? "; the other address you wrote (" + i.offered + ") is neither in the data nor said by him, so it was not used" : "") + ".");
     if (i.offered) return T("العنوان اللي كتبته (" + i.offered + ") مش في بيانات الفرصة ولا هو قاله، فمااتحطش في المستلم: اسأله «أبعته لمين؟».", "The address you wrote (" + i.offered + ") is neither in the opportunity's data nor said by him, so it was not put in To: ask him «Who shall I send it to?».");
     if (i.several) return T("في بيانات الفرصة أكتر من عنوان (" + i.several.join("، ") + "): اسأله يختار أنهي واحد، وحطه في to.", "The opportunity's data has several addresses (" + i.several.join(", ") + "): ask him which one, and put it in to.");
-    return T("خانة المستلم فاضية: اسأله مرة واحدة «أبعته لمين؟» — ماتقولش إنك مش عارف، وماتخمّنش عنوان — ولما يقوله حطه في to (حتى لو قاله بالكلام زي info آت … دوت com).", "The To box is empty: ask him once «Who shall I send it to?» — never say you don't know, never guess one — and when he says it put it in to (even spoken, like info at … dot com).");
+    return T("خانة المستلم فاضية: اسأله مرة واحدة «أبعته لمين؟» — ماتقولش إنك مش عارف، وماتخمّنش عنوان — ولما يقوله حطه في to (حتى لو قاله بالكلام زي info آت … دوت com). ولو قال «ابعتهولي» أو «على إيميلي» (عايزه لنفسه): استدعي bassem_send_email وفي to كلمة me، وبيروحله نسخة على إيميله المسجّل على المنصة.", "The To box is empty: ask him once «Who shall I send it to?» — never say you don't know, never guess one — and when he says it put it in to (even spoken, like info at … dot com). If he says «send it to me» or «to my e-mail» (he wants it himself): call bassem_send_email with to = me, and a copy goes to his own e-mail registered on the platform.");
   }
-  /* the answer of bassem_draft_email: what is on the screen, and what Bassem does now (the 2-3 sentence summary, «تحب أبعته؟»); cl = the
+  /* the answer of bassem_draft_email: what is on the screen, and what Bassem does now (a 1-2 sentence summary and one question); cl = the
      language the member speaks in the call (callLang(): the 🌐 choice, else Arabic) — "ar" gives exactly the words of before */
   function draftWords(where, info, lang, o, cl) {
-    var bl = o && (o.market || o.country) ? bizLang(o.market) : null, foreign = lang && lang !== "ar", L = [], ml, fo;
+    var bl = o && (o.market || o.country) ? bizLang(o.market) : null, foreign = lang && lang !== "ar", L = [], ml, fo, noTo;
     cl = langRow(cl) ? String(cl).toLowerCase() : "ar";
     L.push(T((where === "room" ? "المسودة في غرفة الصفقة قدامه على الشاشة" : "المسودة قدامه على الشاشة") + (lang ? " بال" + langName(lang) : "") + "، ولسه مااتبعتتش.", (where === "room" ? "The draft is in the deal room on his screen" : "The draft is on his screen") + (lang ? " in " + langName(lang) : "") + ", not sent yet."));
     L.push(toWords(info));
-    if (cl === "ar") L.push(T("قوله دلوقتي في جملتين أو تلاتة بالمصري الإيميل بيقول إيه (رايح لمين، وبيطلب إيه، وأهم نقطة فيه) من غير ما تقراه" + (foreign ? "، وده مهم لأنه مش بالعربي" : "") + "، وبعدين اسأله «تحب أبعته؟». لو طلب تقراهوله اقراه كله" + (foreign ? "، ولو مش فاهم اللغة قوله معناه بالمصري جملة جملة" : "") + ".",
-      "Now tell him in 2-3 sentences what the e-mail says (to whom, what it asks, the key point) without reading it out" + (foreign ? " — it matters, it is not in Arabic" : "") + ", then ask «Shall I send it?». Read it in full only if he asks."));
+    /* review 2026-11-21 (call f75d15f4: six drafts, each answered with 15-20 s of speech, 21 of 63 replies cut off): one or two short
+       sentences and ONE question — «أبعته لمين؟» when the To box is empty (it is his OK too: the address he dictates is still shown and
+       confirmed before anything goes), else «تحب أبعته؟» */
+    noTo = !(info && (info.addr || info.several));
+    if (cl === "ar") L.push(T("قوله دلوقتي في جملة أو اتنين قصيرين بالمصري (حوالي ٢٠ كلمة) الإيميل بيقول إيه (رايح لمين وبيطلب إيه) من غير ما تقراه ومن غير ما تعيد إنك كتبته" + (foreign ? "، وده مهم لأنه مش بالعربي" : "") + "، وبعدين سؤال واحد بس: " + (noTo ? "«أبعته لمين؟»" : "«تحب أبعته؟»") + ". لو طلب تقراهوله اقراه كله" + (foreign ? "، ولو مش فاهم اللغة قوله معناه بالمصري جملة جملة" : "") + ".",
+      "Now tell him in one or two short sentences (about 20 words) what the e-mail says (to whom, what it asks) without reading it out or repeating that you wrote it" + (foreign ? " — it matters, it is not in Arabic" : "") + ", then ONE question only: " + (noTo ? "«Who shall I send it to?»" : "«Shall I send it?»") + ". Read it in full only if he asks."));
     else { ml = langName(cl); fo = !!lang && lang !== cl;
-      L.push(T("قوله دلوقتي في جملتين أو تلاتة بال" + ml + " (لغته هو) الإيميل بيقول إيه (رايح لمين، وبيطلب إيه، وأهم نقطة فيه) من غير ما تقراه" + (fo ? "، وده مهم لأنه مش بلغته" : "") + "، وبعدين اسأله بلغته «تحب أبعته؟». لو طلب تقراهوله اقراه كله" + (fo ? "، ولو مش فاهم اللغة قوله معناه بلغته جملة جملة" : "") + ".",
-        "Now tell him in 2-3 sentences in his language (" + ml + ") what the e-mail says (to whom, what it asks, the key point) without reading it out" + (fo ? " — it matters, it is not in his language" : "") + ", then ask him in his language «Shall I send it?». Read it in full only if he asks" + (fo ? "; if he does not understand that language, tell him its meaning in his language sentence by sentence" : "") + ".")); }
+      L.push(T("قوله دلوقتي في جملة أو اتنين قصيرين بال" + ml + " (لغته هو)، حوالي ٢٠ كلمة، الإيميل بيقول إيه (رايح لمين وبيطلب إيه) من غير ما تقراه ومن غير ما تعيد إنك كتبته" + (fo ? "، وده مهم لأنه مش بلغته" : "") + "، وبعدين سؤال واحد بس بلغته: " + (noTo ? "«أبعته لمين؟»" : "«تحب أبعته؟»") + ". لو طلب تقراهوله اقراه كله" + (fo ? "، ولو مش فاهم اللغة قوله معناه بلغته جملة جملة" : "") + ".",
+        "Now tell him in one or two short sentences in his language (" + ml + "), about 20 words, what the e-mail says (to whom, what it asks) without reading it out or repeating that you wrote it" + (fo ? " — it matters, it is not in his language" : "") + ", then ONE question only, in his language: " + (noTo ? "«Who shall I send it to?»" : "«Shall I send it?»") + ". Read it in full only if he asks" + (fo ? "; if he does not understand that language, tell him its meaning in his language sentence by sentence" : "") + ".")); }
     if (lang && bl && bl.indexOf(lang) < 0) L.push(T("ملاحظة: الجهة في " + (o.country || o.market) + " والتعامل الرسمي معاها بال" + langName(bl[0]) + "؛ لو هو ماطلبش ال" + langName(lang) + " بنفسه، اكتب الإيميل تاني بال" + langName(bl[0]) + ".",
       "Note: the buyer is in " + (o.country || o.market) + " and does business in " + langName(bl[0]) + "; unless he asked for " + langName(lang) + " himself, write it again in " + langName(bl[0]) + "."));
     return L.join(" ");
@@ -3053,12 +3084,44 @@
       doing(T("ببعت الإيميل من المنصة", "sending the e-mail from the platform")); glow(b); b.click();
     });
   }
+  /* «ابعتهولي» (bassem_send_email with to = me): the e-mail draft on the screen goes to HIS OWN e-mail registered on the platform —
+     POST /api/advisor/notify, channel email (the Worker takes the address from his account and never reads one from the page) — never
+     to the buyer and no deal; only once he spoke after the draft appeared, as for any send. Its outcome is «refused» for the e-mail tool
+     (the buyer got nothing, so no task or deal step closes on it); Bassem is told exactly what went where */
+  var SELF_MAX = 1900; /* /advisor/notify keeps 2,000 characters: a longer draft is refused here, never cut */
+  function cmpSelf(name) {
+    var C = CMP, sub, body, msg;
+    if (!C || !cmpDraft()) { outcome(name, "refused", "nothing drafted"); return Promise.resolve(T("مفيش إيميل مكتوب على الشاشة لسه: اكتبه الأول بـ bassem_draft_email، وبعدها ابعته.", "There is no e-mail on the screen yet: write it first with bassem_draft_email, then send it.")); }
+    if (C.busy) return Promise.resolve(T("الإيميل ده بيتبعت دلوقتي — استنى النتيجة وماتبعتوش تاني.", "This e-mail is being sent right now — wait for the result, do not send it again."));
+    if (!heardSince(C.at)) { outcome(name, "refused", T("مستني موافقتك", "waiting for your OK")); return Promise.resolve(askFirstWords()); }
+    sub = C.sub.value.replace(/^\s+|\s+$/g, ""); body = C.body.value.replace(/^\s+|\s+$/g, "");
+    if (!sub || !body) { outcome(name, "refused", "subject or body missing"); return Promise.resolve(T("مااتبعتش: الموضوع أو نص الإيميل ناقص — اكتب المسودة تاني بـ bassem_draft_email.", "Not sent: the subject or the message is missing — write the draft again with bassem_draft_email.")); }
+    msg = sub + "\n\n" + body;
+    if (msg.length > SELF_MAX) { cmpSay(T("الإيميل أطول من إنه يتبعتلك كنسخة — دوس «📋 انسخ» أو «📧 من بريدي».", "The e-mail is too long to send you as a copy — press «📋 Copy» or «📧 From my mail»."), true); outcome(name, "refused", "too long for a copy"); return Promise.resolve(T("مااتبعتتش النسخة: الإيميل أطول من إنه يتبعتله كنسخة. قوله في جملة يدوس «📋 انسخ» أو «📧 من بريدي» على المسودة.", "The copy was not sent: the e-mail is too long to send him as a copy. Tell him in one sentence to press «📋 Copy» or «📧 From my mail» on the draft.")); }
+    if (C.selfKey === msg) return Promise.resolve(T("النسخة دي اتبعتتله فعلاً على إيميله — مش هتتبعت مرتين.", "This copy was already sent to his e-mail — it is not sent twice."));
+    C.busy = true; cmpSay("⏳ " + T("ببعتلك نسخة على إيميلك…", "Sending you a copy by e-mail…"), false); doing(T("ببعتلك نسخة من الإيميل على إيميلك", "sending you a copy of the e-mail"));
+    return sendPost({ message: msg, channel: "email" }, "/advisor/notify", 20000).then(function (x) {
+      var j = (x && x.j) || {}, ok = !!(x && x.status === 200 && j.sent && j.sent.email), why;
+      C.busy = false;
+      if (ok) {
+        C.selfKey = msg;
+        cmpSay("✅ " + T("اتبعتتلك نسخة على إيميلك المسجّل في المنصة — للجهة لسه مااتبعتش.", "A copy went to your e-mail registered on the platform — nothing went to the buyer yet."), false);
+        outcome(name, "refused", "a copy to his own e-mail; the buyer got nothing");
+        return T("اتبعتتله نسخة من الإيميل على إيميله المسجّل في المنصة (المنصة أكدت). للجهة لسه مااتبعتش حاجة. قوله كده في جملة واحدة.", "A copy of the e-mail went to his own e-mail registered on the platform (confirmed). Nothing went to the buyer. Tell him so in one sentence.");
+      }
+      why = j.code === "timeout" ? T("المنصة مارديتش في الوقت — مش متأكد إنها وصلت", "the platform did not answer in time — not sure it arrived") : String(j.code || (j.errors && j.errors.email) || j.error || (x && x.status) || "offline").slice(0, 60);
+      cmpSay("⚠️ " + T("النسخة مااتبعتتش: ", "The copy was not sent: ") + why, true);
+      outcome(name, "failed", "copy to himself: " + why);
+      return T("مااتبعتتش النسخة على إيميله (" + why + "). قوله كده بصراحة، وماتقولش إنها اتبعتت.", "The copy to his e-mail was not sent (" + why + "). Tell him so honestly; never say it was sent.");
+    });
+  }
   /* bassem_draft_email / bassem_send_email → a Promise of the text Bassem is given (sdkRun's awaitResult handlers); the DOM path (run →
      bassemTool: the widget, which cannot answer a tool) runs the same and the outcome is only shown on the screen */
   function capped(p, ms, late) { return new Promise(function (res) { var t = setTimeout(function () { res(late); }, ms); p.then(function (v) { clearTimeout(t); res(v); }, function () { clearTimeout(t); res(late); }); }); }
   var LATE_SEND = function () { return T("مش متأكد لسه إنه اتبعت — المنصة لسه مارديتش. ماتبعتوش تاني؛ النتيجة هتظهر على الشاشة.", "Not sure yet that it was sent — the platform has not answered. Do not send it again; the result will show on the screen."); };
   /* the composer's draft from the platform, with a recipient / market Bassem passed with the send */
   function cmpSendFor(name, a) {
+    if (selfTo(a.to)) return capped(cmpSelf(name), 23000, LATE_SEND());
     var C = CMP, em = toArg(a.to), s0;
     if (a.market) C.market = String(a.market).slice(0, 60);
     if (em.addr && C.to.value.trim().toLowerCase() !== em.addr) { s0 = mailSource(em.addr); if (s0) cmpTo(em.addr, s0); else { cmpOffer(C, [em.addr]); C.el.hidden = false; C.el.classList.remove("min"); outcome(name, "refused", "address not in the data, not said"); return Promise.resolve(T("مااتبعتش: ", "Not sent: ") + toWords({ offered: em.addr })); } }
@@ -3086,6 +3149,10 @@
     /* bassem_send_email: what is on the screen and he saw — the room his last draft went to (if it is still the open one), else the
        composer's draft, else the room open now with an e-mail he wrote himself; nothing else */
     rd = advDoc(); openId = roomOpenId();
+    if (LAST_DRAFT === "room" && !deal && selfTo(a.to)) {
+      outcome(name, "refused", "a copy to himself goes from the e-mail draft only");
+      return Promise.resolve(T("مااتبعتش: النسخة ليه بتتبعت من مسودة الإيميل بس، والمسودة دي في غرفة الصفقة. قوله يدوس «📋 انسخ» في الغرفة، أو اكتب الإيميل تاني من غير صفقة (bassem_draft_email من غير deal) وبعدين ابعته بـ to = me.", "Not sent: a copy to himself goes from the e-mail draft only, and this draft is in the deal room. Tell him to press «📋 Copy» there, or write it again without a deal (bassem_draft_email with no deal) and then send it with to = me."));
+    }
     if (LAST_DRAFT === "room" && !deal) {
       if (openId && (!ROOM_DEAL || openId === ROOM_DEAL)) return capped(roomSend(rd, a), 23000, LATE_SEND());
       outcome(name, "refused", "the deal room of the draft is closed");
@@ -3161,6 +3228,14 @@
       }
     }
     return k;
+  }
+  /* the handler's answer (sdkRun): the send has started, nothing is confirmed yet — and what Bassem says now */
+  function notifyStart(a) {
+    var msg = String((a && a.message) || "").replace(/^\s+|\s+$/g, "");
+    notifyGo("bassem_notify_member", a);
+    if (!msg) return T("مااتبعتش: الرسالة فاضية. اسأله عايز يوصله إيه، وابعتها تاني بـ bassem_notify_member.", "Not sent: the message is empty. Ask him what he wants to receive, and send it again with bassem_notify_member.");
+    return T("لسه بيتبعت ومااتأكدش: قوله في جملة قصيرة «ببعتهولك دلوقتي، وهقولك أول ما يوصل» — ماتقولش «بعت» ولا «اتبعت». نتيجة المنصة هتوصلك بعد شوية في سطر بيبدأ بـ «نتيجة «ابعتلي»»، وساعتها بس قوله وصل ولا لأ في جملة.",
+      "Being sent, not confirmed yet: tell him in one short sentence «I'm sending it to you now and will tell you once it arrives» — never say it was sent. The platform's answer reaches you shortly in a line starting «Result of «send to me»»; only then tell him in one sentence whether it went.");
   }
   function notifyGo(name, a) {
     var msg = urlsFix(String(a.message || "").trim()), chn = /^(whatsapp|email|both)$/.test(a.channel) ? a.channel : "both", t0 = Date.now(), refs = [], body;
@@ -3255,7 +3330,7 @@
     /* the member's factory profile (POST /api/advisor/profile) — never routed to advisor.html. In the SDK call the registered handler
        saves it and answers Bassem (sdkRun); the widget cannot answer a tool, so there it is saved without a result */
     if (name === "bassem_save_profile") { if (LV && !LV.closed && LV.own && LV.own.bassem_save_profile) return; profileTool(a); return; }
-    if (name === "bassem_notify_member") { notifyGo(name, a); return; }
+    if (name === "bassem_notify_member") { if (LV && !LV.closed && LV.own && LV.own.bassem_notify_member) return; notifyGo(name, a); return; } /* Bassem's SDK call: its handler (sdkRun) sends and answers */
     if (name === "bassem_set_work_time") {
       var pr = {}; ["morning_time", "session_time", "days", "call_today_at", "pause", "wa_optin", "email_digest"].forEach(function (k) { if (a[k] != null && a[k] !== "") pr[k] = a[k]; });
       if (!pr.morning_time && a.time) pr.morning_time = a.time;

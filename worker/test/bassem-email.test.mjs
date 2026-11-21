@@ -133,8 +133,14 @@ describe("the words Bassem is given after a draft: summary, «تحب أبعته�
     const w = P.draftWords("cmp", {}, "en", null);
     assert.match(w, /المسودة قدامه على الشاشة بالإنجليزي، ولسه مااتبعتتش/);
     assert.match(w, /اسأله مرة واحدة «أبعته لمين؟»/);
-    assert.match(w, /في جملتين أو تلاتة بالمصري الإيميل بيقول إيه/);
-    assert.match(w, /«تحب أبعته؟»/);
+    assert.match(w, /في جملة أو اتنين قصيرين بالمصري \(حوالي ٢٠ كلمة\) الإيميل بيقول إيه/);
+    assert.match(w, /وبعدين سؤال واحد بس: «أبعته لمين؟»\./, "review 2026-11-21: one question — the empty To box asks «أبعته لمين؟», not «تحب أبعته؟» as well");
+    assert.doesNotMatch(w, /«تحب أبعته؟»/);
+    assert.match(w, /ولو قال «ابعتهولي» أو «على إيميلي» \(عايزه لنفسه\): استدعي bassem_send_email وفي to كلمة me/);
+    const w2 = P.draftWords("cmp", { addr: "procurement@lamuwest.example.ke", src: "data" }, "en", null);
+    assert.match(w2, /وبعدين سؤال واحد بس: «تحب أبعته؟»\./, "a recipient is there: «تحب أبعته؟»");
+    assert.doesNotMatch(w2, /«أبعته لمين؟»/);
+    assert.doesNotMatch(w + w2, /جملتين أو تلاتة/);
     assert.match(w, /وده مهم لأنه مش بالعربي/);
     assert.match(w, /لو طلب تقراهوله اقراه كله/);
     assert.doesNotMatch(w, /معرفش|مش هعرف/);
@@ -448,7 +454,7 @@ describe("«ابعتلي» with the opportunities of the call (notifyRefs, notif
     assert.ok(told.every(t => !/["«»]\s*[\[{<]/.test(t)));
   });
   test("wiring (source checks): the notify branch → notifyGo → sendPost(body, \"/advisor/notify\", 60000) after inflWait, sent again on notify_busy; the screen's tender with its title; the three inflMark listeners; no MIGAPI.notify left; notifyDone tells Bassem", () => {
-    assert.match(LIVE, /if \(name === "bassem_notify_member"\) \{ notifyGo\(name, a\); return; \}/);
+    assert.match(LIVE, /if \(name === "bassem_notify_member"\) \{ if \(LV && !LV\.closed && LV\.own && LV\.own\.bassem_notify_member\) return; notifyGo\(name, a\); return; \}/, "Bassem's SDK call: the handler sends (review 2026-11-21)");
     const go = LIVE.slice(LIVE.indexOf("  function notifyGo("), LIVE.indexOf("  function nFiles("));
     assert.ok(go.indexOf("inflWait(4000).then(") > 0 && go.indexOf("inflWait(4000).then(") < go.indexOf("return send(0);"), "inflWait first");
     assert.match(go, /sendPost\(body, "\/advisor\/notify", 60000\)/);
@@ -462,5 +468,66 @@ describe("«ابعتلي» with the opportunities of the call (notifyRefs, notif
     assert.doesNotMatch(LIVE, /A\.notify|MIGAPI\.notify/);
     assert.match(LIVE.slice(LIVE.indexOf("  function notifyDone("), LIVE.indexOf("  function notifyWords(")), /tellBassem\(notifyWords\(x, un\)\);/);
     assert.match(LIVE, /function sendPost\(body, path, ms\) \{/);
+  });
+});
+
+/* review 2026-11-21 — Bassem's call f75d15f4 (owner: «مبيبعتش حاجه»): six drafts, none sent; «ابعتهولي» had no path; «بعت لحضرتك ملخص
+   التقرير على الإيميل» was said in the very reply that called bassem_notify_member, before the platform answered */
+describe("review 2026-11-21: «ابعتهولي» (to = me), the honest «ابعتلي» answer", () => {
+  test("selfTo: the member himself only when the WHOLE value says so — never an address, a name or a sentence", () => {
+    for (const s of ["me", "Me.", "to me", "myself", "my email", "my e-mail", "My own e-mail", "ليا", "ليّا", "لي", "لنفسي", "إيميلي", "ايميلي", "على إيميلي", "بريدي", "ابعتهولي", "«ابعتهولي»", "أنا"])
+      assert.equal(P.selfTo(s), true, s);
+    for (const s of ["", null, "info@x.com", "info at x dot com", "me@x.com", "home", "ليه", "Rand Water", "ابعته لمحمد", "send it to me and to info@x.com", "ابعتهولي على info at x dot com", "إيميل الشركة"])
+      assert.equal(P.selfTo(s), false, String(s));
+  });
+  /* cmpSelf in a sandbox: the composer, the clock of «he spoke since», and a recording sendPost */
+  function selfBox({ spoke = true, body = "Dear Procurement Team,\nWe would like the RFQ documents.\nDr. Mohamed", answer = { status: 200, j: { ok: true, sent: { email: true, whatsapp: false } } } } = {}) {
+    const S = load(), posts = [], outs = [], said = [];
+    S.CMP = { at: S.clock.t, sub: { value: "RFQ Inquiry" }, body: { value: body }, busy: false };
+    S.USER_T = spoke ? S.clock.t + 1000 : S.clock.t - 1000;
+    S.cmpDraft = () => !!S.CMP; S.cmpSay = (m, bad) => said.push([m, !!bad]); S.doing = () => {}; S.outcome = (t, st, x) => outs.push([t, st, x]);
+    S.sendPost = (b, path, ms) => { posts.push({ b, path, ms }); return Promise.resolve(answer); };
+    vm.runInContext(LIVE.slice(LIVE.indexOf("  var SELF_MAX = "), LIVE.indexOf("  /* bassem_draft_email / bassem_send_email → a Promise of the text Bassem is given")), S);
+    return { S, posts, outs, said };
+  }
+  test("the draft goes to HIS OWN registered e-mail (POST /advisor/notify, channel email — no address from the page), never to the buyer", async () => {
+    const { S, posts, outs } = selfBox();
+    const w = await S.cmpSelf("bassem_send_email");
+    assert.equal(posts.length, 1); assert.equal(posts[0].path, "/advisor/notify");
+    assert.deepEqual(Object.keys(posts[0].b).sort(), ["channel", "message"], "no to / email field: the Worker reads his address from his account");
+    assert.equal(posts[0].b.channel, "email"); assert.equal(posts[0].b.message, "RFQ Inquiry\n\nDear Procurement Team,\nWe would like the RFQ documents.\nDr. Mohamed");
+    assert.match(w, /اتبعتتله نسخة من الإيميل على إيميله المسجّل في المنصة \(المنصة أكدت\)\. للجهة لسه مااتبعتش حاجة/);
+    assert.deepEqual(outs.map(o => o[1]), ["refused"], "the buyer got nothing: no task or deal step closes on a copy");
+    assert.match(await S.cmpSelf("bassem_send_email"), /مش هتتبعت مرتين/); assert.equal(posts.length, 1, "the same copy is not sent twice");
+  });
+  test("refused before he spoke since the draft appeared, for a draft too long to copy (never cut), and said honestly when it did not go", async () => {
+    let b = selfBox({ spoke: false });
+    assert.match(await b.S.cmpSelf("bassem_send_email"), /^لسه مااتبعتش: هو ماقالش حاجة/); assert.equal(b.posts.length, 0);
+    b = selfBox({ body: "x".repeat(2000) });
+    assert.match(await b.S.cmpSelf("bassem_send_email"), /^مااتبعتتش النسخة: الإيميل أطول/); assert.equal(b.posts.length, 0);
+    b = selfBox({ answer: { status: 200, j: { ok: false, sent: { email: false, whatsapp: false }, errors: { email: "no email" } } } });
+    const w = await b.S.cmpSelf("bassem_send_email");
+    assert.match(w, /^مااتبعتتش النسخة على إيميله \(no email\)\. قوله كده بصراحة، وماتقولش إنها اتبعتت\./);
+    assert.deepEqual(b.outs.map(o => o[1]), ["failed"]);
+    b = selfBox({ answer: { status: 0, j: { code: "timeout" } } });
+    assert.match(await b.S.cmpSelf("bassem_send_email"), /مش متأكد إنها وصلت/);
+  });
+  test("wiring: to = me reaches cmpSelf from the composer; a draft in a deal room is refused with words he can act on", () => {
+    const f = LIVE.slice(LIVE.indexOf("  function cmpSendFor("), LIVE.indexOf("  function mailTool("));
+    assert.match(f, /if \(selfTo\(a\.to\)\) return capped\(cmpSelf\(name\), 23000, LATE_SEND\(\)\);/);
+    assert.ok(f.indexOf("selfTo(a.to)") < f.indexOf("toArg(a.to)"), "before the address parser");
+    const m = LIVE.slice(LIVE.indexOf("  function mailTool("), LIVE.indexOf("  /* ---------- links in Bassem's messages"));
+    assert.match(m, /if \(LAST_DRAFT === "room" && !deal && selfTo\(a\.to\)\) \{\s*outcome\(name, "refused", "a copy to himself goes from the e-mail draft only"\);/);
+  });
+  test("«ابعتلي»: Bassem's SDK call answers AT ONCE «being sent, not sent» (heard once the tool waits for a result), and sends exactly as before", () => {
+    assert.match(LIVE, /c\.registerToolCallHandler\("bassem_notify_member", \{ onStart: function \(pl\) \{[^\n]*return notifyStart\(x \|\| \{\}\); \} \}\); me\.own\.bassem_notify_member = 1;/);
+    const st = LIVE.slice(LIVE.indexOf("  function notifyStart("), LIVE.indexOf("  function notifyGo("));
+    assert.match(st, /notifyGo\("bassem_notify_member", a\);/);
+    assert.match(st, /لسه بيتبعت ومااتأكدش: قوله في جملة قصيرة «ببعتهولك دلوقتي، وهقولك أول ما يوصل» — ماتقولش «بعت» ولا «اتبعت»/);
+    assert.doesNotMatch(st, /اتبعت ✓|Sent ✓/);
+    const sb = { T: (ar) => ar, calls: [] }; vm.createContext(sb);
+    vm.runInContext(st + "\n", sb); sb.notifyGo = (n, a) => sb.calls.push([n, a]);
+    assert.match(sb.notifyStart({ message: "ملخص" }), /^لسه بيتبعت ومااتأكدش/); assert.equal(sb.calls.length, 1);
+    assert.match(sb.notifyStart({ message: "  " }), /^مااتبعتش: الرسالة فاضية/); assert.equal(sb.calls.length, 2, "notifyGo says the refusal on the screen itself");
   });
 });
