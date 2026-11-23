@@ -101,7 +101,7 @@
   var INQ_ST = { received: ["تم الاستلام", "Received", ""], routed: ["اتبعت للمصانع المطابقة", "Sent to matching factories", "ok"], in_progress: ["جاري معالجة طلبك", "We're working on your request", "p"], no_match: ["لا يوجد مصنع مطابق بعد", "No matching factory yet", "p"], replied: ["وصلك رد", "Answered", "b"], recorded: ["اتسجّل", "Recorded", "g"], closed: ["اتقفل", "Closed", "g"], blocked: ["موقوف", "Blocked", "x"] };
   function inqChip(s) { var x = INQ_ST[s]; return '<span class="tag ' + (x ? x[2] : "g") + '">' + h(x ? L2(x) : T("حالة أخرى", "Other status")) + "</span>"; }
   var SRC = { form: ["نموذج الموقع", "Site form"], janna: ["جنة", "Janna"], bassem: ["باسم", "Bassem"], basket: ["سلة السوق", "Market basket"], admin: ["إدخال يدوي", "Manual entry"] };
-  var ROLES = { owner: ["المالك", "Owner"], admin: ["مدير", "Admin"], editor: ["محرر", "Editor"], support: ["خدمة العملاء", "Support"], seo: ["فريق الـ SEO", "SEO team"], data: ["فريق الداتا", "Data team"], platform: ["مفتاح المنصة", "Platform key"] };
+  var ROLES = { owner: ["المالك", "Owner"], admin: ["مدير", "Admin"], manager: ["مدير (بدون الإعدادات)", "Admin (no settings)"], editor: ["محرر", "Editor"], support: ["خدمة العملاء", "Support"], seo: ["فريق الـ SEO", "SEO team"], data: ["فريق الداتا", "Data team"], platform: ["مفتاح المنصة", "Platform key"] };
   function roleName(r) { return ROLES[r] ? L2(ROLES[r]) : str(r || "—"); }
   var GOV_EN = { CAI: "Cairo", GIZ: "Giza", ALX: "Alexandria", QLB: "Qalyubia", SHR: "Sharqia", DKH: "Dakahlia", GHR: "Gharbia", MNF: "Monufia", BHR: "Beheira", KFS: "Kafr El Sheikh", DMT: "Damietta", PTS: "Port Said", ISM: "Ismailia", SUZ: "Suez", FYM: "Faiyum", BNS: "Beni Suef", MNY: "Minya", AST: "Asyut", SHG: "Sohag", QNA: "Qena", LXR: "Luxor", ASN: "Aswan", BBA: "Red Sea", NSN: "North Sinai", JSN: "South Sinai", WAD: "New Valley", MTR: "Matrouh" };
   function govList() { return (W.MIGREG && MIGREG.list) || []; }
@@ -459,8 +459,8 @@
   var CUR = null;
   function can(p) { return ST.perms.indexOf(p) > -1; }
   function canAny(a) { for (var i = 0; i < a.length; i++) if (can(a[i])) return true; return false; }
-  function isAdm() { return ST.role === "owner" || ST.role === "admin"; }
-  function seoOk() { return ST.perms.some(function (p) { return /^seo(\.|$)/.test(p); }) || /^(owner|admin|editor)$/.test(ST.role); }
+  function isAdm() { return ST.role === "owner" || ST.role === "admin" || ST.role === "manager"; }
+  function seoOk() { return ST.perms.some(function (p) { return /^seo(\.|$)/.test(p); }) || /^(owner|admin|manager|editor)$/.test(ST.role); }
 
   /* ---------- navigation: the live GR (groups, labels, order) + the new items inside the same groups ---------- */
   /* [key, AR, EN, badge, permission] — live items keep their live key, label and position */
