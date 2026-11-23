@@ -1944,7 +1944,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         chips = []
         if cat:
             chips.append('<span class="chip chip-gray">%s</span>' % esc(X(L, cat['ar'], cat['en'])))
-        if t.get('booklet') and str(t['booklet']).replace('.', '').isdigit():
+        if False and t.get('booklet') and str(t['booklet']).replace('.', '').isdigit():   # locked for members (detail_lock)
             chips.append('<span class="chip chip-gold">%s</span>' % esc(X(L, 'الكراسة ', 'Documents ') + money_egp(t['booklet'], L)))
         return ('<li class="st-%s"><div class="tp">%s%s</div><a href="%s"%s>%s</a><span class="m">%s</span>%s</li>'
                 % (t['status'], st, dl, esc(lk(L, t['path'])), '' if L == 'ar' or not AR_RX.search(nm) else ' lang="ar"', esc(nm), esc(m),
@@ -2754,8 +2754,6 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         o['description'] = tender_summary(t, L)
         if t['ref']:
             o['identifier'] = t['ref']
-        if t.get('publish'):
-            o['validFrom'] = t['publish']
         if t.get('deadline'):
             o['validThrough'] = t['deadline']
         g = S['gov_by_code'].get(t.get('gov') or '')
@@ -2771,7 +2769,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
 
     def jsonld_rfq(r, url, L):
         o = {"@context": "https://schema.org", "@type": "Demand", "@id": url + '#demand', "name": rfq_title(r, L), "url": url, "mainEntityOfPage": {"@id": url + '#webpage'},
-             "description": clip(r['details'] if L == 'ar' else (r['details_en'] or ''), 500) or rfq_title(r, L), "identifier": r['no']}
+             "description": rfq_title(r, L), "identifier": r['no']}
         if r['date']:
             o['validFrom'] = r['date']
         if r['deadline'] and pdate(r['deadline']):
@@ -4079,6 +4077,18 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             return page_title(T(L, n.get('title_ar')), L, keep_suffix=False, must=' | ' + fmt_date(n['date'], L))
         return tt
 
+    def detail_lock(L, kind, href):
+        """owner 2026-11-23: tender / RFQ details are for subscribers. The static page keeps what the interactive list shows (title, number,
+        entity, place, category, status, closing date); the details open in the platform for a member whose plan covers them."""
+        what = X(L, 'تفاصيل المناقصة الكاملة', 'The full tender details') if kind == 't' else X(L, 'تفاصيل الطلب الكاملة', 'The full request details')
+        return ('<div class="card2 sx-lock"><h2>🔒 %s</h2><p>%s</p><p><a class="btn btn-green" href="%s">%s</a> <a class="btn btn-line" href="%s" rel="nofollow">%s</a></p></div>'
+                % (X(L, '%s للمشتركين', '%s are for members') % what,
+                   X(L, 'ثمن الكراسة والتأمين والقيمة والوصف ورابط المصدر متاحين للمشتركين من الباقة الأساسية، في حدود أسواق باقتك.',
+                     'The document price, bid bond, value, description and source link are for members from the Basic plan, within your plan\'s markets.')
+                   if kind == 't' else
+                   X(L, 'وصف الطلب الكامل وتسجيل عرض السعر متاحين للمشتركين من الباقة الأساسية.', 'The full description and recording a quote are for members from the Basic plan.'),
+                   esc(static_url('register', L, '#plans')), X(L, 'اشترك الآن', 'Subscribe'), esc(href), X(L, 'مشترك؟ افتح التفاصيل', 'A member? Open the details')))
+
     def render_tender(t, L):
         P = '/en' if L == 'en' else ''
         url = abs_url(P + t['path'])
@@ -4112,17 +4122,17 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             facts.append((X(L, 'المدينة', 'City'), esc(T(L, t['city']))))
         if cat:
             facts.append((X(L, 'الفئة', 'Category'), ('<a href="%s">%s</a>' % (esc(lk(L, ch_['path']) if (L == 'ar' or ch_.get('en')) else ch_['path']), esc(X(L, cat['ar'], cat['en'])))) if ch_ and ch_.get('page') else esc(X(L, cat['ar'], cat['en']))))
-        if t.get('booklet'):
+        if False and t.get('booklet'):   # locked (detail_lock)
             facts.append((X(L, 'ثمن الكراسة', 'Tender document price'), esc(money_egp(t['booklet'], L) if str(t['booklet']).replace('.', '').isdigit() else T(L, str(t['booklet'])))))
-        if t.get('bond'):
+        if False and t.get('bond'):
             facts.append((X(L, 'التأمين الابتدائي', 'Bid bond'), esc(money_egp(t['bond'], L) if str(t['bond']).replace('.', '').isdigit() else T(L, str(t['bond'])))))
-        if t.get('value'):
+        if False and t.get('value'):
             facts.append((X(L, 'القيمة التقديرية', 'Estimated value'), esc('{:,.0f} {}'.format(float(t['value']), t.get('currency') or ''))))
-        if t.get('publish'):
+        if False and t.get('publish'):
             facts.append((X(L, 'تاريخ النشر', 'Published'), esc(fmt_date(t['publish'], L))))
         if t.get('deadline'):
             facts.append((X(L, 'آخر موعد للتقديم', 'Closing date'), esc(fmt_date(t['deadline'], L))))
-        if t.get('source'):
+        if False and t.get('source'):
             facts.append((X(L, 'المصدر الرسمي', 'Official source'), '<a href="%s" rel="nofollow noopener" target="_blank">%s</a>' % (esc(t['source']), esc(t.get('source_name') or urlparse(t['source']).netloc.replace('www.', '')))))
         if t.get('flags'):   # MIGTEND[12] (MIGINC bits 1 governorate, 4 closing date, 8 entity): say what the record does not have
             miss = [m for m in (S['inc_bits'].get(str(b)) for b in (1, 4, 8) if t['flags'] & b) if m]
@@ -4153,6 +4163,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             if hubs:
                 fac_links = '<section class="card2"><h2>%s</h2><div class="links">%s</div></section>' % (X(L, 'مصانع يمكنها التوريد', 'Factories that can supply'), ''.join(
                     '<a href="%s">%s <small>(%d)</small></a>' % (esc(lk(L, h['path'])), esc(sec_name(h['sec']['slug'], L, 't')), h['n']) for h in hubs))
+        sim_html = detail_lock(L, 't', '/tenders/search/#' + quote(str(t.get('fid') or t.get('ref') or ''), safe='')) + sim_html
         intro = tender_summary(t, L)
         hp = cat_photo(cat) if cat else VIS_HUB_IMG['tenders']
         body = hero(L, ch, title, intro, img=hp, alt=photo_alt(hp, L, X(L, cat['ar'], cat['en']) if cat else ''), small=True) + '<div class="wrap sx-main">%s<div class="sx-grid"><div><div class="card2"><h2>%s</h2>%s</div>%s%s</div><aside>%s</aside></div></div>' % (
@@ -4161,9 +4172,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                     X(L, 'سجّل منشأتك في المنصة لتصلك المناقصات وطلبات الشراء المطابقة لقطاعك ومحافظتك تلقائياً.', 'Register your company to receive tenders and purchase requests that match your sector and governorate automatically.'),
                     static_url('register', L, '#plans'), X(L, 'سجّل منشأتك', 'Register your company')))
         dparts = [tender_summary(t, L)]
-        if t.get('booklet') and str(t['booklet']).replace('.', '').isdigit():
+        if False and t.get('booklet') and str(t['booklet']).replace('.', '').isdigit():
             dparts.append(X(L, 'ثمن الكراسة %s.', 'Document price %s.') % money_egp(t['booklet'], L))
-        dparts.append(X(L, 'المصدر الرسمي.', 'Official source.') if t.get('source') else '')
         meta = {'title': tender_title(t, L), 'desc': mk_desc(dparts, L, X(L, 'التفاصيل على منصة صنع في مصر.', 'Details on Made in Egypt Gate.')), 'h1': title, 'og_type': 'website',
                 'page_type': 'WebPage', 'jsonld_page': jsonld_tender(t, url, L), 'jsonld_crumbs': crumb_ld, 'kw': kw_for('G', L, cat=X(L, cat['ar'], cat['en'].lower()) if cat else ''),
                 'keywords': ', '.join(x for x in [X(L, 'مناقصات', 'tenders'), X(L, cat['ar'], cat['en']) if cat else '', ent] if x), 'about_id': url + '#demand'}
@@ -4330,7 +4340,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                 facts.append((X(L, 'بيانات غير مكتملة', 'Incomplete data'), esc(X(L, '، '.join(miss), ', '.join(T(L, m) for m in miss)))))
         facts_html = '<dl class="sx-facts">%s</dl>' % ''.join('<dt>%s</dt><dd>%s</dd>' % (k, v) for k, v in facts)
         details = r['details'] if L == 'ar' else (r['details_en'] or '')
-        main = '<div class="card2"><h2>%s</h2><p>%s</p><p class="note">%s</p></div>' % (X(L, 'تفاصيل الطلب', 'Request details'), esc(details), X(L, 'بيانات المشتري وطرق التواصل معه لا تُنشر؛ تصل العروض عبر المنصة.', "The buyer's details are not published; offers go through the platform."))
+        main = detail_lock(L, 'r', '/rfq/search/#' + quote(str(r['no']), safe=''))
         others = [x for x in S['rfqs'] if x is not r and x.get('page')][:5]
         if others:
             main += '<section class="card2"><h2>%s</h2><ul class="tlist">%s</ul></section>' % (X(L, 'طلبات أخرى', 'Other requests'), ''.join(
@@ -4342,7 +4352,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         hp = sec_cover(sec['slug']) if sec else VIS_HUB_IMG['rfq']
         body = hero(L, ch, title, intro, img=hp, alt=photo_alt(hp, L, X(L, sec['t_ar'], sec['t_en']) if sec else ''), small=True) + \
             '<div class="wrap sx-main"><div class="sx-grid"><div>%s</div><aside><div class="card2"><h2>%s</h2>%s</div>%s</aside></div></div>' % (main, X(L, 'بيانات الطلب', 'Request facts'), facts_html, cta)
-        meta = {'title': page_title(title, L, prefixes=(X(L, 'طلب عرض سعر: ', 'RFQ: '), '')), 'desc': mk_desc([intro, clip(details, 100)], L), 'h1': title,
+        meta = {'title': page_title(title, L, prefixes=(X(L, 'طلب عرض سعر: ', 'RFQ: '), '')), 'desc': mk_desc([intro], L), 'h1': title,
                 'og_type': 'website', 'page_type': 'WebPage', 'jsonld_page': jsonld_rfq(r, url, L), 'jsonld_crumbs': crumb_ld, 'kw': kw_for('I', L, name=cut(title, 40)),
                 'keywords': X(L, 'طلب عرض سعر, ', 'request for quotation, ') + (X(L, sec['ar'], sec['en']) if sec else ''), 'about_id': url + '#demand'}
         return body, meta
