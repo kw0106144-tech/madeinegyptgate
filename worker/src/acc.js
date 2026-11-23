@@ -99,7 +99,7 @@ export async function handlePublicCC(req, env, ctx, CC) {
 }
 
 /* ---------- /api/admin/cc/* ---------- */
-const adminish = adm => ["owner", "admin", "platform"].includes(adm.role);
+const adminish = adm => ["owner", "admin", "manager", "platform"].includes(adm.role);
 const R = (m, rx, perm, fn, o = {}) => ({ m, rx, perm, fn, ...o });
 const P = s => new RegExp("^" + s.replace(/:id/g, "([A-Za-z0-9_.-]{1,64})") + "$");
 async function whoami(env, adm) {

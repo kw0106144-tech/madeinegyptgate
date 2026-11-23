@@ -106,7 +106,7 @@ export const PERSONA_TIMEOUT_MS = 3000, ANAM_BUDGET_MS = 13000, RETRY_MIN_MS = 2
 const off = v => /^(0|off|false|no)$/i.test(String(v == null ? "" : v).trim());
 /* the Worker variable can switch the member context off for every call; the page's member_context: false only for its own call */
 export const memberContextOn = (env, body) => !off(env && env.BASSEM_MEMBER_CONTEXT) && !off(body && body.member_context);
-const STAFF_ROLES = ["owner", "admin", "support"];          // Control Center roles that may open Bassem's live call
+const STAFF_ROLES = ["owner", "admin", "manager", "support"];          // Control Center roles that may open Bassem's live call
 const SITE_ORIGINS = ["https://madeinegyptgate.com", "https://www.madeinegyptgate.com"];
 const DEV_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?$/;
 const on = v => /^(1|on|true|yes)$/i.test(String(v == null ? "" : v));

@@ -173,9 +173,14 @@ export const PERMS = ["stats.read", "members.read", "members.write", "members.co
 export const OWNER_ONLY = new Set(["members.delete", "content.toggle", "pay.config", "email.config", "audit.export", "import.run", "keys.manage", "dev.manage", "meetings.cap"]);
 const ADMIN_P = PERMS.filter(p => !OWNER_ONLY.has(p));
 const PERSON_ONLY = ["meetings.bassem"]; // never through X-Platform-Key
+/* «مدير محدود» (owner request 2026-11-23): an admin listed here gets every admin permission except the general settings, the team and
+   the plans/prices — for the shared rfqs@ team mailbox. The row in cc_staff stays role "admin"; roleOf() answers "manager". */
+export const LIMITED_ADMINS = ["rfqs@madeinegyptgate.com"];
+const LIMITED_DENY = ["settings.write", "staff.write", "plans.write", "plans.sync"];
 export const ROLE_PERMS = {
   owner: PERMS,
   admin: ADMIN_P,
+  manager: ADMIN_P.filter(p => !LIMITED_DENY.includes(p)),
   editor: ["stats.read", "directory.read", "directory.write", "approvals.products", "content.read", "content.write", "content.publish", "media.upload", "media.delete", "plans.read", "settings.read", "seo"],
   support: ["stats.read", "members.read", "members.contact", "customers.read", "customers.write", "directory.read", "legacy.contacts", "orders.read", "orders.reply", "orders.note", "orders.close", "orders.rfq",
     "content.read", "plans.read", "pay.read", "settings.read", "wa.read", "bassem.read"],
@@ -194,8 +199,9 @@ export async function roleOf(env, m, via) {
   if (!m || via === "legacy") return null;
   if (isBootstrap(env, m)) return "owner";
   const s = await first(env, "SELECT role FROM cc_staff WHERE member_id = ? AND disabled_at = ''", m.id);
-  if (s && ROLES.includes(s.role)) return s.role;
-  if (m.role === "admin") return "admin";
+  const lim = LIMITED_ADMINS.includes(String(m.email || "").toLowerCase());
+  if (s && ROLES.includes(s.role)) return s.role === "admin" && lim ? "manager" : s.role;
+  if (m.role === "admin") return lim ? "manager" : "admin";
   return null;
 }
 export async function sessionVia(env, m) {

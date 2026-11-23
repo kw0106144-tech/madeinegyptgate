@@ -26,7 +26,7 @@ import { plansData } from "./acc-plans.js";
 import { listKnowledge, answerKnowledge } from "./knowledge.js"; // 0009: «بنك المعلومات» on the data desk
 import { listLeads, reviewLead, linkLead } from "./web-leads.js"; // 0012: «🌐 فرص من الإنترنت» on the data desk
 
-const DESK_ROLES = new Set(["data", "admin", "owner"]);
+const DESK_ROLES = new Set(["data", "admin", "manager", "owner"]);
 const COLL = { tenders: "tend", projects: "proj", rfqs: "rfq" };
 const LIMITS = { inquiry: [60, 3600], member: [30, 3600], content: [60, 3600], mine: [600, 3600], leads: [300, 3600] };
 
@@ -179,7 +179,7 @@ export async function handleTeam(req, env, ctx, CC) {
     if (path === "/whoami") {
       if (M !== "GET") return ccErr(req, env, 405, "method", "method not allowed");
       if (!a.role) return ccErr(req, env, 403, "forbidden", "غير مصرّح لك / not a team member");
-      return ccJson(req, env, { user: { id: a.m.id, email: a.m.email, name: a.m.name || "" }, role: a.role, team_page: TEAM_ROLES[a.role] || CC_PAGE, perms: ROLE_PERMS[a.role] || [], desk: DESK_ROLES.has(a.role), seo: ["seo", "editor", "admin", "owner"].includes(a.role) });
+      return ccJson(req, env, { user: { id: a.m.id, email: a.m.email, name: a.m.name || "" }, role: a.role, team_page: TEAM_ROLES[a.role] || CC_PAGE, perms: ROLE_PERMS[a.role] || [], desk: DESK_ROLES.has(a.role), seo: ["seo", "editor", "admin", "manager", "owner"].includes(a.role) });
     }
     if (!/^\/desk\//.test(path)) return ccErr(req, env, 404, "not_found", "not found");
     needDesk(a);
