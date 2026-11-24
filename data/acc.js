@@ -101,7 +101,7 @@
   var INQ_ST = { received: ["تم الاستلام", "Received", ""], routed: ["اتبعت للمصانع المطابقة", "Sent to matching factories", "ok"], in_progress: ["جاري معالجة طلبك", "We're working on your request", "p"], no_match: ["لا يوجد مصنع مطابق بعد", "No matching factory yet", "p"], replied: ["وصلك رد", "Answered", "b"], recorded: ["اتسجّل", "Recorded", "g"], closed: ["اتقفل", "Closed", "g"], blocked: ["موقوف", "Blocked", "x"] };
   function inqChip(s) { var x = INQ_ST[s]; return '<span class="tag ' + (x ? x[2] : "g") + '">' + h(x ? L2(x) : T("حالة أخرى", "Other status")) + "</span>"; }
   var SRC = { form: ["نموذج الموقع", "Site form"], janna: ["جنة", "Janna"], bassem: ["باسم", "Bassem"], basket: ["سلة السوق", "Market basket"], admin: ["إدخال يدوي", "Manual entry"] };
-  var ROLES = { owner: ["المالك", "Owner"], admin: ["مدير", "Admin"], manager: ["مدير (بدون الإعدادات)", "Admin (no settings)"], editor: ["محرر", "Editor"], support: ["خدمة العملاء", "Support"], seo: ["فريق الـ SEO", "SEO team"], data: ["فريق الداتا", "Data team"], platform: ["مفتاح المنصة", "Platform key"] };
+  var ROLES = { owner: ["المالك", "Owner"], admin: ["مدير", "Admin"], manager: ["مدير (بدون الإعدادات)", "Admin (no settings)"], editor: ["محرر", "Editor"], support: ["خدمة العملاء", "Support"], seo: ["فريق الـ SEO", "SEO team"], data: ["فريق الداتا", "Data team"], platform: ["مفتاح المنصة", "Platform key"], portal: ["فريق المنصة (بوابة الفريق)", "Team (team portal)"] };
   function roleName(r) { return ROLES[r] ? L2(ROLES[r]) : str(r || "—"); }
   var GOV_EN = { CAI: "Cairo", GIZ: "Giza", ALX: "Alexandria", QLB: "Qalyubia", SHR: "Sharqia", DKH: "Dakahlia", GHR: "Gharbia", MNF: "Monufia", BHR: "Beheira", KFS: "Kafr El Sheikh", DMT: "Damietta", PTS: "Port Said", ISM: "Ismailia", SUZ: "Suez", FYM: "Faiyum", BNS: "Beni Suef", MNY: "Minya", AST: "Asyut", SHG: "Sohag", QNA: "Qena", LXR: "Luxor", ASN: "Aswan", BBA: "Red Sea", NSN: "North Sinai", JSN: "South Sinai", WAD: "New Valley", MTR: "Matrouh" };
   function govList() { return (W.MIGREG && MIGREG.list) || []; }
@@ -475,7 +475,7 @@
   ];
   var NAVP = {}, NAVL = {};
   GR.forEach(function (g) { g[2].forEach(function (x) { NAVP[x[0]] = x[4]; NAVL[x[0]] = [x[1], x[2]]; }); });
-  function visible(k) { var p = NAVP[k]; if (!p) return false; if (typeof p === "function") return !!p(); if (p === "seo") return seoOk(); return Array.isArray(p) ? canAny(p) : can(p); }
+  function visible(k) { var p = NAVP[k], sx = ST.boot && ST.boot.sections; if (!p) return false; if (sx && !sx[k]) return false; /* a team-portal session: only its own sections (worker portal-map.js) */ if (typeof p === "function") return !!p(); if (p === "seo") return seoOk(); return Array.isArray(p) ? canAny(p) : can(p); }
   function firstVisible() { for (var i = 0; i < GR.length; i++) for (var j = 0; j < GR[i][2].length; j++) { var k = GR[i][2][j][0]; if (k !== "seo-admin" && visible(k) && SEC[k]) return k; } return ""; }
   function navPaint() {
     var nv = $("#nv"); if (!nv) return;
@@ -865,26 +865,6 @@
       if (ps) ps.addEventListener("change", gtog); gw.addEventListener("change", gtog); gtog();
     }
   }
-  /* 0013 «اللي ظاهر عنه على الإنترنت»: what Bassem gets about the member from the platform's own ONE web search for him (name + company
-     of his account; worker/src/member-web.js) — shown to bassem.read only (the server sends bassem_web to no one else), cleared with
-     members.write (DELETE /api/admin/cc/members/:id/web-summary, audited). The links are for the team only, never in Bassem's block */
-  function memberWebH(w) {
-    var st = { found: T("فيه ملخص", "Summary found"), none: T("مفيش حاجة واضحة في النتايج — مفيش سطر لباسم", "Nothing clear in the results — no line for Bassem"),
-      failed: T("البحث فشل — هيتعاد بعد ٦ ساعات", "The search failed — retried after 6 hours"),
-      cleared: T("اتمسح من الفريق — مش هيتدوّر عليه تاني إلا لو اسمه أو شركته اتغيّروا", "Cleared by the team — not searched again unless the name or company changes") };
-    var note = !w.switch_on ? T("مفتاح «باسم يعرف العضو من الإنترنت» مقفول في «المطوّر»: مفيش بحث ولا سطر.", "The switch «Bassem knows the member from the web» is off in «Developer»: no search, no line.")
-      : !w.search_ready ? T("مفيش مفتاح بحث إنترنت شغّال في «مفاتيح الخدمات».", "No working web-search key in «Service keys».")
-      : !w.can_search ? T("مفيش اسم بالكامل (كلمتين على الأقل) وشركة في حسابه، فمابيتعملش بحث.", "No full name (two words or more) and company on the account, so no search runs.")
-      : !w.status ? T("لسه ماتعملش بحث — بيتعمل أول ما يكلّم باسم وهو داخل بحسابه.", "Not searched yet — it runs when he next calls Bassem signed in.") : "";
-    var srcs = (w.sources || []).map(function (u) { return '<a href="' + h(u) + '" target="_blank" rel="noopener noreferrer nofollow" dir="ltr">' + h(String(u).replace(/^https?:\/\//, "").slice(0, 60)) + "</a>"; }).join("<br>");
-    return "<h3>" + h(T("اللي ظاهر عنه على الإنترنت (لباسم والفريق بس)", "What the web shows about him (Bassem and the team only)")) + "</h3>"
-      + kvH([[T("الحالة", "Status"), w.status ? (st[w.status] || w.status) : ""], [T("الملخص اللي باسم بيشوفه", "The summary Bassem sees"), w.summary],
-        [T("اتدوّر عليه", "Searched"), w.searched_at ? fdh(w.searched_at, true) : "", "", 1], [T("صالح لحد", "Valid until"), w.expires_at ? fdh(w.expires_at) : "", "", 1],
-        [T("الروابط (للفريق بس)", "Links (team only)"), srcs, "ltr", 1]])
-      + (w.stale ? '<p class="mut">' + h(T("الاسم أو الشركة اتغيّروا من ساعة البحث: هيتدوّر تاني في المكالمة الجاية.", "The name or company changed since the search: it is searched again at the next call.")) + "</p>" : "")
-      + (note ? '<p class="mut">' + h(note) + "</p>" : "")
-      + (can("members.write") && w.stored && w.status && w.status !== "cleared" ? '<div class="acts2">' + btn("mwclr", h(T("🧹 امسح الملخص", "🧹 Clear the summary")), "l") + "</div>" : "");
-  }
   function memberDetail(id, done) {
     modal(mh(T("تفاصيل العضو", "Member details")) + loadingH(), { wide: true });
     GET("/admin/cc/members/" + enc(id)).then(function (j) {
@@ -896,14 +876,12 @@
         + "<h3>" + h(T("الفواتير", "Invoices")) + "</h3>" + (inv.length ? '<div class="tbl-s">' + tableH([["الرقم", "No.", function (x) { return '<span dir="ltr">' + h(x.no) + "</span>"; }], ["الباقة", "Plan", function (x) { return h(x.plan_name || planName(x.plan)); }], ["الإجمالي", "Total", function (x) { return h(money(x.total_minor, x.currency)); }], ["الحالة", "Status", function (x) { return invChip(x.status); }], ["التاريخ", "Date", function (x) { return fdh(x.issued_at); }]], inv, {}) + "</div>" : '<p class="mut">' + h(T("مفيش فواتير.", "No invoices.")) + "</p>")
         + "<h3>" + h(T("الطلبات اللي وصلتله", "Requests routed to this member")) + " (" + h(nf(rt.count || 0)) + ")</h3>" + ((rt.last || []).length ? "<ul>" + rt.last.map(function (x) { return '<li><a href="#messages/' + enc(x.ref) + '" dir="ltr">' + h(x.ref) + "</a> · " + inqChip(x.status) + " · " + fdh(x.created_at) + "</li>"; }).join("") + "</ul>" : '<p class="mut">' + h(T("لسه مفيش.", "None yet.")) + "</p>")
         + (j.bassem ? "<h3>" + h(T("باسم", "Bassem")) + "</h3>" + kvH(Object.keys(j.bassem).filter(function (k) { return typeof j.bassem[k] !== "object"; }).map(function (k) { return [k, String(j.bassem[k])]; })) : "")
-        + (j.bassem_web ? memberWebH(j.bassem_web) : "")
         + (lpKeys.length ? "<h3>" + h(T("بيانات الحساب في النظام القديم (للإدارة فقط)", "Old-system account data (admins only)")) + "</h3>" + kvH(lpKeys.map(function (k) { return [k, typeof lp[k] === "object" ? JSON.stringify(lp[k]) : String(lp[k])]; })) : "")
         + (au.length ? "<h3>" + h(T("سجل العمليات", "Audit history")) + '</h3><ol class="tl">' + au.map(function (a) { return "<li><b>" + h(a.action) + "</b><small>" + fdh(a.at, true) + " · " + h(a.actor_email || a.actor_id) + "</small>" + (a.summary ? '<div dir="auto">' + h(a.summary) + "</div>" : "") + "</li>"; }).join("") + "</ol>" : "") + "</div>";
       var bx = modal(html, { wide: true, on: {
         inv: function () { invoiceForm({ member_id: m.id, email: m.email }, function () { memberDetail(id, done); }); },
         ext: function () { askDays(function (d) { return POST("/admin/cc/members/" + enc(m.id) + "/extend", { days: d }).then(function () { toast(T("اتمدّ الاشتراك ✓", "Subscription extended ✓")); done && done(); memberDetail(id, done); }); }); },
         sus: function (b) { var to = (m.status || "active") === "suspended" ? "active" : "suspended"; if (to === "suspended" && !sure(T("إيقاف الحساب مؤقتاً؟", "Suspend this account?"))) return; b.disabled = true; POST("/admin/cc/members/" + enc(m.id) + "/status", { status: to }).then(function () { toast(T("تم ✓", "Done ✓")); done && done(); memberDetail(id, done); }, function (e) { b.disabled = false; toast(errText(e), 1); }); },
-        mwclr: function (b) { if (!sure(T("تمسح ملخص الإنترنت بتاع العضو ده؟ باسم مش هيشوفه، ومش هيتدوّر عليه تاني إلا لو اسمه أو شركته اتغيّروا.", "Clear this member's web summary? Bassem will not see it, and he is not searched again unless his name or company changes."))) return; b.disabled = true; DEL("/admin/cc/members/" + enc(m.id) + "/web-summary").then(function () { toast(T("اتمسح ✓", "Cleared ✓")); memberDetail(id, done); }, function (e) { b.disabled = false; toast(errText(e), 1); }); },
         rev: function (b) { if (!sure(T("إنهاء كل جلسات الدخول المفتوحة للعضو ده؟", "End every open session of this member?"))) return; b.disabled = true; POST("/admin/cc/members/" + enc(m.id) + "/sessions/revoke").then(function (x) { toast(T("اتقفلت الجلسات: ", "Sessions ended: ") + nf(x && x.revoked != null ? x.revoked : 0)); memberDetail(id, done); }, function (e) { b.disabled = false; toast(errText(e), 1); }); },
         invt: function (b) { b.disabled = true; POST("/admin/cc/members/" + enc(m.id) + "/invite", { lang: LANG }).then(function (x) { toast(x && x.sent ? T("اتبعتت الدعوة ✓", "Invitation sent ✓") : T("ماتبعتتش — الإرسال مش متفعّل", "Not sent — e-mail is not configured"), !(x && x.sent)); b.disabled = false; }, function (e) { b.disabled = false; toast(errText(e), 1); }); },
         anon: function () { typed({ title: T("أرشفة ومسح بيانات العضو", "Archive and erase this member"), msg: T("البريد والاسم والتليفون والشركة بيتمسحوا، والجلسات بتتقفل، والطلبات اللي بعتها بتفضل زي ما هي. مفيش تراجع.", "E-mail, name, phone and company are erased, sessions end, and requests the member sent stay as they are. This cannot be undone."), expect: m.email, ok: T("أرشفة نهائية", "Archive permanently"), extra: '<div class="fr" style="margin-top:8px"><label class="w">' + h(T("السبب القانوني (لو العضو ليه ذاكرة مع باسم أو ملف مصنع)", "Legal basis (when the member has Bassem memory or a factory profile)")) + '<input data-tf="reason" maxlength="300" dir="auto"><span class="hint">' + h(T("ذاكرة باسم مع العضو وملف مصنعه بيتمسحوا مع الحساب — ده بيتعمل بس لطلب رسمي من صاحب البيانات بموجب قانون حماية البيانات الشخصية 151 لسنة 2020. اكتب الطلب (رقمه وتاريخه)؛ بيتسجّل في سجل العمليات.", "Bassem's memory of the member and the factory profile are erased with the account — only for a formal data-subject request under Egypt's personal data protection law 151/2020. Write the request (number and date); it is kept in the audit log.")) + '</span></label></div>', submit: function (r2) { var rs = trim(r2.vals.reason || ""); DEL("/admin/cc/members/" + enc(m.id), rs ? { confirm: m.email, reason: rs } : { confirm: m.email }).then(function () { r2.done(); toast(T("اتأرشف الحساب ✓", "Account archived ✓")); done && done(); }, r2.err); } }); }

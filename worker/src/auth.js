@@ -54,7 +54,7 @@ export async function signSession(secret, memberId, sid, exp) {
 async function parseV2(env, token) {
   const p = String(token || "").split(".");
   const secret = secretOf(env);
-  if (p.length !== 5 || p[0] !== "v2" || !secret || !/^(?:[a-f0-9]{32}|l[kg][a-f0-9]{30})$/.test(p[2])) return null; // "lk…" = a login-link session, "lg…" = an old-password bridge session
+  if (p.length !== 5 || p[0] !== "v2" || !secret || !/^(?:[a-f0-9]{32}|l[kgp][a-f0-9]{30})$/.test(p[2])) return null; // "lk…" = a login-link session, "lg…" = an old-password bridge session, "lp…" = a team-portal session (portal-sso.js)
   let memberId; try { memberId = new TextDecoder().decode(unb64url(p[1])); } catch (e) { return null; }
   const exp = +p[3];
   if (!exp || exp < Math.floor(Date.now() / 1000)) return null;
@@ -83,6 +83,7 @@ export async function authUser(req, env, token) {
   // /api/auth/legacy, acc-legacy.js: "lg…") has the SAME limited scope (review F8): the old system's word is no proof of the mailbox
   m._scope = /^l[kg]/.test(t.sid) ? "link" : "full";
   if (t.sid.startsWith("lg")) m._via = "legacy";
+  if (t.sid.startsWith("lp")) m._via = "portal"; // its Control Center sections: acc-base.js portalOf (KV), never a staff role of its own
   return m;
 }
 /* a session opened by an e-mailed login link (not by an e-mail code) — refused where it could take the account over (SEC M2) */

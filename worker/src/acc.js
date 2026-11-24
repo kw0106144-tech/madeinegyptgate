@@ -19,6 +19,7 @@
 import { now, iso, cairoDay, ipHash, rateOk, safeEq, line, emailOn, secretOf } from "./common.js";
 import { authUser, isLinkSession } from "./auth.js";
 import { configSecretOk } from "./crypto.js";
+import { portalAllowed } from "./portal-map.js"; // team-portal sessions (portal-sso.js)
 import { ccJson, ccErr, ccPreflight, csvRes, csvText, errOf, HttpErr, fail, all, first, paging, hasTable, body as readBody, audit as auditInsert, auditStmt, auditDone, rid, roleOf, sessionVia, ROLE_PERMS, TEAM_ROLES, OWNER_ONLY, isBootstrap, jget, dateOk, dayStartIso, dayAfterIso } from "./acc-base.js";
 import * as MEM from "./acc-members.js";
 import * as ORD from "./acc-orders.js";
@@ -107,7 +108,7 @@ async function whoami(env, adm) {
   try { if (adm.CC && adm.CC.payments && typeof adm.CC.payments.payReady === "function") pay = !!(await adm.CC.payments.payReady(env)).ready; } catch (e) { pay = false; }
   try { email = adm.CC && adm.CC.email && typeof adm.CC.email.mailReady === "function" ? !!adm.CC.email.mailReady(env) : emailOn(env); } catch (e) { email = false; }
   if (!anam) { try { anam = !!(await loadServiceKeys(env)).anam_key; } catch (e) { anam = false; } }
-  return { user: adm.member ? userOut(env, adm.member) : null, role: adm.role, perms: adm.perms, bootstrap_owner: !!(adm.member && isBootstrap(env, adm.member)), lang_default: "ar", site: "https://madeinegyptgate.com/",
+  return { user: adm.member ? userOut(env, adm.member) : null, role: adm.role, perms: adm.perms, ...(adm.role === "portal" ? { sections: adm.member._portal.nav } : {}), bootstrap_owner: !!(adm.member && isBootstrap(env, adm.member)), lang_default: "ar", site: "https://madeinegyptgate.com/",
     features: { overlay_kv: !!env.SEO_KV, media_r2: !!env.MEDIA, config_secret: configSecretOk(env), email_ready: email, pay_ready: pay, legacy_origin: !!bridgeOrigin(env), anam, ...KEYS.keyFeatures(env, adm), ...(await DEV.devFeatures(env, adm)) } };
 }
 async function auditList(env, url, csv) {
@@ -141,7 +142,6 @@ const ROUTES = [
   R("POST", P("/members/:id/extend"), "members.plan", (q, e, c, a, u, m) => MEM.postExtend(q, e, c, a, m[1])),
   R("POST", P("/members/:id/invite"), "members.write", (q, e, c, a, u, m) => MEM.postInvite(q, e, c, a, m[1])),
   R("POST", P("/members/:id/sessions/revoke"), "members.plan", (q, e, c, a, u, m) => MEM.revokeSessions(q, e, c, a, m[1])),
-  R("DELETE", P("/members/:id/web-summary"), "members.write", (q, e, c, a, u, m) => MEM.clearWebSummary(q, e, c, a, m[1])), // 0013: «🧹 امسح» Bassem's web summary
   R("GET", P("/customers"), "customers.read", (q, e, c, a, u) => MEM.listCustomers(e, u)),
   R("GET", P("/customers\\.csv"), "customers.read", async (q, e, c, a, u) => ({ csv: "customers", text: await MEM.customersCsv(e, u) }), { adminOnly: true }),
   R("GET", P("/customers/:id"), "customers.read", (q, e, c, a, u, m) => MEM.customerDetail(e, m[1])),
@@ -267,7 +267,9 @@ export async function handleCC(req, env, ctx, CC) {
       if (!role) return ccErr(req, env, 403, "forbidden", "غير مصرّح لك بدخول هذه الصفحة / you may not open this page");
       if (TEAM_ROLES[role]) return ccErr(req, env, 403, "forbidden", "غير مصرّح لك بدخول هذه الصفحة — لوحة فريقك / you may not open this page — use your team page", { team: role, team_page: TEAM_ROLES[role] });
     }
-    const perms = ROLE_PERMS[role] || [], set = new Set(perms);
+    // a team-portal session (portal-sso.js): only the paths of its own sections, only the permissions those sections give (portal-map.js)
+    if (role === "portal" && !portalAllowed(path, M, member._portal.s)) return ccErr(req, env, 403, "forbidden", "القسم ده مش ضمن صلاحياتك في بوابة الفريق / this section is not in your team-portal access", { need: "portal" });
+    const perms = role === "portal" ? member._portal.perms : ROLE_PERMS[role] || [], set = new Set(perms);
     const actor = member ? { actor_id: member.id, actor_email: member.email || "", actor_role: role } : { actor_id: "platform", actor_email: "", actor_role: "platform" };
     const ih = await ipHash(req, env), reqId = line(req.headers.get("cf-ray") || "", 40) || rid(12), lang = url.searchParams.get("lang") === "en" ? "en" : "ar";
     if (M !== "GET" && M !== "HEAD" && !(await rateOk(env, "ccw|" + actor.actor_id, 120, 60))) return ccErr(req, env, 429, "rate_limited", "too many changes in a minute — wait a little", { retry_s: 60 });

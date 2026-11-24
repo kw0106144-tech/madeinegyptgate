@@ -67,7 +67,7 @@ async function getMe(env, me) {
      "" = no staff role (the boards then show the lock box without calling a team API). Tables missing (before 0006) → the key stays absent. */
   try {
     const via = me._via === "legacy" ? "legacy" : me._sid_hash ? await env.DB.prepare("SELECT via FROM cc_session_meta WHERE sid_hash = ?").bind(me._sid_hash).first("via") : null;
-    if (via === "legacy") user.staff_role = "";
+    if (via === "legacy" || me._via === "portal") user.staff_role = ""; // a team-portal session (portal-sso.js) never opens the team boards
     else {
       const boot = !!(me.email && me.email_verified_at && String(env.ADMIN_EMAILS || "").toLowerCase().split(/[\s,;]+/).includes(String(me.email).toLowerCase()));
       const s = boot ? null : await env.DB.prepare("SELECT role FROM cc_staff WHERE member_id = ? AND disabled_at = ''").bind(me.id).first("role");

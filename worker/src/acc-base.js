@@ -4,6 +4,7 @@
    - roles & permissions (§0.5) and the audit log (§0.6): every admin write leaves one cc_audit row, or nothing changes.
    - "fail open": reads of the 0006 tables return empty results on a database without them; writes answer 503 store_off.
    Allowed imports (§0.2): common.js, auth.js, crypto.js, inquiries.js, candidates.js, meetings.js, whatsapp.js, text.js, data.json. */
+import { cleanSections, portalPerms, portalNav } from "./portal-map.js"; // team portal sessions (portal-sso.js)
 import DATA from "./data.json";
 import { line, str, now, scalar, isEmail, mail, site } from "./common.js";
 import { norm } from "./text.js";
@@ -197,12 +198,23 @@ export const isBootstrap = (env, m) => !!(m && m.email && m.email_verified_at &&
 /* the role of a signed-in member (normative order §0.5); via = "legacy" (old-password bridge session) → none */
 export async function roleOf(env, m, via) {
   if (!m || via === "legacy") return null;
+  if (m._via === "portal") { const p = await portalOf(env, m); if (!p) return null; m._portal = p; return "portal"; } // portal-sso.js: never any other role
   if (isBootstrap(env, m)) return "owner";
   const s = await first(env, "SELECT role FROM cc_staff WHERE member_id = ? AND disabled_at = ''", m.id);
   const lim = LIMITED_ADMINS.includes(String(m.email || "").toLowerCase());
   if (s && ROLES.includes(s.role)) return s.role === "admin" && lim ? "manager" : s.role;
   if (m.role === "admin") return lim ? "manager" : "admin";
   return null;
+}
+/* a team-portal session («lp…» session id, portal-sso.js): its sections live in KV acc:portal:<sid hash> for the session's life (8 h).
+   No KV row (expired, KV down, not written) → null → no Control Center role at all (fail-closed). */
+export const PORTAL_KV = "acc:portal:";
+export async function portalOf(env, m) {
+  if (!m || m._via !== "portal" || !m._sid_hash || !env || !env.SEO_KV) return null;
+  let v = null; try { v = await env.SEO_KV.get(PORTAL_KV + m._sid_hash, "json"); } catch (e) { return null; }
+  if (!v || typeof v !== "object" || !v.s || typeof v.s !== "object" || (v.exp && Date.parse(v.exp) < Date.now())) return null;
+  const s = cleanSections(v.s);
+  return { s, perms: portalPerms(s), nav: portalNav(s) };
 }
 export async function sessionVia(env, m) {
   if (m && m._via === "legacy") return "legacy"; // "lg…" session id (auth.js) — no D1 read
