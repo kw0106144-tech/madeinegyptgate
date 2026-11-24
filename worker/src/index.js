@@ -36,6 +36,7 @@ import { handleMeDeleteRequest, handleVisitorEraseRequest } from "./delete-reque
 import { handleInquiries, handleInquiryEmail, isInquiryAddress, inquiriesCron } from "./inquiries.js"; // /api/inquiries* + automatic routing
 import { handleAdmin } from "./admin.js";           // /api/admin/*       monitoring console (no human step in any flow)
 import { handleEv, handleUnsub } from "./ev.js";    // /api/ev, /api/unsub
+import { handleGuardEv, guardTool, guardCron } from "./guard.js"; // «حماية الموقع»: /api/ev/guard, copying tools on /data/overlay.js, the hourly alert
 import { handleWA, bassemCron } from "./whatsapp.js"; // /api/wa/*        respond.io webhook + Bassem's daily WhatsApp
 import { handleJannaSession } from "./janna-session.js"; // /api/janna/session  live-call session tokens (JS SDK: no third-party mark)
 import { handleTiming } from "./live-timing.js";       // /api/janna/timing   the call page's start timing beacon (numbers only)
@@ -46,7 +47,7 @@ import { handleVisitorMemory } from "./visitor.js";   // /api/janna/memory[/task
 import { handleKnowledge } from "./knowledge.js";     // /api/janna/knowledge  the personas' knowledge_lookup tool
 import { dailyMemory } from "./daily.js";              // day digests + «ملخص العميل» + tasks / knowledge merge / caps report (once per Cairo day)
 import { dailyJobs, newCountFor } from "./digest.js";
-import { cairoDay, addDays, toolSoftError, toolBody, toolBodyShape, pickQuery } from "./common.js";
+import { cairoDay, addDays, toolSoftError, toolBody } from "./common.js";
 // ---- web search (src/websearch.js) + the opportunity hunt (src/web-hunt.js): Bassem POST /api/advisor/web|hunt, Janna POST /api/janna/web|hunt ----
 import { handleWebSearch, handleJannaWebSearch, WS_MARKETS } from "./websearch.js";
 import { handleJannaHunt, handleBassemHunt } from "./web-hunt.js";
@@ -664,7 +665,7 @@ const WORKER = {
     // Control Center first: the /api/me, /api/auth and /api/admin regexes below would swallow these paths (ACC-CONTRACT §3.0).
     // Every family is anchored at the start of the path (review F9): /api/janna/x/api/admin/cc/… is NOT the Control Center, so a WAF /
     // Access / IP rule written for /api/admin/* or /api/me/* cannot be bypassed through another routed prefix.
-    if (/^\/data\/overlay\.js$/.test(url.pathname)) return CC.content.serveOverlay(req, env, ctx);
+    if (/^\/data\/overlay\.js$/.test(url.pathname)) { if (ctx && ctx.waitUntil) ctx.waitUntil(guardTool(req, env)); return CC.content.serveOverlay(req, env, ctx); } // guard.js: wget / curl / HTTrack … (counted, never refused)
     if (/^\/media\/u\//.test(url.pathname)) return CC.content.serveMedia(req, env, ctx);
     if (/^\/api\/index\.php$/.test(url.pathname)) return CC.acc.handleOldApi(req, env, ctx);
     if (/^\/api\/admin\/cc(\/|$)/.test(url.pathname)) return CC.acc.handleCC(req, env, ctx, CC);
@@ -687,6 +688,7 @@ const WORKER = {
     if (/^\/api\/me(\/|$)/.test(url.pathname)) return handleMe(req, env, ctx);
     if (/^\/api\/inquiries(\/|$)/.test(url.pathname)) { const res = await handleInquiries(req, env, ctx); if (req.method === "POST" && res.status === 201) { try { const j = await res.clone().json(); if (j && j.ref) ctx.waitUntil(CC.payments.onInquiryCreated(env, j.ref, CC)); } catch (e) { /* ignore */ } } return res; }
     if (/^\/api\/admin(\/|$)/.test(url.pathname)) return handleAdmin(req, env, ctx);
+    if (/^\/api\/ev\/guard\/?$/.test(url.pathname)) return handleGuardEv(req, env, ctx); // «حماية الموقع» (data/guard.js beacon)
     if (/^\/api\/ev\/?$/.test(url.pathname)) return handleEv(req, env, ctx);
     if (/^\/api\/unsub\/?$/.test(url.pathname)) return handleUnsub(req, env, ctx);
     if (/^\/api\/wa(\/|$)/.test(url.pathname)) return handleWA(req, env, ctx);
@@ -706,11 +708,9 @@ const WORKER = {
     if (env && env.JANNA_KEY && req.headers.get("X-Janna-Key") !== env.JANNA_KEY) return json({ error: "unauthorized" }, 401);
     const post = req.method === "POST";
     let a = Object.fromEntries(url.searchParams);
-    let shape = "";
-    if (post) { const b = await toolBody(req); if (!b) { toolSoftError("/api/janna/lookup", "bad_json"); return json({ error: "bad json", count: 0, results: [], text: LOOKUP_TEXT.bad_json }, 200); } shape = toolBodyShape(b); a = Object.assign(a, b); }
-    if (!a.query) { const q = pickQuery(a); if (q) a.query = q; } // 2026-11-23: a model may name it q / keyword / product … (common.js pickQuery)
+    if (post) { const b = await toolBody(req); if (!b) { toolSoftError("/api/janna/lookup", "bad_json"); return json({ error: "bad json", count: 0, results: [], text: LOOKUP_TEXT.bad_json }, 200); } a = Object.assign(a, b); }
     const section = lookupSection(a.section); // LOOKUP_SECTIONS (+ customers, projects, events, news, awards — U2 / U15); unknown → factories, as before
-    if (!a.query && !a.governorate) { if (post) { toolSoftError("/api/janna/lookup", "query_required"); console.warn("tool-args-shape", "/api/janna/lookup", shape); } return json({ error: "query required", count: 0, results: [], text: LOOKUP_TEXT.no_query }, post ? 200 : 400); }
+    if (!a.query && !a.governorate) { if (post) toolSoftError("/api/janna/lookup", "query_required"); return json({ error: "query required", count: 0, results: [], text: LOOKUP_TEXT.no_query }, post ? 200 : 400); }
     /* U16: the members' approved products / companies (D1, at most one read per isolate per 10 minutes; fail-soft) for the sections that list
        them — only those approved since this bundle was built (data.json v): the older ones are in it already */
     /* the members' records and «فرص السوق» (the published web opportunities of the sections they belong to, with the owner's switch
@@ -755,7 +755,8 @@ export async function platformCron(env, nowMs = Date.now()) {
   for (const [k, fn] of [["inquiries", () => inquiriesCron(env, nowMs)], ["daily", () => dailyJobs(env, nowMs)], ["bassem", () => bassemCron(env, nowMs, m => newCountFor(env, m, nowMs))], ["cc", () => CC.acc.ccCron(env, nowMs, CC)],
     ["memory", () => (busy() ? { skipped: "daily digests ran in this tick" } : memoryCron(menv, nowMs))],
     ["memory_day", () => (busy() ? { skipped: "daily digests ran in this tick" } : out.memory && out.memory.rebuilt ? { skipped: "consolidation ran in this tick" } : dailyMemory(menv, nowMs))],
-    ["calls_report", () => (busy() ? { skipped: "daily digests ran in this tick" } : callsReportCron(env, nowMs, CC))]]) { // its own budgetEnv(env, 80) inside
+    ["calls_report", () => (busy() ? { skipped: "daily digests ran in this tick" } : callsReportCron(env, nowMs, CC))], // its own budgetEnv(env, 80) inside
+    ["guard", () => guardCron(env, nowMs)]]) { // «حماية الموقع»: ≤ 1 read when nothing happened; at most one e-mail an hour
     try { out[k] = await fn(); } catch (e) { out[k] = { error: String(e && e.message || e) }; console.error("platform cron " + k, e && e.stack || e); }
   }
   return out;

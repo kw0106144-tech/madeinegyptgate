@@ -142,6 +142,7 @@ const ROUTES = [
   R("POST", P("/members/:id/extend"), "members.plan", (q, e, c, a, u, m) => MEM.postExtend(q, e, c, a, m[1])),
   R("POST", P("/members/:id/invite"), "members.write", (q, e, c, a, u, m) => MEM.postInvite(q, e, c, a, m[1])),
   R("POST", P("/members/:id/sessions/revoke"), "members.plan", (q, e, c, a, u, m) => MEM.revokeSessions(q, e, c, a, m[1])),
+  R("DELETE", P("/members/:id/web-summary"), "members.write", (q, e, c, a, u, m) => MEM.clearWebSummary(q, e, c, a, m[1])), // 0013: «🧹 امسح» Bassem's web summary
   R("GET", P("/customers"), "customers.read", (q, e, c, a, u) => MEM.listCustomers(e, u)),
   R("GET", P("/customers\\.csv"), "customers.read", async (q, e, c, a, u) => ({ csv: "customers", text: await MEM.customersCsv(e, u) }), { adminOnly: true }),
   R("GET", P("/customers/:id"), "customers.read", (q, e, c, a, u, m) => MEM.customerDetail(e, m[1])),
