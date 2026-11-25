@@ -982,6 +982,15 @@ html.mig-app .sx-share[data-mig-app-only][hidden]{display:inline-flex!important}
 '''
 
     SEO_JS = r'''(function(){var d=document,h=d.documentElement;
+/* a subscriber = signed in with an active paid plan (data/plan.js: «تسجيل بيانات الشركة» and up, not expired), or the team (role admin).
+   Subscribers see the issuing body of every tender (.sx-ent); anyone else who opens a tender goes to the plans (owner 2026-11-25) */
+var paid=false;try{var mc=JSON.parse(localStorage.getItem("mig-me")||"null"),mu=mc&&mc.user,mk=mu?String(mu.plan||"").toLowerCase():"";
+if(localStorage.getItem("mig-tok")&&mu)paid=mu.role==="admin"||(/^(profile|data|data_only|basic|premium|partner|core|strategic)$/.test(mk)&&!(mu.plan_expires&&Date.parse(mu.plan_expires)<Date.now()));}catch(e){}
+if(paid)h.classList.add("mig-paid");
+d.addEventListener("click",function(e){if(paid||e.defaultPrevented)return;var a=e.target.closest?e.target.closest("a[href]"):null;
+if(!a||!/^\/(?:en\/)?tender-item\//.test(a.getAttribute("href")||""))return;e.preventDefault();
+try{sessionStorage.setItem("mig-gate",(a.textContent||"").replace(/\s+/g," ").trim().slice(0,120));}catch(x){}
+location.href=h.lang==="en"?"/register/?lang=en#plans":"/register/#plans";});
 try{var th=localStorage.getItem("mig-theme");if(th)h.setAttribute("data-theme",th);}catch(e){}
 /* the phone menu (up to 1240px, site.py SHARED_CSS): it scrolls inside the screen below the header (--nav-top) while the page behind it stays locked (html.nav-open); each section opens from its title (accordion, the same rules as site.py SHARED_JS); a chosen link or Esc closes it */
 var b=d.getElementById("menuBtn2"),n=d.getElementById("siteNav");if(b&&n){var nmq=window.matchMedia?matchMedia("(max-width: 1240px)"):null,narrow=function(){return nmq?nmq.matches:innerWidth<=1240;},
@@ -1118,6 +1127,8 @@ html[lang=en] .sx-gc .ft::after{content:"Explore the governorate →"}
 .sx-tg .tlist li.st-soon{border-inline-start-color:#E08A00}.sx-tg .tlist li.st-closed{border-inline-start-color:#B42318;opacity:.8}.sx-tg .tlist li.st-undated{border-inline-start-color:var(--line)}
 .sx-tg .tp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sx-dl{font-size:.75rem;font-weight:800;color:var(--muted)}.sx-dl::before{content:"⏳ "}
+/* the issuing body of a tender: subscribers only (owner 2026-11-25; ent_html, SEO_JS html.mig-paid) */
+.sx-ent{display:none}.sx-ent-lk{color:var(--muted)}html.mig-paid .sx-ent{display:inline}html.mig-paid .sx-ent-lk{display:none}
 .sx-tg .tlist a{line-height:1.6}.sx-tg .tlist a::after{content:"";position:absolute;inset:0}
 .sx-tg .ft{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
 .sx-pjs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
@@ -1931,10 +1942,19 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             return X(L, 'آخر يوم للتقديم', 'Last day')
         return X(L, 'باقي %s' % ar_count(n, 'يوم واحد', 'يومان', 'أيام', 'يوماً'), '%d day%s left' % (n, '' if n == 1 else 's'))
 
+    def ent_html(ent, L, sep=' · '):
+        """the issuing body of a tender: for subscribers only (owner 2026-11-25). The name stays in the HTML for search engines; the
+        page script (SEO_JS) marks a signed-in member with an active paid plan as html.mig-paid, and only then is it shown —
+        everyone else sees «🔒 الجهة للمشتركين» (SEO_CSS .sx-ent / .sx-ent-lk)"""
+        if not ent:
+            return ''
+        return '<span class="sx-ent">%s%s</span><span class="sx-ent-lk">%s%s</span>' % (esc(ent), esc(sep), esc(X(L, '🔒 الجهة للمشتركين', '🔒 Issuer for members')), esc(sep))
+
     def tender_card(t, L):
         P = '/en' if L == 'en' and t.get('en_ok') else ''
         st = tender_badge(t, L)
-        m = ' · '.join(x for x in [T(L, t['entity'], t.get('entity_en')) if t['entity'] else '', gov_name(t.get('gov'), L) or (X(L, t.get('country'), t.get('country_en') or t.get('country')) if t['src'] == 'intl' else ''),
+        ent = ent_html(T(L, t['entity'], t.get('entity_en')) if t['entity'] else '', L)
+        m = ' · '.join(x for x in ['', gov_name(t.get('gov'), L) or (X(L, t.get('country'), t.get('country_en') or t.get('country')) if t['src'] == 'intl' else ''),
                                    (X(L, 'آخر موعد ', 'Closes ') + fmt_date(t['deadline'], L)) if t.get('deadline') else ''] if x)
         nm = T(L, t['title'], t.get('title_en'))
         dl = ''
@@ -1947,7 +1967,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         if False and t.get('booklet') and str(t['booklet']).replace('.', '').isdigit():   # locked for members (detail_lock)
             chips.append('<span class="chip chip-gold">%s</span>' % esc(X(L, 'الكراسة ', 'Documents ') + money_egp(t['booklet'], L)))
         return ('<li class="st-%s"><div class="tp">%s%s</div><a href="%s"%s>%s</a><span class="m">%s</span>%s</li>'
-                % (t['status'], st, dl, esc(lk(L, t['path'])), '' if L == 'ar' or not AR_RX.search(nm) else ' lang="ar"', esc(nm), esc(m),
+                % (t['status'], st, dl, esc(lk(L, t['path'])), '' if L == 'ar' or not AR_RX.search(nm) else ' lang="ar"', esc(nm), ent + esc(m),
                    ('<div class="ft">%s</div>' % ''.join(chips)) if chips else ''))
 
     def tender_cards(lst, L):
@@ -3023,9 +3043,9 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             return X(L, k[0], k[1]) if k else X(L, 'مناقصة', 'Tender')
         return T(L, t['ptype']) if t['ptype'] else X(L, 'مناقصة', 'Tender')
 
-    def tender_summary(t, L):
+    def tender_summary(t, L, with_ent=True):
         parts = [tender_kind(t, L)]
-        ent = T(L, t['entity'], t.get('entity_en')) if t['entity'] else ''
+        ent = T(L, t['entity'], t.get('entity_en')) if t['entity'] and with_ent else ''
         s = '%s%s: %s.' % (parts[0], (X(L, ' من ', ' by ') + ent) if ent else '', T(L, t['title'], t.get('title_en')))
         if t.get('deadline'):
             s += X(L, ' آخر موعد %s.', ' Closing date %s.') % fmt_date(t['deadline'], L)
@@ -4024,10 +4044,11 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
     def tender_li(t, L):
         P = '/en' if L == 'en' and t.get('en_ok') else ''
         st = tender_badge(t, L)
-        m = ' · '.join(x for x in [T(L, t['entity'], t.get('entity_en')) if t['entity'] else '', gov_name(t.get('gov'), L) or (X(L, t.get('country'), t.get('country_en') or t.get('country')) if t['src'] == 'intl' else ''),
+        ent = ent_html(T(L, t['entity'], t.get('entity_en')) if t['entity'] else '', L)
+        m = ' · '.join(x for x in ['', gov_name(t.get('gov'), L) or (X(L, t.get('country'), t.get('country_en') or t.get('country')) if t['src'] == 'intl' else ''),
                                    (X(L, 'آخر موعد ', 'Closes ') + fmt_date(t['deadline'], L)) if t.get('deadline') else ''] if x)
         nm = T(L, t['title'], t.get('title_en'))
-        return '<li><a href="%s"%s>%s</a> %s<span class="m">%s</span></li>' % (esc(lk(L, t['path'])), '' if L == 'ar' or not AR_RX.search(nm) else ' lang="ar"', esc(nm), st, esc(m))
+        return '<li><a href="%s"%s>%s</a> %s<span class="m">%s</span></li>' % (esc(lk(L, t['path'])), '' if L == 'ar' or not AR_RX.search(nm) else ' lang="ar"', esc(nm), st, ent + esc(m))
 
     def tender_sort(lst):
         rank = {'soon': 0, 'open': 1, 'closed': 2, 'undated': 3}
@@ -4109,7 +4130,9 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         facts.append((X(L, 'الحالة', 'Status'), tender_badge(t, L)))
         if ent:
             eh = S['entity_by_name'].get(t['entity'])
-            facts.append((X(L, 'الجهة', 'Issuing entity'), ('<a href="%s">%s</a>' % (esc(lk(L, eh['path'])), esc(ent))) if eh and eh['indexable'] and (L == 'ar' or eh.get('en')) else esc(ent)))
+            facts.append((X(L, 'الجهة', 'Issuing entity'), '<span class="sx-ent">%s</span><span class="sx-ent-lk">%s</span>' % (
+                ('<a href="%s">%s</a>' % (esc(lk(L, eh['path'])), esc(ent))) if eh and eh['indexable'] and (L == 'ar' or eh.get('en')) else esc(ent),
+                esc(X(L, '🔒 للمشتركين فقط', '🔒 Members only')))))
         else:
             facts.append((X(L, 'الجهة', 'Issuing entity'), esc(X(L, 'غير مذكورة في البيانات («جهة حكومية»)', 'Not named in the data'))))
         g = S['gov_by_code'].get(t.get('gov') or '')
@@ -4164,7 +4187,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                 fac_links = '<section class="card2"><h2>%s</h2><div class="links">%s</div></section>' % (X(L, 'مصانع يمكنها التوريد', 'Factories that can supply'), ''.join(
                     '<a href="%s">%s <small>(%d)</small></a>' % (esc(lk(L, h['path'])), esc(sec_name(h['sec']['slug'], L, 't')), h['n']) for h in hubs))
         sim_html = detail_lock(L, 't', '/tenders/search/#' + quote(str(t.get('fid') or t.get('ref') or ''), safe='')) + sim_html
-        intro = tender_summary(t, L)
+        intro = tender_summary(t, L, with_ent=False)   # the line under the title is read by everyone: no issuing body (owner 2026-11-25)
         hp = cat_photo(cat) if cat else VIS_HUB_IMG['tenders']
         body = hero(L, ch, title, intro, img=hp, alt=photo_alt(hp, L, X(L, cat['ar'], cat['en']) if cat else ''), small=True) + '<div class="wrap sx-main">%s<div class="sx-grid"><div><div class="card2"><h2>%s</h2>%s</div>%s%s</div><aside>%s</aside></div></div>' % (
             banner, X(L, 'بيانات المناقصة', 'Tender details'), facts_html, sim_html, fac_links,
