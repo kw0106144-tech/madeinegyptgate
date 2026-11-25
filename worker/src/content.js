@@ -168,7 +168,9 @@ export const COLLS = {
     derived: ["id", "ref"], fields: [
       f("type", "e", { enum: TEND_TYPES, req: 1 }), f("title", "t", { max: 300, req: 1, en: "title_en" }), f("title_en", "t", { max: 300, tr: 1 }),
       f("entity", "t", { max: 160, en: "entity_en" }), f("entity_en", "t", { max: 160, tr: 1 }), f("gov_name", "t", { max: 60 }), f("sector", "t", { max: 120 }),
-      f("booklet", "i", { min: 0, maxv: 100000000, nul: "" }), f("bond", "t", { max: 60 }), f("deadline", "d"), f("gov", "gov"), f("source_url", "url", { src: 1 })] },
+      f("booklet", "i", { min: 0, maxv: 100000000, nul: "" }), f("bond", "t", { max: 60 }), f("deadline", "d"), f("gov", "gov"), f("source_url", "url", { src: 1 }),
+      /* owner 2026-11-25: every tender carries its description and the issuer's procurement contacts (one «label: value» per line) — shown to subscribers only (oldlists.part.py detail) */
+      f("details", "m", { max: 2000 }), f("contacts", "m", { max: 1000 })] },
   rfq: { ar: "طلبات عروض المشترين", en: "Buyer RFQs", global: "window.MIGRFQ", key: "String(row[0])", hide: "splice", adds: true, contacts: true, hub: "/rfq/", seo_prefix: "/rfq/",
     derived: ["id", "no", "url"], priv: ["client", "phone", "email", "channel", "inquiry_ref", "status", "source_url"], fields: [
       f("date", "d"), f("title", "t", { max: 300, req: 1 }), f("details", "m", { max: 2000, en: "details_en" }), f("details_en", "m", { max: 2000 }),
