@@ -110,7 +110,7 @@
     tend: { g: "MIGTEND", arr: 1, hide: "splice", hub: "/tenders/",
       key: function (r) { return r[0] + "|" + r[3]; },
       f: { ref: [0, "s", "add"], type: [1, "s"], title: [3, "s"], entity: [4, "s"], gov_name: [5, "s"], sector: [6, "s"], booklet: [7, "I"], bond: [8, "s"],
-        deadline: [9, "d"], gov: [10, "g"], source_url: [11, "u"] } },
+        deadline: [9, "d"], gov: [10, "g"], source_url: [11, "u"], details: [14, "t"], contacts: [15, "t"] } },
     rfq: { g: "MIGRFQ", arr: 1, hide: "splice", hub: "/rfq/",
       key: function (r) { return String(r[0]); },
       f: { no: [0, "s", "add"], date: [1, "d"], title: [2, "s"], details: [3, "t"], delivery: [4, "s"], qty: [5, "s"], deadline: [6, "d"], gov: [7, "g"],
@@ -239,7 +239,7 @@
     var d = DEF[c], id = String(f.id || f.no || f.ref || "");
     if (d.arr) {
       /* every index of the real shape exists ("" by default), then the type-specific defaults */
-      var n0 = { fac: 18, prod: 13, tend: 14, rfq: 13, proj: 17 }[c] || 0, set = function (o) { for (var k in o) if (HAS.call(o, k)) r[+k] = o[k]; };
+      var n0 = { fac: 18, prod: 13, tend: 16, rfq: 13, proj: 17 }[c] || 0, set = function (o) { for (var k in o) if (HAS.call(o, k)) r[+k] = o[k]; };
       for (var k = 0; k < n0; k++) r[k] = "";
       if (c === "fac") set({ 3: "مصنع", 4: 0, 5: -1, 6: 0, 9: [], 11: 0, 16: id });
       else if (c === "prod") set({ 2: "other", 3: -1, 4: 0, 7: 0, 10: id, 12: 0 });
