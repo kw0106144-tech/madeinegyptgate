@@ -39,6 +39,7 @@ import { reviewConversation, memoryJoin, quote, words, flatArgs, FLAG_ORDER } fr
 import { renderReport, ar, bdi, nAr } from "./calls-render.js";
 import { RETURN_GREETING } from "./visitor.js";
 import { PERSONAS } from "./janna-session.js";
+import { guardDayRange, guardTotals, GUARD_SQL } from "./guard.js"; // «حماية الموقع»: the day's copy attempts (one line of the summary)
 
 export { CALLS_REPORT_KEY };
 export const CALLS_DEFAULTS = Object.freeze({ time: "08:30", detail: "masked", tests: "summary", empty: "send", keep_days: 180 });
@@ -429,6 +430,7 @@ export async function buildReport(env, { day, nowMs = Date.now(), settings, mode
   /* 9) the day's numbers */
   const pvDay = (await Q("cc_pv_day", "SELECT views, uniq, mobile_uniq FROM cc_pv_day WHERE day = ?", day))[0] || null;
   const pvSrc = await Q("cc_pv_src", "SELECT src, n FROM cc_pv_src WHERE day = ? ORDER BY n DESC LIMIT 3", day);
+  const [glo, ghi] = guardDayRange(day), gT = await Q("rl", GUARD_SQL.types, glo, ghi), gV = gT.length ? await Q("rl", GUARD_SQL.visitors, glo, ghi) : [];
   const needs = (await Q("knowledge_bank", "SELECT question, asked FROM knowledge_bank WHERE status = 'needs_answer' AND merged_into = 0 AND first_at >= ? AND first_at < ? ORDER BY asked DESC, id DESC LIMIT 5", startIso, endIso)).map(r => ({ question: quote(r.question, 160), asked: Number(r.asked) || 1 }));
   const needTotal = await Q("knowledge_bank", "SELECT COUNT(*) AS n FROM knowledge_bank WHERE status = 'needs_answer' AND merged_into = 0");
   const ts = typeof lookup.tenderStatus === "function" ? lookup.tenderStatus : null;
@@ -447,6 +449,7 @@ export async function buildReport(env, { day, nowMs = Date.now(), settings, mode
       follows: convs.filter(c => c.kind === "customer").reduce((n, c) => n + (c.outcome.follows || 0), 0), bassem_emails: convs.reduce((n, c) => n + (c.outcome.emails_sent || 0), 0) },
     problems: [...probs.values()].sort((a, b) => b.n - a.n || FLAG_ORDER.indexOf(a.code) - FLAG_ORDER.indexOf(b.code)).slice(0, 3).map(p => ({ code: p.code, n: p.n, agent: p.janna && p.bassem ? "janna" : p.bassem ? "bassem" : "janna" })),
     pv: pvDay ? { views: Number(pvDay.views) || 0, uniq: Number(pvDay.uniq) || 0, mobile: Number(pvDay.mobile_uniq) || 0, sources: pvSrc.map(r => [line(r.src, 40), Number(r.n) || 0]) } : notes.missing.has("cc_pv_day") ? null : { views: 0, uniq: 0, mobile: 0, sources: [] },
+    guard: guardTotals(gT, gV[0] && gV[0].v),
     opps, needs: { fresh: needs.length, total: needTotal.length ? Number(needTotal[0].n) || 0 : null }, meetingsTeam: listed.filter(r => r.meeting).length, notRead, gets };
   /* 10) the notes («ملاحظات النظام»: only what degraded) */
   /* the notes say what degraded in the owner's words (report review 2026-11-20 #14): no file, table, workflow or permission names in the

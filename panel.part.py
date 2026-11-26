@@ -149,7 +149,9 @@ def _acc_page():
             '<div id="mo"><div id="bx" role="dialog" aria-modal="true" aria-labelledby="bxT"></div></div><div id="tt" role="status" aria-live="polite"></div>'
             '<noscript><div class="note" style="margin:20px">لوحة التحكم محتاجة JavaScript شغّال في المتصفح.</div></noscript>'
             '<script>window.MIGOVL_ADMIN=1;window.MIGACC_CFG=' + _acc_json_js(_acc_cfg()) + ';</script>'
-            '<script src="data/mig-api.js"></script>' + ovl + '<script src="data/acc.js"></script>' + dev + _ACC_SKIP_JS + base_tail + '</body></html>')
+            '<script src="data/mig-api.js"></script>' + ovl + '<script src="data/acc.js"></script>' + dev + _ACC_SKIP_JS + base_tail
+            # «حماية الموقع» (data/guard.js): the same copy shortcuts as every page; the staff pages send no report (the team's own tools)
+            + (guard_tag() if 'guard_tag' in globals() else '') + '</body></html>')
 
 
 def _acc_write(OUT_, path):

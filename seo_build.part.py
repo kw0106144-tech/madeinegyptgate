@@ -2174,7 +2174,21 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             S['flags_src'] = ('/data/flags.js?v=%s' % hashlib.md5(open(_ff, 'rb').read()).hexdigest()[:8]) if os.path.exists(_ff) else ''
         if S['flags_src']:
             h.append('<script src="%s" defer></script>' % S['flags_src'])
+        # «حماية الموقع» (data/guard.js, defer, after data/flags.js whose MIGFLAGS carries the owner's switch site_guard): the copy shortcuts,
+        # right-click / drag on pictures and on Janna's / Bassem's figures, the attempts' beacon. Every page that has this <head> (generated,
+        # app pages, /login/, the /intel/ pages); /admin/ and janna.html add it themselves. guard_tag(): seo/config.json "guard" {"kill": true}
+        h.append(guard_tag())
         return '\n'.join(h)
+
+    def guard_tag(src_prefix='/'):
+        """the <script> of data/guard.js (?v=<md5[:8]>); data-guard="off" while seo/config.json "guard": {"kill": true} or MIG_GUARD_KILL=1"""
+        f = B + 'data/guard.js'
+        if not os.path.exists(f):
+            return ''
+        if S.get('guard_v') is None:
+            S['guard_v'] = hashlib.md5(open(f, 'rb').read()).hexdigest()[:8]
+        kill = ((S.get('cfg') or {}).get('guard') or {}).get('kill') is True or os.environ.get('MIG_GUARD_KILL') == '1'
+        return '<script src="%sdata/guard.js?v=%s" defer%s></script>' % (src_prefix, S['guard_v'], ' data-guard="off"' if kill else '')
 
     def jsonld_site_graph(meta):
         L = meta.get('lang', 'ar')
@@ -6816,7 +6830,7 @@ location.replace(%s);})();'''
             'render_company': render_company, 'render_sector_hub': render_sector_hub, 'render_sector_gov': render_sector_gov, 'render_gov': render_gov, 'render_zone': render_zone,
             'render_product': render_product, 'render_tender': render_tender, 'render_tender_cat': render_tender_cat, 'render_rfq': render_rfq, 'render_award': render_award,
             'render_news': render_news, 'render_event': render_event, 'render_project': render_project, 'render_export': render_export, 'render_listing_page': render_listing,
-            'seo_static_head': seo_static_head, 'seo_static_tail': seo_static_tail, 'seo_footer_block': seo_footer_block, 'site_footer': site_footer, 'seo_prepare': seo_prepare, 'compute_hash_maps': compute_hash_maps, 'seo_rewrite_links': seo_rewrite_links, 'seo_abs_assets': seo_abs_assets, 'SEO_STATE': S, 'seo_main': main,
+            'seo_static_head': seo_static_head, 'guard_tag': guard_tag, 'seo_static_tail': seo_static_tail, 'seo_footer_block': seo_footer_block, 'site_footer': site_footer, 'seo_prepare': seo_prepare, 'compute_hash_maps': compute_hash_maps, 'seo_rewrite_links': seo_rewrite_links, 'seo_abs_assets': seo_abs_assets, 'SEO_STATE': S, 'seo_main': main,
             'seo_scrub': scrub, 'seo_has_contact': has_contact, 'seo_tr': (lambda s: tr(s)),
             'seo_base_head': BASE_FIX_HEAD}   # <base href="/"> + the history fix, for standalone pages in sub-directories (panel.part.py → /admin/)
 

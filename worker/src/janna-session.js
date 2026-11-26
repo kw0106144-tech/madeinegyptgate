@@ -79,6 +79,10 @@ import { hasTable } from "./acc-base.js";            // 0011: the calls report's
 import { waMemberState } from "./whatsapp.js";      // the member's WhatsApp for the block's WhatsApp line (sync: the memo ccBoot loaded, no extra read)
 import { memberWebLine } from "./member-web.js";    // 0013: what the web shows about the member himself (the server's search, switch bassem_member_web)
 
+/* «صنع في مصر — نطق الأسماء» (Anam pronunciation dictionary: «باسم» → «باسِم»); PRON_DICT_ID in [vars] overrides, "0" switches it off */
+export const PRON_DICT_DEFAULT = "142e481d-0594-4491-a518-92f0ecec8192";
+let PRON_OFF_UNTIL = 0;
+export const pronDict = env => { const v = env && env.PRON_DICT_ID != null ? String(env.PRON_DICT_ID).trim() : ""; return /^[0-9a-f-]{36}$/i.test(v) ? v : ""; }; // set in worker/wrangler.toml [vars] (PRON_DICT_DEFAULT); unset → none
 export const ANAM_TOKEN_URL = "https://api.anam.ai/v1/auth/session-token";
 export const ANAM_PERSONA_URL = "https://api.anam.ai/v1/personas/"; // + a persona id from PERSONAS (read-only GET, Bassem's member context)
 /* agent + lang → Anam persona (the same ids as data/janna-live.js AGENTS); Bassem advises in Arabic on every page */
@@ -333,8 +337,14 @@ export async function handleJannaSession(req, env, execCtx, opt) {
     if ((await countDay(env, nowMs, 1)) > dailyCap(env)) { await countDay(env, nowMs, -1); return fail(429, "daily_cap", cors); } // refused ones are not counted
     const base = "madeinegyptgate-" + agent + "-" + lang, tag = tagsOff() ? "" : callTag();
     let tagged = !!tag; // the calls report's tag in the label; dropped for the rest of this request after Anam refused it once
-    const plain = { personaConfig: { personaId }, sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: tagged ? base + "." + tag : base };
-    const send0 = async (body, ms) => {
+    /* the pronunciation dictionary (owner 2026-11-22: Janna said «بسم» for «باسم»): Arabic calls only; Anam: "Only pronunciationDictionaryId
+       applies to a saved persona". A 4xx with it → the same request once without it, and none for this isolate for an hour (never a lost call). */
+    const dict = lang === "ar" && !(PRON_OFF_UNTIL > Date.now()) ? pronDict(env) : "";
+    const withDict = c => (dict ? { ...c, voiceGenerationOptions: { ...(c.voiceGenerationOptions || {}), pronunciationDictionaryId: dict } } : c);
+    const plain = { personaConfig: withDict({ personaId }), sessionOptions: { showAIAvatarDisclosure: false }, expiresInSeconds: TOKEN_TTL_SEC, maxSessions: 1, clientLabel: tagged ? base + "." + tag : base };
+    const noDict = b => { const pcd = { ...b.personaConfig }; if (pcd.voiceGenerationOptions) { const v = { ...pcd.voiceGenerationOptions }; delete v.pronunciationDictionaryId; if (Object.keys(v).length) pcd.voiceGenerationOptions = v; else delete pcd.voiceGenerationOptions; } return { ...b, personaConfig: pcd }; };
+    const send0 = async (body, ms) => { const r0 = await send00(body, ms); if (!dict || r0.status < 400 || r0.status >= 500 || !(body.personaConfig && body.personaConfig.voiceGenerationOptions && body.personaConfig.voiceGenerationOptions.pronunciationDictionaryId)) return r0; console.error("janna session: anam refused the pronunciation dictionary", r0.status); PRON_OFF_UNTIL = Date.now() + 3600000; return send00(noDict(body), ms); };
+    const send00 = async (body, ms) => {
       const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), ms);
       try {
         return await fetch(ANAM_TOKEN_URL, { method: "POST", signal: ctl.signal,
@@ -361,7 +371,7 @@ export async function handleJannaSession(req, env, execCtx, opt) {
       tm.wait = Date.now() - tw;
       /* Janna without a returning visitor (the knowledge bank only): her own first sentence from the Lab stays */
       if (p && ctx && !ctx.greeting && !ctx.continued && typeof p.initialMessage === "string" && p.initialMessage.trim()) ctx = { ...ctx, greeting: p.initialMessage.trim() };
-      pc = ephemeralFrom(p, ctx, MAX_SESSION_SEC);
+      pc = ephemeralFrom(p, ctx, MAX_SESSION_SEC); if (pc) pc = withDict(pc);
       if (p && !pc) console.error("janna session: the saved persona cannot be copied for the member context");
       if (pc && Math.min(ANAM_TIMEOUT_MS, left() - RETRY_MIN_MS) < RETRY_MIN_MS) { console.error("janna session: no time left for the member context"); pc = null; }
     }

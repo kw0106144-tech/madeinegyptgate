@@ -206,9 +206,28 @@ export const bodyErr = b => (b.tooLarge ? err(413, "too_large", "request too lar
    SQLite ≥ 3.35 — D1 and node:sqlite): one D1 round trip instead of two on every limited call (speed 2026-11-20: knowledge_lookup,
    bassem_recall's memory GET and the session token all wait for it) */
 export async function rateOk(env, key, limit, windowSec, nowMs = Date.now()) {
+  return (await rateN(env, key, windowSec, nowMs)) <= limit;
+}
+/* the same counter as rateOk (one statement), returning this request's number in the window (1 = the first) */
+export async function rateN(env, key, windowSec, nowMs = Date.now()) {
   const win = Math.floor(nowMs / 1000 / windowSec), k = key + "|" + win;
   const n = await env.DB.prepare("INSERT INTO rl (k, n, exp) VALUES (?, 1, ?) ON CONFLICT(k) DO UPDATE SET n = n + 1 RETURNING n").bind(k, iso((win + 1) * windowSec * 1000)).first("n");
-  return (n || 0) <= limit;
+  return n || 0;
+}
+/* page analytics helpers (acc-stats.js pageView, guard.js): a coarse browser/os/device family — never the user agent itself — and a
+   site path without query or fragment (decoded, NFC, ≤ 200 characters; "" when it is not a path of this site) */
+export function uaFamily(ua) {
+  const b = /Edg\//.test(ua) ? "edge" : /OPR\/|Opera/.test(ua) ? "opera" : /SamsungBrowser/.test(ua) ? "samsung" : /Firefox\/|FxiOS/.test(ua) ? "firefox" : /Chrome\/|CriOS/.test(ua) ? "chrome" : /Safari\//.test(ua) ? "safari" : "other";
+  const o = /Android/.test(ua) ? "android" : /iPhone|iPad|iPod/.test(ua) ? "ios" : /Windows/.test(ua) ? "windows" : /Mac OS X|Macintosh/.test(ua) ? "mac" : /Linux|CrOS/.test(ua) ? "linux" : "other";
+  return `${b}/${o}/${/Mobi|Android|iPhone|iPad/.test(ua) ? "m" : "d"}`;
+}
+export function cleanPath(p) {
+  let s = typeof p === "string" ? p : "";
+  s = s.split(/[?#]/)[0];
+  try { s = decodeURIComponent(s); } catch (e) { return ""; }
+  s = s.normalize("NFC").replace(/[\u0000-\u001f\u007f]/g, "");
+  if (!s.startsWith("/") || s.startsWith("//")) return "";
+  return s.slice(0, 200);
 }
 /* Anam's webhooks (janna_lookup, platform_item, knowledge_lookup) answer a malformed / limited POST with 200 + a text the model can act on
    (speed 2026-11-20: a 400 reached the model as a bare "HTTP error 400" and it retried blind). Anam then counts the call as a success, so
