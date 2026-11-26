@@ -245,6 +245,11 @@ export const TEMPLATES = Object.freeze([
   T({ key: "deadline_reminder", group: "digest", to: "member", list: "digest", prefixes: ["dl-"], name_ar: "تذكير بآخر موعد", name_en: "Deadline reminder",
     about_ar: "تذكير قبل آخر موعد بـ7 أيام وبيوم لعنصر بيتابعه العضو.", about_en: "A reminder 7 days and 1 day before the deadline of a followed item.",
     sample_ar: "باقي 7 أيام على آخر موعد / 7 days to the deadline: ‹title›", sample_en: "باقي 7 أيام على آخر موعد / 7 days to the deadline: ‹title›" }),
+  // «فرص مناسبة لمصنعك» (matching-opps.js oppAlerts): the daily alert of the new matches of 70 or more — no source link, ever
+  T({ key: "opp_matches", group: "digest", to: "member", list: "digest", prefixes: ["oppm-"], name_ar: "فرص جديدة مناسبة لمصنعك", name_en: "New opportunities that fit your factory",
+    about_ar: "مرة في اليوم (مع ملخص المتابعات): الفرص الجديدة اللي المطابقة التلقائية لقيتها مناسبة لملف مصنع العضو بدرجة 70 أو أكتر — 5 بالكتير، كل فرصة بدرجتها وسبب المطابقة واللي ناقص، ولينك صفحتها على المنصة (ولينك الإعلان الرسمي للمناقصة أو طلب السعر لو موجود). لأعضاء باقات باسم بس، ولما زرار «فرص مناسبة لمصنعك» في «المطوّر» يكون شغّال.",
+    about_en: "Once a day (with the follows digest): the new opportunities the automatic matching found fitting the member's factory profile with a score of 70 or more — at most 5, each with its score, why it fits and what is missing, and the link to its page on the platform (and to the official notice of a tender or RFQ when there is one). Bassem's plans only, while «Opportunities that fit your factory» is on in «Developer».",
+    sample_ar: "فرص جديدة مناسبة لمصنعك (‹n›) / New opportunities for your factory", sample_en: "فرص جديدة مناسبة لمصنعك (‹n›) / New opportunities for your factory" }),
   // ---- Bassem & the advisor ----
   T({ key: "bassem_morning_email", group: "bassem", to: "member", list: "bassem", prefixes: ["bm-"], name_ar: "صباح الخير من باسم (إيميل)", name_en: "Bassem's morning e-mail",
     about_ar: "رسالة باسم اليومية لباقات الشركاء — بالإيميل لحد ما الواتساب يشتغل.", about_en: "Bassem's daily note for partner plans — by e-mail until WhatsApp is live.",
