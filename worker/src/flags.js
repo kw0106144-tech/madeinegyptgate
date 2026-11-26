@@ -33,6 +33,10 @@
                                                  e-mail of jobs already made keep working); data/janna-live.js answers Bassem's
                                                  bassem_research tool «off» at once. OFF by default; LOCKED until the Worker runs with its AI
                                                  binding AND the research Workflow binding (RESEARCH) AND migration 0014 is applied
+     opp_matching              matching-opps.js  «فرص مناسبة لمصنعك»: the 15-minute cron scores new opportunities against the members whose plan
+                                                 includes Bassem, the daily alert e-mail, GET|POST /api/me/opportunities (off → 503
+                                                 feature_off, nothing scored or sent) and the short line in Bassem's member block. OFF by
+                                                 default; LOCKED until migration 0015 is applied
      calls_report              calls-report.js   the daily calls report e-mail (platform cron) is skipped before any Anam / D1 read;
                                                  POST /api/admin/cc/dev/calls-report/send (+ /preview) → 503 feature_off
    The platform's own apps (user agent «MIGApp/<v> (ios|android)», app-ua.js; app parity plan 2026-11-20 — the defaults keep the apps
@@ -48,7 +52,8 @@
    Rows are LOCKED (effective off, cannot be switched ON from here; OFF is always allowed) while what they need is missing: whatsapp_send
    until the respond.io token test passed; bassem_web_search / janna_web_search until a web-search key + their tool secret exist (both in
    «مفاتيح الخدمات»); bassem_member_web until a web-search key exists; web_leads, web_leads_public, web_leads_lookup, account_delete, visitor_erase_request until their migration is applied. chat_photos while the Worker has no AI binding (env.AI).
-   research_bassem until the AI binding, the research Workflow binding (env.RESEARCH) and migration 0014 all exist.
+   research_bassem until the AI binding, the research Workflow binding (env.RESEARCH) and migration 0014 all exist. opp_matching until
+   migration 0015 (opp_matches) is applied.
    calls_report until an e-mail route («البريد») and a report recipient exist; site_guard_alerts until an e-mail route exists.
    The two privacy rules are PERMANENT POLICY (POLICIES): shown, never switches.
    Reader: loadFeatures(env) — ≤ 1 D1 read per isolate per 30 s (memo per env.DB; acc.js ccBoot warms it at the start of every request /
@@ -212,6 +217,15 @@ export const FEATURES = Object.freeze([
     lock_rule_ar: "مقفول لحد ما الـ Worker يتنشر بربط الذكاء الاصطناعي وربط البحث الأعمق (Workflow «migate-research») وملف قاعدة البيانات 0014_research.sql يتشغّل (GitHub ← Actions ← d1-migrate)",
     lock_rule_en: "Locked until the Worker runs with its AI and research (Workflow «migate-research») bindings and 0014_research.sql is applied (GitHub → Actions → d1-migrate)",
     enforced_by: ["POST /api/advisor/research action start → 503 feature_off", "site"] },
+  /* «فرص مناسبة لمصنعك» (owner 2026-11-26: every new opportunity matched to each member's company profile automatically, with a score and
+     an alert, «so the member finds them ready»): OFF by default — the owner switches it on after migration 0015 and after reading the
+     alert e-mail's wording (template opp_matches in «البريد»). Locked until 0015 is applied. */
+  { key: "opp_matching", default: false, scope: "server",
+    label_ar: "فرص مناسبة لمصنعك (مطابقة تلقائية)", label_en: "Opportunities that fit your factory (automatic matching)",
+    desc_ar: "كل مناقصة أو طلب عرض سعر أو مشروع جديد بيوصل المنصة (مركز المعلومات، ومناقصات وطلبات أسعار المنصة نفسها، و«فرص السوق» المنشورة) بيتقارن أوتوماتيك بملف كل عضو باقته فيها باسم: منتجاته (بالمرادفات وأشكال الكلمة)، وقطاعه، والسوق لازم يكون جوه باقته، والشهادات اللي الإعلان طالبها قصاد شهاداته، وإن آخر ميعاد لسه ماعداش. كل فرصة بتاخد درجة من 100 وأسباب المطابقة واللي ناقص، وبتظهر للعضو في حسابه، وباسم بيعرف أهم 3 فرص لسه ماشافهاش (من غير ما يذكر أي مصدر)، والفرص اللي درجتها 70 أو أكتر بتوصله في إيميل الصبح («فرص جديدة مناسبة لمصنعك»، 5 بالكتير في اليوم، لو ملخص المتابعات اليومي شغّال وهو مش موقّف الإيميلات). مفيش فرص متألّفة، وفرصة آخر ميعادها عدّى ماتتحسبش. مقفول: مفيش مطابقة ولا إيميل ولا سطر عند باسم.",
+    desc_en: "Every new tender, RFQ or project that reaches the platform (the Information Center, the platform's own tenders and RFQs, and the published «Market opportunities») is compared automatically with the profile of every member whose plan includes Bassem: his products (with synonyms and word forms), his sector, the market — which must be inside his plan — the certificates the notice asks for against his own, and a deadline that has not passed. Each opportunity gets a score out of 100 with the reasons it fits and what is missing; it appears in the member's account, Bassem knows the top 3 the member has not seen yet (without naming any source), and those scoring 70 or more reach him in the morning e-mail («New opportunities that fit your factory», at most 5 a day, while the daily follows digest is on and he has not turned the e-mails off). No invented opportunities; an opportunity whose deadline passed is never counted. Off: no matching, no e-mail and no line for Bassem.",
+    lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0015_opp_matches.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0015_opp_matches.sql is applied (GitHub → Actions → d1-migrate)",
+    enforced_by: ["platform cron: no matching (matching-opps.js oppCron)", "the daily alert e-mail (template opp_matches)", "GET|POST /api/me/opportunities → 503 feature_off", "POST /api/janna/session (agent bassem): no opportunities line"] },
   /* ---- the platform's own apps (app/: Android + iPhone, user agent «MIGApp/<v> (ios|android)», app-ua.js) and the store rules (app parity
      plan 2026-11-20). The defaults keep the apps EXACTLY like the website; the texts behind the rows that ship OFF wait for the owner's
      word-for-word approval (docs/app/OWNER-APPROVAL-AR.md). ---- */
@@ -385,6 +399,7 @@ export async function stateOf(env, d) {
       if (!(await researchStoreOn(env))) return { locked: T("migration_needed", "مقفول لحد ما ملف قاعدة البيانات 0014_research.sql يتشغّل (GitHub ← Actions ← d1-migrate)", "Locked until the database file 0014_research.sql is applied (GitHub → Actions → d1-migrate)"), needs: null, ready: false };
       return NONE;
     }
+    if (d.key === "opp_matching") return (await oppStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
     if (d.key === "web_leads" || d.key === "web_leads_public" || d.key === "web_leads_lookup") return (await leadsStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
     // the daily calls report (calls-report.js): an e-mail route (the e-mail center's config, RESEND_API_KEY or the SEND_EMAIL binding) and a recipient
     if (d.key === "calls_report") {
@@ -434,6 +449,15 @@ export async function researchStoreOn(env) {
   let ok = false; try { await db.prepare("SELECT 1 AS x FROM research_jobs LIMIT 1").first(); ok = true; } catch (e) { ok = false; }
   RESEARCH_MEMO.set(db, { ok, at: Date.now() }); return ok;
 }
+/* migration 0015 (opp_matches, «فرص مناسبة لمصنعك») applied? the same memo rule (matching-opps.js reads it from here) */
+const OPP_MEMO = new WeakMap(); // env.DB → {ok, at}
+export async function oppStoreOn(env) {
+  const db = dbOf(env); if (!db) return false;
+  const m = OPP_MEMO.get(db); if (m && (m.ok || Date.now() - m.at < 60000)) return m.ok;
+  let ok = false; try { await db.prepare("SELECT 1 AS x FROM opp_matches LIMIT 1").first(); await db.prepare("SELECT 1 AS x FROM opp_cursors LIMIT 1").first(); ok = true; } catch (e) { ok = false; }
+  OPP_MEMO.set(db, { ok, at: Date.now() }); return ok;
+}
+export const forgetOppStore = env => { const db = dbOf(env); if (db) OPP_MEMO.delete(db); };
 /* «🔗 وصّل البحث بجنة وباسم»: are the web tools on the personas? (cc_settings websearch.connect, written by acc-wsconnect.js: v2
    {connected: {bassem, janna}}; a v1 state = Bassem's search alone, without the hunt → not connected) — display only (the needs) */
 export async function connectedOf(env) {

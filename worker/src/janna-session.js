@@ -64,7 +64,8 @@ import { readJson, ipHash, rateOk, isBlocked, planCan, isAdmin, site, cairoDay, 
 import { authUser, bearer, isV2, isLinkSession } from "./auth.js";
 import { verifyToken } from "./advisor.js";
 import { getSecret } from "./crypto.js";
-import { memberContext, ephemeralFrom, todayLineAr, fitBlock, BLOCK_MAX } from "./bassem-context.js";
+import { memberContext, ephemeralFrom, todayLineAr, fitBlock, BLOCK_MAX, oppsLineAr } from "./bassem-context.js";
+import { topUnseen } from "./matching-opps.js"; // 0015 «فرص مناسبة لمصنعك»: his top 3 unseen matches as one line (switch opp_matching)
 // consolidation (holo4 profile + holo6 memory + holo5 continuation): what Bassem knows about the member when the call starts
 import { memoryContext, MEMORY_BLOCK, CONTEXT_MAX, callIdOk } from "./memory.js";
 import { memberProfile } from "./profile.js";
@@ -219,18 +220,19 @@ export async function bassemContext(env, m, lang, b, nowMs = Date.now(), x = {})
   if (!m) return null;
   /* the continuation and the factory profile are independent reads: one D1 round trip instead of two (owner 2026-11-19 «باسم بياخد وقت»);
      wa = is WhatsApp really on for him (whatsapp.js waMemberState: the rules of the sends, from this request's memo — no D1 read) */
-  const [cont, prof, web] = await Promise.all([continuation(env, m.id, b && b.continue_call, nowMs), memberProfile(env, m.id),
-    x.full ? memberWebLine(env, m, { nowMs, waitUntil: x.waitUntil }) : ""]), o = { continued: !!cont, wa: waMemberState(env, m) };
+  const [cont, prof, web, opps] = await Promise.all([continuation(env, m.id, b && b.continue_call, nowMs), memberProfile(env, m.id),
+    x.full ? memberWebLine(env, m, { nowMs, waitUntil: x.waitUntil }) : "", topUnseen(env, m.id, 3, nowMs)]), o = { continued: !!cont, wa: waMemberState(env, m) };
   const base = memberContext(m, lang, o) || memberContext(m, lang, { ...o, anonymous: true });
   if (!base) return null;
-  const parts = [base.block, ...(web ? [web] : []), "- " + todayLineAr(nowMs) + " (بتوقيت القاهرة)."];
+  const oppLine = oppsLineAr(opps); // "" without the switch, the table or an unseen match
+  const parts = [base.block, ...(web ? [web] : []), "- " + todayLineAr(nowMs) + " (بتوقيت القاهرة).", ...(oppLine ? [oppLine] : [])];
   if (cont) parts.push("", RESUME_BLOCK[0], cont, RESUME_BLOCK[1]);
   if (prof && prof.block) parts.push("", prof.block);
   const room = Math.min(CONTEXT_MAX, BLOCK_MAX - parts.join("\n").length - MEMORY_BLOCK[0].length - MEMORY_BLOCK[1].length - 8);
   const mem = room >= 300 ? await memoryContext(env, m.id, { nowMs, max: room }) : "";
   if (mem) parts.push("", MEMORY_BLOCK[0], mem, MEMORY_BLOCK[1]);
-  if (base.anonymous && !mem && !(prof && prof.block) && !cont && !web) return null; // nothing to add for a member Bassem cannot greet by name
-  return { ...base, block: fitBlock(parts.join("\n")), memory: !!mem, profile: !!(prof && prof.block), ...(web ? { web: true } : {}) };
+  if (base.anonymous && !mem && !(prof && prof.block) && !cont && !web && !oppLine) return null; // nothing to add for a member Bassem cannot greet by name
+  return { ...base, block: fitBlock(parts.join("\n")), memory: !!mem, profile: !!(prof && prof.block), ...(web ? { web: true } : {}), ...(oppLine ? { opps: true } : {}) };
 }
 
 /* ---------- the daily calls report (calls-report.js, migration 0011) ----------

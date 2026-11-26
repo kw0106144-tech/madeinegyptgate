@@ -11,6 +11,7 @@ import { planCanX, plansWithX } from "./acc-plans.js";
 import { kbEraseStmts } from "./knowledge.js";                                // 0009: the legal erasure of «بنك المعلومات» entries (review 2026-11-19 #11)
 import { memberWebView, clearMemberWeb, forgetMemberWeb, MW_TABLE } from "./member-web.js"; // 0013: what the web shows about the member (Bassem + the team only)
 import * as RESEARCH from "./research.js"; // 0014: the owner's erasure includes the member's deep research rows
+import { oppStoreOn } from "./flags.js"; // 0015: the opportunity matches go with the account (matching-opps.js)
 
 const PLANS = ["visitor", "profile", "basic", "premium", "partner", "strategic"];
 const STATUSES = ["active", "pending", "suspended"];
@@ -399,7 +400,7 @@ export async function revokeSessions(req, env, ctx, adm, id) {
    into the audit row. Both tables are checked first: 0007 / 0008 may not be applied yet, and a missing table fails the whole batch.
    0009: the same erasure takes his tasks (memory_tasks), «ملخص العميل» (memory_briefs) and Janna's memory of every visitor id linked to
    his account (advisor_memory 'v:<id>' rows + janna_visitors) — each table only when it exists. 0011: and his rows of the daily calls report
-   (call_sessions, call_reviews). (The memory alone, without the account: the owner's POST /api/admin/cc/memory/erase, acc-memory.js.) */
+   (call_sessions, call_reviews). 0015: and his opportunity matches (opp_matches). (The memory alone, without the account: the owner's POST /api/admin/cc/memory/erase, acc-memory.js.) */
 export const ERASE_REASON_MIN = 10;
 export async function deleteMember(req, env, ctx, adm, id) {
   const b = await body(req);
@@ -421,6 +422,7 @@ export async function deleteMember(req, env, ctx, adm, id) {
   const cs = await hasTable(env, "call_sessions"), cr = await hasTable(env, "call_reviews"); // 0011: the calls report's rows of him
   const mw = await hasTable(env, MW_TABLE); // 0013: what the web shows about him (member-web.js)
   const rs = await RESEARCH.eraseStmts(env, m.id); // 0014: his deep research jobs (research.js; nothing when the table is missing)
+  const opp = await oppStoreOn(env); // 0015: his opportunity matches (matching-opps.js) — derived from his profile, they go with the account
   const callRows = (cs ? (await countOf(env, `SELECT COUNT(*) AS n FROM call_sessions WHERE member_id = ? OR subject IN (${ph})`, m.id, ...subj)) || 0 : 0)
     + (cr ? (await countOf(env, `SELECT COUNT(*) AS n FROM call_reviews WHERE subject IN (${ph})`, ...subj)) || 0 : 0);
   const reason = line(b.reason, 300), erase = memRows > 0 || profile || taskRows > 0 || vids.length > 0 || kb.stmts.length > 0 || callRows > 0 || rs.rows > 0;
@@ -440,6 +442,7 @@ export async function deleteMember(req, env, ctx, adm, id) {
     ...(cr ? [env.DB.prepare(`DELETE FROM call_reviews WHERE subject IN (${ph})`).bind(...subj)] : []),
     ...(mw ? [env.DB.prepare("DELETE FROM member_web_profile WHERE member_id = ?").bind(m.id)] : []),       // 0013: «اللي ظاهر عنه على الإنترنت»
     ...rs.stmts,                                                                                                 // 0014: his research documents and their sources
+    ...(opp ? [env.DB.prepare("DELETE FROM opp_matches WHERE member_id = ?").bind(m.id)] : []),               // 0015: «فرص مناسبة لمصنعك»
     metaUpsert(env, m.id, { notes: "deleted " + t, legacy_profile_json: "{}", tags: "", status: "active", requested_plan: "", suspended_plan: "", suspended_expires: "" }, t),
     adm.auditStmt("member.delete", "member", m.id, { email: maskEmail(m.email), plan: m.plan, company: m.company ? "(set)" : "", ...(erase ? { bassem_memory_rows: memRows, factory_profile: profile, tasks: taskRows, janna_visitors: vids.length } : {}) },
       { email: `deleted+${m.id}@invalid`, ...(reason ? { reason } : {}), ...(kb.stmts.length ? { knowledge_askers: kb.askers, knowledge_removed: kb.removed } : {}), ...(callRows ? { call_rows: callRows } : {}), ...(rs.rows ? { research_rows: rs.rows } : {}) }, `anonymised ${maskEmail(m.email)}` + (erase ? ` · Bassem memory erased (${memRows} rows${profile ? " + factory profile" : ""}${taskRows ? " + " + taskRows + " tasks" : ""}${vids.length ? " + Janna visitor memory (" + vids.length + ")" : ""}${kb.stmts.length ? " + knowledge bank (" + kb.askers + " asker lists, " + kb.removed + " entries)" : ""}) · legal request: ${reason}` : "")),

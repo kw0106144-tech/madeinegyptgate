@@ -1236,3 +1236,29 @@ CREATE INDEX IF NOT EXISTS research_state ON research_jobs(state, updated_at);
 CREATE INDEX IF NOT EXISTS research_team ON research_jobs(team_state, created_at);
 CREATE INDEX IF NOT EXISTS research_expires ON research_jobs(expires_at);
 CREATE UNIQUE INDEX IF NOT EXISTS research_callkey ON research_jobs(who, member_id, ticket_key, call_key) WHERE call_key != '';
+
+-- ---- 0015_opp_matches.sql: «فرص مناسبة لمصنعك», proactive opportunity matching (src/matching-opps.js) — see the migration file for the full notes ----
+CREATE TABLE IF NOT EXISTS opp_matches (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  member_id   TEXT NOT NULL,                           -- members.id
+  item_key    TEXT NOT NULL,                           -- intel:<id> | web:<web_leads.id> | platform:<kind>:<id>
+  source      TEXT NOT NULL CHECK (source IN ('intel', 'web', 'platform')),
+  score       INTEGER NOT NULL DEFAULT 0 CHECK (score BETWEEN 0 AND 100),
+  reasons     TEXT NOT NULL DEFAULT '[]',              -- [{code, ar, en, pts}] why it fits (computed from the data, never invented)
+  missing     TEXT NOT NULL DEFAULT '[]',              -- [{code, ar, en}] what the notice asks that the profile does not show (certificates …)
+  item_json   TEXT NOT NULL DEFAULT '{}',              -- the card (see above); src = the source link, internal only
+  deadline    TEXT NOT NULL DEFAULT '',                -- YYYY-MM-DD or '' (unknown): an item whose deadline passed is never shown as active
+  status      TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'seen', 'dismissed', 'saved')),
+  alerted_at  TEXT NOT NULL DEFAULT '',                -- when the daily alert named it ('' = not yet)
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL,
+  UNIQUE (member_id, item_key)
+);
+CREATE INDEX IF NOT EXISTS opp_matches_member ON opp_matches(member_id, status, score);
+CREATE INDEX IF NOT EXISTS opp_matches_alert ON opp_matches(status, alerted_at, score);
+CREATE TABLE IF NOT EXISTS opp_cursors (
+  source      TEXT PRIMARY KEY,                        -- intel | web | platform
+  cursor      TEXT NOT NULL DEFAULT '',                -- intel / platform: the last first_seen_at read; web: the last web_leads.id
+  cursor_id   TEXT NOT NULL DEFAULT '',                -- intel: the last id at that first_seen_at; platform: kind|item_id
+  updated_at  TEXT NOT NULL DEFAULT ''
+);

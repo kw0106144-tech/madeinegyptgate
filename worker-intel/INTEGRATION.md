@@ -122,6 +122,12 @@ dates, IDA tender subjects). Dedupe never folds two notices of the same source b
 - **«خلال 24 ساعة»** on /intel/ counts the rows of the section's own query (same hidden / dup / kind / window), first seen in the
   last 24 hours (`queryItems(..., { freshSince })`), so it is never more than the section total.
 
+## 8b. The feed cursor (janna-lookup's opportunity matching, 2026-11-26)
+`GET /api/intel/feed` also takes `since` (an ISO time, `YYYY-MM-DDTHH:MM:SS[.mmm]Z`) and `since_id` (an item id): only the rows first seen
+after `(since, since_id)`; with `sort=seen` they come oldest first (`first_seen_at, id`) and the answer carries `sort: "seen"`. A malformed
+cursor is ignored. janna-lookup's `src/matching-opps.js` reads it through the `INTEL` binding (GET only) to match new tenders / RFQs /
+projects with its members' factory profiles.
+
 ## 9. «ابعتلي» mail packs — POST /api/intel/mailpack (binding-only, no secret)
 When a member tells Bassem «ابعتلي …» about Information Center items, janna-lookup (worker/src/notify-items.js) asks this Worker for each
 item's mail pack and builds the e-mail itself: the item's card from the stored data, its page links, its official link and, when it can be

@@ -24,6 +24,7 @@ export const json = (req, o, status = 200, maxAge = 0) => new Response(JSON.stri
    is given. A q with no product word but a code or number («RFQ/2026/123», «2026») is matched literally, as before.
    o (internal callers only, never URL parameters): mf = a ready market filter, strictWindow = only the date window (the brief). */
 const TENDER_KINDS = "'tender_gov','tender_semi','tender_private','rfq'";
+const SINCE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/;
 export function buildFeedQuery(p = {}, nowMs = Date.now(), o = {}) {
   const where = ["hidden = 0", "dup_of IS NULL"], args = [];
   const kind = String(p.kind || "").toLowerCase();
@@ -44,6 +45,14 @@ export function buildFeedQuery(p = {}, nowMs = Date.now(), o = {}) {
   /* the window is about publication; a tender / RFQ that is still open stays findable whatever its publication date */
   if (o.strictWindow) { where.push("COALESCE(published_at, first_seen_at) >= ?"); args.push(new Date(nowMs - days * 864e5).toISOString()); }
   else { where.push(`(COALESCE(published_at, first_seen_at) >= ? OR (kind IN (${TENDER_KINDS}) AND status IN ('open','closing_soon') AND (deadline IS NULL OR substr(deadline, 1, 10) >= ?)))`); args.push(new Date(nowMs - days * 864e5).toISOString(), cairoDay(nowMs)); }
+  /* the matching engine's cursor (janna-lookup src/matching-opps.js, through the INTEL binding): only the rows first seen after
+     (since, since_id), oldest first with sort=seen — a page never skips a row whose first_seen_at equals the cursor's */
+  const since = String(p.since || "");
+  if (SINCE_RE.test(since)) {
+    const sid = ID_RE.test(String(p.since_id || "")) ? String(p.since_id) : "";
+    if (sid) { where.push("(first_seen_at > ? OR (first_seen_at = ? AND id > ?))"); args.push(since, since, sid); }
+    else { where.push("first_seen_at > ?"); args.push(since); }
+  }
   if (search && !search.concepts.length && search.codes.length) {
     for (const w of search.codes) { where.push("(title_orig LIKE ? OR title_ar LIKE ? OR title_en LIKE ? OR entity LIKE ? OR summary_ar LIKE ? OR summary_en LIKE ?)"); const l = literalLike(w); args.push(l, l, l, l, l, l); }
   }
@@ -58,7 +67,7 @@ export function buildFeedQuery(p = {}, nowMs = Date.now(), o = {}) {
     if (tests.length) w = `id IN (WITH h AS MATERIALIZED (SELECT id, ${HAY_SQL} AS hay FROM intel_items WHERE ${w}) SELECT id FROM h WHERE ${tree(tests)})`;
   }
   const per = Math.min(Math.max(parseInt(p.per, 10) || 20, 1), 50), page = Math.min(Math.max(parseInt(p.page, 10) || 1, 1), 200);
-  const order = p.sort === "relevance" ? "relevance DESC, COALESCE(published_at, first_seen_at) DESC" : p.sort === "deadline" ? "CASE WHEN deadline IS NULL THEN 1 ELSE 0 END, deadline ASC" : "COALESCE(published_at, first_seen_at) DESC, relevance DESC";
+  const order = p.sort === "seen" ? "first_seen_at ASC, id ASC" : p.sort === "relevance" ? "relevance DESC, COALESCE(published_at, first_seen_at) DESC" : p.sort === "deadline" ? "CASE WHEN deadline IS NULL THEN 1 ELSE 0 END, deadline ASC" : "COALESCE(published_at, first_seen_at) DESC, relevance DESC";
   return { where: w, args, per, page, order, days, search: search && search.concepts.length ? search : null, parsed: search };
 }
 /* ranking: match strength (all query concepts, one of them in a title, first), then kind (tenders/RFQs/projects > project news >
@@ -150,7 +159,7 @@ export async function feed(env, p, nowMs = Date.now()) {
   const db = env.DB;
   const [res, upd] = await Promise.all([queryItems(db, p, nowMs), db.prepare("SELECT MAX(finished_at) AS t FROM intel_runs").first()]);
   const sm = await sourcesMap(db);
-  return { items: res.rows.map(r => publicItem(r, p.lang, sm.get(r.source_id))), total: res.total, page: res.q.page, per: res.q.per, updated_at: (upd || {}).t || null };
+  return { items: res.rows.map(r => publicItem(r, p.lang, sm.get(r.source_id))), total: res.total, page: res.q.page, per: res.q.per, updated_at: (upd || {}).t || null, ...(p.sort === "seen" && !res.q.search ? { sort: "seen" } : {}) };
 }
 export async function brief(env, p = {}, nowMs = Date.now()) {
   const since = new Date(nowMs - 864e5).toISOString(), db = env.DB;

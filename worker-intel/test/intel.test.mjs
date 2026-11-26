@@ -162,6 +162,24 @@ test("API: feed filters, item 410, admin auth, tool webhook text", async () => {
   const gone = await handlePages(new Request("https://madeinegyptgate.com" + new URL(one.page).pathname), env, {}); assert.equal(gone.status, 410);
   assert.equal(timingSafeEqual("abc", "abc"), true); assert.equal(timingSafeEqual("abc", "abd"), false); assert.equal(timingSafeEqual("", ""), false);
 });
+test("API: feed cursor since / since_id + sort=seen (janna-lookup's opportunity matching)", async () => {
+  const { env, now } = await seededEnv();
+  const t1 = "2026-11-18T09:00:00.000Z", t2 = "2026-11-18T11:00:00.000Z";
+  await env.DB.prepare("UPDATE intel_items SET first_seen_at = ?").bind(t1).run();
+  const ids = ((await env.DB.prepare("SELECT id FROM intel_items WHERE hidden = 0 AND dup_of IS NULL ORDER BY id LIMIT 3").all()).results || []).map(r => r.id);
+  await env.DB.prepare("UPDATE intel_items SET first_seen_at = ? WHERE id = ?").bind(t2, ids[2]).run();
+  const all = await feed(env, { sort: "seen", days: 365, per: 50 }, now);
+  assert.equal(all.sort, "seen");
+  const seen = all.items.map(i => i.first_seen_at); assert.deepEqual(seen, [...seen].sort(), "oldest first");
+  assert.equal(all.items[all.items.length - 1].id, ids[2]);
+  const after = await feed(env, { sort: "seen", since: t1, days: 365 }, now);
+  assert.deepEqual(after.items.map(i => i.id), [ids[2]], "only rows first seen after the cursor");
+  const tie = await feed(env, { sort: "seen", since: t1, since_id: ids[0], days: 365, per: 50 }, now);
+  assert.ok(!tie.items.some(i => i.id === ids[0]) && tie.items.some(i => i.id === ids[1]) && tie.items.some(i => i.id === ids[2]), "the same second: ids after since_id");
+  const bad = await feed(env, { sort: "seen", since: "yesterday", days: 365, per: 50 }, now);
+  assert.equal(bad.total, all.total, "a malformed cursor is ignored");
+  const plain = await feed(env, { days: 30 }, now); assert.equal(plain.sort, undefined);
+});
 test("SEO pages: canonical, hreflang both ways, valid JSON-LD, noindex for old closed items, sitemap", async () => {
   const { env } = await seededEnv();
   const it = await env.DB.prepare("SELECT * FROM intel_items WHERE kind='news' LIMIT 1").first();
