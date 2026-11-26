@@ -198,8 +198,11 @@ export function ambiguousText(amb, voice) {
 /* ---------- running it ---------- */
 async function pool(items, n, fn) { const q = [...items], run = async () => { while (q.length) await fn(q.shift()); }; await Promise.all(Array.from({ length: Math.max(1, Math.min(n, q.length)) }, run)); }
 /* → the answer body, or {error, reason} (a refusal of the counters / the provider / the arguments) */
-export async function runHunt(env, cfg, h, { who = "bassem", voice = "bassem", nowMs = Date.now(), ctx = null } = {}) {
-  const t0 = Date.now(), deadline = t0 + HUNT_MS, wait = p => { if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p); else p.catch(() => null); };
+/* opt (the deep research job, research.js — all optional, the persona tools never pass them): deadlineMs = its own time (default HUNT_MS),
+   via = the leads' «via» (default "hunt"; "research" rows are never auto-published), withSources = the picked results' link, site and
+   snippet beside the body (`internal`: the job's source map — never given to a persona or a customer) */
+export async function runHunt(env, cfg, h, { who = "bassem", voice = "bassem", nowMs = Date.now(), ctx = null, deadlineMs = 0, via = "", withSources = false } = {}) {
+  const t0 = Date.now(), deadline = t0 + (deadlineMs > 0 ? Math.min(deadlineMs, 30000) : HUNT_MS), wait = p => { if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(p); else p.catch(() => null); };
   const need = productNeed(h.product, h.product_en, { service: h.service }), inds = industryNeed(h.industries);
   if (need.empty) return { error: "product_required" };
   const hints = [];
@@ -263,9 +266,11 @@ export async function runHunt(env, cfg, h, { who = "bassem", voice = "bassem", n
   if (ambiguous) hints.push(`ask ONE question first: which meaning of «${ambiguous.word}» — tenders and RFQs wait for the answer`);
   /* the data desk keeps the opportunities of the PROVIDER answers, with their link and site (review S8) — inside only */
   const rows = picked.filter(x => x.fresh).map(x => ({ ...x.r, type: x.c.type, official: x.c.official, aggregator: x.c.aggregator, query: x.q.q, lang: x.q.lang }));
-  if (rows.length) wait(recordLeads(env, rows, { persona: who, via: "hunt", product: h.product, market: h.market ? h.market.code : "", governorate: h.gov ? h.gov.ar : "", nowMs }));
+  if (rows.length) wait(recordLeads(env, rows, { persona: who, via: via || "hunt", product: h.product, market: h.market ? h.market.code : "", governorate: h.gov ? h.gov.ar : "", nowMs }));
   console.log("web-hunt", who, "planned", plan.length, "sent", send.length - skipped, "cached", plan.length - misses.length, "kept", picked.length, "ms", Date.now() - t0);
-  return { body: answer(picked, h, need, voice, { plan, sent: send.length - skipped, cached: plan.length - misses.length, partial, hints, ambiguous, asked: intents }) };
+  const body = answer(picked, h, need, voice, { plan, sent: send.length - skipped, cached: plan.length - misses.length, partial, hints, ambiguous, asked: intents });
+  if (!withSources) return { body };
+  return { body, internal: picked.map(x => ({ url: x.r.url, site: x.r.source || "", date: x.r.date || "", title: x.r.title || "", snippet: x.r.snippet || "", type: x.c.type, official: !!x.c.official, aggregator: !!x.c.aggregator, query: x.q.q })) };
 }
 /* the persona and the call get the opportunities themselves: sayResult (type, the platform's short title, date, market, entity?, official?)
    — never the link, the site, the source or the copied snippet (owner 2026-11-20; those stay in web_leads for the data team) */

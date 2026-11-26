@@ -1183,3 +1183,56 @@ CREATE TABLE IF NOT EXISTS member_web_profile (
   updated_at   TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS member_web_profile_expires ON member_web_profile(expires_at);
+
+-- ---- 0014_research.sql: «بحث وكتابة عميقة» (src/research.js) — see the migration file for the full notes ----
+CREATE TABLE IF NOT EXISTS research_jobs (
+  id          TEXT PRIMARY KEY,                       -- 'rj' + 20 characters; also the Workflow instance id
+  who         TEXT NOT NULL,                          -- bassem | janna
+  via         TEXT NOT NULL DEFAULT 'call',           -- call | chat | page (the owner's test stores no row)
+  member_id   TEXT NOT NULL DEFAULT '',               -- the signed-in member; '' = an anonymous visitor (Janna, later)
+  ticket_key  TEXT NOT NULL DEFAULT '',               -- visitors: 16 characters of the call / chat ticket's signature (never the ticket)
+  net         TEXT NOT NULL DEFAULT '',               -- visitors: the keyed network hash (common.js ipHash), never an IP
+  call_key    TEXT NOT NULL DEFAULT '',               -- HMAC(secret, member + job key + call chain), 32 characters: never the raw question
+  label       TEXT NOT NULL DEFAULT '',               -- R1, R2 … within the member's recent jobs
+  kind        TEXT NOT NULL,
+  lang        TEXT NOT NULL DEFAULT 'ar',             -- the document's language (doc_lang)
+  voice_lang  TEXT NOT NULL DEFAULT 'ar',             -- the call's language: the persona's lines are built in it
+  params      TEXT NOT NULL DEFAULT '{}',             -- the masked inputs (no contact, no person's name)
+  state       TEXT NOT NULL DEFAULT 'queued' CHECK (state IN ('queued','gathering','writing','checking','done','failed')),
+  step        TEXT NOT NULL DEFAULT '{}',             -- progress {gather, write}
+  eta_s       INTEGER NOT NULL DEFAULT 0,
+  cap_hash    TEXT NOT NULL DEFAULT '',               -- visitors: sha256 of the document key (the key itself is never stored)
+  title       TEXT NOT NULL DEFAULT '',
+  doc         TEXT NOT NULL DEFAULT '',               -- the customer document JSON (research-render.js); deadlines only
+  say         TEXT NOT NULL DEFAULT '',               -- the spoken result line (≤ 220)
+  block       TEXT NOT NULL DEFAULT '',               -- the persona's context block (≤ 1,200)
+  counts      TEXT NOT NULL DEFAULT '{}',             -- by type, and the platform's own counts apart
+  partial     INTEGER NOT NULL DEFAULT 0,
+  pack        TEXT NOT NULL DEFAULT '{}',             -- INTERNAL: the evidence pack between the steps (blanked when done)
+  sources     TEXT NOT NULL DEFAULT '[]',             -- INTERNAL: evidence id → origin, link, site, found date, query
+  dropped     TEXT NOT NULL DEFAULT '[]',             -- INTERNAL: the checker's removals {sec, i, rule, text ≤ 200 masked}
+  model       TEXT NOT NULL DEFAULT '',
+  tokens_in   INTEGER NOT NULL DEFAULT 0,
+  tokens_out  INTEGER NOT NULL DEFAULT 0,
+  neurons     INTEGER NOT NULL DEFAULT 0,
+  web_units   INTEGER NOT NULL DEFAULT 0,
+  error       TEXT NOT NULL DEFAULT '',               -- a code only
+  told        TEXT NOT NULL DEFAULT '',               -- '' | announced | told | cut — the call page's delivery outcome
+  alive_at    TEXT NOT NULL DEFAULT '',               -- the call page's last heartbeat (the automatic e-mail waits for it to stop)
+  mail_state  TEXT NOT NULL DEFAULT '',               -- '' | sent | failed | skipped
+  mailed_at   TEXT NOT NULL DEFAULT '',
+  team_state  TEXT NOT NULL DEFAULT '' CHECK (team_state IN ('','ok','hidden')),
+  team_hidden TEXT NOT NULL DEFAULT '[]',             -- evidence ids the team hid from the document
+  team_note   TEXT NOT NULL DEFAULT '',
+  team_by     TEXT NOT NULL DEFAULT '',
+  team_at     TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL,
+  done_at     TEXT NOT NULL DEFAULT '',
+  expires_at  TEXT NOT NULL DEFAULT ''                -- retention: members +365 days, visitors +30 days
+);
+CREATE INDEX IF NOT EXISTS research_member ON research_jobs(member_id, created_at);
+CREATE INDEX IF NOT EXISTS research_state ON research_jobs(state, updated_at);
+CREATE INDEX IF NOT EXISTS research_team ON research_jobs(team_state, created_at);
+CREATE INDEX IF NOT EXISTS research_expires ON research_jobs(expires_at);
+CREATE UNIQUE INDEX IF NOT EXISTS research_callkey ON research_jobs(who, member_id, ticket_key, call_key) WHERE call_key != '';

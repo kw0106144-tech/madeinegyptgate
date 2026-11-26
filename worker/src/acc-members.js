@@ -10,6 +10,7 @@ import { fail, HttpErr, body, paging, likeOf, all, first, countOf, allIn, hasTab
 import { planCanX, plansWithX } from "./acc-plans.js";
 import { kbEraseStmts } from "./knowledge.js";                                // 0009: the legal erasure of «بنك المعلومات» entries (review 2026-11-19 #11)
 import { memberWebView, clearMemberWeb, forgetMemberWeb, MW_TABLE } from "./member-web.js"; // 0013: what the web shows about the member (Bassem + the team only)
+import * as RESEARCH from "./research.js"; // 0014: the owner's erasure includes the member's deep research rows
 
 const PLANS = ["visitor", "profile", "basic", "premium", "partner", "strategic"];
 const STATUSES = ["active", "pending", "suspended"];
@@ -419,9 +420,10 @@ export async function deleteMember(req, env, ctx, adm, id) {
   const kb = await kbEraseStmts(env, subj);
   const cs = await hasTable(env, "call_sessions"), cr = await hasTable(env, "call_reviews"); // 0011: the calls report's rows of him
   const mw = await hasTable(env, MW_TABLE); // 0013: what the web shows about him (member-web.js)
+  const rs = await RESEARCH.eraseStmts(env, m.id); // 0014: his deep research jobs (research.js; nothing when the table is missing)
   const callRows = (cs ? (await countOf(env, `SELECT COUNT(*) AS n FROM call_sessions WHERE member_id = ? OR subject IN (${ph})`, m.id, ...subj)) || 0 : 0)
     + (cr ? (await countOf(env, `SELECT COUNT(*) AS n FROM call_reviews WHERE subject IN (${ph})`, ...subj)) || 0 : 0);
-  const reason = line(b.reason, 300), erase = memRows > 0 || profile || taskRows > 0 || vids.length > 0 || kb.stmts.length > 0 || callRows > 0;
+  const reason = line(b.reason, 300), erase = memRows > 0 || profile || taskRows > 0 || vids.length > 0 || kb.stmts.length > 0 || callRows > 0 || rs.rows > 0;
   if (erase && Array.from(reason).length < ERASE_REASON_MIN) fail(400, "reason_required", "حذف الحساب ده هيمسح ذاكرة باسم معاه: اكتب السبب القانوني (طلب رسمي من صاحب البيانات بموجب قانون حماية البيانات الشخصية 151 لسنة 2020) / deleting this account erases Bassem's memory of it: state the legal basis (a formal data-subject request, Egyptian PDPL 151/2020)", { memory_rows: memRows, factory_profile: profile, tasks: taskRows, janna_visitors: vids.length, min: ERASE_REASON_MIN });
   await batch(env, [
     env.DB.prepare("UPDATE members SET email = ?, name = '', title = '', phone = '', company = '', products = '', sector = '', governorate = '', plan = 'visitor', plan_expires = '', factory_ref = '', prefs_json = '{}', inbox_paused = 1, email_verified_at = '', role = 'user', updated_at = ? WHERE id = ?").bind(`deleted+${m.id}@invalid`, t, m.id),
@@ -437,11 +439,13 @@ export async function deleteMember(req, env, ctx, adm, id) {
     ...(cs ? [env.DB.prepare(`DELETE FROM call_sessions WHERE member_id = ? OR subject IN (${ph})`).bind(m.id, ...subj)] : []), // 0011: the calls report
     ...(cr ? [env.DB.prepare(`DELETE FROM call_reviews WHERE subject IN (${ph})`).bind(...subj)] : []),
     ...(mw ? [env.DB.prepare("DELETE FROM member_web_profile WHERE member_id = ?").bind(m.id)] : []),       // 0013: «اللي ظاهر عنه على الإنترنت»
+    ...rs.stmts,                                                                                                 // 0014: his research documents and their sources
     metaUpsert(env, m.id, { notes: "deleted " + t, legacy_profile_json: "{}", tags: "", status: "active", requested_plan: "", suspended_plan: "", suspended_expires: "" }, t),
     adm.auditStmt("member.delete", "member", m.id, { email: maskEmail(m.email), plan: m.plan, company: m.company ? "(set)" : "", ...(erase ? { bassem_memory_rows: memRows, factory_profile: profile, tasks: taskRows, janna_visitors: vids.length } : {}) },
-      { email: `deleted+${m.id}@invalid`, ...(reason ? { reason } : {}), ...(kb.stmts.length ? { knowledge_askers: kb.askers, knowledge_removed: kb.removed } : {}), ...(callRows ? { call_rows: callRows } : {}) }, `anonymised ${maskEmail(m.email)}` + (erase ? ` · Bassem memory erased (${memRows} rows${profile ? " + factory profile" : ""}${taskRows ? " + " + taskRows + " tasks" : ""}${vids.length ? " + Janna visitor memory (" + vids.length + ")" : ""}${kb.stmts.length ? " + knowledge bank (" + kb.askers + " asker lists, " + kb.removed + " entries)" : ""}) · legal request: ${reason}` : "")),
+      { email: `deleted+${m.id}@invalid`, ...(reason ? { reason } : {}), ...(kb.stmts.length ? { knowledge_askers: kb.askers, knowledge_removed: kb.removed } : {}), ...(callRows ? { call_rows: callRows } : {}), ...(rs.rows ? { research_rows: rs.rows } : {}) }, `anonymised ${maskEmail(m.email)}` + (erase ? ` · Bassem memory erased (${memRows} rows${profile ? " + factory profile" : ""}${taskRows ? " + " + taskRows + " tasks" : ""}${vids.length ? " + Janna visitor memory (" + vids.length + ")" : ""}${kb.stmts.length ? " + knowledge bank (" + kb.askers + " asker lists, " + kb.removed + " entries)" : ""}) · legal request: ${reason}` : "")),
   ]);
   forgetMemberWeb(m.id); // the isolate's copy too (no 0013 table: the only one)
+  if (rs.running.length) await RESEARCH.terminateAll(env, rs.running); // his running research instances end too
   return { body: { ok: true } };
 }
 

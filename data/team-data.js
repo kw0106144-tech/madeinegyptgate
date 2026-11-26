@@ -234,9 +234,9 @@
           { k: "source_url", ar: "رابط مستند رسمي", en: "Official document link", t: "url", max: 500, wide: 1, ltr: 1, hint_ar: "اختياري. من غيره الطلب بيتحفظ مسودة لحد ما الإدارة توافق.", hint_en: "Optional. Without it the request is saved as a draft until the admins approve it." }]]],
       submit_ar: "📝 احفظ الطلب", submit_en: "📝 Save the request" }
   };
-  var VIEWS = ["order", "member", "project", "tender", "rfq", "leads", "mine"];
+  var VIEWS = ["order", "member", "project", "tender", "rfq", "leads", "research", "mine"];
   /* the two lists (not forms): their tab / tile */
-  var XV = { leads: { icon: "🌐", ar: "فرص من الإنترنت", en: "Web leads" }, mine: { icon: "📂", ar: "إدخالاتي", en: "My entries" } };
+  var XV = { leads: { icon: "🌐", ar: "فرص من الإنترنت", en: "Web leads" }, research: { icon: "🔎", ar: "أبحاث جنة وباسم", en: "Janna & Bassem research" }, mine: { icon: "📂", ar: "إدخالاتي", en: "My entries" } };
 
   /* ---------- rendering ---------- */
   /* the GCC states of the requested plan (Premium = Egypt + 3): how many, from the plans matrix (data/plan.js + data/plans-live.js) */
@@ -278,6 +278,7 @@
     var mineN = S.mine && typeof S.mine.total === "number" ? S.mine.total : null;
     return '<div class="tm-tiles" role="list">' + ["order", "member", "project", "tender", "rfq"].map(function (k) { var F = FORMS[k]; return '<button type="button" class="tm-tile" role="listitem" data-go="' + k + '"><span class="ic" aria-hidden="true">' + F.icon + "</span><b>" + esc(EN ? F.en : F.ar) + "</b><small>" + esc(EN ? F.lead_en : F.lead_ar).split(/[.:]|\s—\s/)[0] + "</small></button>"; }).join("")
       + '<button type="button" class="tm-tile" role="listitem" data-go="leads"><span class="ic" aria-hidden="true">🌐</span><b>' + esc(T("فرص من الإنترنت", "Web leads")) + (S.leadsNew ? ' <span class="tm-c a">' + esc(T(nf(S.leadsNew) + " جديدة", nf(S.leadsNew) + " new")) + "</span>" : "") + "</b><small>" + esc(T("اللي جنة وباسم لقوه على الإنترنت: راجعه واقبله أو ارفضه", "What Janna and Bassem found on the web: review, accept or reject it")) + "</small></button>"
+      + '<button type="button" class="tm-tile" role="listitem" data-go="research"><span class="ic" aria-hidden="true">🔎</span><b>' + esc(T("أبحاث جنة وباسم", "Janna & Bassem research")) + "</b><small>" + esc(T("المستندات اللي باسم عملها ومصادرها (للفريق بس)", "The documents Bassem made and their sources (team only)")) + "</small></button>"
       + '<button type="button" class="tm-tile" role="listitem" data-go="mine"><span class="ic" aria-hidden="true">📂</span><b>' + esc(T("إدخالاتي", "My entries")) + (mineN != null ? ' <span class="tm-c b">' + nf(mineN) + "</span>" : "") + "</b><small>" + esc(T("كل اللي سجّلته بحالته ورقمه ورابطه", "Everything you entered, with its status, number and link")) + "</small></button></div>";
   }
   function tabsHtml() {
@@ -301,6 +302,7 @@
     if (v === "home") el.innerHTML = '<div class="tm-card"><h2>' + esc(T("أهلاً بيك في مكتب الاستقبال", "Welcome to the front desk")) + '</h2><p class="tm-lead">' + esc(T("اختار اللي عايز تعمله. كل نتيجة بتشوفها هي رد السيرفر الحقيقي (رقم الطلب، عدد المصانع اللي اتبعتلها، منشور ولا مسودة).", "Choose what you want to do. Every result you see is the server's real answer (the reference, how many factories it was sent to, published or draft).")) + "</p></div>" + tilesHtml();
     else if (v === "mine") { el.innerHTML = mineShell(); loadMine(); }
     else if (v === "leads") { el.innerHTML = leadsShell(); loadLeads(); }
+    else if (v === "research") { el.innerHTML = researchShell(); loadResearch(); }
     else { el.innerHTML = formHtml(v); restoreDraft(v); gccToggle(formEl(v)); if (S.res[v]) document.getElementById("tmRes-" + v).innerHTML = S.res[v]; }
     var a = el.querySelector("h2"); if (a && push !== false) { try { el.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (e) {} }
   }
@@ -472,6 +474,50 @@
   var LFORM = { tender: "tender", rfq: "rfq", project: "project" }; /* the desk form an accepted lead of that type becomes */
   var LMKT = { eg: ["مصر", "Egypt"], sa: ["السعودية", "Saudi Arabia"], ae: ["الإمارات", "UAE"], kw: ["الكويت", "Kuwait"], qa: ["قطر", "Qatar"], om: ["عمان", "Oman"], bh: ["البحرين", "Bahrain"], jo: ["الأردن", "Jordan"], iq: ["العراق", "Iraq"], ly: ["ليبيا", "Libya"], sd: ["السودان", "Sudan"], ma: ["المغرب", "Morocco"], dz: ["الجزائر", "Algeria"], tn: ["تونس", "Tunisia"], ke: ["كينيا", "Kenya"], ng: ["نيجيريا", "Nigeria"], et: ["إثيوبيا", "Ethiopia"], za: ["جنوب أفريقيا", "South Africa"], cn: ["الصين", "China"], "in": ["الهند", "India"], tr: ["تركيا", "Turkey"], de: ["ألمانيا", "Germany"], it: ["إيطاليا", "Italy"], fr: ["فرنسا", "France"], es: ["إسبانيا", "Spain"], gb: ["بريطانيا", "UK"], us: ["أمريكا", "USA"], ru: ["روسيا", "Russia"], gulf: ["الخليج", "GCC"], arab: ["الدول العربية", "Arab countries"], africa: ["أفريقيا", "Africa"], asia: ["آسيا", "Asia"], europe: ["أوروبا", "Europe"] };
   function L2(m, k) { var x = own(m, k) ? m[k] : null; return x ? (EN ? x[1] : x[0]) : ""; }
+  /* ---------- «🔎 أبحاث جنة وباسم» (0014, worker/src/research.js): the deep research documents as the customer sees them + their INTERNAL
+     sources (link, site, the date found) and what the checker removed — sources here only; «إخفاء البند» / «إخفاء المستند كله» re-read
+     the document for every reader at once (audited). Private writing kinds (quotes, posts, e-mails, translations, profiles): owner / admin
+     only. Every server string is escaped (esc); source links through safeLink ---------- */
+  function researchShell() {
+    return '<section class="tm-card"><div class="tm-h"><h2>🔎 ' + esc(T("أبحاث جنة وباسم", "Janna & Bassem research")) + '</h2></div><p class="tm-lead">' + esc(T("المستندات اللي باسم عملها للأعضاء في المكالمات. المصدر بيظهر هنا بس للفريق — العميل عمره ما بيشوفه. لو بند غلط اخفيه، ولو المستند كله غلط اخفيه كله.", "The documents Bassem made for members in their calls. The source shows here only, for the team — the customer never sees it. Hide a wrong item, or the whole document.")) + '</p><div id="tmRs" aria-live="polite"><p class="tm-load">⏳ ' + esc(T("جارٍ التحميل…", "Loading…")) + "</p></div></section>";
+  }
+  function loadResearch() {
+    var el = document.getElementById("tmRs"); if (!el) return;
+    call("GET", "/team/desk/research").then(function (j) {
+      if (!document.getElementById("tmRs")) return;
+      if (j && j.off) { el.innerHTML = '<div class="tm-msg">' + esc(T("مخزن الأبحاث مش متاح لسه (ملف قاعدة البيانات 0014 ماتشغّلش).", "The research store is not available yet (database file 0014 not applied).")) + "</div>"; return; }
+      var items = (j && j.items) || [];
+      if (!items.length) { el.innerHTML = '<p class="tm-load">' + esc(T("مفيش أبحاث لسه.", "No research yet.")) + "</p>"; return; }
+      el.innerHTML = '<div class="tm-list">' + items.map(function (x) { return '<button type="button" class="tm-tile" data-rs="' + esc(x.id) + '"><b dir="auto">' + esc(x.label + " · " + x.kind + (x.title ? " — " + x.title : "")) + "</b><small>" + esc(String(x.created_at).slice(0, 16).replace("T", " ") + " · " + x.state + (x.partial ? " · " + T("جزئي", "partial") : "") + " · " + T("اتشال ", "removed ") + x.dropped_n + (x.team_state === "hidden" ? " · " + T("مخفي", "hidden") : "")) + "</small></button>"; }).join("") + "</div>";
+      [].forEach.call(el.querySelectorAll("[data-rs]"), function (b) { b.onclick = function () { researchOne(b.getAttribute("data-rs")); }; });
+    }, function (e) { el.innerHTML = '<div class="tm-msg bad" role="alert">' + esc(T("ماقدرناش نجيب الأبحاث دلوقتي.", "Could not load the research now.")) + " (" + esc(e.code || "") + ")</div>"; });
+  }
+  function researchOne(id) {
+    var el = document.getElementById("tmRs"); if (!el) return;
+    call("GET", "/team/desk/research/" + encodeURIComponent(id)).then(function (j) {
+      var src = {}; ((j && j.sources) || []).forEach(function (x) { src[x.e] = x; });
+      var d = j.doc, hid = j.hidden || [], o = '<button type="button" class="btn btn-line btn-sm" data-rsback="1">← ' + esc(T("رجوع", "Back")) + "</button>";
+      if (!j.readable) o += '<div class="tm-msg">' + esc(T("نص المستند ده خاص بالعضو (عرض سعر / بوستات / إيميلات / ترجمة / ملف شركة): بيظهر لصاحب المنصة والأدمن بس.", "This document's text is the member's private writing (a quote, posts, e-mails, a translation, a profile): owner and admin only.")) + "</div>";
+      if (d) {
+        o += '<h3 dir="auto">' + esc(d.title) + "</h3>";
+        Object.keys(d.items || {}).forEach(function (k) {
+          var it = d.items[k], s0 = src[k] || {}, link = safeLink(s0.url || s0.page || ""), off = hid.indexOf(k) > -1;
+          o += '<div class="tm-card" dir="auto"><b>' + esc(k + " · " + it.label) + "</b>" + (it.line ? "<p>" + esc(it.line) + "</p>" : "")
+            + "<small>" + esc(T("المصدر (للفريق بس): ", "Source (team only): ") + [s0.origin, s0.site || s0.source_name || "", s0.date ? T("اتلقى ", "found ") + s0.date : ""].filter(function (v) { return !!v; }).join(" · ")) + "</small>"
+            + (link ? ' <a href="' + esc(link) + '" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" dir="ltr">' + esc(link.slice(0, 90)) + "</a>" : "")
+            + ' <button type="button" class="btn btn-line btn-sm" data-rshide="' + esc(k) + '" data-on="' + (off ? "1" : "0") + '">' + esc(off ? T("↩ رجّع البند", "↩ Show the item") : T("🙈 إخفاء البند ده", "🙈 Hide this item")) + "</button></div>";
+        });
+      }
+      if ((j.dropped || []).length) o += "<details><summary>" + esc(T("اللي الفلتر شاله", "What the checker removed")) + " (" + j.dropped.length + ")</summary><ul>" + j.dropped.map(function (x) { return '<li dir="auto">' + esc(x.rule + " · " + x.sec + " · " + x.text) + "</li>"; }).join("") + "</ul></details>";
+      o += '<p><button type="button" class="btn btn-sm" data-rsdoc="' + (j.job.team_state === "hidden" ? "0" : "1") + '">' + esc(j.job.team_state === "hidden" ? T("↩ رجّع المستند", "↩ Show the document") : T("🙈 إخفاء المستند كله", "🙈 Hide the whole document")) + "</button></p>";
+      o += '<p class="tm-lead">' + esc(T("الإيميلات اللي اتبعتت قبل الإخفاء مابترجعش.", "E-mails sent before a hide are not recalled.")) + "</p>";
+      el.innerHTML = o;
+      var put = function (b) { call("PUT", "/team/desk/research/" + encodeURIComponent(id), b).then(function () { researchOne(id); }, function (e) { alert(e.code || "error"); }); };
+      var bk = el.querySelector("[data-rsback]"); if (bk) bk.onclick = loadResearch;
+      [].forEach.call(el.querySelectorAll("[data-rshide]"), function (b) { b.onclick = function () { var k = b.getAttribute("data-rshide"); put(b.getAttribute("data-on") === "1" ? { unhide_items: [k] } : { hide_items: [k] }); }; });
+      var hd = el.querySelector("[data-rsdoc]"); if (hd) hd.onclick = function () { put({ hide_doc: hd.getAttribute("data-rsdoc") === "1" }); };
+    }, function (e) { el.innerHTML = '<div class="tm-msg bad" role="alert">' + esc(e.code || "error") + "</div>"; });
+  }
   function leadsShell() {
     var q = S.lq;
     return '<section class="tm-card"><div class="tm-h"><h2>🌐 ' + esc(T("فرص من الإنترنت", "Web leads")) + '</h2><button type="button" class="btn btn-line btn-sm" data-act="leads-reload">↻ ' + esc(T("تحديث", "Refresh")) + "</button></div>"

@@ -5586,7 +5586,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
     # (or MIG_PWA_KILL=1 at build time) → a sw.js that deletes the app's caches and unregisters itself, and pages that unregister it.
     PWA_DEF = {'kill': False, 'theme_color': '#8E0B20', 'background_color': '#FFFFFF',
                # downloads: the CSV lists and the Android APKs (seo_app.part.py) — a download goes to the network as it is, never through the worker
-               'never': ['api', 'admin', 'login', 'dashboard', 'advisor', 'meeting', 'inbox', 'seo-admin', 'seo-team', 'data-desk', 'pay', 'panel', 'downloads'],
+               'never': ['api', 'admin', 'login', 'dashboard', 'advisor', 'meeting', 'inbox', 'seo-admin', 'seo-team', 'data-desk', 'pay', 'panel', 'downloads', 'research'],
                'never_files': ['/data/overlay.js', '/app/android.apk'], 'cache_max': {'code': 80, 'img': 250}, 'max_bytes': 12 * 1048576}
     PWA_ICONS = ('icon-192.png', 'icon-512.png', 'maskable-192.png', 'maskable-512.png', 'monochrome-512.png', 'apple-touch-icon.png', 'favicon-32.png',
                  'favicon.ico', 'sc-factories.png', 'sc-tenders.png', 'sc-rfq.png', 'sc-janna.png')

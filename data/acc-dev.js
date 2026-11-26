@@ -142,8 +142,8 @@
         body(c, '<div class="info">' + h(T("كل مفتاح بيشغّل أو بيوقف ميزة حقيقية: اللي في السيرفر بيتطبّق خلال 30 ثانية، واللي في صفحات الموقع بيظهر أو يختفي خلال دقايق. الميزة المتوقفة السيرفر بيرفض طلباتها برسالة واضحة، والتشغيل تاني بيرجّعها زي ما كانت.", "Each switch turns a real feature on or off: on the server within 30 seconds, on the site's pages within minutes. The server refuses requests for a stopped feature with a clear message; switching it on again brings it back as it was.")) + "</div>"
           + (j.updated_at ? '<p class="mut sm">' + h(T("آخر تغيير في المزايا: ", "Last change to the features: ")) + when(j.updated_at) + (j.updated_by ? ' <bdi dir="ltr">' + h(j.updated_by) + "</bdi>" : "") + "</p>" : "")
           + (fs.length ? '<div class="dv-fs">' + fs.map(featH).join("") + "</div>" : '<div class="cd"><div class="in mut">' + h(T("السيرفر مارجّعش أي مزايا.", "The server returned no features.")) + "</div></div>")
-          + policyH(j.policies || j.policy) + '<div id="dvRev"></div><div id="dvVis"></div>');
-        review(c); vision(c);
+          + policyH(j.policies || j.policy) + '<div id="dvRev"></div><div id="dvVis"></div><div id="dvLlm"></div>');
+        review(c); vision(c); llm(c);
       };
       var take = function (j) { j = j || {}; c.st.j = j; c.st.fs = arr(j.features).map(nFeat).filter(function (f) { return f.key; }); };
       var load = function () { X.GET(API.features).then(function (j) { if (!X.alive(c)) return; take(j); paint(); }, function (e) { body(c, X.errH(e)); }); };
@@ -232,6 +232,66 @@
       sc.src = "data/chat-media.js" + (W.MIGVER_CM || (m ? "?v=" + m[1] : "")); sc.charset = "utf-8"; sc.async = true;
       sc.onload = function () { cb(W.MIGCHATMEDIA || null); }; sc.onerror = function () { cb(null); };
       document.head.appendChild(sc);
+    }
+    /* «🧪 تجربة موديل نصي» + «🧪 الذكاء الاصطناعي» — the writer of «بحث وكتابة عميقة» (worker/src/acc-dev.js POST /dev/llm, GET|PUT /dev/ai):
+       one real document of the fixed test query, the checker's verdict and the document itself; the models / ceiling / automatic e-mail.
+       Every server string is escaped (h). */
+    function llm(c) {
+      if (!$("#dvLlm")) return;
+      var st = c.st.llm || (c.st.llm = { model: "", lang: "ar", reasoning: "", web: false, res: null, msg: null, ai: null, busy: false });
+      var opt = function (list, cur) { return list.map(function (o) { return '<option value="' + h(o[0]) + '"' + (o[0] === cur ? " selected" : "") + ">" + h(o[1]) + "</option>"; }).join(""); };
+      var models = function () { var a = st.ai && st.ai.allow ? st.ai.allow : []; return [["", T("الافتراضي", "The default")]].concat(a.map(function (m) { return [m, m.replace(/^@cf\//, "")]; })); };
+      var docH = function (d) {
+        if (!d) return "";
+        var o = "<h4 dir=\"auto\">" + h(str(d.title)) + "</h4>" + (d.summary ? '<p dir="auto">' + h(str(d.summary)) + "</p>" : "");
+        arr(d.sections).forEach(function (sx) {
+          o += '<p dir="auto"><b>' + h(str(sx.heading)) + "</b></p><ul>";
+          arr(sx.blocks).forEach(function (b) { var it = b.type === "item" && d.items ? d.items[b.ref] : null; o += '<li dir="auto">' + h(it ? [it.label, it.place || it.country || "", it.deadline || "", it.line || ""].filter(function (v) { return !!v; }).join(" — ") : b.type === "cta" ? "[" + str(b.cta) + "]" : (b.subject ? str(b.subject) + " — " : "") + str(b.text)) + "</li>"; });
+          o += "</ul>";
+        });
+        return o;
+      };
+      var paint = function () {
+        if (!X.alive(c) || !$("#dvLlm")) return;
+        var r = st.res, ai = st.ai, set = ai && ai.settings ? ai.settings : null, today = ai && ai.today ? ai.today : null;
+        $("#dvLlm").innerHTML = X.cardH(T("🧪 تجربة موديل نصي", "🧪 Test a text model"),
+          '<p class="sm" dir="auto">' + h(T("بيعمل مستند حقيقي واحد لسؤال تجربة ثابت (مشترين «كسوة سلندرات، درافيل» في صناعات الورق والطباعة والنسيج، مصر) من بيانات المنصة ومركز المعلومات، وبيوريك المستند وحكم الفلتر. مفيش حاجة بتتحفظ؛ ٢٠ تجربة في اليوم.", "Makes ONE real document for a fixed test question (buyers of «roller covering» in the paper, printing and textile industries, Egypt) from the platform's and the Information Center's data, and shows the document and the checker's verdict. Nothing is stored; 20 tests a day.")) + "</p>"
+          + '<div class="fr"><label>' + h(T("الموديل", "Model")) + '<select data-ls="model" dir="ltr">' + opt(models(), st.model) + "</select></label>"
+          + "<label>" + h(T("لغة المستند", "Document language")) + '<select data-ls="lang">' + opt([["ar", "العربي"], ["en", "English"], ["fr", "Français"]], st.lang) + "</select></label>"
+          + "<label>" + h(T("التفكير", "Reasoning")) + '<select data-ls="reasoning" dir="ltr">' + opt([["", T("زي الإعدادات", "As set")], ["off", "off"], ["low", "low"], ["medium", "medium"], ["high", "high"]], st.reasoning) + "</select></label>"
+          + '<label class="ck"><input type="checkbox" data-lw' + (st.web ? " checked" : "") + "> " + h(T("مع البحث العام (بيصرف من حد البحث)", "With the web search (spends search units)")) + "</label></div>"
+          + '<div class="acts2">' + X.btn("dvllmgo", h(st.busy ? T("⏳ شغّال…", "⏳ Running…") : T("🧪 جرّب", "🧪 Test")), "r", st.busy ? " disabled" : "") + "</div>" + msgH(st.msg)
+          + (r ? '<p class="sm"><bdi dir="ltr">' + h(str(r.model)) + "</bdi> · " + h(dur(r.ms_total)) + " · " + h(T("المدخل ", "in ") + (r.tokens_in || 0) + T(" · المخرج ", " · out ") + (r.tokens_out || 0) + " · " + (r.neurons || 0) + " neurons")
+              + (r.error ? " · " + chip(str(r.error), "x") : "") + (r.checker ? " · " + chip(T("اتساب ", "kept ") + r.checker.kept + "/" + r.checker.blocks, r.checker.kept * 2 >= r.checker.blocks ? "ok" : "x") : "") + "</p>"
+              + (r.checker ? '<p class="sm" dir="ltr">' + h(JSON.stringify(r.checker.dropped_by_rule || {})) + "</p>" : "")
+              + (r.output ? '<div class="dv-pre" style="max-height:420px;overflow:auto">' + docH(r.output.doc) + '</div><details class="dv-tech"><summary>' + h(T("اللي باسم كان هيقوله وهيوصله", "What Bassem would say and receive")) + '</summary><pre dir="auto" style="white-space:pre-wrap">' + h(str(r.output.say) + "\n\n" + str(r.output.block)) + "</pre></details>" : "")
+              + (arr(r.dropped).length ? '<details class="dv-tech"><summary>' + h(T("اللي الفلتر شاله", "What the checker removed")) + '</summary><pre dir="auto" style="white-space:pre-wrap">' + h(arr(r.dropped).map(function (x) { return str(x.rule) + " · " + str(x.sec) + " · " + str(x.text); }).join("\n")) + "</pre></details>" : "") : "")
+          + "<hr><h4>" + h(T("🧪 الذكاء الاصطناعي", "🧪 AI settings")) + "</h4>"
+          + (set ? '<div class="fr"><label>' + h(T("موديل باسم", "Bassem's model")) + '<select data-as="research_bassem" dir="ltr">' + opt(models().slice(1), set.models.research_bassem) + "</select></label>"
+              + "<label>" + h(T("الموديل البديل", "Fallback model")) + '<select data-as="fallback" dir="ltr">' + opt(models().slice(1), set.models.fallback) + "</select></label>"
+              + "<label>" + h(T("الحد اليومي (neurons)", "Daily ceiling (neurons)")) + '<input type="number" min="0" max="5000000" step="10000" data-an value="' + h(String(set.day_neurons)) + '" dir="ltr"></label>'
+              + '<label class="ck"><input type="checkbox" data-am' + (set.mail_if_untold ? " checked" : "") + "> " + h(T("ابعت النتيجة على الإيميل لو المكالمة قفلت قبل ما باسم يقولها", "E-mail the result if the call ended before Bassem told it")) + "</label></div>"
+              + (today ? '<p class="sm">' + h(T("النهارده: ", "Today: ") + today.used + " / " + today.limit + " neurons ≈ $" + today.usd) + "</p>" : "")
+              + '<div class="acts2">' + X.btn("dvaisave", h(T("💾 حفظ", "💾 Save")), "l") + "</div>" : '<p class="mut sm">' + h(T("بيحمّل…", "Loading…")) + "</p>"));
+        [].forEach.call($("#dvLlm").querySelectorAll("[data-ls]"), function (sel) { sel.onchange = function () { st[sel.getAttribute("data-ls")] = sel.value; }; });
+        var w = $("#dvLlm [data-lw]"); if (w) w.onchange = function () { st.web = !!w.checked; };
+        var go = $("#dvLlm [data-a=dvllmgo]"); if (go) go.onclick = run;
+        var sv = $("#dvLlm [data-a=dvaisave]");
+        var save = function () {
+          var b = { models: {}, mail_if_untold: !!($("#dvLlm [data-am]") || {}).checked };
+          [].forEach.call($("#dvLlm").querySelectorAll("[data-as]"), function (sel) { b.models[sel.getAttribute("data-as")] = sel.value; });
+          var n = parseInt(($("#dvLlm [data-an]") || {}).value, 10); if (n >= 0) b.day_neurons = n;
+          X.PUT("/admin/cc/dev/ai", b).then(function (j) { st.ai = j; st.msg = { ok: true, t: T("✓ اتحفظ", "✓ Saved") }; paint(); }, function (e) { st.msg = { ok: false, t: errFull(e), e: e }; paint(); });
+        };
+        if (sv) sv.onclick = save;
+      };
+      var run = function () {
+        if (st.busy) return; st.busy = true; st.msg = { ok: true, t: T("🧪 الموديل بيكتب المستند… (لحد دقيقتين)", "🧪 The model is writing the document… (up to two minutes)") }; paint();
+        X.POST("/admin/cc/dev/llm" + X.qs({ set: "doc", model: st.model, lang: st.lang, reasoning: st.reasoning, web: st.web ? "1" : "" }), {}, { timeout: 180000 }).then(function (j) { st.busy = false; st.res = j || null; st.msg = null; paint(); },
+          function (er) { st.busy = false; st.msg = { ok: false, t: errFull(er), e: er }; paint(); });
+      };
+      if (!st.ai) X.GET("/admin/cc/dev/ai").then(function (j) { st.ai = j || null; paint(); }, function () { paint(); });
+      paint();
     }
     function vision(c) {
       if (!$("#dvVis")) return;

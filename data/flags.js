@@ -43,6 +43,7 @@
   /* «فرص السوق» (/market-opportunities/, worker/src/web-public.js): its menu link shows only once the server says the page is on (the
      switch web_leads_public, locked until migration 0012) — never fail-open: before that the page has nothing to show */
   DEF.web_leads_public = false;
+  DEF.research_bassem = false; /* «بحث وكتابة عميقة» of Bassem (data/research-live.js): OFF until the owner switches it on (never fail-open) */
   var F = null, FROM = "", CBS = [], DONE = false, BUSY = false;
   var own = function (o, k) { return Object.prototype.hasOwnProperty.call(o, k); };
   function en() { return W.MIGLANG === "en" || (D.documentElement.getAttribute("lang") || "").slice(0, 2) === "en"; }

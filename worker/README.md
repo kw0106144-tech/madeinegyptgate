@@ -862,6 +862,25 @@ it is never sent to Anam and carries no id of a person. memory.js / knowledge.js
 photo with a request or a message (phase 1B, its own migration later), video (phase 2), any Anam persona change (phase 3).
 Tests: `test/chat-media.test.mjs` (env.AI mocked) and `functions/_tests/chat-media-site.test.mjs` (data/chat-media.js and the page hooks in a fake DOM).
 
+## «بحث وكتابة عميقة» — Bassem's deep research & writing jobs — src/research*.js, src/ai-call.js, src/ai-budget.js (owner OK 2026-11-21)
+
+- API (Bassem's call page, the member's own sign-in — `bassemCaller`): `POST /api/advisor/research` {action start | status | mail, kind, …},
+  `GET /api/advisor/research/<id>` (status), `GET …/<id>/doc` (the document, statuses computed now), `POST …/<id>` {alive | told | delete},
+  `POST …/<id>/mail` (Bearer v2 full sign-in only, his own address, template `research_doc`, id `rdoc-<job>`). No new route (inside /api/advisor).
+- Runner: one Workflow instance per job (`src/research-flow.js` `ResearchFlow`, binding `RESEARCH` «migate-research»; payload {id} only,
+  retention 1 day / 3 days set in `create()`). The `[[workflows]]` block in `wrangler.toml` is COMMENTED until the owner confirms the CI token
+  may create Workflows; without it the switch is locked and start answers 503 `runner_off`.
+- Steps: platform search by the BUYER industries (never by the seller's own product) · the Information Center feed (INTEL binding, GET) ·
+  the web (hunt / one search, only with `bassem_web_search` and a ready key, ≤ 30 % of the day's units, 24 a member, never below half the day)
+  · ONE Workers AI call (`ai-call.js`: two arguments, never a gateway; one fallback call) · the checker `research-check.js` (C0–C15) ·
+  `research-render.js`. The model never sees a url, site, source or found date; sources live in `research_jobs.sources` (data desk only).
+- Caps: one running job a member; 4 a call, 12 a member a Cairo day, 120 Bassem / 150 all a day; the AI ledger `aiday|…` 600,000 neurons a day
+  (`AI_DAY_NEURONS`, research ≤ 40 %); 10 e-mails a member a day. The owner changes them in «🛠️ المطوّر» → «🧪 الذكاء الاصطناعي» (`dev.ai`).
+- Storage: migration `0014_research.sql` (fail-soft: 503 `research_off`); `researchCron` blanks rows past `expires_at` (+365 days) and fails stuck
+  jobs; the owner's erasure deletes a member's rows. Web leads found by a job are stored with `via = research` and never published.
+- Owner: `POST /api/admin/cc/dev/llm` «🧪 تجربة موديل نصي» (nothing stored, 20 a day), `GET|PUT /api/admin/cc/dev/ai`. Team:
+  `GET|PUT /api/team/desk/research[/<id>]` «🔎 أبحاث جنة وباسم» (sources for the team only; private writing kinds: owner / admin, audited).
+
 ## Bassem's meetings «📞 اجتماعات باسم» — src/bassem-meetings.js (owner request 2026-11-19)
 The Control Center sends Bassem (the Anam persona `19ef9078-5252-42a4-bbdf-9a3c4a38a4be`) into a **Google Meet / Zoom / Microsoft Teams** call of the
 platform's own team through the Anam Meetings API (`/v1/meetings/invites`). Anam cannot dial phone numbers — the page says so. Permission

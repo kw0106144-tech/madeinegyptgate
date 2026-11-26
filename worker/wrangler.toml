@@ -109,6 +109,19 @@ service = "migate-intel"
 [ai]
 binding = "AI"
 
+# «بحث وكتابة عميقة» (src/research-flow.js, research.js): each deep job of Bassem is ONE Workflow instance (id = the job id, payload {id}),
+# created with its own short retention (1 day; 3 days for a failed one). Without this binding the owner switch research_bassem stays LOCKED
+# and POST /api/advisor/research answers 503 runner_off — nothing else changes.
+# HELD BACK on purpose (design «PR A0», owner decision D15): `wrangler deploy` CREATES the Workflow, a new kind of resource, so the GitHub
+# secret CLOUDFLARE_API_TOKEN must have the Workflows permission first — without it every later deploy of this Worker would fail after its
+# dry run passed. Once the owner confirms the token (Cloudflare → My Profile → API Tokens → Workers Scripts / Workflows: Edit), remove the
+# leading «# » of the 5 lines below in a PR of their own (checked with `npx wrangler deploy --dry-run` on 4.164.0: the block validates).
+# [[workflows]]
+# name = "migate-research"
+# binding = "RESEARCH"
+# class_name = "ResearchFlow"
+# limits = { steps = 100 }
+
 # ---- non-secret settings ----
 # Secrets (npx wrangler secret put <NAME>; README "Secrets"): ADVISOR_SECRET · MEETINGS_SECRET · WA_WEBHOOK_SECRET · PLATFORM_KEY ·
 #   RESEND_API_KEY · ANAM_API_KEY · RESPONDIO_TOKEN (both may instead be saved by the owner in the Control Center «مفاتيح الخدمات»;
@@ -138,6 +151,9 @@ MAX_INBOUND_PER_DEAL_DAY = "20"                # replies accepted per deal addre
 CHAT_VISION_MODEL = "@cf/meta/llama-4-scout-17b-16e-instruct" # 📎 the photo-reading model (src/chat-media.js; Gemma 4 gets its own request shape)
 CHAT_VISION_DAILY = "300"                      # photo readings per Cairo day for the whole site (the owner's tests included); "0" = no reading
 CHAT_VISION_TIMEOUT_MS = "12000"               # one reading's time limit (then: «the platform couldn't read the photo»)
+RESEARCH_MODEL_BASSEM = "@cf/openai/gpt-oss-120b"     # «بحث وكتابة عميقة»: Bassem's writer until the owner picks one («🛠️ المطوّر» → «🧪 الذكاء الاصطناعي» wins)
+RESEARCH_MODEL_FALLBACK = "@cf/google/gemma-4-26b-a4b-it" # the one fallback call (a refused / timed-out / unparsable / over-dropped first draft)
+AI_DAY_NEURONS = "600000"                      # the Worker's text-model ceiling a Cairo day (≈ $6.60; research ≤ 40 %); the panel value wins
 DEV_PANEL = "1"                                # MARKER, keep it: a version WITH this var has the developer panel «🛠️ المطوّر» and honours its
                                                # feature switches. src/cf-api.js reads it from each version's bindings: a rollback to a
                                                # version WITHOUT it (older than the panel) needs the owner's extra, server-checked confirmation

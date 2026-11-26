@@ -219,7 +219,10 @@ const ROUTES = [
   R("GET", P("/dev/review"), "dev.manage", (q, e) => DEV.getReview(e)),
   R("PUT", P("/dev/review"), "dev.manage", (q, e, c, a) => DEV.putReview(q, e, c, a)),
   R("DELETE", P("/dev/review"), "dev.manage", (q, e, c, a) => DEV.deleteReview(q, e, c, a)),
-  R("POST", P("/dev/vision"), "dev.manage", (q, e, c, a, u) => DEV.postVision(q, e, c, a, u)), // «🔎 تجربة قراءة صورة» (src/chat-media.js; nothing stored)
+  R("POST", P("/dev/vision"), "dev.manage", (q, e, c, a, u) => DEV.postVision(q, e, c, a, u)),
+  R("POST", P("/dev/llm"), "dev.manage", (q, e, c, a, u) => DEV.postLlm(q, e, c, a, u)), // «🧪 تجربة موديل نصي» (research.js; nothing stored)
+  R("GET", P("/dev/ai"), "dev.manage", (q, e) => DEV.getAi(e)),
+  R("PUT", P("/dev/ai"), "dev.manage", (q, e, c, a) => DEV.putAi(q, e, c, a)), // «🔎 تجربة قراءة صورة» (src/chat-media.js; nothing stored)
   // «📞 اجتماعات باسم» (meetings.bassem: owner + admin; the cap: meetings.cap ∈ OWNER_ONLY) — every invite uses paid Anam minutes
   R("GET", P("/meetings"), "meetings.bassem", (q, e, c, a, u) => BMEET.listMeetings(q, e, c, a, u)),
   R("POST", P("/meetings"), "meetings.bassem", (q, e, c, a) => BMEET.createMeeting(q, e, c, a)),

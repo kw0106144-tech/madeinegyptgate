@@ -516,6 +516,35 @@
       say: function (t) { return sdkSay(t, { photo: true }); }, toast: say, ticket: function () { return (LV && LV.mt) || ""; }, btok: function () { return BTOK; }, full: signedTok,
       chain: function () { return LV ? LV.chain : null; }, relayout: nzPlace, replay: function () { if (LV) sdkPlay(LV); }, go: function (u) { if (frame) go(u); }, upd: updCtl };
   }
+  /* ---------- «بحث وكتابة عميقة» (Bassem's client tool bassem_research; switch research_bassem) — the logic is data/research-live.js
+     (loaded with this file's ?v= while the switch is on); this stub ALWAYS answers the tool: switch off, the kiosk or no module → the
+     «off» line at once (a switch OFF never leaves a call waiting); still loading → ≤ 2 s, then «off» ---------- */
+  var RS = { load: 0 };
+  function rsOn() { var F = window.MIGFLAGS; return persona === "bassem" && !window.JANNA_KIOSK && !!(F && F.on && F.on("research_bassem") === true); }
+  function rsLoad() {
+    if (window.MIGRESEARCH || RS.load) return; RS.load = 1;
+    var sc = document.createElement("script"); sc.src = LT.base + "data/research-live.js" + (window.MIGVER_RS || (LT.v ? "?v=" + LT.v : "")); sc.charset = "utf-8"; sc.async = true;
+    sc.onerror = function () { RS.load = 0; if (sc.parentNode) sc.parentNode.removeChild(sc); };
+    document.head.appendChild(sc);
+  }
+  function rsHost() {
+    var h = cmHost(true), m0 = LV;
+    h.talk = m0 && m0.client && typeof m0.client.talk === "function" ? function (t) { var m = LV; if (!m || !m.client || m.closed || !m.ready || !m.dc) return false; try { m.client.talk(String(t)); return true; } catch (e) { return false; } } : null;
+    h.quiet = function () { return !!(LV && !LV.closed && contQuiet(LV)); };
+    h.nudge = function (t) { nudge(String(t), 0); };
+    h.heard = function () { return HEARD.slice(-6).map(function (x) { return x.s; }); };
+    h.lang = function () { var l = ""; try { l = String(callLang() || ""); } catch (e) { l = ""; } return l || (EN ? "en" : "ar"); };
+    h.chainId = function () { return LV && LV.chain ? String(LV.chain.t0 || "") : ""; };
+    h.phone = function () { return stackedNow(); };
+    return h;
+  }
+  function researchTool(args) {
+    var off = T("البحث الأعمق مش متاح دلوقتي. كمّل باللي رجع من الأدوات التانية، وماتوعدش بيه.", "The deeper search is not available right now. Go on with the other tools' results; promise nothing.");
+    if (!rsOn()) return off;
+    if (window.MIGRESEARCH) return window.MIGRESEARCH.onTool(rsHost(), args);
+    rsLoad();
+    return new Promise(function (res) { var n = 0; (function w() { if (window.MIGRESEARCH) { res(window.MIGRESEARCH.onTool(rsHost(), args)); return; } if (++n > 8) { res(off); return; } setTimeout(w, 250); })(); });
+  }
   function cmUi() { var bx = sdkBox(), b = bx && bx.querySelector(".jv-att"), F = window.MIGFLAGS, M = window.MIGCHATMEDIA; if (!b) return; if (!M && F && F.on && F.on("chat_photos") === true) cmLoad(); if (M && M.sync) { try { M.sync(cmHost(cmOk(LV))); } catch (e) {} } else b.hidden = true; }
   function cmTap() { var M = window.MIGCHATMEDIA, bx = sdkBox(); if (M && M.callTap && bx && cmOk(LV)) M.callTap(cmHost(true), bx.querySelector(".jv-file")); }
   /* ➤ with a photo waiting: 1 = sent with the text as its question · 0 = no photo · -1 = the call cannot take it yet */
@@ -762,6 +791,9 @@
          in the very reply that called the tool, before any answer): this handler starts the same send and answers AT ONCE that it is
          being sent, not sent — Bassem hears that answer once the tool waits for a result in Anam (awaitResult); while it does not, the SDK
          still runs the handler (ToolCallManager calls onStart for every registered client tool) and the send is exactly as before */
+      /* «بحث وكتابة عميقة»: bassem_research answers Bassem with the Worker's line (researchTool: «off» at once while the switch is off) */
+      try { c.registerToolCallHandler("bassem_research", { onStart: function (pl) { return LV !== me || me.closed ? T("مابدأش: المكالمة اتقفلت.", "Not started: the call was closed.") : researchTool(pl && pl.arguments); } }); me.own.bassem_research = 1; } catch (e) {}
+      if (rsOn()) rsLoad();
       try { c.registerToolCallHandler("bassem_notify_member", { onStart: function (pl) { var x = pl && pl.arguments; if (typeof x === "string") { try { x = JSON.parse(x); } catch (e) { x = {}; } } if (LV !== me || me.closed) return T("مااتبعتتش: المكالمة اتقفلت.", "Not sent: the call was closed."); return notifyStart(x || {}); } }); me.own.bassem_notify_member = 1; } catch (e) {}
     }
     on("CONNECTION_CLOSED", function (code, details) { sdkClosed(me, String(code || ""), String(details || "")); });
@@ -871,6 +903,7 @@
     if (scr) s += "\nOn the shared screen now: " + scr;
     var lc = langOn() ? langStored() : ""; if (lc) s += "\nLANGUAGE: " + lc + " (" + langRow(lc)[3] + "): continue only in " + langRow(lc)[3] + ".";
     var pl = ""; try { pl = window.MIGCHATMEDIA && MIGCHATMEDIA.resumeLine ? MIGCHATMEDIA.resumeLine(me.chain) : ""; } catch (e) { pl = ""; } if (pl) s += "\n" + pl; /* 📎 */
+    var rl = ""; try { rl = window.MIGRESEARCH && MIGRESEARCH.resumeLine ? MIGRESEARCH.resumeLine() : ""; } catch (e) { rl = ""; } if (rl) s += "\n" + rl; /* «بحث وكتابة عميقة» */
     if (r.length) s += "\nThe conversation so far (oldest first):\n" + r.map(function (m) { return (m.role === "user" ? "Member: " : nm + ": ") + m.text; }).join("\n");
     return s.slice(0, 6000);
   }
@@ -3016,7 +3049,7 @@
   }
   /* the draft gives way when Bassem shows something else (a tool that drives the screen / shows results, or a new page on the screen):
      it folds to its «✉️» chip and keeps everything the member typed; the next draft or send brings it back */
-  var CMP_GIVE = /^(janna_search|janna_navigate|janna_open|bassem_open_item|bassem_screen|bassem_open_opportunity|bassem_start_deal|bassem_open_guide|bassem_update_deal|bassem_web_search|bassem_intel)$/;
+  var CMP_GIVE = /^(janna_search|janna_navigate|janna_open|bassem_open_item|bassem_screen|bassem_open_opportunity|bassem_start_deal|bassem_open_guide|bassem_update_deal|bassem_web_search|bassem_intel|bassem_research)$/;
   function cmpGive(tool) { if (!cmpOn() || CMP.el.classList.contains("min") || (tool ? !CMP_GIVE.test(String(tool)) : Date.now() - (CMP.at || 0) < 1500)) return; CMP.el.classList.add("min"); } /* a page load right after it opened does not fold it */
 
   /* ---------- the deal room (advisor.part.py): Bassem fills its own fields and presses its own «ابعت من المنصة» ---------- */

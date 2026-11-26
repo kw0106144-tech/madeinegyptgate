@@ -60,10 +60,10 @@ export async function recordLeads(env, rows, { persona = "", via = "", product =
   try {
     if (!env || !env.DB || !Array.isArray(rows) || !rows.length) return 0;
     if (!(await leadsOn(env)) || !(await featureOn(env, "web_leads"))) return 0;
-    const t = iso(nowMs), pk = productKey(product), p = who(persona), v = via === "hunt" ? "hunt" : "search";
+    const t = iso(nowMs), pk = productKey(product), p = who(persona), v = via === "hunt" ? "hunt" : via === "research" ? "research" : "search"; // research: kept for the desk, never published (web-public.js)
     const stmts = [];
     for (const r of rows.slice(0, LEADS_LIMITS.per_answer)) {
-      if (!r || !STORE.has(r.type) || (r.type === "news" && v !== "hunt")) continue;
+      if (!r || !STORE.has(r.type) || (r.type === "news" && v === "search")) continue;
       const url = String(r.url || "");
       if (!/^https?:\/\/[^\s]+$/i.test(url) || url.length > 600) continue;
       let host = ""; try { host = bareHost(new URL(url).hostname); } catch (e) { continue; }

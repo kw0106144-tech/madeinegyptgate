@@ -29,6 +29,10 @@
      chat_photos               chat-media.js     POST /api/janna/media/look, /api/janna/media/ticket, /api/advisor/media/look → 503
                                                  feature_off; janna-session.js gives Janna's call no photo ticket (OFF by default; LOCKED
                                                  while the Worker has no AI binding: featureOn ignores locks, so the endpoints check env.AI too)
+     research_bassem           research.js       POST /api/advisor/research action start → 503 feature_off (status, the documents and the
+                                                 e-mail of jobs already made keep working); data/janna-live.js answers Bassem's
+                                                 bassem_research tool «off» at once. OFF by default; LOCKED until the Worker runs with its AI
+                                                 binding AND the research Workflow binding (RESEARCH) AND migration 0014 is applied
      calls_report              calls-report.js   the daily calls report e-mail (platform cron) is skipped before any Anam / D1 read;
                                                  POST /api/admin/cc/dev/calls-report/send (+ /preview) → 503 feature_off
    The platform's own apps (user agent «MIGApp/<v> (ios|android)», app-ua.js; app parity plan 2026-11-20 — the defaults keep the apps
@@ -44,6 +48,7 @@
    Rows are LOCKED (effective off, cannot be switched ON from here; OFF is always allowed) while what they need is missing: whatsapp_send
    until the respond.io token test passed; bassem_web_search / janna_web_search until a web-search key + their tool secret exist (both in
    «مفاتيح الخدمات»); bassem_member_web until a web-search key exists; web_leads, web_leads_public, web_leads_lookup, account_delete, visitor_erase_request until their migration is applied. chat_photos while the Worker has no AI binding (env.AI).
+   research_bassem until the AI binding, the research Workflow binding (env.RESEARCH) and migration 0014 all exist.
    calls_report until an e-mail route («البريد») and a report recipient exist.
    The two privacy rules are PERMANENT POLICY (POLICIES): shown, never switches.
    Reader: loadFeatures(env) — ≤ 1 D1 read per isolate per 30 s (memo per env.DB; acc.js ccBoot warms it at the start of every request /
@@ -184,6 +189,16 @@ export const FEATURES = Object.freeze([
     desc_en: "When Janna or Bassem search the platform for tenders, RFQs, customers, projects or news, they also say the published «Market opportunities» that match — after the platform's own results and counted apart (the platform's counts never grow with them) — as information only, with no source, and without saying they come from the platform's data or that the company is registered. What the data desk hides is no longer said (within 10 minutes). Off: they say the platform's results only.",
     lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0012_web_leads.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0012_web_leads.sql is applied (GitHub → Actions → d1-migrate)",
     enforced_by: ["POST /api/janna/lookup (sections tenders, rfqs, customers, projects, news): the published opportunities after the platform's results (index.js)"] },
+  /* «بحث وكتابة عميقة» (owner 2026-11-20 «أنا عايز جنه وباسم يبقوا زي شات جي بي تي كده في البحث والتطوير والرد والعمل», his OK «اعمله»
+     2026-11-21; design part A, Bassem first): OFF by default — the owner switches it on after «🧪 تجربة موديل نصي» and after he approved
+     the texts word for word (docs/app/OWNER-APPROVAL-AR.md §9). Locked without the AI binding, the Workflow binding or migration 0014. */
+  { key: "research_bassem", default: false, scope: "both",
+    label_ar: "بحث أعمق ومستندات من باسم", label_en: "Deeper research & documents by Bassem",
+    desc_ar: "في مكالمة باسم، العضو يطلب بحث أوسع أو حاجة مكتوبة، وباسم بيكمّل كلام عادي وهو شغّال (من 20 ثانية لدقيقة ونص) وبعدين يقول النتيجة، والمستند بيظهر على الشاشة: مشترين لمنتجه، مناقصات وطلبات أسعار، خطة تصدير لسوق، ملف شركة، مسودة عرض سعر، بوستات، إيميلات للمشترين، ترجمة، أو ملخص مناقصة أو سوق. بيدوّر في المنصة ومركز المعلومات (والبحث على النت لو «بحث باسم على الإنترنت» شغّال) ويكتب بموديل واحد من Workers AI، وكل معلومة لازم ليها مصدر متخزّن وإلا بتتشال. مفيش أي مصدر ولا اسم موقع ولا لينك بيظهر للعضو — المصادر لفريق البيانات بس («🔎 أبحاث جنة وباسم»). المستند بيتحفظ سنة، والعضو يقدر يطلبه على إيميله. شغّله بعد ما تجرّب «🧪 تجربة موديل نصي» وتوافق على النصوص.",
+    desc_en: "In Bassem's call a member asks for a wider search or something written; Bassem keeps talking while it runs (20 to 90 seconds), then tells the result, and the document appears on the screen: buyers for his product, tenders and RFQs, an export plan for one market, a company profile, a quotation draft, posts, e-mails to buyers, a translation, or a summary of a tender or a market. It searches the platform and the Information Center (and the web while «Bassem's web search» is on) and writes with one Workers AI model; every fact needs a stored source or it is removed. No source, site name or link is ever shown to the member — the sources are for the data team only («🔎 Janna & Bassem research»). The document is kept a year and the member can have it e-mailed. Switch it on after «🧪 Test a text model» and after you approve the texts.",
+    lock_rule_ar: "مقفول لحد ما الـ Worker يتنشر بربط الذكاء الاصطناعي وربط البحث الأعمق (Workflow «migate-research») وملف قاعدة البيانات 0014_research.sql يتشغّل (GitHub ← Actions ← d1-migrate)",
+    lock_rule_en: "Locked until the Worker runs with its AI and research (Workflow «migate-research») bindings and 0014_research.sql is applied (GitHub → Actions → d1-migrate)",
+    enforced_by: ["POST /api/advisor/research action start → 503 feature_off", "site"] },
   /* ---- the platform's own apps (app/: Android + iPhone, user agent «MIGApp/<v> (ios|android)», app-ua.js) and the store rules (app parity
      plan 2026-11-20). The defaults keep the apps EXACTLY like the website; the texts behind the rows that ship OFF wait for the owner's
      word-for-word approval (docs/app/OWNER-APPROVAL-AR.md). ---- */
@@ -350,6 +365,13 @@ export async function stateOf(env, d) {
     }
     // 📎 photos: the Worker's Workers AI binding ([ai] in worker/wrangler.toml) — without it nothing can read a photo
     if (d.key === "chat_photos") return env && env.AI && typeof env.AI.run === "function" ? NONE : { locked: T("no_ai", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
+    // «بحث وكتابة عميقة»: the AI binding, the Workflow binding (wrangler.toml [[workflows]] RESEARCH) and migration 0014 — all three
+    if (d.key === "research_bassem") {
+      if (!(env && env.AI && typeof env.AI.run === "function")) return { locked: T("no_ai", "مقفول: الـ Worker لسه مالوش ربط بالذكاء الاصطناعي (AI)", "Locked: the Worker has no AI binding yet"), needs: null, ready: false };
+      if (!(env.RESEARCH && typeof env.RESEARCH.create === "function")) return { locked: T("no_runner", "مقفول: ربط البحث الأعمق (Workflow «migate-research») لسه مش في الـ Worker — بيتضاف بنشر بعد تأكيد صلاحية التوكن", "Locked: the research Workflow binding («migate-research») is not on the Worker yet — it comes with a deploy once the token permission is confirmed"), needs: null, ready: false };
+      if (!(await researchStoreOn(env))) return { locked: T("migration_needed", "مقفول لحد ما ملف قاعدة البيانات 0014_research.sql يتشغّل (GitHub ← Actions ← d1-migrate)", "Locked until the database file 0014_research.sql is applied (GitHub → Actions → d1-migrate)"), needs: null, ready: false };
+      return NONE;
+    }
     if (d.key === "web_leads" || d.key === "web_leads_public" || d.key === "web_leads_lookup") return (await leadsStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
     // the daily calls report (calls-report.js): an e-mail route (the e-mail center's config, RESEND_API_KEY or the SEND_EMAIL binding) and a recipient
     if (d.key === "calls_report") {
@@ -389,6 +411,14 @@ export async function leadsStoreOn(env) {
   LEADS_MEMO.set(db, { ok, at: Date.now() }); return ok;
 }
 export const forgetLeadsStore = env => { const db = dbOf(env); if (db) LEADS_MEMO.delete(db); };
+/* migration 0014 (research_jobs, «بحث وكتابة عميقة») applied? the same memo rule */
+const RESEARCH_MEMO = new WeakMap(); // env.DB → {ok, at}
+export async function researchStoreOn(env) {
+  const db = dbOf(env); if (!db) return false;
+  const m = RESEARCH_MEMO.get(db); if (m && (m.ok || Date.now() - m.at < 60000)) return m.ok;
+  let ok = false; try { await db.prepare("SELECT 1 AS x FROM research_jobs LIMIT 1").first(); ok = true; } catch (e) { ok = false; }
+  RESEARCH_MEMO.set(db, { ok, at: Date.now() }); return ok;
+}
 /* «🔗 وصّل البحث بجنة وباسم»: are the web tools on the personas? (cc_settings websearch.connect, written by acc-wsconnect.js: v2
    {connected: {bassem, janna}}; a v1 state = Bassem's search alone, without the hunt → not connected) — display only (the needs) */
 export async function connectedOf(env) {
