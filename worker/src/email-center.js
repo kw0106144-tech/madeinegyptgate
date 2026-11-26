@@ -227,6 +227,11 @@ export const TEMPLATES = Object.freeze([
   T({ key: "bassem_note", group: "bassem", to: "member", via: "send", prefixes: ["nt-"], name_ar: "رسالة من باسم", name_en: "A note from Bassem",
     about_ar: "رسالة باسم للعضو من المستشار (بموافقة العضو).", about_en: "Bassem's note to the member from the advisor (with the member's consent).",
     sample_ar: "رسالة من باسم / A note from Bassem", sample_en: "رسالة من باسم / A note from Bassem" }),
+  /* «بحث وكتابة عميقة» (research.js mailJob): the finished document to the signed-in member's OWN address, once per job (id rdoc-<job>);
+     no source, no outside link, deadlines as dates only */
+  T({ key: "research_doc", group: "bassem", to: "member", via: "send", prefixes: ["rdoc-"], name_ar: "مستند من جنة أو باسم", name_en: "A document from Janna or Bassem",
+    about_ar: "المستند اللي العضو طلبه في مكالمته (بحث، خطة تصدير، عرض سعر …) على إيميله هو بس.", about_en: "The document a member asked for in a call (research, an export plan, a quotation …), to his own e-mail only.",
+    sample_ar: "مستند: ‹title›", sample_en: "Document: ‹title›" }),
   T({ key: "advisor_reply_notice", group: "bassem", to: "member", via: "send", prefixes: ["n-"], name_ar: "إشعار رد على صفقة", name_en: "Deal reply notice",
     about_ar: "نسخة للعضو لما جهة ترد على إيميل صفقة (لما استقبال الردود يكون شغال).", about_en: "A copy to the member when a party answers a deal e-mail (when inbound replies are on).",
     sample_ar: "رد جديد / New reply: ‹subject›", sample_en: "رد جديد / New reply: ‹subject›" }),

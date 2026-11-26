@@ -98,7 +98,7 @@
   "data-desk": "/data-desk/",
   "signin": "/login/",
   "pay": "/pay/",
-  "delete-account": "/delete-account/", "market-opportunities": "/market-opportunities/",
+  "delete-account": "/delete-account/", "market-opportunities": "/market-opportunities/", "research": "/research/",
   "factories": "/factories/",
   "tenders": "/tenders/",
   "rfqs": "/rfq/",
@@ -169,7 +169,7 @@
   "pay",
   "delete-account",
   "seo-team",
-  "data-desk", "market-opportunities"
+  "data-desk", "market-opportunities", "research"
  ],
  "_canonical_static": "site.py page key → the key whose URL is its canonical (true duplicates only). /contractor-leads/ is no duplicate of /leads/ (the contractors' requests only, with its own title) and keeps its own canonical (owner report 2026-11-19).",
  "canonical_static": {},

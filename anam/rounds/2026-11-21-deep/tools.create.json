@@ -1,0 +1,158 @@
+{
+ "_what": "«بحث وكتابة عميقة» — Bassem's ONE new Anam tool. PREPARED, NOT APPLIED: every Anam write needs the owner's OK (anam/APPLY.md).",
+ "tools": [
+  {
+   "key": "bassem_research",
+   "ref": "NEW:bassem_research",
+   "attach_to": [
+    "bassem"
+   ],
+   "replaces_in_toolIds": {},
+   "source": "design part A §A.11.1 (scratchpad deep/spec-final.md), branch feat/deep-research",
+   "needs_live_before_create": [
+    "D1 migration 0014_research.sql (GitHub → Actions → d1-migrate, backup first)",
+    "Worker janna-lookup with src/research.js + the [[workflows]] binding RESEARCH «migate-research» (uncommented in its own PR after the owner confirms the CI token may create Workflows)",
+    "Pages: data/janna-live.js (registerToolCallHandler bassem_research, always) + data/research-live.js + /research/",
+    "the owner's «🧪 تجربة موديل نصي» passed and the texts approved word for word (docs/app/OWNER-APPROVAL-AR.md §9)",
+    "switch research_bassem ON in «🛠️ المطوّر» (then the handler answers; while OFF it answers «off» at once)",
+    "fix/no-sources live (the web tools' texts)"
+   ],
+   "client_handler": "data/janna-live.js registerToolCallHandler(\"bassem_research\") → researchTool → data/research-live.js MIGRESEARCH.onTool (≤ 5 s start / status, ≤ 8 s mail)",
+   "notes": "awaitResult true, toolTimeoutSeconds 7 = the page's 5 s worst case + rounding (anam/APPLY.md). status and mail are actions of the same tool: one new tool only (Bassem 23 → 24 tools). Rollback: switch research_bassem OFF first (the stub answers «off» at once), then detach the tool.",
+   "body": {
+    "name": "bassem_research",
+    "type": "CLIENT",
+    "disableInterruptions": false,
+    "description": "Starts or follows a DEEPER search-and-write job (20-90 s) that makes a document on the screen: buyers for a product, tenders and RFQs, an export plan for one market, a company profile, a quotation draft, marketing posts, an e-mail sequence, a translation, or a tender / market summary. Call it in the SAME step as janna_lookup and bassem_intel when the member wants buyers, tenders, an export plan or anything written, and always when they found nothing; not bassem_web_hunt for the same request. For buyers, ask the buying industries first. action start answers at once: say its line in one sentence, go on with the other tools' results and ask ONE useful question. The result comes later in a note «[ملاحظة من المنصة: نتيجة البحث …]» and on the screen: say only what it says. Never name a source, a site or a link. «خلصت؟»: action status with the label. action mail e-mails the finished document to the member: say «اتبعت» only if the result says so. Never put a person's name, phone or e-mail in any field.",
+    "config": {
+     "awaitResult": true,
+     "toolTimeoutSeconds": 7,
+     "parameters": {
+      "type": "object",
+      "required": [
+       "action"
+      ],
+      "properties": {
+       "action": {
+        "type": "string",
+        "enum": [
+         "start",
+         "status",
+         "mail"
+        ],
+        "description": "start a job; status = how far a job is (send its label); mail = e-mail the finished document to the signed-in member's own address"
+       },
+       "kind": {
+        "type": "string",
+        "enum": [
+         "buyers",
+         "answer",
+         "export_plan",
+         "company_profile",
+         "quote",
+         "posts",
+         "emails",
+         "translate",
+         "summary"
+        ],
+        "description": "buyers = who could buy the product (also tenders and RFQs); answer = a research question; export_plan = one market; company_profile = his company (subject «mine») or another; quote = a quotation draft from what he said; posts = marketing posts; emails = an e-mail sequence to buyers; translate = a text he gave; summary = one tender (ref) or a market"
+       },
+       "product": {
+        "type": "string",
+        "maxLength": 120,
+        "description": "1-3 names of the product or service as he said them, Arabic and/or English"
+       },
+       "product_en": {
+        "type": "string",
+        "maxLength": 80,
+        "description": "the usual English trade name"
+       },
+       "buyer_industries": {
+        "type": "array",
+        "items": {
+         "type": "string",
+         "maxLength": 40
+        },
+        "maxItems": 3,
+        "description": "industries whose plants buy or use it (required for buyers)"
+       },
+       "question": {
+        "type": "string",
+        "maxLength": 300,
+        "description": "answer / summary: the question in his words"
+       },
+       "subject": {
+        "type": "string",
+        "maxLength": 120,
+        "description": "company_profile: «mine» or the company's name"
+       },
+       "market": {
+        "type": "string",
+        "enum": [
+         "eg",
+         "sa",
+         "ae",
+         "kw",
+         "qa",
+         "om",
+         "bh",
+         "jo",
+         "iq",
+         "ly",
+         "ma",
+         "dz",
+         "tn",
+         "gulf",
+         "arab",
+         "africa",
+         "asia",
+         "europe",
+         "world"
+        ]
+       },
+       "governorate": {
+        "type": "string",
+        "maxLength": 40
+       },
+       "details": {
+        "type": "string",
+        "maxLength": 1000,
+        "description": "quote / posts / emails / translate: the facts he GAVE (items, quantities, prices he said, terms, tone) or the text to translate — never invent any"
+       },
+       "buyer": {
+        "type": "string",
+        "maxLength": 100,
+        "description": "quote: the buying entity, if he named it"
+       },
+       "count": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 6,
+        "description": "posts / emails: how many"
+       },
+       "ref": {
+        "type": "string",
+        "maxLength": 80,
+        "description": "summary: an item from an earlier result: item:tenders:<id> or intel:<id>"
+       },
+       "doc_lang": {
+        "type": "string",
+        "maxLength": 5,
+        "description": "the document's language code (ar, en, fr …); default: the language you are speaking"
+       },
+       "label": {
+        "type": "string",
+        "maxLength": 4,
+        "description": "status / mail: R1, R2 …"
+       },
+       "use_profile": {
+        "type": "boolean",
+        "description": "use what is saved in his factory profile (products, capacity, markets); default true for company_profile, quote, posts, emails"
+       }
+      }
+     }
+    }
+   }
+  }
+ ]
+}

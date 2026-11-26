@@ -31,7 +31,7 @@ window.MIGSEOCFG = {
   meta("facebook-domain-verification", C.facebook_domain_verification); meta("p:domain_verify", C.pinterest_verification);
   window.MIGTRACK = function () {};
   /* private pages and signed-in visitors: no third-party tags at all */
-  var PRIV = { dashboard: 1, inbox: 1, advisor: 1, "seo-admin": 1, admin: 1, panel: 1, login: 1, track: 1, meeting: 1, pay: 1, "seo-team": 1, "data-desk": 1 };
+  var PRIV = { dashboard: 1, inbox: 1, advisor: 1, "seo-admin": 1, admin: 1, panel: 1, login: 1, track: 1, meeting: 1, pay: 1, "seo-team": 1, "data-desk": 1, research: 1 };
   var pg = window.MIGPAGE || (location.pathname.replace(/\/+$/, "").split("/").pop() || "home").replace(/\.html?$/, "");
   var signed = false; try { signed = !!localStorage.getItem("mig-tok"); } catch (e) {}
   if (PRIV[pg] || signed) return;

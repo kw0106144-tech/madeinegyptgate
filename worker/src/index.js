@@ -16,6 +16,8 @@
    - POST /api/janna/timing   the live-call page's start timing beacon → 204 + one log line of numbers (src/live-timing.js)
    - POST /api/janna/media/look · /api/janna/media/ticket · /api/advisor/media/look  📎 a photo of Janna's / Bassem's chat, read once by
      Workers AI and never stored → the guarded text block the page gives the persona (src/chat-media.js, switch chat_photos)
+   - POST|GET /api/advisor/research[/<id>[/doc|/mail]]  «بحث وكتابة عميقة»: Bassem's deep research & writing jobs (src/research.js, one
+     Workflow instance per job — src/research-flow.js; switch research_bassem, migration 0014): the document has no source and no link out
    The webhook routes, the health check and the timing beacon skip ccBoot (BARE below): they read only the bundled data or their own tables
    (the lookup: the two member tables, memoised for 10 minutes).
    Security: if the secret JANNA_KEY is set (wrangler secret put JANNA_KEY), requests must send header X-Janna-Key with it
@@ -40,7 +42,7 @@ import { handleGuardEv, guardTool, guardCron } from "./guard.js"; // «حماي�
 import { handleWA, bassemCron } from "./whatsapp.js"; // /api/wa/*        respond.io webhook + Bassem's daily WhatsApp
 import { handleJannaSession } from "./janna-session.js"; // /api/janna/session  live-call session tokens (JS SDK: no third-party mark)
 import { handleTiming } from "./live-timing.js";       // /api/janna/timing   the call page's start timing beacon (numbers only)
-import { handleItem, enrichResult, absUrl, eventStatus } from "./janna-item.js"; // /api/janna/item  one item in full + the lookup results' ids / open_url / amounts
+import { handleItem, enrichResult, absUrl, eventStatus, findItem } from "./janna-item.js"; // /api/janna/item  one item in full + the lookup results' ids / open_url / amounts
 import { handleMemory, memoryCron, budgetEnv, TICK } from "./memory.js"; // /api/advisor/memory  Bassem's memory (searches, call turns, summaries, facts)
 // ---- 0009 memory upgrades: Janna's visitor memory, «بنك المعلومات», the daily memory update ----
 import { handleVisitorMemory } from "./visitor.js";   // /api/janna/memory[/tasks]  Janna's memory of her visitors
@@ -56,6 +58,7 @@ import { handleJannaHunt, handleBassemHunt } from "./web-hunt.js";
 import { publishedLeads, publicItem, handlePublicLeads } from "./web-public.js";
 // ---- 📎 photos in Janna's and Bassem's chats (src/chat-media.js, switch chat_photos): read once by Workers AI, never stored ----
 import * as CHATMEDIA from "./chat-media.js";
+import * as RESEARCH from "./research.js"; // «بحث وكتابة عميقة»: POST|GET /api/advisor/research[/<id>[/doc|/mail]] (Bassem's deep jobs, switch research_bassem)
 import { callsReportCron } from "./calls-report.js"; // «تقرير مكالمات جنة وباسم اليومي»: the morning e-mail (platform cron, its own D1 budget)
 // Admin Control Center (docs/janna/ACC-CONTRACT.md §0.2): one CC object handed to every new handler (no cross-area imports)
 import * as ACC from "./acc.js"; import * as CONTENT from "./content.js"; import * as PAY from "./payments.js"; import * as MAILC from "./email-center.js";
@@ -679,6 +682,7 @@ const WORKER = {
     if (/^\/api\/advisor\/web\/?$/.test(url.pathname)) return handleWebSearch(req, env, ctx);
     if (/^\/api\/advisor\/hunt\/?$/.test(url.pathname)) return handleBassemHunt(req, env, ctx); // web-hunt.js, before the advisor family
     if (/^\/api\/advisor\/memory(\/|$)/.test(url.pathname)) return handleMemory(req, env, ctx); // before the advisor family (memory.js)
+    if (/^\/api\/advisor\/research(\/|$)/.test(url.pathname)) return RESEARCH.handleBassemResearch(req, env, ctx); // «بحث وكتابة عميقة» (research.js) — before the advisor family
     if (/^\/api\/advisor\/media(\/|$)/.test(url.pathname)) return CHATMEDIA.handleAdvisorMedia(req, env, ctx); // 📎 Bassem's call photos — before the advisor family
     if (/^\/api\/advisor(\/|$)/.test(url.pathname)) return handleAdvisor(req, env, ctx);
     if (/^\/api\/meetings(\/|$)/.test(url.pathname)) return handleMeetings(req, env, ctx);
@@ -739,6 +743,9 @@ CC.self = { fetch: (req, env, ctx) => WORKER.fetch(req, env, ctx) };
 /* the daily calls report (calls-report.js) re-runs searches on the bundled data and counts today's open tenders: the lookup's own code
    (section: how the route reads a section — LOOKUP_SECTIONS, their aliases, unknown → factories) */
 CC.lookup = { search: (...a) => search(...a), tenderStatus, GOV, CITY_GOV, section: lookupSection };
+/* «بحث وكتابة عميقة» (research.js): the platform's own search + items, handed in once (no import cycle — the CC pattern) */
+RESEARCH.useDeps({ search: (...a) => search(...a), findItem: (...a) => findItem(...a), enrichResult: (...a) => enrichResult(...a), memberData: (...a) => memberData(...a), DATA });
+CC.research = RESEARCH;
 /* every 15 min: inquiry retries / 48 h reminders / 30-day auto-close; once a day after 07:00 Cairo: digests + deadline
    reminders; Bassem's WhatsApp at each member's own time; once a Cairo day after midnight: the memory consolidation (memory.js) and then
    the daily memory update (daily.js: day digests, «ملخص العميل», tasks, knowledge merge, caps report); once a Cairo day from the owner's time
@@ -754,9 +761,12 @@ export async function platformCron(env, nowMs = Date.now()) {
     ["memory", () => (busy() ? { skipped: "daily digests ran in this tick" } : memoryCron(menv, nowMs))],
     ["memory_day", () => (busy() ? { skipped: "daily digests ran in this tick" } : out.memory && out.memory.rebuilt ? { skipped: "consolidation ran in this tick" } : dailyMemory(menv, nowMs))],
     ["calls_report", () => (busy() ? { skipped: "daily digests ran in this tick" } : callsReportCron(env, nowMs, CC))], // its own budgetEnv(env, 80) inside
+    ["research", () => RESEARCH.researchCron(env, nowMs)], // «بحث وكتابة عميقة»: stuck jobs → failed, retention (≤ 70 statements; skipped without 0014)
     ["guard", () => guardCron(env, nowMs)]]) { // «حماية الموقع»: ≤ 1 read when nothing happened; at most one e-mail an hour
     try { out[k] = await fn(); } catch (e) { out[k] = { error: String(e && e.message || e) }; console.error("platform cron " + k, e && e.stack || e); }
   }
   return out;
 }
 export { search };
+/* the research Workflow's class (worker/wrangler.toml [[workflows]] «migate-research» → class_name ResearchFlow) */
+export { ResearchFlow } from "./research-flow.js";

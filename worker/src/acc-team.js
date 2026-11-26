@@ -13,6 +13,10 @@
    PUT  /api/team/desk/leads/:id {status: accepted|rejected|new, reason?, note?, content_id?} → {ok, item}   one cc_audit row (503 leads_off)
    POST /api/team/desk/content {…, lead_id?}  a lead turned into content: the lead is linked (accepted + content_id, audited leads.convert),
                                               best effort — the answer says lead_linked: true | false
+   GET  /api/team/desk/research?state=&kind=&page=  → {items, total}                0014 «🔎 أبحاث جنة وباسم» (research.js; off without 0014)
+   GET  /api/team/desk/research/:id → {job, doc, sources (INTERNAL), dropped, params, model, tokens, neurons, web_units} — private writing
+                                       kinds (quote, posts, e-mails, translations, profiles) readable by owner / admin only, audited research.read
+   PUT  /api/team/desk/research/:id {hide_items?, unhide_items?, hide_doc?, note?} → audited research.review (the document re-reads at once)
    Every write: rate limit per team member + one cc_audit row with the team member's e-mail. */
 import { line, str, now, hex, isEmail, team, adminEmails, canonPlan, PLAN_LV, effPlan, membersByMailbox, rateOk, ipHash, safeEq, GOV_CODES, cairoDay, gccPick, normGcc } from "./common.js";
 import { authUser, isLinkSession } from "./auth.js";
@@ -24,7 +28,8 @@ import { metaUpsert, metaOf } from "./acc-members.js";
 import { internalInquiry } from "./acc-orders.js";
 import { plansData } from "./acc-plans.js";
 import { listKnowledge, answerKnowledge } from "./knowledge.js"; // 0009: «بنك المعلومات» on the data desk
-import { listLeads, reviewLead, linkLead } from "./web-leads.js"; // 0012: «🌐 فرص من الإنترنت» on the data desk
+import { listLeads, reviewLead, linkLead } from "./web-leads.js";
+import * as RESEARCH from "./research.js"; // 0014: «🔎 أبحاث جنة وباسم» on the data desk // 0012: «🌐 فرص من الإنترنت» on the data desk
 
 const DESK_ROLES = new Set(["data", "admin", "owner"]);
 const COLL = { tenders: "tend", projects: "proj", rfqs: "rfq" };
@@ -193,6 +198,22 @@ export async function handleTeam(req, env, ctx, CC) {
     if (path === "/desk/leads") { if (M !== "GET") return ccErr(req, env, 405, "method", "method not allowed"); await limit(env, a, "leads"); return ccJson(req, env, await listLeads(env, url)); }
     const lm = /^\/desk\/leads\/(\d{1,12})$/.exec(path);
     if (lm) { if (M !== "PUT") return ccErr(req, env, 405, "method", "method not allowed"); await limit(env, a, "leads"); return ccJson(req, env, await reviewLead(env, a.actor, Number(lm[1]), await body(req, 8192), { ipHash: await ipHash(req, env), reqId: line(req.headers.get("cf-ray") || "", 40) })); }
+    /* 0014 «🔎 أبحاث جنة وباسم»: the deep research jobs — the document as the customer sees it + its INTERNAL sources and the checker's
+       removals (research.js); private writing kinds' text only for owner / admin (audited); hide an item / the document (one cc_audit row) */
+    if (path === "/desk/research") { if (M !== "GET") return ccErr(req, env, 405, "method", "method not allowed"); await limit(env, a, "leads"); return ccJson(req, env, await RESEARCH.deskList(env, url)); }
+    const rm = /^\/desk\/research\/(rj[0-9a-z]{20})$/.exec(path);
+    if (rm) {
+      await limit(env, a, "leads");
+      if (M === "GET") {
+        const r = await RESEARCH.deskGet(env, rm[1], a.role); if (!r) return ccErr(req, env, 404, "not_found", "not found");
+        if (r.private && r.readable) await audit(env, { ...a.actor, action: "research.read", target_type: "research", target_id: rm[1], summary: "read a private research document (" + r.job.kind + ")" });
+        return ccJson(req, env, r);
+      }
+      if (M !== "PUT") return ccErr(req, env, 405, "method", "method not allowed");
+      const u = await RESEARCH.deskPut(env, rm[1], await body(req, 8192), a.actor); if (!u) return ccErr(req, env, 404, "not_found", "not found");
+      await batch(env, [u.stmt, auditStmt(env, { ...a.actor, action: "research.review", target_type: "research", target_id: rm[1], before: u.before, after: u.after, summary: "research review: " + u.after.team_state + " · hidden " + u.after.hidden.length })]);
+      return ccJson(req, env, { ok: true, ...(await RESEARCH.deskGet(env, rm[1], a.role)) });
+    }
     const km = /^\/desk\/knowledge\/(\d{1,12})$/.exec(path);
     if (km) { if (M !== "PUT") return ccErr(req, env, 405, "method", "method not allowed"); await limit(env, a, "content"); return ccJson(req, env, await answerKnowledge(env, a.actor, km[1], await body(req), { ipHash: await ipHash(req, env), reqId: line(req.headers.get("cf-ray") || "", 40) })); }
     return ccErr(req, env, 404, "not_found", "not found");

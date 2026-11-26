@@ -47,9 +47,9 @@ export function personalIn(s, { people = true } = {}) {
 
 /* ---------------- what names a site (never shown) ---------------- */
 /* the hosts that are where an opportunity was READ, not who owns it: their names come out of a title */
-const THIRD = [].concat(PORTALS, AGGREGATORS, NEWS, DIRECTORIES, MARKETS_B2B);
+export const THIRD = [].concat(PORTALS, AGGREGATORS, NEWS, DIRECTORIES, MARKETS_B2B); // exported for research-check.js (one list, never a second copy)
 /* the Arabic / spelled-out names of the sites of those lists that a title carries as a part of its own («… - اليوم السابع») */
-const BRAND = Object.freeze({
+export const BRAND = Object.freeze({
   "youm7.com": ["اليوم السابع"], "masrawy.com": ["مصراوي"], "almalnews.com": ["جريدة المال", "المال نيوز"], "alborsaanews.com": ["البورصة نيوز", "جريدة البورصة"],
   "elbalad.news": ["صدى البلد"], "ahram.org.eg": ["بوابة الأهرام", "الأهرام"], "almasryalyoum.com": ["المصري اليوم"], "shorouknews.com": ["بوابة الشروق", "الشروق"],
   "elwatannews.com": ["الوطن"], "akhbarelyom.com": ["بوابة أخبار اليوم", "أخبار اليوم"], "vetogate.com": ["فيتو"], "cairo24.com": ["القاهرة 24"], "dostor.org": ["الدستور"],
@@ -272,7 +272,8 @@ let MEMO = { at: 0, v: 0, off: true, rows: [], lookup: false }, LOADING = null, 
 export function resetPublished() { MEMO = { at: 0, v: 0, off: true, rows: [], lookup: false }; LOADING = null; }
 /* after a desk decision (hide / restore / reject …) in this isolate: the next reader reads again */
 export function forgetPublished() { MEMO = { ...MEMO, at: 0 }; }
-const SQL = "SELECT id, title, snippet, site, type, official, aggregator, query, product, market, governorate, first_seen, last_seen, status FROM web_leads WHERE status = ? ORDER BY last_seen DESC LIMIT " + WL.rows;
+/* «بحث وكتابة عميقة» (research.js, via 'research'): kept for the data desk only, never published here — they are steered by a member's own job */
+const SQL = "SELECT id, title, snippet, site, type, official, aggregator, query, product, market, governorate, first_seen, last_seen, status, via FROM web_leads WHERE status = ? ORDER BY last_seen DESC LIMIT " + WL.rows;
 const noTable = e => /no such table/i.test(String((e && e.message) || e));
 /* ONE round trip: the owner's switches (flags.js memo, 30 s) and the two indexed reads at once; no 0012 table → off (fail-soft) */
 async function load(env, nowMs) {
@@ -282,6 +283,7 @@ async function load(env, nowMs) {
   if (!lists) return { at: nowMs, v: ++VER, off: true, rows: [], lookup };
   const seen = new Set(), rows = [];
   for (const r of [].concat(...lists).sort((a, b) => String(b.first_seen).localeCompare(String(a.first_seen)) || Number(b.id) - Number(a.id))) {
+    if (r.via === "research") continue; // «بحث وكتابة عميقة»: never published (above)
     const x = publicOf(r); if (!x) continue;
     const k = x.pub.type + "|" + norm(x.pub.title || x.pub.product); // the same notice on several sites (syndication): once, the first found
     if (seen.has(k)) continue; seen.add(k); rows.push(x);

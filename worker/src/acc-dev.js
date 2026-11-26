@@ -26,6 +26,12 @@
                                    stored; it works while chat_photos is off (the owner tests the model BEFORE switching on — no coding session
                                    can call Workers AI); 20 a Cairo day, counted in the reading budget; audited dev.vision (never the photo or
                                    its text: model, size, kind, reason, flags, ms)
+     POST /dev/llm?set=doc|json&model=&lang=ar|en|fr&reasoning=&web=1   «🧪 تجربة موديل نصي»: ONE real document of the fixed test query
+                                   (buyers of «كسوة سلندرات، درافيل», industries ورق / طباعة / نسيج, Egypt) on the platform's and the Information
+                                   Center's evidence (the web only with web=1: it spends units) → the writer + the checker + the document; nothing
+                                   stored; 20 a Cairo day inside the AI ledger; audited dev.llm (numbers and verdicts, never the text)
+     GET|PUT /dev/ai               «🧪 الذكاء الاصطناعي»: the writer / fallback models (MODEL_ALLOW only), reasoning, the daily AI ceiling in
+                                   neurons, the research caps, mail_if_untold (D11) — cc_settings dev.ai, audited dev.ai
      GET|PUT /dev/calls-report     «تقرير المكالمات اليومي» (calls-report.js): the recipients, time, detail, team tests, empty days, keep days
                                    (PUT audited dev.calls_report, recipients masked) + the last 7 runs + the Anam probe
      POST /dev/calls-report/send   {day} → ≤ 3 per report day, audited calls_report.send · GET /dev/calls-report/preview?day= → ≤ 6 / 10 min,
@@ -38,7 +44,9 @@ import { reviewView, reviewSave, reviewClear, reviewSwitchedOff } from "./review
 import { FEATURES, FEATURES_KEY, featureDef, isPolicy, featuresView, parseStore, storeJson, stateOf, forgetFeatures, valueOf, loadFeatures } from "./flags.js";
 import * as CF from "./cf-api.js";
 import * as VISION from "./chat-media.js";        // «🔎 تجربة قراءة صورة»: the same reading, guard and persona block as a call's photo
-import * as CALLS from "./calls-report.js"; // «تقرير المكالمات اليومي» — the owner's settings, send and preview; the Anam probe of «صحة الموقع»
+import * as CALLS from "./calls-report.js";
+import * as RESEARCH from "./research.js";   // «🧪 تجربة موديل نصي» / «🧪 الذكاء الاصطناعي»: the writer of «بحث وكتابة عميقة»
+import * as AICALL from "./ai-call.js"; import * as AIBUDGET from "./ai-budget.js"; // «تقرير المكالمات اليومي» — the owner's settings, send and preview; the Anam probe of «صحة الموقع»
 
 export const CONFIRM_WORD = "ارجع";
 export const DEV_LIMITS = Object.freeze({ deploys_per_10min: 30, rollbacks_per_hour: 3, rollbacks_per_day: 10, health_per_10min: 12, probe_ms: 6000, ack_ttl_s: 600 });
@@ -116,6 +124,40 @@ export async function postVision(req, env, ctx, adm, url) {
   let raw = ""; try { raw = r.raw == null ? "" : typeof r.raw === "string" ? r.raw : JSON.stringify(r.raw); } catch (e) { raw = ""; }
   return { ok: true, model, shape: r.shape || VISION.shapeOf(model), detail, agent, lang, ms: r.ms, total_ms: Date.now() - t0, raw: raw.slice(0, 6000), error: r.error || "", seen: s.seen, reason: s.reason || null, flags: s.flags,
     context, width: im.img.w, height: im.img.h, bytes: im.raw.length, models: [...VISION.PROBE_MODELS], default_model: VISION.visionModel(env), stored: false };
+}
+
+/* ---------- «🧪 تجربة موديل نصي» + «🧪 الذكاء الاصطناعي» — the writer of «بحث وكتابة عميقة» (research.js; design §A.15). No coding session
+   can call Workers AI: this test is the only way to judge a model before research_bassem goes on. Nothing is stored except the audit row
+   (model, set, language, times, tokens, verdicts — never the text); 20 a Cairo day, inside the AI ledger (feature "test") ---------- */
+export const LLM_DAY = 20;
+export async function postLlm(req, env, ctx, adm, url) {
+  if (!AICALL.aiOn(env)) fail(503, "ai_off", "الـ Worker لسه مالوش ربط بالذكاء الاصطناعي (AI) / the Worker has no AI binding yet");
+  const set = url.searchParams.get("set") === "json" ? "json" : "doc", qm = line(url.searchParams.get("model"), 120), lang = ["ar", "en", "fr"].includes(url.searchParams.get("lang")) ? url.searchParams.get("lang") : "ar";
+  const reasoning = ["off", "low", "medium", "high"].includes(url.searchParams.get("reasoning")) ? url.searchParams.get("reasoning") : "";
+  if (qm && !AICALL.modelOk(qm)) fail(400, "invalid_model", "الموديلات المتاحة: " + AICALL.MODEL_ALLOW.join(" · ") + " / the models: " + AICALL.MODEL_ALLOW.join(" · "), { models: [...AICALL.MODEL_ALLOW] });
+  await needTables(env, "cc_audit");
+  if (!(await VISION.dayCount(env, "cmllm", Date.now(), 1) <= LLM_DAY)) { await VISION.dayCount(env, "cmllm", Date.now(), -1); limited("وصلت لحد تجارب الموديل النصي النهارده (" + LLM_DAY + ") — جرّب بكرة / today's text-model tests are used up (" + LLM_DAY + ")", 3600, { limit: LLM_DAY }); }
+  const withWeb = url.searchParams.get("web") === "1";
+  const auditId = await adm.audit("dev.llm", "llm", qm || "default", null, { set, lang, web: withWeb, status: "running" }, `text model test ${qm || "default"} (${set}, ${lang})`);
+  const r = await RESEARCH.testDoc(env, { model: qm, lang, withWeb, reasoning, memberId: "" });
+  await adm.auditDone(auditId, { after: { set, lang, web: withWeb, model: r.model, ms_total: r.ms_total, tokens_in: r.tokens_in, tokens_out: r.tokens_out, neurons: r.neurons, calls: r.calls, error: r.error || null, checker: r.checker }, summary: `text model test ${r.model}: ${r.error || "ok"} (${r.ms_total} ms)` });
+  return { ok: !r.error, set, ...r, models: [...AICALL.MODEL_ALLOW], query: RESEARCH.TEST_QUERY };
+}
+export async function getAi(env) { const v = await RESEARCH.aiSettings(env, { fresh: true }); return { settings: v, defaults: RESEARCH.settingsDefaults(env), allow: [...AICALL.MODEL_ALLOW], paid_only: [...AICALL.PAID_ONLY], today: await AIBUDGET.aiToday(env, { day_neurons: v.day_neurons }), usd_per_1000_neurons: 0.011 }; }
+export async function putAi(req, env, ctx, adm) {
+  const b = await readBody(req, 8192), v = validator();
+  if (b.models && typeof b.models === "object") for (const k of Object.keys(b.models)) { if (!["research_bassem", "fallback"].includes(k)) v.err("models." + line(k, 40), "unknown use", "unknown"); else if (!AICALL.modelOk(b.models[k])) v.err("models." + k, "موديل مش في القايمة / not in the list", "invalid_model"); }
+  if (b.day_neurons != null && !(Number.isInteger(b.day_neurons) && b.day_neurons >= 0 && b.day_neurons <= 5000000)) v.err("day_neurons", "0 – 5,000,000", "range");
+  if (b.reasoning != null && !["off", "low", "medium", "high"].includes(b.reasoning)) v.err("reasoning", "off | low | medium | high", "invalid");
+  if (b.mail_if_untold != null && typeof b.mail_if_untold !== "boolean") v.err("mail_if_untold", "true | false", "not_boolean");
+  v.done();
+  const before = await RESEARCH.aiSettings(env, { fresh: true });
+  const next = RESEARCH.parseSettings(env, { ...before, ...b, models: { ...before.models, ...(b.models || {}) }, caps: { ...before.caps, ...(b.caps && typeof b.caps === "object" ? b.caps : {}) } });
+  const t = now();
+  await batch(env, [env.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at, updated_by) VALUES (?, 'system', ?, ?, ?) ON CONFLICT(k) DO UPDATE SET scope = 'system', v = excluded.v, updated_at = excluded.updated_at, updated_by = excluded.updated_by").bind(RESEARCH.AI_KEY, JSON.stringify(next), t, byOf(adm)),
+    adm.auditStmt("dev.ai", "setting", RESEARCH.AI_KEY, before, next, "AI models / caps changed")]);
+  RESEARCH.forgetSettings(env);
+  return { ok: true, ...(await getAi(env)) };
 }
 
 /* ---------- «دخول مراجعي المتاجر» (review-signin.js): the one review address + the owner's code ---------- */

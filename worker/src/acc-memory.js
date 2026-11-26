@@ -21,6 +21,7 @@ import { fail, body as readBody, hasTable, batch, first, all, countOf } from "./
 import { vidOk, subjectOf, contactHash } from "./visitor.js";
 import { kbEraseStmts } from "./knowledge.js";
 import { forgetMemberWeb } from "./member-web.js"; // 0013: the isolate's copy of the member's web summary
+import * as RESEARCH from "./research.js"; // 0014: the legal erasure includes the member's deep research rows
 
 export const ERASE_REASON_MIN = 10;
 const IN = n => Array.from({ length: n }, () => "?").join(", ");
@@ -74,13 +75,16 @@ export async function eraseMemory(req, env, ctx, adm) {
   /* 0013: what the web shows about the member (member-web.js) — a member only; counted only when there is a row */
   const mw = target.type === "member" && (await hasTable(env, "member_web_profile")) ? (await countOf(env, "SELECT COUNT(*) AS n FROM member_web_profile WHERE member_id = ?", target.id)) || 0 : 0;
   if (mw) counts.web_summary = mw;
+  /* 0014: a member's deep research rows (research.js) — counted only when there are some */
+  const rs = target.type === "member" ? await RESEARCH.eraseStmts(env, target.id) : { stmts: [], rows: 0, running: [] };
+  if (rs.rows) counts.research_rows = rs.rows;
   if (callS) counts.call_sessions = callS;
   if (callR) counts.call_reviews = callR;
   /* the person's short keyed hash in the knowledge bank's asker lists; an entry only HE asked goes too (review 2026-11-19 #8) */
   const kb = has.kb ? await kbEraseStmts(env, subjects) : { stmts: [], askers: 0, removed: 0 }, kbFix = kb.stmts;
   counts.knowledge_askers = kb.askers; counts.knowledge_removed = kb.removed;
   if (b.dry_run === true) return { body: { ok: true, dry_run: true, counts, subject: target, ...(matches ? { matches } : {}) } };
-  if (!counts.memory_rows && !counts.tasks && !counts.briefs && !counts.visitors && !kbFix.length && !callS && !callR && !mw) fail(404, "nothing_to_erase", "there is no memory of this person");
+  if (!counts.memory_rows && !counts.tasks && !counts.briefs && !counts.visitors && !kbFix.length && !callS && !callR && !mw && !rs.rows) fail(404, "nothing_to_erase", "there is no memory of this person");
   await batch(env, [
     ...(has.mem ? [env.DB.prepare(`DELETE FROM advisor_memory WHERE member_id IN (${IN(subjects.length)})`).bind(...subjects)] : []),
     ...(has.tsk ? [env.DB.prepare(`DELETE FROM memory_tasks WHERE subject IN (${IN(subjects.length)})`).bind(...subjects)] : []),
@@ -90,9 +94,11 @@ export async function eraseMemory(req, env, ctx, adm) {
     ...(callS ? [env.DB.prepare(`DELETE FROM call_sessions WHERE ${csWhere}`).bind(...csArgs)] : []),
     ...(callR ? [env.DB.prepare(`DELETE FROM call_reviews WHERE subject IN (${IN(subjects.length)})`).bind(...subjects)] : []),
     ...(mw ? [env.DB.prepare("DELETE FROM member_web_profile WHERE member_id = ?").bind(target.id)] : []),
+    ...rs.stmts,
     adm.auditStmt("memory.erase", target.type, target.id, { counts, ...(matches ? { via: vEmail ? "visitor_email" : "visitor_phone", confirmed_ids: visitors.length, matching_ids: matches.length } : {}) }, { reason },
       `memory erased (${counts.memory_rows} rows, ${counts.tasks} tasks, ${counts.briefs} briefs, ${counts.visitors} visitor ids${matches ? " confirmed of " + matches.length : ""}) · legal request: ${reason}`),
   ]);
   if (target.type === "member") forgetMemberWeb(target.id);
+  if (rs.running.length) await RESEARCH.terminateAll(env, rs.running);
   return { body: { ok: true, erased: counts, subject: target } };
 }
