@@ -135,6 +135,8 @@ def _acc_page():
     dev = '<script src="data/acc-dev.js"></script>' if _acc_os.path.exists(B + 'data/acc-dev.js') else ''   # «🛠️ المطوّر» (owner only; registers with MIGACC.use)
     if _acc_os.path.exists(B + 'data/acc-delete.js'):   # «طلبات حذف الحساب» (owner only, members.delete; registers with MIGACC.use — app parity plan)
         dev += '<script src="data/acc-delete.js"></script>'
+    if _acc_os.path.exists(B + 'data/acc-pdf.js'):      # «تصدير PDF» on the statistics view (prints the view as an A4 report; reads nothing, changes nothing)
+        dev += '<script src="data/acc-pdf.js"></script>'
     base_head = globals().get('seo_base_head') or '<base href="/">'                       # seo_build.part.py BASE_FIX_HEAD
     base_tail = seo_static_tail() if 'seo_static_tail' in globals() else ''               # BASE_FIX_TAIL: «#x» links stay on /admin/
     return ('<!doctype html>\n<html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' + base_head +
