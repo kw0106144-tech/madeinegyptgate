@@ -4,6 +4,7 @@
    - roles & permissions (§0.5) and the audit log (§0.6): every admin write leaves one cc_audit row, or nothing changes.
    - "fail open": reads of the 0006 tables return empty results on a database without them; writes answer 503 store_off.
    Allowed imports (§0.2): common.js, auth.js, crypto.js, inquiries.js, candidates.js, meetings.js, whatsapp.js, text.js, data.json. */
+import { cleanSections, portalPerms, portalNav } from "./portal-map.js"; // team portal sessions (portal-sso.js)
 import DATA from "./data.json";
 import { line, str, now, scalar, isEmail, mail, site } from "./common.js";
 import { norm } from "./text.js";
@@ -173,9 +174,14 @@ export const PERMS = ["stats.read", "members.read", "members.write", "members.co
 export const OWNER_ONLY = new Set(["members.delete", "content.toggle", "pay.config", "email.config", "audit.export", "import.run", "keys.manage", "dev.manage", "meetings.cap"]);
 const ADMIN_P = PERMS.filter(p => !OWNER_ONLY.has(p));
 const PERSON_ONLY = ["meetings.bassem"]; // never through X-Platform-Key
+/* «مدير محدود» (owner request 2026-11-23): an admin listed here gets every admin permission except the general settings, the team and
+   the plans/prices — for the shared rfqs@ team mailbox. The row in cc_staff stays role "admin"; roleOf() answers "manager". */
+export const LIMITED_ADMINS = ["rfqs@madeinegyptgate.com"];
+const LIMITED_DENY = ["settings.write", "staff.write", "plans.write", "plans.sync"];
 export const ROLE_PERMS = {
   owner: PERMS,
   admin: ADMIN_P,
+  manager: ADMIN_P.filter(p => !LIMITED_DENY.includes(p)),
   editor: ["stats.read", "directory.read", "directory.write", "approvals.products", "content.read", "content.write", "content.publish", "media.upload", "media.delete", "plans.read", "settings.read", "seo"],
   support: ["stats.read", "members.read", "members.contact", "customers.read", "customers.write", "directory.read", "legacy.contacts", "orders.read", "orders.reply", "orders.note", "orders.close", "orders.rfq",
     "content.read", "plans.read", "pay.read", "settings.read", "wa.read", "bassem.read"],
@@ -192,11 +198,23 @@ export const isBootstrap = (env, m) => !!(m && m.email && m.email_verified_at &&
 /* the role of a signed-in member (normative order §0.5); via = "legacy" (old-password bridge session) → none */
 export async function roleOf(env, m, via) {
   if (!m || via === "legacy") return null;
+  if (m._via === "portal") { const p = await portalOf(env, m); if (!p) return null; m._portal = p; return "portal"; } // portal-sso.js: never any other role
   if (isBootstrap(env, m)) return "owner";
   const s = await first(env, "SELECT role FROM cc_staff WHERE member_id = ? AND disabled_at = ''", m.id);
-  if (s && ROLES.includes(s.role)) return s.role;
-  if (m.role === "admin") return "admin";
+  const lim = LIMITED_ADMINS.includes(String(m.email || "").toLowerCase());
+  if (s && ROLES.includes(s.role)) return s.role === "admin" && lim ? "manager" : s.role;
+  if (m.role === "admin") return lim ? "manager" : "admin";
   return null;
+}
+/* a team-portal session («lp…» session id, portal-sso.js): its sections live in KV acc:portal:<sid hash> for the session's life (8 h).
+   No KV row (expired, KV down, not written) → null → no Control Center role at all (fail-closed). */
+export const PORTAL_KV = "acc:portal:";
+export async function portalOf(env, m) {
+  if (!m || m._via !== "portal" || !m._sid_hash || !env || !env.SEO_KV) return null;
+  let v = null; try { v = await env.SEO_KV.get(PORTAL_KV + m._sid_hash, "json"); } catch (e) { return null; }
+  if (!v || typeof v !== "object" || !v.s || typeof v.s !== "object" || (v.exp && Date.parse(v.exp) < Date.now())) return null;
+  const s = cleanSections(v.s);
+  return { s, perms: portalPerms(s), nav: portalNav(s) };
 }
 export async function sessionVia(env, m) {
   if (m && m._via === "legacy") return "legacy"; // "lg…" session id (auth.js) — no D1 read

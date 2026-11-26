@@ -1169,7 +1169,7 @@ export async function handlePayAdmin(req, env, ctx, adm) {
   try {
     if (!env || !env.DB) return ccErr(req, env, 503, "store_off", "store not configured");
     const need = p => { if (!(adm && typeof adm.can === "function" && adm.can(p))) throw p === "pay.config" ? new PayError(403, "owner_only", "only the owner can change the payment gateway", { need: p }) : new PayError(403, "forbidden", "forbidden", { need: p }); };
-    const staffOnly = () => { if (!(adm && /^(owner|admin|platform)$/.test(adm.role || ""))) throw new PayError(403, "forbidden", "export needs the owner or an admin", { need: "pay.export" }); };
+    const staffOnly = () => { if (!(adm && /^(owner|admin|manager|platform)$/.test(adm.role || ""))) throw new PayError(403, "forbidden", "export needs the owner or an admin", { need: "pay.export" }); };
     if (path === "/config") {
       if (M === "GET") { need("pay.read"); return ccJson(req, env, await configOut(env, adm)); }
       if (M === "PUT") { need("pay.config"); return ccJson(req, env, await putConfig(req, env, adm, CC)); }

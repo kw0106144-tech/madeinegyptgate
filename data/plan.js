@@ -30,7 +30,8 @@
   /* owner 2026-11-18 (11th message): «تسجيل بيانات الشركة فقط» is a PROFILE ONLY — «بتخليه يعمل بروفايل لمصنعه على المنصة لكن مش
      بتفتحله أي حاجة» — so every opportunity feature starts at Basic (2); the profile plan keeps its directory listing only.
      Procurement news from Premium (3). The supplier / contractor directories are open to everyone (0: no gate anywhere). */
-  var FEAT = { tenders: 2, rfq: 2, awards: 2, winners: 2, projects: 2, procurement: 3, export: 2, leads: 2, radar: 2, suppliers: 0, contractors: 0, alerts: 2,
+  /* paid = any active paid plan («تسجيل بيانات الشركة» and up): the «طلبات الأسعار» menu pages (site.py GATES, owner 2026-11-25) */
+  var FEAT = { paid: 1, tenders: 2, rfq: 2, awards: 2, winners: 2, projects: 2, procurement: 3, export: 2, leads: 2, radar: 2, suppliers: 0, contractors: 0, alerts: 2,
                respond: 2, incoming: 2, stats: 2, products: 2, intl: 3, priority: 3, advisor: 4, bassem: 4 };
   /* the 6 GCC states: [code, Arabic, English, flag] (the codes the Worker stores in members.prefs_json.gcc) */
   var GCC = [["SA", "السعودية", "Saudi Arabia", "🇸🇦"], ["AE", "الإمارات", "UAE", "🇦🇪"], ["KW", "الكويت", "Kuwait", "🇰🇼"], ["QA", "قطر", "Qatar", "🇶🇦"], ["BH", "البحرين", "Bahrain", "🇧🇭"], ["OM", "عُمان", "Oman", "🇴🇲"]];
@@ -73,7 +74,8 @@
     return ch.length === pick ? { pick: pick, all: false, chosen: ch, pending: false } : { pick: pick, all: false, chosen: [], pending: true };
   }
   /* pages site.py gates at load (keep in sync with GATES there): re-checked when the server answers with a lower plan */
-  var GATE = { entity: "awards", winner: "awards", project: "projects", radar: "radar" };
+  var GATE = { entity: "awards", winner: "awards", project: "projects", radar: "radar",
+    tenders: "paid", rfqs: "paid", winners: "paid", agencies: "paid", "market-opportunities": "paid", deal: "paid" };
   var MAP = { none: "visitor", data: "profile", data_only: "profile", core: "partner" };
   function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function ss(k, v) { try { if (v === undefined) return sessionStorage.getItem(k); if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch (e) { return null; } }
@@ -100,9 +102,11 @@
   var pendingGate = "", gateT = 0;
   function gateUrl(f) { return "register.html#" + ((FEAT[f] || 0) >= 4 ? "partner" : "plans"); }
   function gateOut(f) { try { sessionStorage.setItem("mig-gate", document.title); } catch (e) {} location.replace(gateUrl(f)); }
+  /* the team (role admin, not previewing a plan) always reaches the «طلبات الأسعار» pages; the server still decides every action */
+  function staffPass(f) { return f === "paid" && role === "admin" && !PV; }
   function gateDone(f) {
     pendingGate = ""; clearTimeout(gateT); document.documentElement.classList.remove("mig-gate-wait");
-    var P = window.MIGPLAN; if (f && !P.can(f) && !(f === "advisor" && onPage("advisor"))) gateOut(f);
+    var P = window.MIGPLAN; if (f && !P.can(f) && !staffPass(f) && !(f === "advisor" && onPage("advisor"))) gateOut(f);
   }
   function mkName(m) { return MKN[m] ? (EN() ? MKN[m][1] : MKN[m][0]) : m; }
   /* deploy 2 — plan gates that say what the next plan unlocks and preselect it on /register/ (register.html#<plan> preselects it):
@@ -228,7 +232,7 @@
        /api/me (the page stays hidden meanwhile, at most 8 s, then the cached plan decides) instead of being sent away; the advisor
        page handles visitors itself (lock box + sign-in with an e-mail code), so a partner on a new device can sign in there. */
     gate: function (f) {
-      var P = window.MIGPLAN; if (P.can(f)) return false;
+      var P = window.MIGPLAN; if (P.can(f) || staffPass(f)) return false;
       if (ls("mig-tok") && !confirmed) {
         pendingGate = f; document.documentElement.classList.add("mig-gate-wait");
         clearTimeout(gateT); gateT = setTimeout(function () { if (pendingGate) gateDone(pendingGate); }, 8000);
@@ -245,6 +249,7 @@
     market: function (m) { return window.MIGPLAN.plan.markets.indexOf(m) > -1; },
     needName: function (f) {
       var lv = FEAT[f] || 0, e = EN();
+      if (lv === 1) return e ? "any paid plan" : "أي باقة مدفوعة";
       return lv >= 4 ? (e ? "the Core Partner or Strategic Partner plan" : "باقة الشريك الأساسي أو الشريك الاستراتيجي") : lv >= 3 ? (e ? "the Premium plan or higher" : "الباقة المميزة فأعلى") : lv >= 2 ? (e ? "the Basic plan or higher" : "الباقة الأساسية فأعلى") : (e ? "the Basic plan or higher" : "الباقة الأساسية فأعلى");
     },
     /* called by data/mig-api.js with the server's answer (u = the server's user: its gcc = the GCC states the member chose) */
@@ -259,7 +264,7 @@
       if (was !== k || JSON.stringify(P.gcc()) !== g0) { try { window.dispatchEvent(new CustomEvent("mig:plan", { detail: { key: k, was: was, gcc: P.gcc() } })); } catch (e) {} }
       if (was !== k) {
         var pg = pageKey(), f = GATE[pg];
-        if (f && PL[was].lv >= FEAT[f] && PL[k].lv < FEAT[f]) { ss("mig-gate", document.title); location.replace("register.html#plans"); }
+        if (f && PL[was].lv >= FEAT[f] && PL[k].lv < FEAT[f] && !staffPass(f)) { ss("mig-gate", document.title); location.replace("register.html#plans"); }
       }
       pvBar();
     },

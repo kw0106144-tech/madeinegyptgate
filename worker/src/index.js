@@ -62,6 +62,7 @@ import * as RESEARCH from "./research.js"; // «بحث وكتابة عميقة»
 import { callsReportCron } from "./calls-report.js"; // «تقرير مكالمات جنة وباسم اليومي»: the morning e-mail (platform cron, its own D1 budget)
 // Admin Control Center (docs/janna/ACC-CONTRACT.md §0.2): one CC object handed to every new handler (no cross-area imports)
 import * as ACC from "./acc.js"; import * as CONTENT from "./content.js"; import * as PAY from "./payments.js"; import * as MAILC from "./email-center.js";
+import { handlePortalSso } from "./portal-sso.js"; // team portal (panel.gcctendersgate.org) sign-in: POST /api/auth/portal
 export const CC = { acc: ACC, content: CONTENT, payments: PAY, email: MAILC, chatMedia: CHATMEDIA };   // Control Center (ACC-CONTRACT §0.2)
 
 /* tender status from the deadline at request time — the honest 4-value rule (data/oldtend.js §2): deadline passed → منتهية,
@@ -674,6 +675,7 @@ const WORKER = {
     if (/^\/api\/me\/(account|products|company|media|invoices|recognize|gcc)(\/|$)/.test(url.pathname)) return CC.acc.handleMeCC(req, env, ctx, CC);
     if (/^\/api\/me\/delete-request\/?$/.test(url.pathname)) return handleMeDeleteRequest(req, env, ctx); // before /api/me (handleMe would 404 it)
     if (/^\/api\/auth\/legacy(\/|$)/.test(url.pathname)) return CC.acc.handleLegacyAuth(req, env, ctx, CC);
+    if (/^\/api\/auth\/portal\/?$/.test(url.pathname)) return handlePortalSso(req, env); // team portal one-click sign-in (portal-sso.js)
     if (/^\/api\/team(\/|$)/.test(url.pathname)) return CC.acc.handleTeam(req, env, ctx, CC); // §12 team dashboards (front desk)
     if (/^\/api\/plans\/?$/.test(url.pathname) || /^\/api\/settings\/?$/.test(url.pathname) || /^\/api\/ev\/pv\/?$/.test(url.pathname)) return CC.acc.handlePublicCC(req, env, ctx, CC); // one regex per family: integ-worker.test.mjs and deploy.sh scan for /api/<family>
     if (/^\/api\/pay(\/|$)/.test(url.pathname)) return CC.payments.handlePay(req, env, ctx, CC);
