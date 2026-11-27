@@ -1013,6 +1013,7 @@ var EN=h.lang==="en",each=function(s,f){[].forEach.call(d.querySelectorAll(s),f)
 each("[data-deadline]",function(el){var dl=el.getAttribute("data-deadline"),k=Math.round((Date.parse(dl)-Date.parse(td))/864e5);if(isNaN(k))return;
 if(k<0){el.className="sx-st sx-st-closed";el.textContent=EN?"Closed":"منتهية";}else if(k<=7&&/sx-st-open/.test(el.className)){el.className="sx-st sx-st-soon";el.textContent=EN?"Closing soon":"تنتهي قريباً";}});
 each("[data-show-after]",function(el){if(td>el.getAttribute("data-show-after"))el.hidden=false;});
+each("[data-from]",function(el){if(td>=el.getAttribute("data-from"))el.textContent=el.getAttribute("data-from-text")||el.textContent;});
 each("[data-after]",function(el){if(td>el.getAttribute("data-after"))el.textContent=el.getAttribute("data-after-text")||el.textContent;});
 each("[data-valid-to]",function(el){if(td>el.getAttribute("data-valid-to")){el.classList.add("sx-expired");var v=el.querySelector(".sx-vt");if(v)v.textContent=EN?" · ended":" · انتهى العرض";}});}catch(e){}
 /* "Ask Janna": the assistants load on demand. They take their language from MIGLANG, which data/i18n.js sets from ?lang=en or
@@ -4587,7 +4588,13 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         if ended or not end:
             facts.append((X(L, 'الحالة', 'Status'), esc(X(L, 'انتهى', 'Ended') if ended else X(L, 'قادم', 'Upcoming'))))
         else:
-            facts.append((X(L, 'الحالة', 'Status'), '<span data-after="%s" data-after-text="%s">%s</span>' % (end.isoformat(), esc(X(L, 'انتهى', 'Ended')), esc(X(L, 'قادم', 'Upcoming')))))
+            # start <= today <= end: running now; a later start flips to «جارية الآن» in the browser on its first day (data-from)
+            st = pdate(e.get('start_date'))
+            if st and st <= S['today']:
+                facts.append((X(L, 'الحالة', 'Status'), '<span data-after="%s" data-after-text="%s">%s</span>' % (end.isoformat(), esc(X(L, 'انتهى', 'Ended')), esc(X(L, 'جارية الآن', 'Happening now')))))
+            else:
+                facts.append((X(L, 'الحالة', 'Status'), '<span%s data-after="%s" data-after-text="%s">%s</span>' % (
+                    (' data-from="%s" data-from-text="%s"' % (st.isoformat(), esc(X(L, 'جارية الآن', 'Happening now')))) if st else '', end.isoformat(), esc(X(L, 'انتهى', 'Ended')), esc(X(L, 'قادم', 'Upcoming')))))
         if e.get('url'):
             facts.append((X(L, 'الموقع الرسمي', 'Official website'), '<a href="%s" rel="noopener" target="_blank">%s</a>' % (esc(e['url']), esc(urlparse(e['url']).netloc.replace('www.', '')))))
         facts_html = '<dl class="sx-facts">%s</dl>' % ''.join('<dt>%s</dt><dd>%s</dd>' % (k, v) for k, v in facts)
@@ -4613,23 +4620,34 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         E = S['events_sorted']
         up = [e for e in E if (pdate(e.get('end_date') or e.get('start_date')) or S['today']) >= S['today']]
         past = [e for e in E if e not in up]
+        # an event that has started and not ended (start <= today <= end) is running now, not upcoming (audit 2026-11-27)
+        live = [e for e in up if pdate(e.get('start_date')) and pdate(e.get('start_date')) <= S['today']]
+        soon = [e for e in up if e not in live]
 
         def li(e):
             return '<li><a href="%s">%s</a><span class="m">%s · %s</span></li>' % (esc(('/en' if L == 'en' and e.get('en_ok') else '') + e['path']), esc(X(L, e.get('name_ar'), e.get('name_en') or e.get('name_ar'))), esc(fmt_date(e.get('start_date'), L)), esc(T(L, e.get('city') or '')))
         app = app_url('events')
-        html = '<section class="sx-sec">%s<ul class="sx-evs">%s</ul></section>' % (sec_head('%s (%d)' % (X(L, 'قادمة', 'Upcoming'), len(up)), app, X(L, 'الرزنامة التفاعلية ←', 'Interactive calendar →') if app else ''), ''.join(event_card(e, L) for e in up))
+        html = ''
+        if live:
+            html += '<section class="sx-sec">%s<ul class="sx-evs">%s</ul></section>' % (sec_head('%s (%d)' % (X(L, 'جارية الآن', 'Happening now'), len(live))), ''.join(event_card(e, L) for e in live))
+        html += '<section class="sx-sec">%s<ul class="sx-evs">%s</ul></section>' % (sec_head('%s (%d)' % (X(L, 'قادمة', 'Upcoming'), len(soon)), app, X(L, 'الرزنامة التفاعلية ←', 'Interactive calendar →') if app else ''), ''.join(event_card(e, L) for e in soon))
         if past:
             html += '<section class="sx-sec sx-past">%s<ul class="sx-evs">%s</ul></section>' % (sec_head('%s (%d)' % (X(L, 'انتهت', 'Ended'), len(past))), ''.join(event_card(e, L) for e in past))
         if app:
             html += '<p><a href="%s">%s</a></p>' % (esc(app), X(L, 'الرزنامة التفاعلية ←', 'Interactive calendar →'))
         n_sec = len(set(e.get('sector_ar') for e in E if e.get('sector_ar')))
-        nxt = up[0] if up else None
+        # the next event is the next one that starts today or later (a running one started earlier is not «next»)
+        nxt = next((e for e in up if pdate(e.get('start_date')) and pdate(e.get('start_date')) >= S['today']), None)
         top = stats_html([(str(len(E)), X(L, ar_noun(len(E), 'معرض وفعالية', 'معرضان وفعاليتان', 'معارض وفعاليات', 'معرضاً وفعالية'), 'exhibitions & events'), ''),
-                          (str(len(up)), X(L, 'قادمة', 'upcoming'), ''),
+                          ] + ([(str(len(live)), X(L, 'جارية الآن', 'happening now'), '')] if live else []) + [
+                          (str(len(soon)), X(L, 'قادمة', 'upcoming'), ''),
                           (fmt_date(nxt.get('start_date'), L) if nxt else '', X(L, 'موعد أقرب معرض', 'next event'), ('/en' if L == 'en' and nxt.get('en_ok') else '') + nxt['path'] if nxt else ''),
                           (str(n_sec), X(L, ar_noun(n_sec, 'قطاع', 'قطاعان', 'قطاعات', 'قطاعاً'), 'sectors'), '')] + ([(str(len(past)), X(L, 'انتهت', 'ended'), '')] if past and len(up) < 3 else []))
         h1 = X(L, 'المعارض والفعاليات الصناعية في مصر', 'Industrial Exhibitions & Events in Egypt')
-        intro = X(L, 'رزنامة %d معرضاً وفعالية صناعية في مصر: %d قادمة و%d انتهت، بالتواريخ والأماكن والمواقع الرسمية.', 'A calendar of %d industrial exhibitions and events in Egypt: %d upcoming and %d ended, with dates, venues and official websites.') % (len(E), len(up), len(past))
+        if live:
+            intro = X(L, 'رزنامة %d معرضاً وفعالية صناعية في مصر: %d جارية الآن و%d قادمة و%d انتهت، بالتواريخ والأماكن والمواقع الرسمية.', 'A calendar of %d industrial exhibitions and events in Egypt: %d happening now, %d upcoming and %d ended, with dates, venues and official websites.') % (len(E), len(live), len(soon), len(past))
+        else:
+            intro = X(L, 'رزنامة %d معرضاً وفعالية صناعية في مصر: %d قادمة و%d انتهت، بالتواريخ والأماكن والمواقع الرسمية.', 'A calendar of %d industrial exhibitions and events in Egypt: %d upcoming and %d ended, with dates, venues and official websites.') % (len(E), len(soon), len(past))
         hp = VIS_HUB_IMG['events']
         return render_simple_hub(L, 'events', html, h1, intro, [X(L, 'معارض مصر %d: رزنامة المعارض والفعاليات الصناعية', 'Egypt Exhibitions %d: Industrial Events Calendar') % S['today'].year], [intro],
                                  [(X(L, e.get('name_ar'), e.get('name_en') or e.get('name_ar')), ('/en' if L == 'en' and e.get('en_ok') else '') + e['path']) for e in E], 'M', X(L, 'معارض مصر, معارض صناعية في مصر', 'egypt exhibitions'),
@@ -4883,7 +4901,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         n_open = sum(1 for t in S['tenders'] if t['status'] in ('open', 'soon') and t['src'] != 'intl')
         n_open_i = sum(1 for t in S['tenders'] if t['status'] in ('open', 'soon') and t['src'] == 'intl')
         h1 = 'Made in Egypt Gate – Egyptian Manufacturers, Industrial Zones and Tenders'
-        intro = ('Made in Egypt Gate is the B2B platform of Egyptian industry, owned by the Egyptian Association for Industrial Development, a non-profit registered under No. 6189 of 2017, and operated by ElHouseni Group & Partners. '
+        intro = ('Made in Egypt Gate is the B2B platform of Egyptian industry, owned by the Egypt Industrial Development Association, a non-profit registered under No. 6189 of 2017, and operated by ElHouseni Group & Partners. '
                  'Its directory lists %s companies – %s member companies (%s factories and %s companies & suppliers)%s – '
                  'across %d sectors and %d governorates. The platform data also covers %d industrial and free zones, %d products, and %d Egyptian and %d international '
                  'tenders open as of %s.') % (
@@ -5105,6 +5123,11 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                         others = set(t for x in lst if x is not c for t in re.split(r'[-\s]+', x.get('legacy') or '') if t)
                         uniq = [t for t in toks if t not in others]
                         extra = ' '.join(uniq[-2:]) if uniq else (gov_name(c['gov'], L) or sec_name(c['sslug'], L, 't'))
+                        if L == 'en' and AR_RX.search(extra or ''):
+                            # the slug words are Arabic: their English (the words, else the whole slug phrase), never the Arabic in an
+                            # English title; none → no title part (the title then falls back to name – sector in place, audit 2026-11-27)
+                            whole = re.sub(r'[-\s]+', ' ', c.get('legacy') or '').strip()
+                            extra = next((v for v in (tr(extra), tr(whole) if whole else None) if v and not AR_RX.search(v) and v != nm), '')
                     c['tx_' + L] = extra
 
     # ------------------------------------------------------------------ page specs, rendering, EN gate, writing

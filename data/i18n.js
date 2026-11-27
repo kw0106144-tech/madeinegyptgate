@@ -44,6 +44,18 @@
   function tr(s) {
     var t = s.replace(/\s+/g, " ").trim(); if (!t || !AR.test(t)) return null;
     var nums = [], k = t.replace(NUM, function (m) { nums.push(m); return "{n}"; }), v = look(k), x;
+    /* an entry keyed on the exact text, numbers as written (data/projects.js MIGPROJ_EN, merged by the page): its English carries its own
+       numbers — the whole text, else its core without the emoji / symbols around it (as below) */
+    if (v == null && k !== t) {
+      var D0 = dict(), rw = null, mr;
+      if (typeof D0[t] === "string") rw = D0[t];
+      else if ((mr = /^([^\u0600-\u06FFA-Za-z0-9]*)([\s\S]*?)([^\u0600-\u06FFA-Za-z0-9]*)$/.exec(t)) && (mr[1] || mr[3]) && mr[2]) {
+        if (typeof D0[mr[2]] === "string") rw = af(mr[1]) + D0[mr[2]] + af(mr[3]);
+        else if (mr[1] && mr[3] && typeof D0[mr[2] + mr[3]] === "string") rw = af(mr[1]) + D0[mr[2] + mr[3]];
+        else if (mr[1] && mr[3] && typeof D0[mr[1] + mr[2]] === "string") rw = D0[mr[1] + mr[2]] + af(mr[3]);
+      }
+      if (rw != null) return s.match(/^\s*/)[0] + rw + s.match(/\s*$/)[0];
+    }
     if (v == null) { /* strip leading/trailing emoji, symbols and punctuation, translate the core */
       var m = /^([^\u0600-\u06FFA-Za-z0-9{]*)([\s\S]*?)([^\u0600-\u06FFA-Za-z0-9}]*)$/.exec(k);
       if (m && (m[1] || m[3]) && m[2]) {
