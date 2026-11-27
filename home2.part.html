@@ -1006,7 +1006,20 @@ html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
   }
   
   
-  var RT_ = realOpps(true), RI2_ = realIntl(true); if (RT_ && !RT_.length) RT_ = null; if (RI2_ && !RI2_.length) RI2_ = null; if (RT_ || RI2_) { var SM = { "البلاستيك والتغليف": "البلاستيك والمطاط" }; T = (RT_ || []).concat(RI2_ || []).map(function (o) { return [o[0], o[1], o[2], o[3], o[4], o[5], SM[o[6]] || o[6], o[7], o[14], o[5] !== "المحلي"]; }); }
+  /* the Egyptian tenders are the same set as /tenders/ and the interactive list: every MIGTEND row (data/oldtend.js) whose closing date is
+     today or later (deadline vs today, as seo_build.part.py and oldlists.part.py compute it: «تنتهي قريباً» = within 7 days); a row that is
+     also a REAL.tenders record keeps its opportunity page, the others open in the interactive tenders list (audit 2026-11-27) */
+  function tendOpps() {
+    if (!(window.MIGTEND && MIGTEND.length)) return null;
+    var now = new Date(); now.setHours(0, 0, 0, 0);
+    var td = now.getFullYear() + "-" + ("0" + (now.getMonth() + 1)).slice(-2) + "-" + ("0" + now.getDate()).slice(-2), byT = {};
+    ((window.REAL && REAL.tenders) || []).forEach(function (t, j) { if (t && t.title_ar && !byT[t.title_ar]) byT[t.title_ar] = [t, j]; });
+    return MIGTEND.filter(function (x) { return x && /^\d{4}-\d{2}-\d{2}$/.test(String(x[9] || "")) && String(x[9]) >= td; }).map(function (x) {
+      var d = Math.round((new Date(x[9] + "T00:00:00") - now) / 864e5), rj = byT[x[3]], oid = rj && window.MIGOID ? MIGOID(rj[0], rj[1]) : "";
+      return [String(x[0]), "gov", x[3], x[4] || "", x[5] || (x[10] && window.MIGREG ? MIGREG.name(x[10]) : "مصر"), "المحلي", x[6] || "", d, oid, x[9], x[0], "", "", x[9], oid, oid ? "" : "tenders/search/#" + encodeURIComponent(String(x[0]))];
+    });
+  }
+  var RT_ = tendOpps() || realOpps(true), RI2_ = realIntl(true); if (RT_ && !RT_.length) RT_ = null; if (RI2_ && !RI2_.length) RI2_ = null; if (RT_ || RI2_) { var SM = { "البلاستيك والتغليف": "البلاستيك والمطاط" }; T = (RT_ || []).concat(RI2_ || []).map(function (o) { return [o[0], o[1], o[2], o[3], o[4], o[5], SM[o[6]] || o[6], o[7], o[14], o[5] !== "المحلي", o[15] || ""]; }); }
   if (!(RT_ || RI2_)) T = []; /* the illustrative MSG-* list above is never shown (owner decision: hide anything unverified) */
 
   var NEWQ = [["MSG-RF8305", "pvt", "مضخات طرد مركزي لمحطة معالجة", "شركة مياه – البحيرة", "البحيرة", "المحلي", "مواد البناء", 12], ["MSG-GT4460", "gov", "إنارة LED لطرق داخلية", "جهة حكومية – سوهاج", "سوهاج", "المحلي", "الكهرباء والكابلات", 18], ["MSG-RF8311", "pvt", "عصائر معبأة لفنادق", "مجموعة فنادق – مسقط", "عُمان", "الخليجي", "الصناعات الغذائية", 8], ["MSG-RF8320", "pvt", "أنابيب ري HDPE 63 مم", "مزارع – الخرطوم", "السودان", "الأفريقي", "البلاستيك والمطاط", 13], ["MSG-RF8333", "pvt", "زجاج شفاف 6 مم – حاويتان", "مستورد – مومباي", "الهند", "الآسيوي", "الزجاج", 15]];
@@ -1014,7 +1027,7 @@ html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
   var MYS = ["الكل", "مواد البناء", "الصناعات الغذائية", "البلاستيك والمطاط", "البتروكيماويات", "المعادن والألمنيوم", "الكهرباء والكابلات", "الزجاج"];
   $("#mysec").innerHTML = MYS.map(function (m, i) { return '<button' + (i ? "" : ' class="on"') + ' data-s="' + (i ? m : "") + '">' + m + '</button>'; }).join("");
   /* the opportunity's page (stub key = the platform id, MIGOID / IN<n>, as in /_seo/hash/opportunity.json) */
-  function OPU(t) { return "opportunity.html#" + String(t[8] || t[0]).toLowerCase(); }
+  function OPU(t) { return t[10] || "opportunity.html#" + String(t[8] || t[0]).toLowerCase(); }
   function OPI(id) { for (var i = 0; i < T.length; i++) if (T[i][0] === id) return OPU(T[i]); return "opportunity.html#" + String(id).toLowerCase(); }
   function closeOf(t) { var x = new Date(NOW); x.setDate(x.getDate() + t[7]); x.setHours(15, 0, 0, 0); return x; }
   function dAr(x) { return new Intl.DateTimeFormat("ar-EG-u-ca-gregory-nu-latn", { day: "numeric", month: "long" }).format(x); }
