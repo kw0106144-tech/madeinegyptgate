@@ -1,9 +1,9 @@
 # «التحديث اليومي» — the daily content update of madeinegyptgate.com
 
-Every day a scheduled Claude session collects the NEW real items of the last days and opens ONE pull request with them
-(`main` is production: CLAUDE.md says a change reaches `main` only through a reviewed pull request unless the owner explicitly says
-otherwise). When the owner merges it, `deploy-site` publishes the site; the data files below are also in `deploy-worker`'s paths,
-so Janna's index is rebuilt too. Read the repository's `CLAUDE.md` first: its rules win over anything here.
+Every day a scheduled Claude session adds the NEW real items of the last days and pushes them to `main` itself
+(owner's explicit decision, 2026-11-27: «انشر مصر مباشرة من غير موافقة» — publish the daily update directly, without a pull request;
+it covers ONLY this daily data update, after the checks below). `deploy-site` publishes the site; the data files below are also in
+`deploy-worker`'s paths, so Janna's index is rebuilt too. Read the repository's `CLAUDE.md` first: its rules win over anything here.
 
 | Kind | File the merge script writes | Shown on |
 |---|---|---|
@@ -61,14 +61,13 @@ so Janna's index is rebuilt too. Read the repository's `CLAUDE.md` first: its ru
    `MIG_BUILD_DIR=<new empty dir>/site MIG_FPROF_MEDIA_REBUILD=0 bash deploy/deploy.sh build` prints `generator validation: 0 problem(s)`;
    `python3 deploy/stage.py stage --site <dir>/site --out <dir>/stage --seo-stats build/seo-stats.json` → `STAGE-REPORT.json` has
    0 errors. Then `git checkout seo/lastmod.json seo/company-media.json` and make sure `git status` shows only `data/` and `img/yt/`.
-7. Nothing added → stop, commit nothing. Otherwise create the branch `daily/<YYYY-MM-DD>` from `origin/main`,
-   `git add data img/yt && git commit` with a message like «Daily update: N news, N awards, N projects, N events, N videos»,
-   `git push -u origin daily/<YYYY-MM-DD>` and open the pull request with the REST API:
-   `gh api repos/kw0106144-tech/madeinegyptgate/pulls -f title='Daily update <date>: …' -f head='daily/<date>' -f base='main' -F body=@<file>`
-   (body: what visitors get, the list of items with their source links, the checks you ran, "deploys: deploy-site + deploy-worker,
-   no migration"). Never push to `main` and never merge it yourself. If yesterday's daily pull request is still open, build on its
-   branch instead (rebase it on `origin/main`, add today's items, push) so there is only one open daily pull request.
-8. The English check: in the build of step 6 open `<dir>/site/news/index.html` and `<dir>/site/en/news/index.html` (Playwright or
-   `python3 -m http.server`): the newest item is there and the English page shows no Arabic line except the language button.
-   A line in Arabic → add the missing dictionary pair (`data/i18n-en.js`, load / dump the JSON after `window.I18N_EN=`) and rebuild.
-9. Final report: the pull request link, what was added (counts + titles) and what was dropped.
+7. Nothing added → stop, commit nothing. Otherwise, on `main` (fast-forward on `origin/main`): `git add data img/yt && git commit`
+   with a message like «Daily update: N news, N awards, N projects, N events, N videos» and `git push origin main`. Only `data/` and
+   `img/yt/` may be in that commit; anything else goes through a pull request as CLAUDE.md says.
+8. The English check, before the push: in the build of step 6 open `<dir>/site/news/index.html` and `<dir>/site/en/news/index.html`
+   (Playwright or `python3 -m http.server`): the newest item is there and the English page shows no Arabic line except the language
+   button. A line in Arabic → add the missing dictionary pair (`data/i18n-en.js`, load / dump the JSON after `window.I18N_EN=`) and
+   rebuild. After the push, wait for the `deploy-site` and `deploy-worker` runs of the commit
+   (`gh api "repos/kw0106144-tech/madeinegyptgate/actions/runs?head_sha=<sha>"`) and open https://madeinegyptgate.com/news/ and
+   https://madeinegyptgate.com/en/news/. A failed run → read its log, fix with a new commit (or `git revert`), never deploy by hand.
+9. Final report: the commit, what was added (counts + titles) and what was dropped.
