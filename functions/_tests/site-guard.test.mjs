@@ -1,6 +1,6 @@
 // «حماية الموقع» on the site side: data/guard.js in a small DOM double (the shortcuts it cancels and the ones it leaves alone, the
 // pictures' right-click, the beacon, the staff pages, the owner's switch, the build kill) and functions/_middleware.js, which stays
-// read-only (a copying tool's request gets the page as it is and nothing is written to KV — the detection lives in the Worker).
+// read-only (nothing is written to KV) and, since the owner's «قافل أي نسخ» (2026-11-27), answers site-copying programs with 403.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -114,11 +114,15 @@ test("developer tools opened (approximate): a docked panel without a zoom change
   assert.deepEqual(phone.beacons, [], "phones: never (the keyboard resizes the page)");
 });
 
-test("functions/_middleware.js stays read-only: a copying tool's request gets the page as it is, nothing is written to KV", async () => {
+test("functions/_middleware.js stays read-only: a copying tool gets 403, a browser or curl the page, nothing is written to KV", async () => {
   resetEdgeMemos();
   const page = '<!doctype html><html lang="ar"><head><title>دليل المصانع</title><script src="/data/guard.js?v=1" defer></script></head><body><h1>دليل المصانع</h1></body></html>';
   const kv = new KV({}), env = { SEO_KV: kv, ASSETS: assets({ "/factories/index.html": page, "/data/guard.js": "1", "/_seo/redirects.json": { exact: {}, prefix: [], gone_rx: [], gone_prefix_on_404: [] }, "/_seo/en-paths.json": {} }) };
-  for (const ua of ["Wget/1.21.4", "curl/8.5.0", "Mozilla/4.5 (compatible; HTTrack 3.0x; Windows 98)", "python-requests/2.31", CHROME]) {
+  for (const ua of ["Wget/1.21.4", "Mozilla/4.5 (compatible; HTTrack 3.0x; Windows 98)", "python-requests/2.31"]) {
+    const res = await onRequest(pctx(new Request("https://madeinegyptgate.com/factories/", { headers: { "User-Agent": ua } }), env));
+    assert.equal(res.status, 403, ua);
+  }
+  for (const ua of ["curl/8.5.0", CHROME]) {
     const res = await onRequest(pctx(new Request("https://madeinegyptgate.com/factories/", { headers: { "User-Agent": ua } }), env));
     assert.equal(res.status, 200, ua);
     assert.match(await res.text(), /data\/guard\.js/, ua);

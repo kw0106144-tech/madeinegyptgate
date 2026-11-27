@@ -3,6 +3,15 @@
 Honest note for the owner: no system can guarantee "zero breaches". These layers make attacks hard, block known
 bad actors automatically and keep the protection current.
 
+## Site-copying programs (2026-11-27, owner: «قافل أي نسخ»)
+- `functions/_middleware.js` answers 403 to a page request from a site-copying program or scraping library (HTTrack, WebCopier,
+  SiteSucker, Wget, WebZIP, Offline Explorer, Teleport, scrapy, python-requests / urllib, aiohttp, httpx, Go-http-client, libwww-perl,
+  Java, okhttp, node-fetch, axios, PhantomJS, Bytespider), like Made in UAE / Saudi Gate. Search engines, SEO tools (Ahrefs, Semrush,
+  Moz), the AI crawlers robots.txt allows, browsers, the app, curl and this site's own CI / smoke / Worker fetches (`migate-*`,
+  `MIG-*`) are served as before; `/api/*`, `/data`, `/img`, `/assets` … are not affected. Tests: `functions/_tests/middleware.test.mjs`,
+  `site-guard.test.mjs`. Honest limit: a copier that pretends to be a browser still gets the page — what a browser shows it has
+  downloaded; `data/guard.js` makes copying from a browser harder and reports the attempts.
+
 ## Cloudflare zone (394786ba84adf85eca52354fa2ffd7da)
 - **TLS / HTTPS**
   - Always Use HTTPS = on; minimum TLS = 1.2; TLS 1.3 = on.

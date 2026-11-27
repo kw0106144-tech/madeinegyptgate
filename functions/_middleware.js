@@ -82,12 +82,21 @@ async function builtPage(env, req, rawPath) {
   } catch (e) { return null; }
 }
 
+/* website copiers and scraping libraries (not search engines, not SEO tools, not AI crawlers the robots.txt allows) */
+const COPIER = /(HTTrack|WebCopier|SiteSucker|\bWget\b|WebZIP|Offline Explorer|Teleport ?Pro|WebReaper|BlackWidow|WebStripper|SiteSnagger|WebWhacker|Website ?Extractor|Website ?Downloader|Web ?Downloader|Website Ripper|grab-site|scrapy|python-requests|python-urllib|aiohttp|httpx|Go-http-client|libwww-perl|\bJava\/|okhttp|node-fetch|axios\/|PhantomJS|Bytespider)/i;
+
 export async function onRequest(ctx) {
   const req = ctx.request, M = req.method;
   // the Worker's paths and every non-GET request pass straight through, untouched (step 0)
   if ((M !== "GET" && M !== "HEAD") || /^\/api(\/|$)/.test(new URL(req.url).pathname)) {
     try { ctx.passThroughOnException(); } catch (e) { /* not available outside Pages */ }
     return ctx.next();
+  }
+  // site-copying programs asking for a page → 403 (owner 2026-11-27: «قافل أي نسخ», the same gate as Made in UAE / Saudi Gate).
+  // Search engines, SEO tools, browsers and this site's own CI / smoke / Worker fetches (migate-*) are never matched; /data, /img,
+  // /assets … are not run through the Functions (_routes.json) and stay as they are.
+  if (COPIER.test(req.headers.get("User-Agent") || "")) {
+    return withSecurityHeaders(new Response("Forbidden", { status: 403, headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" } }));
   }
   return withSecurityHeaders(await edge(ctx));
 }

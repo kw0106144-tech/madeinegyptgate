@@ -368,3 +368,18 @@ test("the sign-in page keeps ?next= through the ?lang=en hop (/login/ → /en/lo
   assert.equal((await get("/about/?lang=en&utm=1")).loc, S + "/en/about/", "every other English twin: unchanged, the query is dropped");
   assert.equal((await get("/factories.html?lang=en&next=%2Fx%2F")).loc, S + "/en/factories/");
 });
+
+test("site-copying programs get 403 on pages; browsers, search engines, SEO tools and this site's own checks are served", async () => {
+  const { get } = setup();
+  for (const ua of ["Mozilla/4.5 (compatible; HTTrack 3.0x; Windows 98)", "Wget/1.21.3", "python-requests/2.31.0", "Scrapy/2.11 (+https://scrapy.org)", "Go-http-client/1.1", "Mozilla/5.0 (compatible; Bytespider; spider-feedback@bytedance.com)"]) {
+    const r = await get("/", { headers: { "User-Agent": ua } });
+    assert.equal(r.status, 403, ua);
+    assert.equal(r.h.get("X-Content-Type-Options"), "nosniff", "the 403 carries the security headers too");
+  }
+  for (const ua of ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", "Mozilla/5.0 (compatible; bingbot/2.0)", "Mozilla/5.0 (compatible; AhrefsBot/7.0)", "Mozilla/5.0 (compatible; SemrushBot/7~bl)", "migate-ci/1.0 (deploy check)", "migate-smoke/2.0 (deploy check)", "migate-intel-shell/1.0 (+https://madeinegyptgate.com/intel/)", "MIGApp/1.0 (android)", ""]) {
+    const r = await get("/", { headers: { "User-Agent": ua } });
+    assert.equal(r.status, 200, ua || "(no User-Agent)");
+  }
+  const api = await get("/api/janna/health", { headers: { "User-Agent": "python-requests/2.31.0" } }).catch(() => null);
+  assert.ok(!api || api.status !== 403, "/api/* is never touched here (Worker routes)");
+});
