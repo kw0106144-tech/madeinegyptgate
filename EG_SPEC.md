@@ -11,7 +11,7 @@ Your job in each file: remove EVERY remaining UAE-specific (and any leftover Sau
 - Address: عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11، السادس من أكتوبر، الجيزة.
 - Phones: landline 02 38346757 (hotline, international +20 2 38346757); mobile & WhatsApp 01279188996 (international +20 127 918 8996, wa.me/201279188996). Email info@madeinegyptgate.com (support: support@madeinegyptgate.com).
 - Payment is ONLINE ONLY (card / mobile wallet / Fawry / InstaPay-style e-payment via the payment gateway — keep wording generic: «الدفع الإلكتروني عبر بوابة الدفع: البطاقات البنكية والمحافظ الإلكترونية»). No bank account/IBAN or bank-transfer option anywhere.
-- Platform is an information/marketplace platform: not a government entity, not a procurement authority, does not award contracts, does not provide or mediate financing, does not guarantee awards.
+- Platform is an information/marketplace platform: does not award contracts, does not provide or mediate financing, does not guarantee awards.
 - Social: use generic links to the platform root (no UAE/GCC accounts): Facebook/X/YouTube/LinkedIn/Instagram pointing to https://www.madeinegyptgate.com until real accounts are provided; WhatsApp https://wa.me/201279188996.
 - Partners/banners: the UAE partner banners (Al Ain Farms, GCG, Transem, SICHEM) and COMTECH must be removed. Keep the banner slots with the «مساحة إعلانية محجوزة» placeholder (STRAT and PARTNER sbn lists empty).
 
@@ -32,7 +32,7 @@ Registration documents: السجل التجاري، البطاقة الضريب�
 - Investment & zones: الهيئة العامة للاستثمار والمناطق الحرة (GAFI)، الهيئة الاقتصادية لقناة السويس (SCZone)، هيئة المجتمعات العمرانية الجديدة.
 - Exports: المجالس التصديرية، هيئة تنمية الصادرات، صندوق تنمية الصادرات/برنامج رد أعباء التصدير، الشركة المصرية لضمان الصادرات. Finance (information only): جهاز تنمية المشروعات المتوسطة والصغيرة ومتناهية الصغر.
 - Tax/customs: مصلحة الضرائب المصرية (الفاتورة الإلكترونية)، مصلحة الجمارك المصرية (منظومة نافذة، التسجيل المسبق للشحنات ACI).
-- Procurement: «منصة المشتريات الرقمية/بوابات أبوظبي/دبي» → «بوابة التعاقدات العامة المصرية (etenders.gov.eg)» + «هيئة الشراء الموحد (UPA)» + الشركات العامة وقطاع البترول والكهرباء. Platform is not a procurement authority.
+- Procurement: «منصة المشتريات الرقمية/بوابات أبوظبي/دبي» → «بوابة التعاقدات العامة المصرية (etenders.gov.eg)» + «هيئة الشراء الموحد (UPA)» + الشركات العامة وقطاع البترول والكهرباء.
 - Stock market: «ADX/DFM» → «البورصة المصرية (EGX) – مؤشرا EGX30 وEGX70».
 - Labour: وزارة العمل، الهيئة القومية للتأمين الاجتماعي.
 - Laws for the legal centre (see research legal.json): قانون حماية البيانات الشخصية رقم 151 لسنة 2020، قانون مكافحة جرائم تقنية المعلومات رقم 175 لسنة 2018، قانون حماية المستهلك رقم 181 لسنة 2018، قانون حماية حقوق الملكية الفكرية رقم 82 لسنة 2002، قانون الضريبة على القيمة المضافة رقم 67 لسنة 2016، قانون التوقيع الإلكتروني رقم 15 لسنة 2004، قانون تيسير إجراءات منح تراخيص المنشآت الصناعية رقم 15 لسنة 2017، قانون الاستثمار رقم 72 لسنة 2017، قانون التعاقدات العامة رقم 182 لسنة 2018، قانون حماية المنافسة رقم 3 لسنة 2005، قانون تفضيل المنتجات المصرية رقم 5 لسنة 2015. Governing law & courts: Egyptian law, courts of Giza/Cairo (or the Economic Courts).

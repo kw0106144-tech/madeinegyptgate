@@ -11,8 +11,7 @@ https://madeinegyptgate.com/about.html
 **س: المنصة تبع مين؟**
 ج: بتشغّلها «الجمعية المصرية للتنمية الصناعية» (Egypt Industrial Development Association)، جمعية غير هادفة للربح مشهرة برقم 6189 لسنة 2017 تحت إشراف وزارة التضامن الاجتماعي (eafid.org). https://madeinegyptgate.com/legal.html#status
 
-**س: هي حكومية؟**
-ج: لا. منصة معلومات وسوق إلكتروني؛ مش جهة حكومية ولا جهة تعاقدات، ولا بترسّي عقود ولا بتضمن الترسية، ولا بتقدّم تمويل ولا بتتوسط فيه.
+المنصة منصة معلومات وسوق إلكتروني، ومابترسّيش عقود ولا بتضمن الترسية، ولا بتقدّم تمويل ولا بتتوسط فيه.
 
 **س: أهدافكم إيه؟**
 ج: تسويق المنتج المصري، وتوصيل طلبات الشراء وأوامر التوريد لكل مصنع حسب قطاعه ومحافظته، وفتح أسواق التصدير، ودعم تعميق التصنيع المحلي (رؤية مصر 2030)، وربط المصانع بالمشاريع والمقاولين والجهات والمستثمرين.
@@ -286,7 +285,7 @@ https://madeinegyptgate.com/janna.html
 
 
 ## English Summary
-- **About:** Unified national B2B platform for Egypt's 27 governorates, run by the Egypt Industrial Development Association (non-profit, No. 6189/2017, Ministry of Social Solidarity). It is not a government or contracting body and gives no financing or award guarantees.
+- **About:** Unified national B2B platform for Egypt's 27 governorates, run by the Egypt Industrial Development Association (non-profit, No. 6189/2017, Ministry of Social Solidarity). It gives no financing or award guarantees.
 - **Registration:** Choose a plan, fill in the form, upload documents (CR, tax card, industrial licence if any, VAT cert, logo, stamped form; PDF/image up to 8 MB), pay online. No free registration. Buyers send RFQs for free.
 - **Plans (EGP/yr + 14% VAT):** Profile Only 4,000 · Basic 10,000 (Egypt, 30 products) · Premium 25,000 (+Gulf, 80) · Core Partner 50,000 (+Africa, 200, awards/projects/radar) · Strategic 100,000 (all markets, unlimited). 12 months. Upgrades are prorated. You get a reminder 30 days before expiry, and your data is kept for 90 days after it.
 - **Payment:** Online only (Visa/Mastercard/Meeza, e-wallets). No transfer, cash or bank account. You receive an ETA e-invoice. Full refund if the application is rejected after payment for missing documents, or if you cancel within 2 working days of payment before core services are activated; after activation, generally no refund (statutory rights preserved). Ad campaigns are not refundable once published. Approved refunds go back to the original card/wallet within 14 working days of approval.

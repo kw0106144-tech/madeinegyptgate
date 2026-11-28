@@ -2,7 +2,7 @@
 
 > مرجع «جنة» لأقسام المنصة: كل قسم فيه إيه، والزائر يعمل إيه، ومين يستفيد. الروابط على https://madeinegyptgate.com/
 
-**تعريف سريع:** منصة صنع في مصر هي «المنصة الوطنية الموحدة B2B»، بتربط المصانع والموردين المصريين بالمشترين المحليين والدوليين في محافظات مصر الـ27، وبتشغّلها «الجمعية المصرية للتنمية الصناعية». المنصة دليل وسوق إلكتروني ووسيط معلوماتي؛ **مش جهة حكومية ولا جهة تعاقدات، ولا بترسّي عقود ولا بتضمن الترسية، ولا بتقدّم تمويل ولا بتتوسط فيه**، والتعاقد والدفع بين المشتري والمورد مباشرة.
+**تعريف سريع:** منصة صنع في مصر هي «المنصة الوطنية الموحدة B2B»، بتربط المصانع والموردين المصريين بالمشترين المحليين والدوليين في محافظات مصر الـ27، وبتشغّلها «الجمعية المصرية للتنمية الصناعية». المنصة دليل وسوق إلكتروني ووسيط معلوماتي؛ **مابترسّيش عقود ولا بتضمن الترسية، ولا بتقدّم تمويل ولا بتتوسط فيه**، والتعاقد والدفع بين المشتري والمورد مباشرة.
 
 في كل الصفحات: زرار English، تكبير/تصغير الخط (A+ / A−)، الوضع الليلي، وزرار واتساب.
 
@@ -128,7 +128,7 @@ https://madeinegyptgate.com/legal.html
 ---
 
 ## English Summary
-Made in Egypt Gate is Egypt's unified national B2B platform, operated by the Egypt Industrial Development Association. It is a directory, e-marketplace and information intermediary: not a government or contracting body; it does not award or guarantee contracts and does not provide or broker financing.
+Made in Egypt Gate is Egypt's unified national B2B platform, operated by the Egypt Industrial Development Association. It is a directory, e-marketplace and information intermediary; it does not award or guarantee contracts and does not provide or broker financing.
 - **All pages**: English toggle, font size A+/A−, night mode, WhatsApp button. **Home** (home.html): unified search, governorates strip, opportunity radar (illustrative), featured products, latest offers, awards log, projects, media.
 - **Factory Directory** (factories.html; profiles company.html / factory.html): filter by governorate, sector, type, verified; profile shows "registered member" or "not registered yet"; direct RFQ from a profile.
 - **Marketplace** (market.html): products, price or "on request", MOQ, wholesale; cart → purchase request or RFQ. **Suppliers** (suppliers.html), **Outlets** (outlets.html), **Offers** (offers.html) from official store flyers.

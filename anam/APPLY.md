@@ -1,3 +1,13 @@
+# Applied on 2026-11-28 (second write) — no "not a government body" line (Janna AR, Janna EN, Bassem)
+
+**Status: APPLIED on 2026-11-28, `systemPrompt` only (owner, word for word: «المنصه رسميه امسح كلمه مش جهه حكوميه متجودش من عندك»,
+«شيلها من كل الأماكن في التلات منصات»; Anam write approved by the owner).** One clause removed from each prompt and nothing added:
+Janna AR «المنصة مابتضمنش ترسية ولا صفقات ومش جهة حكومية.» → «المنصة مابتضمنش ترسية ولا صفقات.»; Janna EN "The platform does not guarantee
+awards or deals and is not a government body." → "The platform does not guarantee awards or deals."; Bassem «المنصة مش جهة حكومية ومابتضمنش
+ترسية؛ …» → «المنصة مابتضمنش ترسية؛ …». The prompts had no «not a contracting / procurement body» or «not a party» line (the owner's two
+follow-ups of the same day). Writes, `updatedAt` stamps and length checks: `anam/live/README.md` → «Round 5». The same lines were removed
+from the prepared copies here (`personas/`, `calls/`, `bassem-email/`), which are not applied.
+
 # Applied on 2026-11-28 — the assistants round (Janna AR, Janna EN, Bassem)
 
 **Status: APPLIED on 2026-11-28 (owner's advance approval for the task «the six assistants»).** What changed in Anam, with the exact writes and

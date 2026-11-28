@@ -155,7 +155,7 @@ function summaryLines(env, inq, { target = false } = {}) {
   v.items.slice(0, 30).forEach((it, i) => L.push(`${i + 1}. ${[it.name || it.product, it.qty || it.quantity ? "× " + (it.qty || it.quantity) : "", it.unit || "", it.maker ? "(" + it.maker + ")" : ""].filter(Boolean).join(" ")}`));
   return L.join("\n");
 }
-const SAFETY = { ar: "تنبيه أمان: المنصة عمرها ما بتطلب منك تحويل فلوس ومش طرف في أي دفع. قبل أي تحويل اتأكد بنفسك من بيانات الحساب البنكي للمصنع من مصدر رسمي.", en: "Safety: the platform never asks you to transfer money and is not part of any payment. Before paying, confirm the factory's bank details yourself through an official source." };
+const SAFETY = { ar: "تنبيه أمان: المنصة عمرها ما بتطلب منك تحويل فلوس. قبل أي تحويل اتأكد بنفسك من بيانات الحساب البنكي للمصنع من مصدر رسمي.", en: "Safety: the platform never asks you to transfer money. Before paying, confirm the factory's bank details yourself through an official source." };
 /* the buyer's account (signed in when sending, or a member with the same confirmed mailbox) — for bell notifications */
 async function buyerUserId(env, inq) {
   if (inq.user_id) return inq.user_id;
