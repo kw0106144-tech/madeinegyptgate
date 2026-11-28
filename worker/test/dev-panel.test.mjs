@@ -490,7 +490,10 @@ describe("features: enforced in the real handlers", () => {
     assert.deepEqual([b.morning_skipped, b.email_morning, b.morning], ["feature_off", 0, 0]);
     assert.equal(calls.filter(c => c.url.startsWith("https://api.resend.com/") && JSON.parse(c.body).subject.includes("باسم")).length, 0);
     await setFeatures(env, { bassem_morning: true }, o.token);
-    b = await bassemCron(env, at10);
+    b = await bassemCron(env, at10); // the 10:00 report is on (0015 + member_daily_report): it carries the morning e-mail (daily-mail.js)
+    assert.deepEqual([b.email_morning, b.morning_email, b.morning_skipped], [0, "in_daily_report", undefined], JSON.stringify(b));
+    await setFeatures(env, { member_daily_report: false }, o.token);
+    b = await bassemCron(env, at10); // the 10:00 report off → the morning e-mail goes on its own, as before
     assert.equal(b.email_morning, 1, JSON.stringify(b)); assert.equal(b.morning_skipped, undefined);
   });
   test("whatsapp_send off → waLive false (reason feature_off) and every send is a dry run; on again → the send goes out", async () => {

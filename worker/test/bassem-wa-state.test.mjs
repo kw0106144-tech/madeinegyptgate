@@ -208,10 +208,11 @@ describe("the live call: the WhatsApp line reaches Bassem's prompt from the requ
 });
 
 describe("the morning message (whatsapp.js bassemCron → morningEmail): no WhatsApp promise the platform cannot keep", () => {
+  // the morning e-mail on its own = the 10:00 report switched off (while it runs, the note goes inside it: mail-reports.test.mjs)
   const at = (d, hm) => cairoToUtc(d, hm), count = n => async () => ({ count: n, top: n ? "مناقصة محولات كهرباء" : "" });
   const mailTo = email => sent.filter(s => s.to === email);
   test("WhatsApp off: the e-mail says plainly that WhatsApp is not live and Bassem's messages come by e-mail only — never «لحد ما الواتساب يشتغل»", async () => {
-    const env = env0();
+    const env = env0(); await features(env, { member_daily_report: false });
     await member(env, { prefs: { wa_optin: true, morning_time: "09:00" } });
     const r = await bassemCron(env, at("2026-11-20", "09:05"), count(2));
     assert.deepEqual([r.morning, r.email_morning, r.failed], [0, 1, 0], JSON.stringify(r));
@@ -224,7 +225,7 @@ describe("the morning message (whatsapp.js bassemCron → morningEmail): no What
   test("WhatsApp live but this member is not on it, or today's WhatsApp did not go out: the e-mail does not mention WhatsApp at all", async () => {
     for (const [prefs, status] of [[{ morning_time: "09:00" }, 200], [{ wa_optin: true, morning_time: "09:00" }, 400]]) {
       sent = []; wa = []; respondStatus = status;
-      const env = await waSwitchOn(env0({ RESPONDIO_TOKEN: RIO }));
+      const env = await waSwitchOn(env0({ RESPONDIO_TOKEN: RIO })); await features(env, { member_daily_report: false });
       await member(env, { prefs });
       const r = await bassemCron(env, at("2026-11-20", "09:05"), count(1));
       assert.deepEqual([r.morning, r.email_morning], [0, 1], JSON.stringify(r));

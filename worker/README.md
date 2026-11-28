@@ -677,7 +677,20 @@ Refs look like `MIG-26-7KQ4PX` (6 random characters). The buyer's receipt links 
 - **Bassem's daily report** (partner / strategic — the plans with `bassem`): the same e-mail as `partner_daily_report` (`pday-`) with a PDF
   (`pdf-report.js`: Arabic shaped right to left, DejaVu Sans subset in `pdf-font.js`, multi-page) holding every detail: opportunities
   with entity, sector, place, dates and status, the matching requests, the news and the day's market counts in his plan. The PDF only
-  goes on a route that carries attachments (Resend / Brevo). Bassem's morning note (`whatsapp.js`) is unchanged.
+  goes on a route that carries attachments (Resend / Brevo).
+- **One e-mail a day for a partner** (owner 2026-11-28 «ادمج الإيميلين»): Bassem's morning note (`whatsapp.js morningText`: how he is,
+  the real count of new items in his plan, «تحب نشتغل سوا إمتى النهارده؟» with the one-click `#when=` links, the link to Bassem) is no
+  longer a second e-mail: while the 10:00 report runs (`mail-sends.js morningInReport`: migration 0015 + switch `member_daily_report`)
+  it opens the partner's `pday-` report, with its own stop link for the list `bassem` (the footer's link stays the list `daily`) and
+  `MORNING_WHY_IN_REPORT`; `bassemCron` then sends no morning e-mail (its result says `morning_email: "in_daily_report"`). The note keeps
+  its own rules (`daily-mail.js morningPart`): switch `bassem_morning`, the member's pause and days, once a Cairo day
+  (`members.morning_sent_day`, the same claim as WhatsApp), his stop of the list `bassem`, the «البريد» switch of `bassem_morning_email`.
+  Nothing to report, or the report stopped (list `daily`, «البريد» switch of `partner_daily_report`) → the note alone, exactly the old
+  morning e-mail (`bm-`, list `bassem`); no note → the report alone. By e-mail the note now comes with the report (from 10:00), whatever
+  the member's `morning_time`, which still sets the WhatsApp time. WhatsApp, when it is the member's channel, still carries the note at
+  his time; when it fails, `morning_sent_day = "mail:<day>"` and the 10:00 report carries it (after the report went that day: nothing
+  more, never a second e-mail). Switch `member_daily_report` off (or no 0015) → the morning e-mail goes on its own as before. The owner's
+  daily report counts the merged e-mail once, as `partner_daily_report`. Basic / Premium members: the 10:00 report, unchanged.
 - **«تقرير المالك اليومي»** (switch `owner_daily_report`, default ON): from 00:30 Cairo (`OWNER_REPORT_TIME`) for the day that ended, to
   `TEAM_EMAIL` (info@madeinegyptgate.com): what was published (the items that first appeared, per section with titles; members' approved
   products and company profiles; new members; requests received) and every e-mail sent that day (time, company, address, template,

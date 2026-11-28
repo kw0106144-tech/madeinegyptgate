@@ -11,7 +11,8 @@ import { directoryCandidates } from "../src/candidates.js";
 import { officialEmail, planForMarket } from "../src/mail-sends.js";
 import { teasersCron, teaserTitle, teaserFacts, teaseInquiry, officialAddresses } from "../src/teasers.js";
 import DATA from "../src/data.json";
-import { memberReportsCron, ownerReportCron, mailCron } from "../src/daily-mail.js";
+import { memberReportsCron, ownerReportCron, ownerReport, mailCron } from "../src/daily-mail.js";
+import { bassemCron, MORNING_WHY, MORNING_WHY_IN_REPORT } from "../src/whatsapp.js";
 import { regTrouble } from "../src/info-alerts.js";
 import { items, syncSeen } from "../src/digest.js";
 import { storeJson, forgetFeatures } from "../src/flags.js";
@@ -217,6 +218,112 @@ describe("the 10:00 member reports", () => {
     assert.ok(m, "report sent");
     assert.match(m.text, /طلبات وصلتك في آخر 24 ساعة: 1/); assert.match(m.text, /طلبات لسه مستنية ردك: 1/);
     void day;
+  });
+});
+
+describe("one e-mail a day for a partner: Bassem's morning note inside the 10:00 report (owner 2026-11-28 «ادمج الإيميلين»)", () => {
+  async function setup(extra) {
+    const env = env0(extra), day = "2026-11-28", list = items();
+    const it = list.find(x => x.kind === "tender" && x.market === "local" && x.sector && x.title);
+    await syncSeen(env, list.filter(x => x !== it), cairoToUtc("2026-11-27", "07:00"));
+    await syncSeen(env, list, cairoToUtc(day, "07:00"));
+    return { env, day, it };
+  }
+  const count = n => async () => ({ count: n, top: n ? "مناقصة كابلات" : "" });
+  const to = a => sent.filter(s => s.to === a);
+  const switches = async (env, values) => { await env.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES ('features', 'system', ?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v").bind(storeJson(values, {}), now()).run(); forgetFeatures(env); };
+  // the whole day as the platform cron runs it: Bassem's cron from his morning time, the reports from 10:00, again later
+  const day1 = async (env, day) => { for (const hm of ["09:05", "10:00", "10:15", "12:00", "21:00"]) { await bassemCron(env, cairoToUtc(day, hm), count(2)); await memberReportsCron(env, cairoToUtc(day, hm)); } };
+
+  test("a partner gets exactly ONE e-mail: the report with the PDF, opened by Bassem's morning note (its own stop link); the owner's report counts one", async () => {
+    const { env, day, it } = await setup();
+    await addMember(env, { id: "pp1", email: "partner@member.test", plan: "partner", sector: it.sector, company: "Partner Co" });
+    await day1(env, day);
+    const all = to("partner@member.test");
+    assert.equal(all.length, 1, all.map(x => x.subject).join(" | "));
+    const [p] = all;
+    assert.match(p.subject, /تقرير باسم اليومي/);
+    assert.equal(p.attachments.length, 1); assert.equal(p.attachments[0].content_type, "application/pdf");
+    assert.equal(Buffer.from(p.attachments[0].content, "base64").subarray(0, 5).toString(), "%PDF-");
+    assert.ok(p.text.includes(it.title.slice(0, 30)), "the report's content");
+    for (const x of ["صحتك تمام", "تحب نشتغل سوا إمتى النهارده؟", "advisor.html#when=now", "advisor.html#when=skip", "افتح باسم:", "في ملف الـ PDF المرفق", "When shall we work together today?"]) assert.ok(p.text.includes(x), x);
+    assert.ok(p.text.indexOf("صباح الخير") < p.text.indexOf("ده تقرير باسم اليومي"), "the note opens the e-mail");
+    assert.equal((p.text.match(/صباح الخير/g) || []).length, 1, "one greeting");
+    assert.match(p.text, /إيقاف رسالة باسم الصباحية بس \(التقرير اليومي بيفضل يوصلك\): https:\/\/madeinegyptgate\.com\/api\/unsub\?\S*l=bassem/);
+    assert.match(p.headers["List-Unsubscribe"], /l=daily/, "the footer's stop link stays the report's");
+    assert.ok(p.text.includes(MORNING_WHY_IN_REPORT.off));
+    assert.equal(await env.DB.prepare("SELECT morning_sent_day AS d FROM members WHERE id = 'pp1'").first("d"), day, "once a day across channels");
+    const R = await ownerReport(env, day);
+    assert.equal(R.sent, 1); assert.match(R.ar, /تقرير باسم اليومي \(PDF\): 1/); assert.ok(!/صباح الخير من باسم/.test(R.ar));
+  });
+  test("a basic member still gets the plain 10:00 report: no PDF, no Bassem note; Bassem's cron sends him nothing", async () => {
+    const { env, day, it } = await setup();
+    await addMember(env, { id: "bb1", email: "basic@member.test", plan: "basic", sector: it.sector });
+    await day1(env, day);
+    const all = to("basic@member.test");
+    assert.equal(all.length, 1);
+    assert.match(all[0].subject, /تقريرك اليومي/);
+    assert.equal(all[0].attachments.length, 0);
+    assert.ok(!/باسم|advisor\.html#when|PDF/.test(all[0].text), all[0].text);
+    assert.match(all[0].headers["List-Unsubscribe"], /l=daily/);
+  });
+  test("nothing to report → the note alone (the old morning e-mail, list bassem); stopped lists keep their own part", async () => {
+    const { env, day } = await setup();
+    await addMember(env, { id: "pn1", email: "quiet@member.test", plan: "partner", sector: "قطاع مالوش أي علاقة زززز", products: "ققققق" });
+    await day1(env, day);
+    let all = to("quiet@member.test");
+    assert.equal(all.length, 1);
+    assert.match(all[0].subject, /صباح الخير .*باسم/); assert.equal(all[0].attachments.length, 0);
+    assert.match(all[0].headers["List-Unsubscribe"], /l=bassem/); assert.ok(all[0].text.includes(MORNING_WHY.off));
+    // stopped the list daily → the note alone; stopped the list bassem → the report without the note
+    const { env: e2, day: d2, it } = await setup();
+    await addMember(e2, { id: "pd1", email: "nodaily@member.test", plan: "partner", sector: it.sector });
+    await addMember(e2, { id: "pb1", email: "nobassem@member.test", plan: "strategic", sector: it.sector });
+    await e2.DB.prepare("INSERT INTO unsubscribes (email_key, list, created_at) VALUES ('nodaily@member.test', 'daily', 'x'), ('nobassem@member.test', 'bassem', 'x')").run();
+    sent.length = 0;
+    await day1(e2, d2);
+    all = to("nodaily@member.test");
+    assert.equal(all.length, 1); assert.match(all[0].subject, /صباح الخير/); assert.equal(all[0].attachments.length, 0); assert.ok(!/تقرير باسم اليومي|فرص جديدة تطابق نشاطك/.test(all[0].text));
+    all = to("nobassem@member.test");
+    assert.equal(all.length, 1); assert.match(all[0].subject, /تقرير باسم اليومي/); assert.equal(all[0].attachments.length, 1);
+    assert.ok(!/تحب نشتغل سوا|l=bassem/.test(all[0].text));
+  });
+  test("the owner's switches: bassem_morning off → the report without the note; member_daily_report off → no report, the morning e-mail on its own; paused → no note", async () => {
+    let { env, day, it } = await setup();
+    await addMember(env, { id: "s1", email: "sw@member.test", plan: "partner", sector: it.sector });
+    await switches(env, { bassem_morning: false });
+    await day1(env, day);
+    let all = to("sw@member.test");
+    assert.equal(all.length, 1); assert.match(all[0].subject, /تقرير باسم اليومي/); assert.ok(!/تحب نشتغل سوا/.test(all[0].text));
+    ({ env, day, it } = await setup());
+    await addMember(env, { id: "s2", email: "sw2@member.test", plan: "partner", sector: it.sector });
+    await switches(env, { member_daily_report: false });
+    sent.length = 0;
+    await day1(env, day);
+    all = to("sw2@member.test");
+    assert.equal(all.length, 1); assert.match(all[0].subject, /صباح الخير .*باسم/); assert.equal(all[0].attachments.length, 0);
+    ({ env, day, it } = await setup());
+    await addMember(env, { id: "s3", email: "sw3@member.test", plan: "partner", sector: it.sector });
+    await env.DB.prepare("UPDATE members SET prefs_json = ? WHERE id = 's3'").bind(JSON.stringify({ pause: true })).run();
+    sent.length = 0;
+    await day1(env, day);
+    all = to("sw3@member.test");
+    assert.equal(all.length, 1); assert.match(all[0].subject, /تقرير باسم اليومي/); assert.ok(!/تحب نشتغل سوا/.test(all[0].text));
+  });
+  test("the e-mail centre's switch of the partner report off → the note alone; of the morning e-mail off → the report alone", async () => {
+    const { env, day, it } = await setup();
+    await addMember(env, { id: "t1", email: "tpl@member.test", plan: "partner", sector: it.sector });
+    await env.DB.prepare("INSERT INTO cc_mail_templates (key, enabled, updated_at) VALUES ('partner_daily_report', 0, ?)").bind(now()).run();
+    await day1(env, day);
+    let all = to("tpl@member.test");
+    assert.equal(all.length, 1); assert.match(all[0].subject, /صباح الخير .*باسم/);
+    const { env: e2, day: d2, it: i2 } = await setup();
+    await addMember(e2, { id: "t2", email: "tpl2@member.test", plan: "partner", sector: i2.sector });
+    await e2.DB.prepare("INSERT INTO cc_mail_templates (key, enabled, updated_at) VALUES ('bassem_morning_email', 0, ?)").bind(now()).run();
+    sent.length = 0;
+    await day1(e2, d2);
+    all = to("tpl2@member.test");
+    assert.equal(all.length, 1); assert.match(all[0].subject, /تقرير باسم اليومي/); assert.ok(!/تحب نشتغل سوا/.test(all[0].text));
   });
 });
 
