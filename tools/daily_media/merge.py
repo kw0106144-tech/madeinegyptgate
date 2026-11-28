@@ -1,7 +1,8 @@
 """«التحديث اليومي»: merge researched news, procurement / award news, project news, events and videos into
 data/real.js, data/projects.js, data/videos.js and the English dictionary data/i18n-en.js — Made in Egypt Gate.
+With market.json it also updates the last closes of REAL.market (EGX stocks and indices).
 Every input item must be real and verified (see tools/daily_media/PLAYBOOK.md); this script only validates, de-duplicates
-and writes. Usage (repo root): python3 -I tools/daily_media/merge.py . <dir with new-*.json>"""
+and writes. Usage (repo root): python3 -I tools/daily_media/merge.py . <dir with new-*.json and / or market.json>"""
 import json, re, sys, os, datetime, urllib.request
 REPO, M = sys.argv[1], sys.argv[2]
 TODAY = (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=2)).strftime('%Y-%m-%d')  # Cairo date
@@ -181,6 +182,51 @@ for v in read('new-videos.json'):
                   'verified_oembed': True, 'source_url': 'https://www.youtube.com/watch?v=' + vid})
     tr(v['title_ar'], v['title_en']); added['videos'] += 1
 V = sorted(V + new_v, key=lambda v: v.get('date') or '', reverse=True)
+
+# ---- market closes (REAL.market): market.json = [{symbol, close, change_pct, as_of_date, source_url}], read from each row's
+# source page on the day of the update (PLAYBOOK «Market prices»). Only rows that exist are updated (never added or removed);
+# names, units and every other field stay. Optional per item: cross_check_url (https or null; a row's old cross-check is
+# cleared otherwise, because it checked the old reading), and change_basis / note (required when the row has them).
+MDAY = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+def num(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and v == v and abs(v) != float('inf')
+mrep, mseen = [], set()
+MROWS = dict((m.get('symbol'), m) for m in R.get('market', []))
+for q in read('market.json'):
+    q = q if isinstance(q, dict) else {}
+    sym = clean(q.get('symbol')) if isinstance(q.get('symbol'), str) else ''
+    c, p, d, u = q.get('close'), q.get('change_pct'), clean(str(q.get('as_of_date') or '')), clean(str(q.get('source_url') or ''))
+    row = MROWS.get(sym)
+    why = None
+    if not row: why = 'unknown symbol'
+    elif sym in mseen: why = 'symbol twice in market.json'
+    elif not (num(c) and c > 0): why = 'close %r is not a positive number' % (c,)
+    elif not (num(p) and -30 <= p <= 30): why = 'change_pct %r is not a number between -30 and 30' % (p,)
+    elif not MDAY.match(d): why = 'as_of_date %r is not YYYY-MM-DD' % d
+    elif d > TODAY: why = 'as_of_date %s is in the future (today %s)' % (d, TODAY)
+    elif d < (row.get('as_of_date') or ''): why = 'as_of_date %s is older than the stored %s' % (d, row.get('as_of_date'))
+    elif not re.match(r'^https://[^\s/]+\.[^\s/]+', u): why = 'source_url is not https'
+    elif q.get('cross_check_url') is not None and not re.match(r'^https://[^\s/]+\.[^\s/]+', clean(str(q.get('cross_check_url')))): why = 'cross_check_url is not https'
+    else:
+        for k in ('change_basis', 'note'):
+            if k in row and row[k] and not clean(str(q.get(k) or '')): why = 'the row has %s: give the new one for this reading' % k
+            elif q.get(k) is not None and not safe(str(q.get(k))): why = 'contact in %s' % k
+    if why: drop.append(('market', sym or '?', why)); mrep.append('DROP  %-14s %s' % (sym or '?', why)); continue
+    mseen.add(sym)
+    old = (row.get('close'), row.get('change_pct'), row.get('as_of_date'))
+    row['close'], row['change_pct'], row['as_of_date'], row['source_url'] = c, p, d, u
+    if q.get('cross_check_url') is not None: row['cross_check_url'] = clean(q['cross_check_url'])
+    elif row.get('cross_check_url'): row['cross_check_url'] = None
+    for k in ('change_basis', 'note'):
+        if q.get(k) is not None and clean(str(q[k])): row[k] = clean(str(q[k]))
+    added['market'] = added.get('market', 0) + 1
+    mrep.append('OK    %-14s %s %s%% (%s)  ->  %s %s%% (%s)  %s' % (sym, old[0], old[1], old[2], c, p, d, u))
+if mrep:
+    for m in R.get('market', []):
+        if m.get('symbol') not in mseen: mrep.append('SAME  %-14s %s %s%% (%s)  not updated' % (m.get('symbol'), m.get('close'), m.get('change_pct'), m.get('as_of_date')))
+    rep = 'Market update %s (today %s): %d of %d rows updated\n' % (REPO, TODAY, len(mseen), len(R.get('market', []))) + '\n'.join(mrep) + '\n'
+    open(os.path.join(M, 'market-report.txt'), 'w', encoding='utf-8').write(rep)
+    print(rep, end='')
 
 dump_js(REPO + '/data/real.js', rhead, 'REAL', R)
 open(PJ, 'w', encoding='utf-8').write('\n'.join(pj_lines))
