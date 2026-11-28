@@ -1718,6 +1718,7 @@ def run_checks(out, a, rep):
 
     # --- the generator's own validation ---------------------------------------------------------------------------------
     check_seo_stats(site, getattr(a, "seo_stats", None), rep)
+    check_counts(site, getattr(a, "seo_stats", None), rep)
 
     # --- freshness --------------------------------------------------------------------------------------------------------
     built, built_s = manifest_built(site)
@@ -1957,6 +1958,98 @@ def check_manifest(site, rows, rep):
         rep.error("member_label", "imported member listings labelled public-source", bad_member)
     if sample:
         rep.error("sample_pages", "pages generated from sample/unverified data (MIG.LEADS etc.)", sample)
+
+
+# ---- counts (owner 2026-11-28)
+import html as _html
+_COUNT_KIND = [  # (kind, the word after the number), first match wins
+    ('rfq', r'طلبات? عروض? (?:ال)?أسعار|طلبات? عرض سعر|طلبات? سعر|طلباً'),
+    ('tend', r'مناقصات|مناقصتان|مناقصة|فرصة(?! عمل| وظيف)|فرص(?! عمل| العمل| وظيف)'),
+    ('award', r'ترسيات|ترسية'),
+    ('proj', r'مشروعات|مشاريع|مشروعاً|مشروع(?! قانون)'),
+    ('prod', r'منتجات|منتجاً|منتج'),
+    ('news', r'أخبار|خبراً|خبر'),
+    ('zones', r'منطقة صناعية وحرة|مناطق صناعية وحرة'),
+    ('dir', r'منشآت|منشأة|مصانع|مصنعاً|مصنع|شركات|شركة'),
+]
+_TEND_KEYS = ('tenders', 'tenders_open', 'tenders_local', 'tenders_local_open', 'tenders_intl', 'tenders_intl_open')
+_COUNT_KEYS = {'dir': ('dir', 'dir_members', 'dir_factories', 'dir_companies', 'dir_verified', 'dir_public', 'dir_with_gov'), 'prod': ('products',),
+               'tend': _TEND_KEYS, 'rfq': ('rfqs',) + _TEND_KEYS, 'award': ('awards',), 'proj': ('projects',), 'news': ('news',), 'zones': ('zones',)}
+_CNUM = r'(?<![\w.,/:\-])([0-9٠-٩][0-9٠-٩,٬]*)(\s*ألف)?(\s*\+)?\s*'
+_CRX = re.compile(_CNUM + '(' + '|'.join('(?:%s)' % w for _, w in _COUNT_KIND) + r')(?![\u0621-\u0652])((?:\s+(?![0-9\u0660-\u0669])[^\s<>|·،,.:;!؟?()«»"\'\[\]{}]+){0,3})')
+_CKIND = [(k, re.compile('^(?:%s)' % w)) for k, w in _COUNT_KIND]
+_ANIM = re.compile(r'(<(\w+)\b[^>]*?\bdata-(?:count|n)="([0-9,]+)"[^>]*>)[^<]*(</\2>)')
+
+def _page_text(h):
+    h = re.sub(r'<style\b[^>]*>.*?</style>', ' ', h, flags=re.S | re.I)
+    h = _ANIM.sub(lambda m: m.group(1) + m.group(3) + m.group(4), h)   # the number the visitor sees once it has counted up
+    h = re.sub(r'<[^>]+>', ' ', h)
+    return re.sub(r'\s+', ' ', _html.unescape(h))
+
+
+# approved figures and words that are not platform counts (page regex, text regex, why); a stale entry is reported, never silently kept
+COUNT_ALLOW = [
+    (r'^/(register/)?$', r'(?:حتى |["«] *)\d+ منتج', 'plan limits of the plan cards (data/plan.js, the Control Center plans matrix), not a count'),
+]
+
+
+def check_counts(site, stats_path, rep):
+    """owner 2026-11-28: «every number on the home page and sub-pages is computed from the data and agrees across pages». The app pages
+    (the part files: home, about, contact, register …) are read as a visitor sees them (a number animated by data-count / data-n is that
+    number); a number in front of a directory / product / tender / RFQ / award / project / news word must be one of the counts the
+    generator computed for this build (seo-stats.json «counts»), or an approved figure of COUNT_ALLOW. The same words with two different
+    numbers on two pages (app pages and the hubs: /factories/, /tenders/ …) is refused too."""
+    st = load_json_file(stats_path, None) if stats_path and os.path.isfile(stats_path) else None
+    C = (st or {}).get("counts")
+    if not isinstance(C, dict):
+        rep.warn("counts_unchecked", "no «counts» in the generator's seo-stats.json: the hand-typed count check did not run")
+        return
+    cfg = load_json_file(os.path.join(site, "_seo", "config.json"), {}) or {}
+    sp, gen, noidx = cfg.get("static_paths") or {}, set(cfg.get("generated_keys") or []), set(cfg.get("noindex_static") or [])
+    gen_paths = set(sp.get(k) for k in gen)   # a hub the generator writes (computed by construction): only compared, never «hand-typed»
+    ok = dict((k, set(C[x] for x in keys if isinstance(C.get(x), int))) for k, keys in _COUNT_KEYS.items())
+    seen, used, bad, found = {}, set(), [], 0
+    for key, path in sorted(sp.items()):
+        f = os.path.join(site, path.strip("/"), "index.html") if path.strip("/") else os.path.join(site, "index.html")
+        if key in noidx or not os.path.isfile(f):
+            continue
+        app = path not in gen_paths
+        rel = path
+        t = _page_text(read_text(f))
+        for m in _CRX.finditer(t):
+            num, thou, word = m.group(1), m.group(2), m.group(4)
+            n = int(num.translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789")).replace(",", "").replace("\u066C", "") or 0) * (1000 if thou else 1)
+            if n == 0 or (1990 <= n <= 2100 and not thou and "," not in num):
+                continue
+            kind = next(k for k, rx in _CKIND if rx.match(word))
+            ctx = t[max(0, m.start() - 40):m.end()]
+            hit = [i for i, (pg, rx, _) in enumerate(COUNT_ALLOW) if re.search(pg, rel) and re.search(rx, ctx)]
+            if hit:
+                used.update(hit); continue
+            label = re.sub(r"\s+", " ", (word + m.group(5)).strip())
+            if app:
+                found += 1
+                if n not in ok[kind]:
+                    bad.append("%s: «%s» (%s: computed %s)" % (rel, m.group(0).strip(), kind, ", ".join(str(x) for x in sorted(ok[kind]))))
+                    continue
+            if " " in label and t[max(0, m.start() - 3):m.start()].strip()[-1:] not in ("·", ":"):
+                seen.setdefault((kind, label), {}).setdefault(n, set()).add(rel)
+    if bad:
+        rep.error("hand_counts", "a number on an app page next to a count word is not a count computed from the data: compute it in its "
+                  "part file from the data, or add an approved figure to COUNT_ALLOW (deploy/stage.py)", bad)
+    dis = []
+    for (kind, label), vals in sorted(seen.items()):
+        per = {}
+        for v, ps in vals.items():
+            for pg in ps: per.setdefault(pg, set()).add(v)
+        if len(vals) > 1 and all(len(x) < 3 for x in per.values()):   # a label with 3+ numbers on one page is a table (per region, per sector)
+            dis.append("«%s»: %s" % (label, "; ".join("%s on %s" % (v, ", ".join(sorted(p)[:3])) for v, p in sorted(vals.items()))))
+    if dis:
+        rep.error("counts_disagree", "the same words show different numbers on different pages", dis)
+    stale = [rx for i, (pg, rx, why) in enumerate(COUNT_ALLOW) if i not in used]
+    if stale:
+        rep.warn("count_allow_unused", "COUNT_ALLOW entries that match no page today (deploy/stage.py)", stale)
+    rep.stats["counts_checked"] = found
 
 
 def check_seo_stats(site, path, rep):

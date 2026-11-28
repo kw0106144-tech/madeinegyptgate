@@ -4457,7 +4457,11 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         for k, cur_ar, cur_en in (('value_egp_million', 'مليون جنيه', 'million EGP'), ('value_usd_million', 'مليون دولار', 'million USD'), ('value_eur_million', 'مليون يورو', 'million EUR')):
             if a.get(k):
                 vals.append('%s %s' % ('{:,}'.format(a[k]), X(L, cur_ar, cur_en)))
+        if not vals and a.get('value_million') and a.get('currency'):   # an award abroad, in its own currency (ISO code)
+            vals.append('%s %s' % ('{:,}'.format(a['value_million']), X(L, 'مليون ' + a['currency'], 'million ' + a['currency'])))
         facts = [(X(L, 'الشركة الفائزة', 'Winner'), esc(T(L, a.get('winner_ar')))), (X(L, 'الجهة المالكة / المسندة', 'Awarding entity'), esc(T(L, a.get('awarding_entity_ar'))))]
+        if a.get('country_ar') and (a.get('market') or 'local') != 'local':   # an award in the Gulf or abroad (tools/daily_media/merge.py)
+            facts.append((X(L, 'الدولة', 'Country'), esc(X(L, a['country_ar'], a.get('country_en') or T(L, a['country_ar'])))))
         if vals:
             facts.append((X(L, 'قيمة العقد', 'Contract value'), esc(X(L, ' / '.join(vals), ' / '.join(vals)))))
         if a.get('region_code'):
@@ -6851,7 +6855,20 @@ location.replace(%s);})();'''
                 if not os.path.islink(fp):
                     total_files += 1
                     total_bytes += os.path.getsize(fp)
-        out = {'pages_ar': stats['ar'], 'pages_en': stats['en'], 'indexable': stats['index'], 'noindex': stats['noindex'], 'static_rows': static_rows,
+        # the site-wide counts this build computed from the data (owner 2026-11-28: every number on a page is computed and agrees across
+        # pages): deploy/stage.py check_counts refuses an app page whose number next to a directory / product / tender / RFQ / award /
+        # project / news word is none of these
+        m_ = S.get('dir_members') or []
+        n_mem_, n_fac_, n_ver_, n_vm_, n_pub_ = kind_counts(m_)
+        T_ = S.get('tenders') or []
+        op_ = lambda xs: sum(1 for t in xs if t.get('status') in ('open', 'soon'))
+        counts = {'dir': len(m_), 'dir_members': n_mem_, 'dir_factories': n_fac_, 'dir_companies': n_mem_ - n_fac_, 'dir_verified': n_ver_,
+                  'dir_public': n_pub_, 'dir_with_gov': sum(g['n_members'] for g in S.get('hub_govs') or []), 'products': len(S.get('products') or []),
+                  'tenders': len(T_), 'tenders_open': op_(T_), 'tenders_local': sum(1 for t in T_ if t['src'] != 'intl'),
+                  'tenders_local_open': op_([t for t in T_ if t['src'] != 'intl']), 'tenders_intl': sum(1 for t in T_ if t['src'] == 'intl'),
+                  'tenders_intl_open': op_([t for t in T_ if t['src'] == 'intl']), 'rfqs': len(S.get('rfqs') or []), 'awards': len(S.get('awards') or []),
+                  'news': len(S.get('news') or []), 'events': len(S.get('events') or []), 'projects': len(S.get('projects') or []), 'zones': len(S.get('zones') or [])}
+        out = {'pages_ar': stats['ar'], 'pages_en': stats['en'], 'indexable': stats['index'], 'noindex': stats['noindex'], 'static_rows': static_rows, 'counts': counts,
                'sitemap_urls': sm['urls'], 'sitemap_files': sm['files'], 'html_pages_written': S['files'], 'html_bytes': S['bytes'],
                'files_in_out_excl_symlinks': total_files, 'bytes_in_out_excl_symlinks': total_bytes,
                'redirects_exact': len(R['exact']), 'en_gone_redirects': sum(1 for p in S['en_gone'] if p in R['exact']), 'shim_maps': shim_counts, 'headers': hdr,
