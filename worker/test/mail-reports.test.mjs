@@ -278,8 +278,10 @@ describe("the cron and the PDF", () => {
   test("without migration 0015 nothing new is sent", async () => {
     const env = env0();
     env.DB.db.exec("DROP TABLE mail_sends");
-    assert.equal((await mailCron(env, Date.now())).off, "no_0015");
-    const out = await platformCron(env, Date.now());
+    // a fixed hour before 07:00 Cairo: from 07:00 the day's digests run in the same tick and the mail step is skipped (busy), whatever the tables
+    const at = Date.parse("2026-11-28T03:00:00Z");
+    assert.equal((await mailCron(env, at)).off, "no_0015");
+    const out = await platformCron(env, at);
     assert.equal(out.mail && out.mail.off, "no_0015");
   });
   test("the report PDF: pages, Arabic text extractable as Unicode", () => {

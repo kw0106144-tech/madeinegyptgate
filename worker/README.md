@@ -545,6 +545,34 @@ team only), `DELETE /api/admin/cc/members/:id/web-summary` (`members.write`, aud
 name / company changes. Erased with the account (`deleteMember`) and the owner's legal memory erasure. Without 0013: the isolate's memory
 only, the clear answers `503 member_web_off`. Tests: `test/member-web.test.mjs`.
 
+
+## «فرص مناسبة لمصنعك» — proactive opportunity matching — src/matching-opps.js (owner 2026-11-26; migration 0016)
+
+Every new opportunity is matched to each Bassem member's company profile automatically, with a 0-100 score, so the member finds it ready.
+Switch «🛠️ المطوّر» → `opp_matching` (**OFF by default**, locked until `0016_opp_matches.sql` is applied).
+
+- **Sources** (never an invented item): the Information Center through the `INTEL` binding (`GET /api/intel/feed?sort=seen&since=…&since_id=…`,
+  tenders / RFQs / projects, never news), the platform's own tenders / RFQs of `data.json` new in `seen_items` (never the baseline), and the
+  published «فرص السوق» web leads (`web-public.js` `publicOf`, only while `web_leads_public` is on). One cursor per source (`opp_cursors`),
+  `OPP.perRun` items and ≤ 150 rows per run, a stale cursor restarts 7 days back.
+- **Members**: plans with `bassem` in the matrix (`plansWith("bassem")`, `verified = 1`) and something to match on (profile 0007 products,
+  `members.products`, `members.sector`).
+- **Score** (`matchScore`, deterministic): product 45 (lookup-terms.js `concepts()`: forms, true equivalents tier 1, the same field tier 2 at
+  half), sector 20 / 12 / 8, market 15 / 8 / 4 behind a GATE (the market must be in the plan: `PLAN_SCOPE`, `gulfCovers`; the world only for
+  the plan with every market), certificates 10 × held / asked (ISO 9001 … HACCP, Halal, CE, SASO, G-Mark … — the missing ones listed),
+  deadline 10 / 6 / 3, or 5 when not stated. A passed deadline or a closed item is never scored; rows < 40 or without a product / sector
+  signal are not kept. `reasons` / `missing` in both languages.
+- **Privacy / honesty**: one row per member and item (`opp_matches`, unique); a member reads and changes only his own rows; the source link
+  is stored in `item_json.src` for the team and never returned, e-mailed or put in Bassem's block. The card may carry the platform page
+  and, for an Information Center tender / RFQ, the official notice link. Erased with the account (`deleteMember`).
+- **API**: `GET /api/me/opportunities[?status=active|new|seen|saved|dismissed][&limit][&lang=en]`, `POST /api/me/opportunities
+  {key | keys[], status: seen|dismissed|saved}` (Bearer; 401 / 403 `plan` / 503 `feature_off` / 503 `opp_matches_off`).
+- **Daily alert** (`oppAlerts`, platform cron from `DIGEST_TIME`, only while `daily_digest` is on too): the new matches ≥ `OPP_ALERT_MIN`
+  (default 70), never alerted before, ≤ `OPP_ALERT_MAX` (default 5) a day — one notification (`opp_match`) + one e-mail, template
+  `opp_matches` (`oppm-` ids, list `digest`: the member's `email_digest` and unsubscribe apply; nothing while he paused Bassem).
+- **Bassem**: `bassemContext` adds his top 3 unseen active matches as one line (`bassem-context.js` `oppsLineAr`), no source.
+- **Cron budget**: both steps share one counting D1 of `OPP.budget` (250) statements and skip the 07:00 digests tick.
+Tests: `test/opp-matching.test.mjs`.
 ## Endpoints
 | Method | Path | Body / query | Returns |
 |---|---|---|---|

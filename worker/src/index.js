@@ -50,6 +50,7 @@ import { handleVisitorMemory } from "./visitor.js";   // /api/janna/memory[/task
 import { handleKnowledge } from "./knowledge.js";     // /api/janna/knowledge  the personas' knowledge_lookup tool
 import { dailyMemory } from "./daily.js";              // day digests + «ملخص العميل» + tasks / knowledge merge / caps report (once per Cairo day)
 import { dailyJobs, newCountFor } from "./digest.js";
+import { oppCron, oppAlerts, handleMeOpps, OPP as OPP_LIM } from "./matching-opps.js"; // «فرص مناسبة لمصنعك»: 0016, switch opp_matching
 import { cairoDay, addDays, toolSoftError, toolBody } from "./common.js";
 // ---- web search (src/websearch.js) + the opportunity hunt (src/web-hunt.js): Bassem POST /api/advisor/web|hunt, Janna POST /api/janna/web|hunt ----
 import { handleWebSearch, handleJannaWebSearch, WS_MARKETS } from "./websearch.js";
@@ -683,6 +684,7 @@ const WORKER = {
     if (/^\/api\/admin\/cc(\/|$)/.test(url.pathname)) return CC.acc.handleCC(req, env, ctx, CC);
     if (/^\/api\/me\/(account|products|company|media|invoices|recognize|gcc)(\/|$)/.test(url.pathname)) return CC.acc.handleMeCC(req, env, ctx, CC);
     if (/^\/api\/me\/delete-request\/?$/.test(url.pathname)) return handleMeDeleteRequest(req, env, ctx); // before /api/me (handleMe would 404 it)
+    if (/^\/api\/me\/opportunities\/?$/.test(url.pathname)) return handleMeOpps(req, env, ctx); // «فرص مناسبة لمصنعك» (matching-opps.js) — before /api/me
     if (/^\/api\/auth\/legacy(\/|$)/.test(url.pathname)) return CC.acc.handleLegacyAuth(req, env, ctx, CC);
     if (/^\/api\/auth\/portal\/?$/.test(url.pathname)) return handlePortalSso(req, env); // team portal one-click sign-in (portal-sso.js)
     if (/^\/api\/team(\/|$)/.test(url.pathname)) return CC.acc.handleTeam(req, env, ctx, CC); // §12 team dashboards (front desk)
@@ -774,10 +776,15 @@ export async function platformCron(env, nowMs = Date.now()) {
      far below D1's 1,000 queries even on the busiest night (meetings / inquiries run in the same invocation); the daily update waits for
      the next tick when the consolidation did work in this one */
   const menv = budgetEnv(env, TICK.budget), busy = () => !!(out.daily && out.daily.ran); // the 07:00 digests tick (its item sync is ~800 statements) runs no memory job
+  let oppEnv = null; const oenv = () => oppEnv || (oppEnv = budgetEnv(env, OPP_LIM.budget));
   for (const [k, fn] of [["inquiries", () => inquiriesCron(env, nowMs)], ["daily", () => dailyJobs(env, nowMs)], ["bassem", () => bassemCron(env, nowMs, m => newCountFor(env, m, nowMs))], ["cc", () => CC.acc.ccCron(env, nowMs, CC)],
     ["memory", () => (busy() ? { skipped: "daily digests ran in this tick" } : memoryCron(menv, nowMs))],
     ["memory_day", () => (busy() ? { skipped: "daily digests ran in this tick" } : out.memory && out.memory.rebuilt ? { skipped: "consolidation ran in this tick" } : dailyMemory(menv, nowMs))],
     ["calls_report", () => (busy() ? { skipped: "daily digests ran in this tick" } : callsReportCron(env, nowMs, CC))], // its own budgetEnv(env, 80) inside
+    /* «فرص مناسبة لمصنعك» (matching-opps.js, switch opp_matching, 0016): new opportunities → matches, then the daily alert from the
+       digest time — one counting D1 of OPP.budget statements for both; not in the 07:00 digests tick (its item sync is ~800 statements) */
+    ["opps", () => (busy() ? { skipped: "daily digests ran in this tick" } : oppCron(oenv(), nowMs, { gate: env }))],
+    ["opps_alert", () => (busy() ? { skipped: "daily digests ran in this tick" } : oppAlerts(oenv(), nowMs, { gate: env }))],
     ["research", () => RESEARCH.researchCron(env, nowMs)], // «بحث وكتابة عميقة»: stuck jobs → failed, retention (≤ 70 statements; skipped without 0014)
     ["mail", () => (busy() ? { skipped: "daily digests ran in this tick" } : mailCron(env, nowMs))], // teasers, the 10:00 member reports, the owner's report (skipped without 0015)
     ["guard", () => guardCron(env, nowMs)]]) { // «حماية الموقع»: ≤ 1 read when nothing happened; at most one e-mail an hour

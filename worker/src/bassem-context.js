@@ -180,6 +180,21 @@ export function memberContext(m, lang, o = {}) {
   if (!o.continued && !prefsOf(m).session_time) L.push("- لسه ماحددش معاك ميعاد شغل يومي، فدي أول مقابلة: بعد الخطوة 1 كمّل قسم أول مقابلة (خدماتك ليه، وميعاده المناسب، وأول فرصة) من غير ما تكرّر الترحيب ولا إنك باسم.");
   return { address: addrAr, greeting: o.continued ? "" : named ? greeting(addrAr, h.g) : GREETING_NEUTRAL, block: L.join("\n"), ...(named ? {} : { anonymous: true }), ...(o.continued ? { continued: true } : {}) };
 }
+/* «فرص مناسبة لمصنعك» (matching-opps.js topUnseen, switch opp_matching): the top unseen matches of the member as ONE short line —
+   the opportunity itself (kind, a short title, the deadline, the score), never a source, a site, a link or a contact (the owner's rule:
+   Bassem never names sources). [] / nothing usable → "" (no line). No «» (the saved prompt speaks what is in «»). */
+const OPP_KIND_AR = { tender: "مناقصة", rfq: "طلب عرض سعر", project: "مشروع", buyer: "عميل محتمل", buyer_list: "قائمة عملاء محتملين" };
+export function oppsLineAr(list) {
+  const parts = [];
+  for (const o of Array.isArray(list) ? list.slice(0, 3) : []) {
+    const t = ctxField(String((o && o.title) || ""), 90); if (!t) continue;
+    const d = /^\d{4}-\d{2}-\d{2}$/.test(String(o.deadline || "")) ? "، آخر ميعاد " + o.deadline : "";
+    parts.push(arDigits(parts.length + 1) + ") " + (OPP_KIND_AR[o.kind] ? OPP_KIND_AR[o.kind] + ": " : "") + t + d + " (مناسبة بدرجة " + arDigits(Math.round(Number(o.score) || 0)) + " من ١٠٠)");
+  }
+  if (!parts.length) return "";
+  return "- فرص جديدة مناسبة لمصنعه لقتها المطابقة التلقائية ولسه ماشافهاش (معلومة عن الفرصة وبس من غير أي مصدر، ماتقولش جت منين): " + parts.join("؛ ")
+    + ". لو الكلام جه على فرص، ابدأ بيها واسأله يحب يعرف تفاصيل أنهي واحدة.";
+}
 /* the first sentence for a member whose name / title the platform does not have: no name, no second-person form */
 export const GREETING_NEUTRAL = "أهلاً وسهلاً! أنا باسم، مستشار الأعمال في منصة صنع في مصر. إيه الأخبار النهارده؟";
 
