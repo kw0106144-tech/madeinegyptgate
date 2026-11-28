@@ -376,7 +376,13 @@ test("site-copying programs get 403 on pages; browsers, search engines, SEO tool
     assert.equal(r.status, 403, ua);
     assert.equal(r.h.get("X-Content-Type-Options"), "nosniff", "the 403 carries the security headers too");
   }
-  for (const ua of ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", "Mozilla/5.0 (compatible; bingbot/2.0)", "Mozilla/5.0 (compatible; AhrefsBot/7.0)", "Mozilla/5.0 (compatible; SemrushBot/7~bl)", "migate-ci/1.0 (deploy check)", "migate-smoke/2.0 (deploy check)", "migate-intel-shell/1.0 (+https://madeinegyptgate.com/intel/)", "MIGApp/1.0 (android)", ""]) {
+  for (const ua of ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36", "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", "Mozilla/5.0 (compatible; bingbot/2.0)", "Mozilla/5.0 (compatible; AhrefsBot/7.0)", "Mozilla/5.0 (compatible; SemrushBot/7~bl)",
+      // the AI search / answer crawlers robots.txt names (seo_build.part.py ROBOTS_AGENTS, owner 2026-11-28) are never copiers
+      "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; OAI-SearchBot/1.0; +https://openai.com/searchbot", "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot",
+      "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; GPTBot/1.1; +https://openai.com/gptbot)", "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; PerplexityBot/1.0; +https://perplexity.ai/perplexitybot)",
+      "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; ClaudeBot/1.0; +claudebot@anthropic.com)", "Claude-SearchBot/1.0", "Claude-User/1.0",
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Safari/605.1.15 (Applebot/0.1; +http://www.apple.com/go/applebot)", "DuckDuckBot/1.1; (+http://duckduckgo.com/duckduckbot.html)",
+      "migate-ci/1.0 (deploy check)", "migate-smoke/2.0 (deploy check)", "migate-intel-shell/1.0 (+https://madeinegyptgate.com/intel/)", "MIGApp/1.0 (android)", ""]) {
     const r = await get("/", { headers: { "User-Agent": ua } });
     assert.equal(r.status, 200, ua || "(no User-Agent)");
   }

@@ -2,19 +2,43 @@
 import json as _json
 SITE = 'https://madeinegyptgate.com/'
 OG_IMG = SITE + 'img/og-cover.jpg'
+# The platform's identity (owner 2026-11-27, docs/IDENTITY-APPROVED.md): the approved identity sentence, the official address, phone and
+# working hours — word for word in Arabic; the English is a faithful translation pending the owner's look. The owner / operator lines
+# (CLAUDE.md 2.7) are not here and stay exactly where they are. Used by the JSON-LD below (home, /en/, about, contact: seo_build.part.py
+# org_nodes), the about and contact pages, the footer and /llms.txt.
+IDENTITY_AR = 'منصة صنع في مصر هي منظومة رقمية متكاملة للصناعة والتوريدات والمشتريات والتصدير، تعمل تحت مظلة الجمعية المصرية للتنمية الصناعية، أُطلقت في عام 2020، وتُعد المنصة الأولى التي تساعد المصانع المصرية في التوسع محلياً وخليجياً وعالمياً، ووصول المنتجات المصرية إلى حصة سوقية متطورة.'
+IDENTITY_EN = 'Made in Egypt Gate is an integrated digital ecosystem for industry, supply, procurement and export, operating under the umbrella of the Egypt Industrial Development Association. Launched in 2020, it is the first platform that helps Egyptian factories expand locally, across the Gulf and worldwide, and helps Egyptian products reach a growing, more advanced market share.'
+ADDRESS_AR = 'عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11، السادس من أكتوبر، الجيزة'
+ADDRESS_EN = 'Building 56 (third floor), Culture and Science Area, 11th District, 6th of October City, Giza, Egypt'
+HOURS_AR = 'من الأحد للخميس، من 8 صباحاً حتى 4 عصراً؛ الجمعة والسبت إجازة.'
+HOURS_EN = 'Sunday to Thursday, 8 am to 4 pm; Friday and Saturday closed.'
+# a map link built from the address text itself (no coordinates are invented)
+MAP_URL = 'https://www.google.com/maps/search/?api=1&query=' + __import__('urllib.parse', fromlist=['quote_plus']).quote_plus(ADDRESS_AR + '، مصر')
+_POSTAL_AR = {"@type": "PostalAddress", "streetAddress": "عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11", "addressLocality": "السادس من أكتوبر", "addressRegion": "الجيزة", "addressCountry": "EG"}
+_POSTAL_EN = {"@type": "PostalAddress", "streetAddress": "Building 56 (third floor), Culture and Science Area, 11th District", "addressLocality": "6th of October City", "addressRegion": "Giza", "addressCountry": "EG"}
+_HOURS_LD = [{"@type": "OpeningHoursSpecification", "dayOfWeek": ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"], "opens": "08:00", "closes": "16:00"}]
 ORG = {
-    "@type": "Organization", "@id": SITE + "#org", "sameAs": ["https://x.com/egy_business_eg", "https://www.instagram.com/mnstmsrllmnaqsat/", "https://www.youtube.com/@egyptbusinessgate", "https://www.facebook.com/profile.php?id=61595683961104", "https://www.linkedin.com/in/%D9%85%D9%86%D8%B5%D8%A9-%D9%85%D8%B5%D8%B1-%D9%84%D9%84%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A7%D8%AA-%D9%88%D8%A7%D9%84%D9%85%D9%88%D8%B1%D8%AF%D9%8A%D9%86-egyptbusinessgate-8a6346450/"], "name": "منصة صنع في مصر", "alternateName": ["Made in Egypt Gate", "منصة صنع في مصر – المنصة الوطنية الموحدة B2B"],
+    "@type": "Organization", "@id": SITE + "#org", "sameAs": ["https://x.com/egy_business_eg", "https://www.instagram.com/mnstmsrllmnaqsat/", "https://www.youtube.com/@egyptbusinessgate", "https://www.facebook.com/profile.php?id=61595683961104", "https://www.linkedin.com/in/%D9%85%D9%86%D8%B5%D8%A9-%D9%85%D8%B5%D8%B1-%D9%84%D9%84%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A7%D8%AA-%D9%88%D8%A7%D9%84%D9%85%D9%88%D8%B1%D8%AF%D9%8A%D9%86-egyptbusinessgate-8a6346450/"], "name": "منصة صنع في مصر", "alternateName": ["Made in Egypt Gate", "صنع في مصر", "Made in Egypt"],
     "legalName": "الجمعية المصرية للتنمية الصناعية", "parentOrganization": {"@type": "NGO", "name": "الجمعية المصرية للتنمية الصناعية", "alternateName": "Egypt Industrial Development Association", "url": "https://eafid.org/", "nonprofitStatus": "Nonprofit", "identifier": {"@type": "PropertyValue", "propertyID": "رقم الإشهار – وزارة التضامن الاجتماعي", "value": "6189 لسنة 2017"}},
-    "url": SITE, "logo": SITE + "img/logo-site.png", "image": OG_IMG,
-    "description": "المنصة الوطنية الموحدة B2B لربط المصانع والموردين المصريين بالمشترين المحليين والدوليين، مملوكة للجمعية المصرية للتنمية الصناعية وتشغّلها الحسيني جروب وشركاءه.",
+    "url": SITE, "logo": SITE + "img/logo-site.png", "image": OG_IMG, "foundingDate": "2020",
+    "description": IDENTITY_AR,
     "email": "info@madeinegyptgate.com", "telephone": "+20238346757",
-    "contactPoint": [{"@type": "ContactPoint", "contactType": "customer support", "telephone": "+20238346757", "email": "info@madeinegyptgate.com", "areaServed": "EG", "availableLanguage": ["ar", "en"]},
+    "contactPoint": [{"@type": "ContactPoint", "contactType": "customer support", "telephone": "+20238346757", "email": "info@madeinegyptgate.com", "areaServed": "EG", "availableLanguage": ["ar", "en"], "hoursAvailable": _HOURS_LD},
                      {"@type": "ContactPoint", "contactType": "customer support", "telephone": "+201279188996", "email": "support@madeinegyptgate.com", "areaServed": "EG", "availableLanguage": ["ar", "en"]}],
-    "address": {"@type": "PostalAddress", "streetAddress": "الحي 11 – وجه الثقافة والعلوم – عمارة 56 (الدور الثالث)", "addressLocality": "مدينة السادس من أكتوبر", "addressRegion": "الجيزة", "addressCountry": "EG"},
+    "address": _POSTAL_AR,
     "areaServed": {"@type": "Country", "name": "EG"}
 }
-WEBSITE = {"@type": "WebSite", "@id": SITE + "#web", "url": SITE, "name": "منصة صنع في مصر", "alternateName": "Made in Egypt Gate", "inLanguage": "ar-EG", "publisher": {"@id": SITE + "#org"},
-           "potentialAction": {"@type": "SearchAction", "target": SITE + "market.html?q={search_term_string}", "query-input": "required name=search_term_string"}}
+# the same organisation on the English pages (/en/): English name first, the address and description in English
+ORG_EN = {"name": "Made in Egypt Gate", "alternateName": ["منصة صنع في مصر", "Made in Egypt", "صنع في مصر"], "description": IDENTITY_EN, "address": _POSTAL_EN,
+          "parentOrganization": {"@type": "NGO", "name": "Egypt Industrial Development Association", "alternateName": "الجمعية المصرية للتنمية الصناعية", "url": "https://eafid.org/", "nonprofitStatus": "Nonprofit"}}
+# the office (Google Business Profile / local results): a ProfessionalService (a LocalBusiness) of the organisation, at the official address
+OFFICE = {"@type": "ProfessionalService", "@id": SITE + "#office", "name": "منصة صنع في مصر", "alternateName": "Made in Egypt Gate", "url": SITE, "image": OG_IMG, "logo": SITE + "img/logo-site.png",
+          "telephone": "+20238346757", "email": "info@madeinegyptgate.com", "address": _POSTAL_AR, "openingHoursSpecification": _HOURS_LD, "hasMap": MAP_URL,
+          "areaServed": {"@type": "Country", "name": "EG"}, "parentOrganization": {"@id": SITE + "#org"}}
+OFFICE_EN = {"name": "Made in Egypt Gate", "alternateName": "منصة صنع في مصر", "address": _POSTAL_EN}
+WEBSITE = {"@type": "WebSite", "@id": SITE + "#web", "url": SITE, "name": "منصة صنع في مصر", "alternateName": "Made in Egypt Gate", "inLanguage": ["ar-EG", "en"], "publisher": {"@id": SITE + "#org"},
+           # the site search: the factory directory's search page reads ?q= (pages.part.py fsParse)
+           "potentialAction": {"@type": "SearchAction", "target": {"@type": "EntryPoint", "urlTemplate": SITE + "factories/search/?q={search_term_string}"}, "query-input": "required name=search_term_string"}}
 BASE_KW = 'صنع في مصر, منصة صناعية, المصانع المصرية, المنتجات المصرية, B2B مصر'
 # key: (description, keywords, schema type, breadcrumb parent [(name, url)], change frequency, priority)
 SEO = {

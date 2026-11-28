@@ -39,6 +39,7 @@ def _seo_build_module(HOST):
     S = {}                 # build state (data, model, config, page registry)
     PERSIST = {}           # survives _init(): build start time (seo_prepare), notes from seo_rewrite_links() on site.py pages
     FPROF = {}             # FPROF hook: rich company profile (seo_fprof.part.py): {'render', 'assets'}; filled at the end of this module
+    ASSIST = {}            # ASSIST hook: the assistants' information pages /janna-assistant/ + /bassem-advisor/ and /llms.txt (seo_assist.part.py); filled at the end
     APPDL = {}             # APPDL hook: the app download page /app/, the APK channel, assetlinks.json (seo_app.part.py); filled at the end
 
     # ------------------------------------------------------------------ small utilities
@@ -1336,6 +1337,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         css = base + '\n' + shared + '\n' + common + '\n' + SEO_CSS + VIS_CSS + GOV_CSS
         css += PPROF.get('css', '')   # PPROF hook: product-view CSS (seo_pprof.part.py)
         css += APPDL.get('css', '')   # APPDL hook: the app download page (seo_app.part.py)
+        css += ASSIST.get('css', '')  # ASSIST hook: the assistants' pages (seo_assist.part.py)
         # same theme handling as site.py page(): dark mode only through the theme toggle (data-theme), never automatic
         css = css.replace('@media (prefers-color-scheme: dark)', '@media not all')
         fonts_local = [f for f in (os.listdir(OUT + 'fonts') if os.path.isdir(OUT + 'fonts') else []) if f.endswith('.woff2')]
@@ -2251,6 +2253,29 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         kill = ((S.get('cfg') or {}).get('guard') or {}).get('kill') is True or os.environ.get('MIG_GUARD_KILL') == '1'
         return '<script src="%sdata/guard.js?v=%s" defer%s></script>' % (src_prefix, S['guard_v'], ' data-guard="off"' if kill else '')
 
+    def org_nodes(L):
+        """the site-wide Organization, its office (ProfessionalService: the official address, phone and working hours) and the WebSite
+        with its search (seo.part.py ORG / OFFICE / WEBSITE, owner 2026-11-27), in the page's language — on the home pages, about and
+        contact; every other page refers to them by @id"""
+        org = dict(HOST.get('ORG') or {"@type": "Organization", "@id": SITE + '/#org', "name": "منصة صنع في مصر", "url": SITE + '/'})
+        org['@id'] = SITE + '/#org'
+        org['sameAs'] = [u for u in (org.get('sameAs') or []) if 'linkedin.com/in/' not in u]   # a person-type profile URL: not the organisation's
+        web = dict(HOST.get('WEBSITE') or {"@type": "WebSite", "url": SITE + '/', "name": "منصة صنع في مصر"})
+        web['@id'] = SITE + '/#web'
+        web['publisher'] = {"@id": SITE + '/#org'}
+        off = dict(HOST.get('OFFICE') or {})
+        if L == 'en':
+            org.update(HOST.get('ORG_EN') or {})
+            web.update({'name': 'Made in Egypt Gate', 'alternateName': 'منصة صنع في مصر'})
+            off.update(HOST.get('OFFICE_EN') or {})
+        if off:
+            # the office inside the organisation's own node (its department): the platform's official contacts live only in the
+            # platform's Organization (deploy/stage.py jsonld_problems, validate() below: no contact data anywhere else in JSON-LD)
+            off['@id'] = SITE + '/#office'
+            off.pop('parentOrganization', None)
+            org['department'] = off
+        return [org, web]
+
     def jsonld_site_graph(meta):
         L = meta.get('lang', 'ar')
         url = meta['canonical']
@@ -2262,7 +2287,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             node['mentions'] = [{"@id": x} for x in meta['mentions']]
         if meta.get('lastmod'):
             node['dateModified'] = meta['lastmod']
-        graph = [node]
+        graph = (org_nodes(L) if meta.get('org') else []) + [node]
         if meta.get('jsonld_crumbs'):
             node['breadcrumb'] = {"@id": url + '#breadcrumb'}
             graph.append(meta['jsonld_crumbs'])
@@ -2472,8 +2497,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         c1 = ('<div><h4>%s</h4><p>%s</p><div class="aff2"><a href="https://eafid.org/" target="_blank" rel="noopener" title="%s"><img src="/img/eafid-logo.png" alt="%s" width="185" height="60" loading="lazy"></a>'
               '<span>%s<small>%s</small></span><span>%s</span></div></div>'
               % (T('منصة صنع في مصر', 'Made in Egypt Gate'),
-                 T('المنصة الوطنية الموحدة B2B 🇪🇬 — منصة رقمية تربط المصانع والموردين في محافظات مصر الـ27 بالمشترين المحليين والدوليين، وتدعم التحول الرقمي للقطاع الصناعي في بيئة موثوقة وشفافة، دعماً لـ«رؤية مصر 2030» وتعميق التصنيع المحلي.',
-                   'The unified national B2B platform 🇪🇬 — a digital platform that connects factories and suppliers across Egypt\'s 27 governorates with local and international buyers and supports the digital transformation of the industrial sector in a trusted, transparent environment, in support of “Egypt Vision 2030” and deeper local manufacturing.'),
+                 T(HOST.get('IDENTITY_AR') or '', HOST.get('IDENTITY_EN') or ''),   # the platform definition = the owner's approved identity sentence (2026-11-27, seo.part.py)
                  T('الجمعية المصرية للتنمية الصناعية', 'Egypt Industrial Development Association'), T('شعار الجمعية المصرية للتنمية الصناعية', 'Egypt Industrial Development Association logo'),
                  T('المالك: الجمعية المصرية للتنمية الصناعية', 'Owner: Egypt Industrial Development Association'),
                  T('جمعية غير هادفة للربح مشهرة برقم 6189 لسنة 2017 (وزارة التضامن الاجتماعي).', 'A non-profit association registered under No. 6189 of 2017 (Ministry of Social Solidarity).'),
@@ -2483,7 +2507,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
               % (T('المنصة', 'Platform'), li(stat('about'), X(L, 'عن المنصة', 'About the platform')) + li(stat('market'), X(L, 'السوق الإلكتروني', 'Online Marketplace'))
                  + li(hub('/factories/'), X(L, 'دليل المصانع', 'Factory directory')) + li(hub('/tenders/'), X(L, 'المناقصات', 'Tenders'))
                  + li(hub('/industrial-zones/'), X(L, 'المناطق الصناعية والحرة', 'Industrial and Free Zones')) + li(stat('intl'), X(L, 'المنصات الدولية', 'International Platforms'))
-                 + li(hub('/app/'), X(L, 'التطبيق', 'App'))))   # the app download page (seo_app.part.py)
+                 + li(hub('/app/'), X(L, 'التطبيق', 'App'))   # the app download page (seo_app.part.py)
+                 + (ASSIST['footer_links'](L, li, hub) if ASSIST else '')))   # ASSIST hook: the assistants' information pages (seo_assist.part.py)
         # column 3: the top 10 sector hubs (site.py pages: one list for both languages, so the English strings pair with the Arabic ones)
         secs = [h for h in S.get('hub_sectors') or [] if h['indexable'] and (app or not en or h.get('en'))][:10]
         if secs:
@@ -2497,8 +2522,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
               '<li><a href="tel:+20238346757">%s <span dir="ltr">02 38346757</span></a></li><li><a href="https://wa.me/201279188996" target="_blank" rel="noopener">%s <span dir="ltr">01279188996</span></a></li>%s%s</ul>'
               '<div class="soc-ic"><b>%s</b><div>%s</div></div></div>'
               % (T('تواصل معنا', 'Contact us'),
-                 '<li><a href="%s"%s>%s</a></li>' % (stat('contact'), mk('address_ar'), esc(X(L, 'الجيزة – مدينة السادس من أكتوبر – الحي 11 – وجه الثقافة والعلوم – عمارة 56 (الدور الثالث)، جمهورية مصر العربية',
-                                     'Giza – 6th of October City – District 11 – Culture and Science Area – Building 56 (3rd floor), Arab Republic of Egypt'))),
+                 '<li><a href="%s"%s>%s</a></li>' % (stat('contact'), mk('address_ar'), esc(X(L, HOST.get('ADDRESS_AR') or 'عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11، السادس من أكتوبر، الجيزة',
+                                     HOST.get('ADDRESS_EN') or 'Building 56 (third floor), Culture and Science Area, 11th District, 6th of October City, Giza, Egypt'))),   # the official address (owner 2026-11-27, seo.part.py)
                  T('الخط الساخن:', 'Hotline:'), T('موبايل وواتساب:', 'Mobile & WhatsApp:'),
                  li(stat('legal'), X(L, '⚖️ المركز القانوني', '⚖️ Legal Center')), li(stat('useful-links'), X(L, '📚 المراجع الرسمية ومواقع تهمك', '📚 Official References & Useful Websites')),
                  T('تابعنا', 'Follow Us'), soc))
@@ -2917,6 +2942,19 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
     REQUIRED = {'Organization': ['name', '@id'], 'Product': ['name', 'url'], 'Demand': ['name', 'url'], 'NewsArticle': ['headline', 'datePublished', 'image'],
                 'Event': ['name', 'startDate', 'location'], 'Place': ['name'], 'ItemList': ['itemListElement'], 'Thing': ['name'], 'AdministrativeArea': ['name'],
                 'BreadcrumbList': ['itemListElement'], 'WebPage': ['url', 'name'], 'CollectionPage': ['url', 'name']}
+
+    def ld_without_platform(text):
+        """a JSON-LD block without the platform's own Organization node (SITE/#org, seo.part.py: the platform's official address, phone and
+        e-mail — the same exemption as deploy/stage.py jsonld_problems); a block that does not parse stays as it is"""
+        try:
+            o = json.loads(text)
+        except Exception:
+            return text
+        if isinstance(o, dict) and isinstance(o.get('@graph'), list):
+            o = dict(o, **{'@graph': [n for n in o['@graph'] if not (isinstance(n, dict) and n.get('@id') == SITE + '/#org')]})
+        elif isinstance(o, dict) and o.get('@id') == SITE + '/#org':
+            return ''
+        return json.dumps(o, ensure_ascii=False)
 
     def validate_jsonld(text):
         o = json.loads(text)
@@ -4551,8 +4589,12 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         rel = n.get('related') or []
         rel_html = ''
         if rel:
-            rel_html = '<section class="card2"><h2>%s</h2><div class="links">%s</div></section>' % (X(L, 'منشآت وقطاعات مذكورة في الخبر', 'Companies and sectors in this story'), ''.join(
-                '<a href="%s">%s</a>' % (esc(('/en' if L == 'en' and x[2] else '') + x[1]), esc(x[0])) for x in rel))
+            # English page: the English name (a link without one is left out there); the /en/ twin when it exists (x[2] None = a hub: lk())
+            items = [(lk(L, x[1]) if x[2] is None else (('/en' if L == 'en' and x[2] else '') + x[1]), (x[3] if L == 'en' else x[0]))
+                     for x in rel if L != 'en' or (len(x) > 3 and x[3])]
+            if items:
+                rel_html = '<section class="card2"><h2>%s</h2><div class="links">%s</div></section>' % (X(L, 'منشآت وقطاعات مذكورة في الخبر', 'Companies and sectors in this story'), ''.join(
+                    '<a href="%s">%s</a>' % (esc(h), esc(nm)) for h, nm in items))
         g = S['gov_by_code'].get(n.get('region_code') or '')
         own = news_own(n)
         if own:
@@ -4994,7 +5036,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         meta = {'title': mk_title(['Made in Egypt Gate: Egyptian Manufacturers, Tenders & RFQs', 'Made in Egypt Gate'], L, suffix=False),
                 'desc': mk_desc(['Directory of %s Egyptian factories and suppliers in %d sectors and %d governorates, with industrial zones, tenders and free requests for quotation.' % (fmt_n(n), len(secs), len(govs))], L, ''),
                 'h1': h1, 'og_type': 'website', 'page_type': 'CollectionPage', 'jsonld_crumbs': crumb_ld,
-                'jsonld_page': jsonld_collection(items, url, h1) if items else None, 'kw': 'egyptian manufacturers directory', 'keywords': 'made in egypt, egyptian manufacturers, egypt factories directory, egypt tenders'}
+                'jsonld_page': jsonld_collection(items, url, h1) if items else None, 'kw': 'egyptian manufacturers directory', 'keywords': 'made in egypt, egyptian manufacturers, egypt factories directory, egypt tenders', 'org': True}
         return body, meta
 
     def render_sitemap_html(L):
@@ -5133,21 +5175,23 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         S['events_sorted'] = sorted(S['events'], key=lambda e: (e.get('start_date') or ''))
         for o in S['offers']:
             o['index'], o['why'] = indexable('offer', o)
-        # news ↔ companies / sectors named in the title (exact-name match only)
+        # news ↔ companies / sectors named in the story (exact-name match only) — its title and the summary the page itself shows
+        # (a members-only text is already blank in the published data, so nothing locked is matched); each link carries its English name
+        # and whether the target has an /en/ twin, so the English page links in English (lk() in render_news)
         names = sorted([(c['name'], c) for c in comps if len(c['name']) >= 7 and c.get('index')], key=lambda x: -len(x[0]))
         for n in S['news']:
-            t = n.get('title_ar') or ''
+            t = (n.get('title_ar') or '') + ' \n ' + (n.get('summary_ar') or '')
             rel = []
             for nm, c in names:
-                if nm in t:
-                    rel.append((nm, c['path'], bool(c.get('en_ok'))))
+                if nm in t and not any(nm in r[0] for r in rel):
+                    rel.append((nm, c['path'], bool(c.get('en_ok')), c.get('name_en') or ''))
                     if len(rel) >= 4:
                         break
             for sec in S['sectors']:
                 if any(re.search(r'(?:^|\s|[وبلف])%s(?:$|\s|[،,.:])' % re.escape(k), t) for k in sec.get('news_kw') or []):
                     h = S['hub_sector_by_slug'].get(sec['slug'])
                     if h and h['indexable']:
-                        rel.append((sec['t_ar'], h['path'], False))
+                        rel.append((sec['t_ar'], h['path'], None, sec.get('t_en') or ''))
             n['related'] = rel[:6]
         # similar companies (same sector, same governorate first)
         by_sec = {}
@@ -5447,12 +5491,33 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         spec('/site-map/', 'sitemap-html', render_sitemap_html, True, 'html_sitemap', key=('sm', len(S['specs'])), cluster='')
         if APPDL:   # APPDL hook: «تطبيق صنع في مصر» /app/ + /en/app/ (seo_app.part.py)
             spec(APPDL['path'], 'app-download', APPDL['render'], True, 'app_download', key=APPDL['key'](), cluster='')
+        for _ap, _at, _ar in (ASSIST.get('pages') or []):   # ASSIST hook: «جنة» and «باسم», one information page each (seo_assist.part.py)
+            spec(_ap, _at, _ar, True, 'assistant_info', key=ASSIST['key']() + (_ap,), cluster='')
         if cfg.get('en', {}).get('enabled') and cfg.get('en_home', True):
             # EN-only spec: the Arabic "/" is site.py's home page; lastmod keyed as /en/
             add_page({'path': '/', 'type': 'home', 'render': render_en_home, 'index': True, 'why': 'home_en', 'key': ('home-en', len(S['dir_members']), len(S['tenders']),
                       [t['path'] for t in S['tenders'] if t['status'] in ('open', 'soon')], S['today'].isoformat()), 'real_date': None, 'cluster': 'N', 'en': True, 'rec': None,
                       'ar': False, 'lm_key': '/en/'})
             S['en_home'] = True
+
+    def page_n_unique(path, L, body, meta):
+        """page N (> 1) of a list: its description and its H1 name the page number too, so no two pages of a hub share them (the titles
+        already do: mk_title page=N)"""
+        m = re.search(r'/page/(\d+)/$', path)
+        if not m:
+            return body, meta
+        n = int(m.group(1))
+        tag = X(L, 'صفحة %d', 'Page %d') % n
+        d = meta.get('desc') or ''
+        if d and tag.lower() not in d.lower():
+            meta['desc'] = mk_desc([tag + ' – ' + d], L, '')
+        h1 = meta.get('h1') or ''
+        old_h1 = '<h1 data-seo="h1">%s</h1>' % esc(h1)
+        if h1 and tag.lower() not in h1.lower() and old_h1 in body:
+            h1n = h1 + X(L, ' – صفحة %d', ' – page %d') % n
+            body = body.replace(old_h1, '<h1 data-seo="h1">%s</h1>' % esc(h1n), 1)
+            meta['h1'] = h1n
+        return body, meta
 
     def render_all():
         cfg = S['cfg']
@@ -5513,6 +5578,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                 path = ('/en' if L == 'en' else '') + sp['path']
                 S['cur_path'] = path
                 body, meta = sp['render'](L)
+                body, meta = page_n_unique(sp['path'], L, body, meta)
                 if sp.get('index'):
                     tk = (L, meta['title'])
                     if tk in S['titles_used']:
@@ -5578,10 +5644,17 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         open(OUT + 'sitemap.xml', 'w', encoding='utf-8').write('<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + idx + '</sitemapindex>\n')
         return {'children': len(children), 'urls': total, 'files': {n: c for n, lm, c in children}}
 
+    ROBOTS_AGENTS = ('*', 'Googlebot', 'Bingbot', 'Google-Extended', 'OAI-SearchBot', 'ChatGPT-User', 'GPTBot', 'PerplexityBot', 'Perplexity-User', 'ClaudeBot',
+                     'Claude-SearchBot', 'Claude-User', 'Applebot', 'DuckDuckBot')
+
     def emit_robots(OUT):
         # deploy 1: the owner's live admin (panel.html, login.html) is still answered by the old system on this domain
         live = ''.join('Disallow: /%s.html\n' % k for k in ((S.get('cfg') or {}).get('legacy_live_pages') or []) if re.match(r'^[\w-]+$', k))
-        txt = ('User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /_seo/\nDisallow: /admin/\nDisallow: /seo-admin/\nDisallow: /seo-team/\nDisallow: /data-desk/\nDisallow: /inbox/\nDisallow: /dashboard/\n%s\nSitemap: %s/sitemap.xml\n' % (live, SITE))
+        # one group for every crawler (owner 2026-11-28: visible in Google and in AI answers): the search engines and the AI search /
+        # answer crawlers that send visitors are named in the same group as «*», so each of them follows exactly the same rules (a crawler
+        # named in a group of its own would ignore the «*» rules). None of them matches the edge's COPIER list (functions/_middleware.js).
+        agents = ''.join('User-agent: %s\n' % a for a in ROBOTS_AGENTS)
+        txt = (agents + 'Allow: /\nDisallow: /api/\nDisallow: /_seo/\nDisallow: /admin/\nDisallow: /seo-admin/\nDisallow: /seo-team/\nDisallow: /data-desk/\nDisallow: /inbox/\nDisallow: /dashboard/\n%s\nSitemap: %s/sitemap.xml\n' % (live, SITE))
         open(OUT + 'robots.txt', 'w', encoding='utf-8').write(txt)
         return txt
 
@@ -5732,6 +5805,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                 '/manifest.en.webmanifest\n  Content-Type: application/manifest+json; charset=utf-8\n  Cache-Control: public, max-age=3600\n')
         if APPDL:   # APPDL hook: the APKs (attachments, nosniff, a year: versioned names), latest.json, assetlinks.json (seo_app.part.py)
             txt += APPDL['headers']()
+        if ASSIST:  # ASSIST hook: /llms.txt is UTF-8 plain text (it skips the Functions, so Pages applies these lines)
+            txt += ASSIST['headers']()
         open(OUT + '_headers', 'w', encoding='utf-8').write(txt)
         return {'data_immutable': False, 'data_cache': data_cc, 'unversioned_data_refs': bad[:20]}
 
@@ -5741,6 +5816,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                          "/manifest.en.webmanifest", "/sw.js", "/favicon.ico", "/apple-touch-icon.png"]}
         if APPDL:   # APPDL hook: /app/android.apk (its 302 is a _redirects rule) and /.well-known/assetlinks.json (_headers) are static
             R['exclude'] += [x for x in APPDL['routes_exclude'] if x not in R['exclude']]
+        if ASSIST:  # ASSIST hook: /llms.txt is a static file
+            R['exclude'] += [x for x in ASSIST['routes_exclude'] if x not in R['exclude']]
         open(OUT + '_routes.json', 'w', encoding='utf-8').write(json.dumps(R, indent=1))
         return R
 
@@ -6363,16 +6440,9 @@ location.replace(%s);})();'''
         if key != 'home':
             crumbs_items.append((title.split(' – ')[0], P + path))
         _, crumb_ld = crumbs(crumbs_items, lang, canonical)
-        org = dict(HOST.get('ORG') or {"@type": "Organization", "@id": SITE + '/#org', "name": "منصة صنع في مصر", "url": SITE + '/'})
-        org['@id'] = SITE + '/#org'
-        org['sameAs'] = [u for u in (org.get('sameAs') or []) if 'linkedin.com/in/' not in u]
-        web = dict(HOST.get('WEBSITE') or {"@type": "WebSite", "url": SITE + '/', "name": "منصة صنع في مصر"})
-        web.pop('potentialAction', None)
-        web['@id'] = SITE + '/#web'
-        web['publisher'] = {"@id": SITE + '/#org'}
         page_node = {"@type": d[2] if d[2] in ('AboutPage', 'ContactPage', 'CollectionPage', 'WebPage') else 'WebPage', "@id": canonical + '#webpage', "url": canonical, "name": h1 or title,
                      "inLanguage": 'en' if lang == 'en' else 'ar-EG', "isPartOf": {"@id": SITE + '/#web'}, "publisher": {"@id": SITE + '/#org'}, "breadcrumb": {"@id": canonical + '#breadcrumb'}}
-        graph = ([org, web] if key in ('home', 'about') else []) + [page_node, crumb_ld]
+        graph = (org_nodes(lang) if key in ('home', 'about', 'contact') else []) + [page_node, crumb_ld]   # the organisation + the office + the site (seo.part.py)
         meta = {'title': title, 'desc': desc, 'canonical': canonical, 'robots': robots, 'lang': lang, 'og_type': 'website', 'keywords': d[1] if lang == 'ar' else '', 'base': False,
                 'jsonld_site': {"@context": "https://schema.org", "@graph": graph}, 'jsonld_page': None, 'path': P + path}
         if key == 'home':
@@ -6690,7 +6760,7 @@ location.replace(%s);})();'''
         # privacy on EVERY generated page (spec §0/A3, honesty review): main text, meta description and JSON-LD; any phone format
         for r in gen:
             s = open(OUT + r['p'].lstrip('/') + 'index.html', encoding='utf-8').read()
-            ld_txt = ' '.join(re.findall(r'<script type="application/ld\+json"[^>]*>([\s\S]*?)</script>', s))
+            ld_txt = ' '.join(ld_without_platform(b) for b in re.findall(r'<script type="application/ld\+json"[^>]*>([\s\S]*?)</script>', s))
             txt = _main_text(s) + ' ' + _html.unescape(r.get('d') or '') + ' ' + ld_txt
             if has_contact(txt) or re.search(r'"(?:telephone|email|faxNumber|streetAddress)"\s*:', ld_txt):
                 problems.append('%s: contact data' % r['p'])
@@ -6898,6 +6968,8 @@ location.replace(%s);})();'''
         emit_error_pages(OUT)
         pwa = emit_pwa(OUT)               # the installable app: manifests, /sw.js, /offline/, root icons
         app_dl = APPDL['emit'](OUT) if APPDL else None   # APPDL hook: /downloads/android/ (APKs + latest.json), /.well-known/assetlinks.json
+        if ASSIST:  # ASSIST hook: /llms.txt
+            ASSIST['emit'](OUT)
         emit_manifest(OUT)
         if save_lastmod:
             pages = dict(S['lastmod_new'])
@@ -6997,6 +7069,11 @@ location.replace(%s);})();'''
             type_label=type_label, sec_name=sec_name, gov_name=gov_name, city_text=city_text, company_desc_en=company_desc_en, first_words=first_words,
             fmt_date=fmt_date, is_team=is_team, is_pub=is_pub, rfq_link=rfq_link, static_url=static_url, en_gate=en_gate,
             VER_AR=VER_AR, VER_EN=VER_EN, PUB_AR=PUB_AR, PUB_EN=PUB_EN, AR_RX=AR_RX, scrub=scrub)))
+    # ASSIST hook: the information pages of «جنة» and «باسم» and /llms.txt
+    if os.path.exists(B + 'seo_assist.part.py'):
+        _as = {}
+        exec(compile(open(B + 'seo_assist.part.py', encoding='utf-8').read(), B + 'seo_assist.part.py', 'exec'), _as)
+        ASSIST.update(_as['assist_module'](locals()))
     # APPDL hook: «تطبيق صنع في مصر» — /app/ + /en/app/ (Android APK download, iPhone from Safari, QR code), /downloads/android/ (the APKs
     # of the repository + latest.json, tools/publish_apk.py), the 302 /app/android.apk, /.well-known/assetlinks.json (seo/config.json "app")
     if os.path.exists(B + 'seo_app.part.py'):
