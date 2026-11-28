@@ -54,6 +54,7 @@ def fprof_module(H):
     VER_AR, VER_EN, PUB_AR, PUB_EN = H['VER_AR'], H['VER_EN'], H['PUB_AR'], H['PUB_EN']
     AR_RX = H['AR_RX']
     scrub = H.get('scrub') or (lambda t: t)       # the generator's privacy scrubber (phones, e-mails, raw URLs, street addresses)
+    official_tel_fmt = H.get('official_tel_fmt')
     WA_NUMBER = '201279188996'          # the platform's own WhatsApp (never a company's)
     VARIANT_BUDGET_S = float(os.environ.get('MIG_FPROF_IMG_BUDGET') or 20)   # seconds of Pillow work per build for smaller photo copies
     LOCAL_RX = re.compile(r'^/(?![/\\])[^\s"<>\\]+$')
@@ -89,6 +90,8 @@ def fprof_module(H):
         'info': '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
         'gauge': '<path d="M12 14l4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0z"/>',
         'route': '<circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/>',
+        'phone': '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/>',
+        'mail': '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
     }
 
     def _svg_url(body):
@@ -859,9 +862,10 @@ fit();W.addEventListener("resize",function(){hdr();fit();last=-1;spy();clr();});
         # capacity / markets (real facts only: the figures and market names a description states, quoted with their source)
         if fg['cap']:
             secs.append(('capacity', X(L, 'القدرات الإنتاجية', 'Capacity'), capacity_block(L, fg['cap'])))
-        secs.append(('certs', X(L, 'الشهادات', 'Certificates'), certs_block(L, fg['cert'])))
-        if fg['mkt']:
-            secs.append(('markets', X(L, 'أسواق التصدير', 'Export markets'), markets_block(L, fg['mkt'])))
+        off = c.get('official') or {}
+        secs.append(('certs', X(L, 'الشهادات', 'Certificates'), certs_block(L, fg['cert'], off)))
+        if fg['mkt'] or off.get('export'):
+            secs.append(('markets', X(L, 'أسواق التصدير', 'Export markets'), markets_block(L, fg['mkt'], off)))
         gal = gallery_block(L, md, prods, ctx_caps)
         if gal:
             secs.append(('media', X(L, 'الصور والفيديو', 'Photos & video'), gal))
@@ -872,8 +876,11 @@ fit();W.addEventListener("resize",function(){hdr();fit();last=-1;spy();clr();});
                         'Your request reaches the matching registered factories automatically; if no registered factory matches, the platform team follows it up personally.'),
                       esc(rfq), icon('send'), X(L, 'اطلب عرض سعر مجاناً', 'Request a free quote'), esc(wa), icon('chat'), X(L, 'واتساب المنصة', 'Platform WhatsApp'),
                       ('<button class="btn btn-line" type="button" data-ask>%s%s</button>' % (icon('spark'), X(L, 'اسأل جنة', 'Ask Janna'))) if ask_on else '',
-                      X(L, 'لا نعرض أرقام هواتف أو بريد المنشآت؛ التواصل يتم عبر نموذج طلب عرض السعر وقنوات المنصة فقط.',
-                        'Company phone numbers and e-mails are not published; contact goes through the RFQ form and the platform\'s own channels only.')))
+                      (X(L, 'بيانات التواصل الرسمية التي تنشرها الشركة نفسها معروضة في «بيانات التواصل الرسمية»؛ ولا نعرض أسماء أو أرقام أو بريد أشخاص.',
+                         'The official contact details the company itself publishes are listed under "Official contact details"; no names, numbers or e-mails of individuals are shown.')
+                       if (off.get('tel') or off.get('email')) else
+                       X(L, 'لا نعرض أرقام هواتف أو بريد المنشآت؛ التواصل يتم عبر نموذج طلب عرض السعر وقنوات المنصة فقط.',
+                         'Company phone numbers and e-mails are not published; contact goes through the RFQ form and the platform\'s own channels only.'))))
         secs.append(('rfq', X(L, 'طلب عرض سعر', 'Request a quote'), rfq_sec))
         tabs = '<nav class="snav" aria-label="%s"><div class="in">%s</div></nav>' % (
             X(L, 'أقسام ملف المنشأة', 'Profile sections'), ''.join('<a href="%s#%s"%s>%s</a>' % (here, sid, ' class="on"' if i == 0 else '', esc(lab)) for i, (sid, lab, _h) in enumerate(secs)))
@@ -888,7 +895,7 @@ fit();W.addEventListener("resize",function(){hdr();fit();last=-1;spy();clr();});
             rows.append('<div class="ci"><span class="ic">%s</span><div><small>%s</small><b><button class="lnk" type="button" data-ask>%s</button></b></div></div>'
                         % (icon('spark'), X(L, 'المساعد الذكي', 'AI assistant'), X(L, 'اسأل جنة عن هذه المنشأة', 'Ask Janna about this company')))
         web = c.get('website') or ''
-        if web and URL_RX.match(web):
+        if web and URL_RX.match(web) and not off.get('web'):
             host = urlparse(web).netloc.replace('www.', '') or web
             rows.append('<div class="ci"><span class="ic">%s</span><div><small>%s</small><b><a href="%s" rel="noopener" target="_blank" dir="ltr">%s</a></b></div>'
                         '<button class="cp" type="button" data-copy="%s">%s</button></div>' % (icon('globe'), X(L, 'الموقع الرسمي', 'Official website'), esc(web), esc(host), esc(web), X(L, 'نسخ', 'Copy')))
@@ -902,6 +909,8 @@ fit();W.addEventListener("resize",function(){hdr();fit();last=-1;spy();clr();});
                                                        X(L, 'ابحث عن الموقع على خرائط Google', 'Search the location on Google Maps'),
                                                        X(L, 'بحث بالاسم والمدينة — ليس إحداثيات مؤكدة للمنشأة.', 'A search by name and city — not confirmed coordinates of the company.')))
         dl = [(X(L, 'النوع', 'Type'), esc(tl))]
+        if off.get('founded'):
+            dl.append((X(L, 'سنة التأسيس', 'Founded'), '<span class="num">%s</span>' % esc(off['founded'])))
         if c['kind'] == 'public' and c.get('source') and URL_RX.match(c['source']):
             dl.append((X(L, 'مصدر البيانات', 'Data source'), '<a href="%s" rel="nofollow noopener" target="_blank">%s</a>' % (esc(c['source']), esc(urlparse(c['source']).netloc.replace('www.', '') or c['source']))))
         dl.append((X(L, 'حالة العضوية', 'Listing status'), esc(X(L, VER_AR, VER_EN) if team else X(L, PUB_AR, PUB_EN) if pub else X(L, 'مدرجة في دليل المنصة', 'Listed in the platform directory'))))
@@ -909,6 +918,7 @@ fit();W.addEventListener("resize",function(){hdr();fit();last=-1;spy();clr();});
         # the contact card is the one that sticks on desktop (short: it fits a laptop screen); the map, the facts and the owner card follow it
         contact = '<div class="fp-stick"><div class="card" id="contact"><h2>%s</h2><div class="contact-list">%s</div></div></div>' % (
             X(L, 'بيانات التواصل', 'Contact'), ''.join(rows))
+        contact += official_block(c, L, off)
         contact += '<div class="card fp-sfacts"><h2>%s</h2>%s<dl class="dl">%s</dl></div>' % (
             X(L, 'بيانات المنشأة', 'Company facts'), map_html, ''.join('<dt>%s</dt><dd>%s</dd>' % (k, v) for k, v in dl))
         owner = ('<div class="card owner"><h2>%s</h2><p class="muted" style="font-size:.9rem">%s</p><a class="btn btn-green" href="%s">%s</a></div>'
@@ -1143,8 +1153,48 @@ fit();W.addEventListener("resize",function(){hdr();fit();last=-1;spy();clr();});
                 % (X(L, 'القدرات الإنتاجية', 'Production capacity'), cards,
                    X(L, 'أرقام كما وردت في وصف المنشأة؛ يحدّثها المصنع من لوحة التحكم.', 'Figures as stated in the company\'s description; the factory updates them from its dashboard.')))
 
-    def markets_block(L, facts):
-        """named markets as cards (the value is the list the description gives), a stated number of countries as a figure card"""
+    def official_block(c, L, off):
+        """«بيانات التواصل الرسمية» / "Official contact details" (owner decision 2026-11-28): the switchboard / landline / hotline,
+        the generic company e-mail and the website the company publishes itself, and its full address: data/facx.js element 10,
+        checked by official_of() in seo_build. Marked <!--official:KEY--> … <!--/official-->: deploy/stage.py and the generator's
+        validation allow these exact values inside this block (and in the page's JSON-LD) and nowhere else."""
+        if not off:
+            return ''
+        rows = []
+        for t in off.get('tel') or []:
+            disp, e164 = official_tel_fmt(t)
+            rows.append('<div class="ci"><span class="ic">%s</span><div><small>%s</small><b><a href="tel:%s" dir="ltr">%s</a></b></div></div>'
+                        % (icon('phone'), X(L, 'الخط الساخن', 'Hotline') if len(t) == 5 else X(L, 'الهاتف (السنترال)', 'Phone (switchboard)'), esc(e164), esc(disp)))
+        for e in off.get('email') or []:
+            rows.append('<div class="ci"><span class="ic">%s</span><div><small>%s</small><b><a href="mailto:%s" dir="ltr">%s</a></b></div></div>'
+                        % (icon('mail'), X(L, 'البريد الإلكتروني للشركة', 'Company e-mail'), esc(e), esc(e)))
+        web = off.get('web') or ''
+        if web:
+            host = urlparse(web).netloc.replace('www.', '') or web
+            rows.append('<div class="ci"><span class="ic">%s</span><div><small>%s</small><b><a href="%s" rel="nofollow noopener" target="_blank" dir="ltr">%s</a></b></div></div>'
+                        % (icon('globe'), X(L, 'الموقع الرسمي', 'Official website'), esc(web), esc(host)))
+        adr = off.get('address') if L == 'ar' else off.get('address_en')
+        if adr:
+            rows.append('<div class="ci"><span class="ic">%s</span><div><small>%s</small><b>%s</b></div></div>' % (icon('pin'), X(L, 'العنوان', 'Address'), esc(adr)))
+        if not rows:
+            return ''
+        hosts = []
+        for u in off.get('sources') or []:
+            h = urlparse(u).netloc.replace('www.', '')
+            if h and h not in [x for x, _u in hosts]:
+                hosts.append((h, u))
+        src = ('<p class="ph-note">%s %s</p>' % (X(L, 'المصادر:', 'Sources:'), X(L, '، ', ', ').join(
+            '<a href="%s" rel="nofollow noopener" target="_blank" dir="ltr">%s</a>' % (esc(u), esc(h)) for h, u in hosts[:5]))) if hosts else ''
+        return ('<!--official:%s--><div class="card fp-off" id="official" data-official="%s"><h2>%s</h2><div class="contact-list">%s</div>'
+                '<p class="ph-note">%s</p>%s</div><!--/official-->'
+                % (off['key'], off['key'], X(L, 'بيانات التواصل الرسمية', 'Official contact details'), ''.join(rows),
+                   X(L, 'بيانات من مصادر عامة – غير مسجّل في المنصة. أرقام وبريد الشركة الرسمية كما تنشرها الشركة على موقعها أو في دليل رسمي؛ لا نعرض أسماء أو أرقام أو بريد أشخاص.',
+                     'Public-source data – not registered on the platform. The company\'s official numbers and e-mail as it publishes them on its own site or in an official directory; no names, numbers or e-mails of individuals are shown.'),
+                   src))
+
+    def markets_block(L, facts, off=None):
+        """named markets as cards (the value is the list the description gives), a stated number of countries as a figure card;
+        then the export markets the company's own site names (data/facx.js element 10)"""
         cards = []
         for f in facts:
             a, b = fact_text(f, L)
@@ -1156,13 +1206,21 @@ fit();W.addEventListener("resize",function(){hdr();fit();last=-1;spy();clr();});
             src = source_html(f, L)
             if src:
                 cards.append('<div class="fp-mkt-src">%s</div>' % src)
+        ex = [X(L, a_, b_) for a_, b_ in ((off or {}).get('export') or [])]
+        if ex:
+            cards += ['<div class="fp-mkt"><span class="ic">%s</span><b>%s</b></div>' % (icon('globe'), esc(x)) for x in ex]
+            cards.append('<div class="fp-mkt-src"><span class="ph-note">%s</span></div>' % X(L, 'كما يذكرها الموقع الرسمي للشركة.', 'As the company\'s official website names them.'))
         return ('<section class="card" id="markets"><h2>%s</h2><div class="fp-mkts">%s</div></section>'
                 % (X(L, 'أسواق التصدير', 'Export markets'), ''.join(cards)))
 
-    def certs_block(L, facts):
-        if facts:
+    def certs_block(L, facts, off=None):
+        oc = [(a_, b_) for a_, b_ in ((off or {}).get('certs') or []) if L == 'ar' or (b_ and not AR_RX.search(b_))]
+        if facts or oc:
             cards = ''.join('<div class="cert real"><span class="ic">%s</span><div><b>%s</b><small>%s</small>%s</div></div>'
                             % (icon('award'), fact_val(f, L), esc(a), source_html(f, L)) for f in facts for a, b in [fact_text(f, L)])
+            cards += ''.join('<div class="cert real"><span class="ic">%s</span><div><b>%s</b><small>%s</small></div></div>'
+                             % (icon('award'), esc(X(L, a_, b_)), X(L, 'من الموقع الرسمي للشركة أو سجل رسمي (انظر المصادر)', 'From the company\'s official site or an official register (see sources)'))
+                             for a_, b_ in oc)
             return '<section class="card" id="certs"><h2>%s</h2><div class="certs">%s</div></section>' % (X(L, 'الشهادات والاعتمادات', 'Certificates & accreditations'), cards)
         slots = [(X(L, 'شهادات الجودة', 'Quality certificates')), (X(L, 'السجل الصناعي والتراخيص', 'Industrial register & licences')),
                  (X(L, 'شهادات المطابقة والاعتماد', 'Conformity & accreditation'))]

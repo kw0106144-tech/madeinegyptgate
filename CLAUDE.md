@@ -23,7 +23,9 @@ The owner's own guide is `OWNER-GUIDE-AR.md`.
 4. **Never touch production data.** No `wrangler d1 execute --remote`, no SQL against `migate-db` or `migate-intel`, no writes to
    KV or R2, no POST/PUT/PATCH/DELETE against the live `/api` (2.4).
 5. **Migrations never run automatically.** Only through the manual `d1-migrate` workflow, backup first (2.4, 5.6).
-6. **Privacy.** No factory phone, WhatsApp number or e-mail in public output. Janna's visitor memory is linked to a member only
+6. **Privacy.** No factory phone, WhatsApp number or e-mail in public output, except the official company contacts (switchboard phone,
+   generic company e-mail on the company's own domain, website) of directory profiles on their profile pages and JSON-LD (owner decision
+   2026-11-28); personal names, mobiles and employee e-mails never. Janna's visitor memory is linked to a member only
    by that member's own full sign-in. The knowledge bank reaches the personas only when the team approved the entry (2.5).
 7. **Data honesty.** No invented numbers, rows, prices, ratings, sources or "sample" content. Counts are computed from the data (2.6).
 8. **The owner's legal text** (owner/operator lines, registration numbers, legal center) changes only on the owner's explicit
@@ -385,6 +387,14 @@ conversational UI (Janna, Bassem, dashboards, the Control Center) is Egyptian Ar
   refuses a build that has one (`privacy_pages`, `jsonld_privacy`, `privacy_or_claim_files`); `functions/_lib/seo-privacy.js` refuses
   one in an SEO override; the Control Center refuses one in public text (`invalid_contact`). Add to `deploy/privacy-allow.txt` only
   a reviewed false positive (a reference number that looks like a landline), never a real contact.
+- **Official company contacts of directory profiles (owner decision 2026-11-28).** Official company contacts (switchboard phone, generic
+  company e-mail on the company's own domain, website) of directory profiles are shown on their profile pages and JSON-LD; personal
+  names, mobiles and employee e-mails never. They live only in the dedicated field of the researched rows (`data/facx.js` FAC2 element 10:
+  `official_tel`, `official_email`, `web`, `address`, `founded`, `certs`, `export`, `sources`), are checked again by `official_of()` in
+  `seo_build.part.py`, and are rendered only in the profile's «بيانات التواصل الرسمية» block (`<!--official:KEY-->`, `seo_fprof.part.py`)
+  and its Organization JSON-LD. `deploy/stage.py` builds its allow-list from that field (`load_official`, error `official_contacts`):
+  exactly those values, inside that company's block and JSON-LD only; every other phone or e-mail is still refused. The same e-mails
+  reach the Worker as `data.json` `oe` (`worker/build-index.js`) for the request teasers (`teasers.js`, `officialEmail()` rules).
 - **Visitor ↔ member link only by a signed-in session.** `worker/src/visitor.js`: Janna's random visitor id (`mig-vid`) is linked to a
   member only by a request that carries that member's own full sign-in (Bearer v2, not an e-mailed link session), with
   `link_via = 'session'`. A visitor id linked to one member is never moved to another. An e-mail or phone a visitor tells Janna is

@@ -280,6 +280,11 @@ export function dirRow(ref) {
   if (!DIR) { DIR = new Map(); for (const f of DATA.f || []) { const m = /company\.html#(.+)$/.exec(f[5] || ""); if (m) DIR.set(m[1], f); } }
   return DIR.get(String(ref == null ? "" : ref)) || null;
 }
+/* the OFFICIAL company e-mails of a researched directory row (data.json oe ← data/facx.js element 10): {emails, web, source_url} or null */
+export function dirOfficial(ref) {
+  const o = (DATA.oe || {})[String(ref == null ? "" : ref)];
+  return Array.isArray(o) && Array.isArray(o[0]) ? { emails: o[0].slice(0, 3), web: o[1] || "", source_url: o[2] || "" } : null;
+}
 export const DIR_REF_RX = /^(\d{1,6}|x\d{1,6}|c-[2-9a-hjkmnp-z]{8})$/;
 /* the public name of a directory ref: data.json for "12" / "x3", the content row for an added "c-…" company */
 export async function factoryNames(env, refs) {
