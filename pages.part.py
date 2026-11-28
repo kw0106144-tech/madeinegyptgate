@@ -95,7 +95,7 @@ function realOpps(openOnly) {
   return REAL.tenders.map(function (t, i) {
     var d = t.closing_date ? Math.round((new Date(t.closing_date + "T00:00:00") - now) / 864e5) : 0, v = t.estimated_value_egp || t.estimated_value;
     var vs = v ? (v >= 1e9 ? (v / 1e9).toFixed(1) + " مليار" : (v / 1e6).toFixed(1) + " مليون") : "";
-    return [(window.MIGOID ? MIGOID(t, i) : "MD" + (i + 1)), t.kind, t.title_ar, t.entity_ar, t.city || (window.MIGREG ? MIGREG.name(t.region_code) : ""), "المحلي", t.sector_ar, d, vs, t.source_url, t.ref, t.procurement_type, t.publish_date, t.closing_date, String(t.id || t.ref || "")];
+    return [(window.MIGOID ? MIGOID(t, i) : "MD" + (i + 1)), t.kind, t.title_ar, t.entity_ar || "", t.city || (window.MIGREG ? MIGREG.name(t.region_code) : ""), "المحلي", t.sector_ar, d, vs, t.source_url, t.ref, t.procurement_type, t.publish_date, t.closing_date, String(t.id || t.ref || "")];
   }).filter(function (o) { return !openOnly || o[7] > 0; });
 }
 function realIntl(openOnly) {
@@ -104,7 +104,7 @@ function realIntl(openOnly) {
   return REAL.tenders_intl.map(function (t, i) {
     var d = t.closing_date ? Math.round((new Date(t.closing_date + "T00:00:00") - now) / 864e5) : 0;
     var vs = t.estimated_value ? Math.round(t.estimated_value).toLocaleString("en-US") + " " + (t.currency || "") : "";
-    return ["IN" + (i + 1), t.kind || "gov", t.title_ar, t.entity_ar, (t.city ? t.city + " – " : "") + t.country_ar, MK[t.market] || "الخليجي", t.sector_ar, d, vs, t.source_url, t.ref, t.source_name, t.publish_date, t.closing_date, String(t.ref || "")];
+    return ["IN" + (i + 1), t.kind || "gov", t.title_ar, t.entity_ar || "", (t.city ? t.city + " – " : "") + t.country_ar, MK[t.market] || "الخليجي", t.sector_ar, d, vs, t.source_url, t.ref, t.source_name, t.publish_date, t.closing_date, String(t.ref || "")];
   }).filter(function (o) { return !openOnly || o[7] > 0; });
 }
 /* only published opportunities with a source are shown; the illustrative MSG-* list above is never used (owner decision: remove anything unverified) */

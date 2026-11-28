@@ -28,6 +28,7 @@ import { norm, maskPII, MASK_EMAIL, MASK_PHONE, forLLM, instructionLike, asciiDi
 import { bareHost, onHost, PORTALS, AGGREGATORS, NEWS, DIRECTORIES, MARKETS_B2B } from "./web-classify.js";
 import { featureOn, loadFeatures, valueOf } from "./flags.js";
 import { cairoDay, addDays, GOV_CODES } from "./common.js";
+import { viewerOf, lockWeb } from "./opp-lock.js"; // members-only opportunities (owner 2026-11-28): a tender's / RFQ's / project's owner and official mark for members
 
 export const PUBLIC_TYPES = Object.freeze(["tender", "rfq", "buyer", "buyer_list", "project", "news"]);
 export const WL = Object.freeze({ ttl: 10 * 60 * 1000, page_ttl: 2 * 60 * 1000, rows: 300, title: 110, entity: 80, product: 60, per_page: 20, max_page: 50, q: 80 });
@@ -339,7 +340,11 @@ export async function handlePublicLeads(req, env, ctx, nowMs = Date.now()) {
   const base = m.rows.filter(hit), list = base.filter(x => !type || x.pub.type === type);
   const counts = {}; for (const x of base) counts[x.pub.type] = (counts[x.pub.type] || 0) + 1;
   const mk = new Map(); for (const x of m.rows) if (x.pub.market && (!type || x.pub.type === type)) mk.set(x.pub.market, (mk.get(x.pub.market) || 0) + 1);
-  const items = list.map(x => publicItem(x, nowMs));
+  /* members-only (owner 2026-11-28): a visitor gets the opportunities without their entity and official mark (lockWeb); a signed-in member
+     whose plan covers Egypt gets them in full — never from the shared cache */
+  const acc = req.headers.get("Authorization") ? await viewerOf(req, env, { anam: false }, nowMs) : null, full = acc && acc.who !== "visitor";
+  if (full) cache["Cache-Control"] = "private, no-store";
+  const items = list.map(x => publicItem(x, nowMs)).map(x => (full ? lockWeb(x, acc) : lockWeb(x, null)));
   /* the closed ones last (the newest first inside each group) — a closed tender is shown as closed, never among the open ones */
   const ordered = items.filter(x => x.status !== "closed").concat(items.filter(x => x.status === "closed"));
   const per = WL.per_page, pages = Math.max(1, Math.ceil(ordered.length / per)), page = Math.min(Math.max(Math.floor(+sp.get("page") || 1), 1), Math.min(pages, WL.max_page));

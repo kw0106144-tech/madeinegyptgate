@@ -5,8 +5,32 @@ S = '/tmp/claude-0/-home-user/16f6faf5-3188-59a6-a3eb-9f56f306beda/scratchpad/'
 OUT = os.environ.get('MIG_OUT') or (B + 'site/')
 if not OUT.endswith('/'): OUT += '/'
 os.makedirs(OUT, exist_ok=True)
-for _d in ('data', 'img', 'media'):
+for _d in ('img', 'media'):
     if not os.path.exists(OUT + _d): os.symlink(B + _d, OUT + _d)
+# data/: members-only opportunities (owner decision 2026-11-28) — tenders, RFQs, project and procurement news, contract awards and the
+# contractors' material requests are for members. The published copies of data/oldtend.js, oldrfq.js, real.js and projects.js carry the
+# teaser fields only (title, sector, governorate, country, dates, status: tools/opp_split.js writes them here as real files); the locked
+# fields reach a member's page from the Worker (GET /api/me/opps, data/opp-full.js). Every other file is a symlink into the repository,
+# as the whole folder was before (deploy/stage.py resolves them). The repository keeps the full records (the daily update writes them).
+def _opp_split_data():
+    import subprocess as _sp
+    d = OUT + 'data'
+    if os.path.islink(d):
+        os.unlink(d)
+    os.makedirs(d, exist_ok=True)
+    for _n in sorted(os.listdir(B + 'data')):
+        _p = d + '/' + _n
+        if os.path.lexists(_p):
+            if os.path.islink(_p) or os.path.isfile(_p):
+                os.unlink(_p)
+            else:
+                continue
+        os.symlink(B + 'data/' + _n, _p)
+    r = _sp.run(['node', B + 'tools/opp_split.js', '--data', B + 'data', '--out', d], capture_output=True, text=True)
+    if r.returncode != 0:
+        raise SystemExit('site.py: tools/opp_split.js failed (the members-only split of the data files):\n' + (r.stderr or r.stdout)[-2000:])
+    print('members-only split: ' + r.stdout.strip())
+_opp_split_data()
 # Egypt: the old sample-factory logo placeholder is retired; any leftover placeholder in a part file gets this neutral factory icon
 FAC_ICON = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 48 48%27%3E%3Crect width=%2748%27 height=%2748%27 rx=%2710%27 fill=%27%23FBE9EC%27/%3E%3Cpath d=%27M8 38V22l9 6v-6l9 6v-6l9 6V12h5v26z%27 fill=%27%23C8102E%27/%3E%3C/svg%3E"  # quote-free: it is injected inside JS string literals and HTML attributes
 pass  # Egypt: no umbrella affiliation (no FGCI logo); logo-site.png is the Made in Egypt Gate logo (kept as is)
@@ -467,7 +491,7 @@ def page(title, active, css, body, js, main=False, key='', app=False):
     # SEO §1.2: <title>, meta, fonts and CSS live in <head>; the error overlay only ships with MIG_DEBUG=1
     dbg = _ERR_OVERLAY if os.environ.get('MIG_DEBUG') == '1' else ''
     # window.MIGPAGE: the page key («dashboard», «advisor» …) — pages now live at clean URLs (/dashboard/), so scripts must not guess it from location.pathname
-    bodyhtml = dbg + '<script>window.MIGPAGE="%s";</script>' % key + ('<script>window.BASSEM_STAND=1;</script>' if key in ('advisor', 'dashboard') and os.path.exists(B + 'data/bassem-stand.js') else '') + '<script src="data/i18n.js"></script><script>/* search helper for every page: in English, also match the English translation of an Arabic field (haystack + MIGHAY(field)) */ window.MIGHAY = function (s) { return window.MIGLANG === "en" && window.MIGTR ? " " + MIGTR(String(s || "")) : ""; };</script>' + '<script src="data/mig-overlay.js"></script><script src="data/overlay.js"></script>' + ('<script src="data/flags.js"></script>' if os.path.exists(B + 'data/flags.js') else '') + '<script src="data/plan.js"></script><script src="data/plans-live.js"></script><script src="data/mig-api.js"></script><script src="data/mig-forms.js"></script><script src="data/regions.js"></script><script src="data/real.js"></script><script src="data/factories.js"></script>' + '<div dir="rtl" lang="ar">' + header(active) + body.replace('<!--STRAT-->', STRAT).replace('<!--PARTNER-->', PARTNER) + site_footer('ar', app=True) + FOOTER_FLOAT + '</div>' + '<script>window.MIGI18N_MORE&&MIGI18N_MORE()</script>' + SHARED_JS + SBN_JS + _en_js(js) + js + '<script src="data/bot-en.js"></script><script src="data/bot.js"></script><script src="data/captions.js" charset="utf-8"></script><script src="data/holo.js" defer></script><script src="data/janna-live.js" charset="utf-8"></script>' + ('<script src="data/janna-real.js" charset="utf-8"></script>' if os.path.exists(B + 'data/janna-real.js') else '<script src="data/janna-avatar.js" charset="utf-8"></script>') + ('<script src="data/janna-voice.js" charset="utf-8"></script>' if os.path.exists(B + 'data/janna-voice.js') else '') + ('<script src="data/bassem-real.js" charset="utf-8"></script>' if os.path.exists(B + 'data/bassem-real.js') else '') + '<script src="data/bassem.js" charset="utf-8"></script><script src="data/janna.js" charset="utf-8"></script>' + (('<script src="data/bassem-stand.js" defer></script>' if os.path.exists(B + 'data/bassem-stand.js') else '') if key in ('advisor', 'dashboard') else ('<script src="data/janna-welcome.js" defer></script>' if os.path.exists(B + 'data/janna-welcome.js') else '')) + '<script src="data/seo.js"></script><script src="data/settings-live.js"></script>' + ('<script src="data/link-fix.js" defer></script>' if os.path.exists(B + 'data/link-fix.js') else '')  # link-fix: legacy links straight to clean pages (owner 2026-11-18); deploy 2: overlay applier + plans/settings (P-S1a/b); standing Janna / Bassem (live hotfix #5-#8 ported)
+    bodyhtml = dbg + '<script>window.MIGPAGE="%s";</script>' % key + ('<script>window.BASSEM_STAND=1;</script>' if key in ('advisor', 'dashboard') and os.path.exists(B + 'data/bassem-stand.js') else '') + '<script src="data/i18n.js"></script><script>/* search helper for every page: in English, also match the English translation of an Arabic field (haystack + MIGHAY(field)) */ window.MIGHAY = function (s) { return window.MIGLANG === "en" && window.MIGTR ? " " + MIGTR(String(s || "")) : ""; };</script>' + '<script src="data/mig-overlay.js"></script><script src="data/overlay.js"></script>' + ('<script src="data/flags.js"></script>' if os.path.exists(B + 'data/flags.js') else '') + '<script src="data/plan.js"></script><script src="data/plans-live.js"></script><script src="data/mig-api.js"></script><script src="data/mig-forms.js"></script><script src="data/regions.js"></script><script src="data/opp-full.js"></script><script src="data/real.js"></script><script src="data/factories.js"></script>' + '<div dir="rtl" lang="ar">' + header(active) + body.replace('<!--STRAT-->', STRAT).replace('<!--PARTNER-->', PARTNER) + site_footer('ar', app=True) + FOOTER_FLOAT + '</div>' + '<script>window.MIGI18N_MORE&&MIGI18N_MORE()</script>' + SHARED_JS + SBN_JS + _en_js(js) + js + '<script src="data/bot-en.js"></script><script src="data/bot.js"></script><script src="data/captions.js" charset="utf-8"></script><script src="data/holo.js" defer></script><script src="data/janna-live.js" charset="utf-8"></script>' + ('<script src="data/janna-real.js" charset="utf-8"></script>' if os.path.exists(B + 'data/janna-real.js') else '<script src="data/janna-avatar.js" charset="utf-8"></script>') + ('<script src="data/janna-voice.js" charset="utf-8"></script>' if os.path.exists(B + 'data/janna-voice.js') else '') + ('<script src="data/bassem-real.js" charset="utf-8"></script>' if os.path.exists(B + 'data/bassem-real.js') else '') + '<script src="data/bassem.js" charset="utf-8"></script><script src="data/janna.js" charset="utf-8"></script>' + (('<script src="data/bassem-stand.js" defer></script>' if os.path.exists(B + 'data/bassem-stand.js') else '') if key in ('advisor', 'dashboard') else ('<script src="data/janna-welcome.js" defer></script>' if os.path.exists(B + 'data/janna-welcome.js') else '')) + '<script src="data/seo.js"></script><script src="data/settings-live.js"></script>' + ('<script src="data/link-fix.js" defer></script>' if os.path.exists(B + 'data/link-fix.js') else '')  # link-fix: legacy links straight to clean pages (owner 2026-11-18); deploy 2: overlay applier + plans/settings (P-S1a/b); standing Janna / Bassem (live hotfix #5-#8 ported)
     headhtml = seo_static_head(key, title, app=app) + FONTS + '<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}' + BASE_CSS + SHARED_CSS + css + '</style>'
     html = '<!doctype html>\n<html lang="ar" dir="rtl"><head>' + headhtml + '</head><body>' + bodyhtml + seo_static_tail() + '</body></html>'
     html = html.replace('{{LOGO_OGC}}', FAC_ICON)
@@ -477,7 +501,8 @@ def page(title, active, css, body, js, main=False, key='', app=False):
     _t = B + 'tools/i18n_subset.py'
     if not hasattr(page, 'i18n') and os.path.exists(_t):
         page.i18n = {'__name__': 'i18n_subset', '__file__': _t}; exec(compile(open(_t, encoding='utf-8').read(), _t, 'exec'), page.i18n)
-    return page.i18n['page_part'](_dedupe_scripts(html), key, B, OUT) if hasattr(page, 'i18n') else _dedupe_scripts(html)
+    # root = the build output: its data/ holds the PUBLISHED copies (members-only split), so a page's English part never carries the English of a locked text
+    return page.i18n['page_part'](_dedupe_scripts(html), key, OUT, OUT) if hasattr(page, 'i18n') else _dedupe_scripts(html)
 def split_part(path):
     s = open(path).read()
     css = ''.join(re.findall(r'<style>(.*?)</style>', s, re.S))
@@ -495,7 +520,9 @@ def fix(s):
 pages = {}
 # home
 css, body, js = split_part(B + 'home2.part.html')
-en_add([('أعضاء المنصة', 'Platform members')])   # the home page's member-logo strip (the partners follow in the footer strip)
+en_add([('أعضاء المنصة', 'Platform members')])
+# members-only opportunities (owner 2026-11-28): the teasers' lock lines on the app pages (home strips, lists — data/opp-full.js)
+en_add([('🔒 التفاصيل للأعضاء', '🔒 Details for members'), ('🔒 خبر المشروع للأعضاء — سجّل الآن', '🔒 The project news is for members — register now')])   # the home page's member-logo strip (the partners follow in the footer strip)
 body = body.replace('<div class="scroll-prog" id="sprog"></div><button class="totop" id="totop" aria-label="العودة للأعلى">↑</button>', '')
 pages['home'] = ('منصة صنع في مصر', 'home', css, fix(body), js.replace('{{DASH}}', 'dashboard.html').replace('{{PROFILE}}', 'factory.html'))
 # honest counts (owner decision: no hand-written numbers): the home counters (%%N_…%% in home2.part.html) are computed here from the
@@ -598,7 +625,7 @@ for k, (feat, ttl) in GATES.items():
     t = pages[k]; pages[k] = (t[0], t[1], t[2], '<script>(function(){ var P = window.MIGPLAN; if (P%s && (P.gate ? P.gate("%s") : !P.can("%s"))%s) { try { sessionStorage.setItem("mig-gate", "%s"); } catch (e) {} location.replace(P.gateUrl ? P.gateUrl("%s") : "register.html#plans"); } })();</script>' % (pre, feat, feat, skip, ttl, feat) + t[3], t[4])
 import hashlib as _hl, re as _re
 def _ver(m):
-    f = B + 'data/' + m.group(1) + '.js'
+    f = OUT + 'data/' + m.group(1) + '.js'   # the PUBLISHED copy (members-only split: the redacted files differ from the repository's)
     h = _hl.md5(open(f, 'rb').read()).hexdigest()[:8] if os.path.exists(f) else '0'
     return 'src="data/%s.js?v=%s"' % (m.group(1), h)
 def _bust(h):
@@ -606,6 +633,8 @@ def _bust(h):
     f = B + 'data/i18n-en.js'
     v = _hl.md5(open(f, 'rb').read()).hexdigest()[:8] if os.path.exists(f) else '0'
     h = h.replace('<script src="data/i18n.js"></script>', '<script>window.MIGVER_EN="?v=%s"</script><script src="data/i18n.js"></script>' % v, 1)
+    # members-only opportunities (data/opp-full.js): a member's locked fields go back into each data file right after it ran
+    h = _re.sub(r'(<script src="data/(?:real|oldtend|oldrfq|projects)\.js"[^>]*></script>)', r'\1<script>window.MIGOPP&&MIGOPP.patch()</script>', h)
     return _re.sub(r'src="data/([\w-]+)\.js"', _ver, h)
 for _k in ('panel', 'login'):
     pages.pop(_k, None)                        # legacy routes: /panel.html and /login.html stay on the owner's old system (deploy 2 keeps them)

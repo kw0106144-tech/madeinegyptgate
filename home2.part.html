@@ -995,7 +995,7 @@ html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
       var d = t.closing_date ? Math.round((new Date(t.closing_date + "T00:00:00") - now) / 864e5) : 0, v = t.estimated_value_egp != null ? t.estimated_value_egp : t.estimated_value != null ? t.estimated_value : null;
       var vs = v ? (v >= 1e9 ? (v / 1e9).toFixed(1) + " مليار" : (v / 1e6).toFixed(1) + " مليون") : "";
       var j = REAL.tenders.indexOf(t);
-      return [(t.ref ? "ET" + t.ref : "MD" + (i + 1)), t.kind, t.title_ar, t.entity_ar, t.city || (window.MIGREG ? MIGREG.name(t.region_code) : ""), "المحلي", t.sector_ar, d, vs, t.source_url, t.ref, t.procurement_type, t.publish_date, t.closing_date, window.MIGOID ? MIGOID(t, j) : "MD" + (j + 1)];
+      return [(t.ref ? "ET" + t.ref : "MD" + (i + 1)), t.kind, t.title_ar, t.entity_ar || "", t.city || (window.MIGREG ? MIGREG.name(t.region_code) : ""), "المحلي", t.sector_ar, d, vs, t.source_url, t.ref, t.procurement_type, t.publish_date, t.closing_date, window.MIGOID ? MIGOID(t, j) : "MD" + (j + 1)];
     }).filter(function (o) { return !openOnly || (o[13] && o[7] >= 0); });
   }
   function realIntl(openOnly) {
@@ -1004,7 +1004,7 @@ html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
     return REAL.tenders_intl.map(function (t, i) {
       var d = t.closing_date ? Math.round((new Date(t.closing_date + "T00:00:00") - now) / 864e5) : 0;
       var vs = t.estimated_value ? Math.round(t.estimated_value).toLocaleString("en-US") + " " + (t.currency || "") : "";
-      return ["IN" + (i + 1), t.kind || "gov", t.title_ar, t.entity_ar, (t.city ? t.city + " – " : "") + t.country_ar, MK[t.market] || "الخليجي", t.sector_ar, d, vs, t.source_url, t.ref, t.source_name, t.publish_date, t.closing_date, "IN" + (i + 1)];
+      return ["IN" + (i + 1), t.kind || "gov", t.title_ar, t.entity_ar || "", (t.city ? t.city + " – " : "") + t.country_ar, MK[t.market] || "الخليجي", t.sector_ar, d, vs, t.source_url, t.ref, t.source_name, t.publish_date, t.closing_date, "IN" + (i + 1)];
     }).filter(function (o) { return !openOnly || (o[13] && o[7] >= 0); });
   }
   
@@ -1054,7 +1054,7 @@ html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
     var l = matched().sort(function (a, b) { return a[7] - b[7]; });
     $("#fCount").textContent = l.length + " فرصة" + (F.s ? " في " + F.s : "") + (F.r ? " · " + MIGREG.name(F.r) : "");
     $("#feed").innerHTML = l.slice(0, 4).map(function (t) {
-      return '<article class="ti' + (F.sel === t[0] ? " sel" : "") + (F.fresh === t[0] ? " flash" : "") + '" data-id="' + t[0] + '"><div class="r1"><span class="ref">رقم الفرصة: ' + t[0] + '</span><div style="display:flex;gap:6px;flex-wrap:wrap">' + (F.fresh === t[0] ? '<span class="chip chip-gold">جديد الآن</span>' : '') + '<span class="chip ' + (t[1] === "gov" ? "chip-green" : "chip-gold") + '">' + (t[1] === "gov" ? "مناقصة حكومية" : "طلب عرض سعر") + '</span>' + chipDays(t) + '</div></div><h4>' + t[2] + '</h4><div class="meta"><div><small>الجهة</small>' + t[3] + '</div><div><small>السوق</small>' + t[5] + ' · ' + t[4] + '</div><div><small>الإغلاق</small>' + dAr(closeOf(t)) + ' <span class="cd" data-end="' + closeOf(t).getTime() + '"></span></div></div><div class="r3"><span class="chip chip-gray">' + t[6] + '</span><a class="btn btn-sm btn-green" href="' + OPU(t) + '">قدّم عرضك</a></div></article>';
+      return '<article class="ti' + (F.sel === t[0] ? " sel" : "") + (F.fresh === t[0] ? " flash" : "") + '" data-id="' + t[0] + '"><div class="r1"><span class="ref">رقم الفرصة: ' + t[0] + '</span><div style="display:flex;gap:6px;flex-wrap:wrap">' + (F.fresh === t[0] ? '<span class="chip chip-gold">جديد الآن</span>' : '') + '<span class="chip ' + (t[1] === "gov" ? "chip-green" : "chip-gold") + '">' + (t[1] === "gov" ? "مناقصة حكومية" : "طلب عرض سعر") + '</span>' + chipDays(t) + '</div></div><h4>' + t[2] + '</h4><div class="meta"><div><small>الجهة</small>' + (t[3] || "🔒 التفاصيل للأعضاء") + '</div><div><small>السوق</small>' + t[5] + ' · ' + t[4] + '</div><div><small>الإغلاق</small>' + dAr(closeOf(t)) + ' <span class="cd" data-end="' + closeOf(t).getTime() + '"></span></div></div><div class="r3"><span class="chip chip-gray">' + t[6] + '</span><a class="btn btn-sm btn-green" href="' + OPU(t) + '">قدّم عرضك</a></div></article>';
     }).join("") || '<div class="panel" style="text-align:center;color:var(--muted)">لم يرصد الرادار فرصاً بهذا الفلتر. جرّب قطاعاً آخر.</div>';
     tickCd();
   }
@@ -1243,9 +1243,10 @@ html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
   /* illustrative samples (EGP) until the real awards (REAL.awards) are loaded */
   var AW = []; /* published awards only (REAL.awards); the former illustrative examples are gone */
   var RAW_ = window.REAL && REAL.awards ? REAL.awards.filter(function (a) { return inEG(a.region_code); }) : [];
-  if (RAW_.length) AW = RAW_.map(function (a) { var vm = a.value_egp_million; return [a.city, a.title_ar + " — " + a.winner_ar + (vm ? " · " + (vm >= 1000 ? (vm / 1000).toFixed(1) + " مليار" : vm + " مليون") + " جنيه" : ""), a.source_url]; });
+  /* members-only (owner 2026-11-28): a visitor's copy of an award has its title, place and date — the winner, value and source are for members */
+  if (RAW_.length) AW = RAW_.map(function (a) { var vm = a.value_egp_million; return [a.city, a.title_ar + (a.winner_ar ? " — " + a.winner_ar : "") + (vm ? " · " + (vm >= 1000 ? (vm / 1000).toFixed(1) + " مليار" : vm + " مليون") + " جنيه" : ""), a.source_url, REAL.awards.indexOf(a)]; });
   var AWL = ["c4", "c11", "c9", "c1", "c5", "c2"];
-  var aw = AW.map(function (a, i) { return '<a class="aw" href="' + (a[2] || "entity.html#" + AWL[i % AWL.length]) + '"' + (a[2] ? ' target="_blank" rel="noopener"' : '') + ' style="color:inherit"><span class="ic">🏆</span><div><b>' + a[1] + '</b><br><small class="muted">' + a[0] + ' · تفاصيل الترسية ←</small></div></a>'; }).join("");
+  var aw = AW.map(function (a, i) { return '<a class="aw" href="' + (a[2] || (a[3] >= 0 ? "winner.html#" + a[3] : "entity.html#" + AWL[i % AWL.length])) + '"' + (a[2] ? ' target="_blank" rel="noopener"' : '') + ' style="color:inherit"><span class="ic">🏆</span><div><b>' + a[1] + '</b><br><small class="muted">' + a[0] + ' · تفاصيل الترسية ←</small></div></a>'; }).join("");
   $("#awrun").innerHTML = AW.length ? aw + aw : '<p class="muted" style="padding:12px">لسه مفيش ترسيات منشورة بمصدرها. <a href="winners.html">الشركات الفائزة ←</a></p>';
   if (window.MIGSAMap) MIGSAMap.mount(document.getElementById("saMap"));
 
@@ -1274,7 +1275,7 @@ html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
   /* sample rows; replaced by the real awards (REAL.awards) when the data file is loaded */
   var WIN = []; /* published awards only; the former example rows are gone */
   if (RAW_.length) $("#wNote").hidden = true;
-  if (RAW_.length) WIN = RAW_.map(function (a, i) { var vm = a.value_egp_million, dt = a.date ? new Date(a.date + "T00:00:00") : null; return [a.title_ar, a.winner_ar, (window.MIGREG && a.region_code ? MIGREG.name(a.region_code) : a.city || "") + (a.awarding_entity_ar ? " – " + a.awarding_entity_ar : ""), vm ? fmt.format(Math.round(vm * 1e6)) : "—", dt && !isNaN(dt) ? new Intl.DateTimeFormat("ar-EG-u-ca-gregory-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(dt) : (a.date || ""), "AW-" + (i + 1), REAL.awards.indexOf(a)]; });
+  if (RAW_.length) WIN = RAW_.map(function (a, i) { var vm = a.value_egp_million, dt = a.date ? new Date(a.date + "T00:00:00") : null; return [a.title_ar, a.winner_ar || "🔒 التفاصيل للأعضاء", (window.MIGREG && a.region_code ? MIGREG.name(a.region_code) : a.city || "") + (a.awarding_entity_ar ? " – " + a.awarding_entity_ar : ""), vm ? fmt.format(Math.round(vm * 1e6)) : "—", dt && !isNaN(dt) ? new Intl.DateTimeFormat("ar-EG-u-ca-gregory-nu-latn", { day: "numeric", month: "long", year: "numeric" }).format(dt) : (a.date || ""), "AW-" + (i + 1), REAL.awards.indexOf(a)]; });
   var regs = []; WIN.forEach(function (w) { var r = w[2].split(" – ")[0]; if (regs.indexOf(r) < 0) regs.push(r); });
   $("#wr").innerHTML += regs.map(function (r) { return "<option>" + r + "</option>"; }).join("");
   var wp = 0;
@@ -1437,7 +1438,7 @@ html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
       var box = $("#pjBox");
       if (k === "p") box.innerHTML = !MIG.PROJECTS.length ? '<div class="panel" style="text-align:center;color:var(--muted)">تُعرض المشاريع هنا فور نشرها من مصادرها الرسمية. <a href="projects.html">صفحة المشاريع ←</a></div>' : '<div class="pjg">' + MIG.PROJECTS.slice().sort(function (a, b) { return b[6] - a[6]; }).slice(0, 6).map(function (p, i) { return '<a class="pjc" style="animation-delay:' + i * 60 + 'ms" href="project.html#' + p[0] + '"><div class="t"' + (p[16] ? ' style="background-image:linear-gradient(180deg,rgba(0,40,20,.35),rgba(0,40,20,.88)),url(' + p[16] + ');background-size:cover;background-position:center"' : '') + '><span class="chip chip-gold" style="align-self:flex-start">' + p[4] + ' · ' + MIG.STAGES[p[5]] + '</span><b>' + p[1] + '</b><small style="opacity:.85">📍 ' + p[3] + '</small></div><div class="b"><b style="color:var(--gold-deep);font-size:1.1rem">' + MIG.money(p[6]) + '</b>' + sb(p[5]) + (p[15] ? '<span>📰 له مصدر منشور</span>' : '') + '</div></a>'; }).join("") + '</div>';
       else if (k === "l") box.innerHTML = MIG.LEADS.slice().sort(function (a, b) { return a[8] - b[8]; }).slice(0, 5).map(function (l, i) { var p = MIG.proj(l[3]); return '<a class="ld" style="animation-delay:' + i * 60 + 'ms" href="leads.html"><span class="av">' + (l[1] === "contractor" ? "🏗️" : "📐") + '</span><span style="min-width:0"><b>' + l[4] + ' — ' + l[5] + ' ' + l[6] + '</b><br><small class="muted">' + l[2] + ' · ' + (p ? p[1] : "") + ' · 📍 ' + l[7] + '</small></span><span class="chip ' + (l[8] <= 5 ? "chip-red" : "chip-amber") + '">يُغلق بعد ' + l[8] + ' يوم</span></a>'; }).join("") + '<a class="btn btn-gold" href="leads.html">كل طلبات المواد ←</a>';
-      else box.innerHTML = '<div class="nwl">' + MIG.NEWS.map(function (n, i) { return '<a style="animation-delay:' + i * 50 + 'ms" href="project.html#' + n[1] + '"><small class="muted">📅 ' + MIG.dAr(n[0]) + '</small><b>' + n[2] + '</b></a>'; }).join("") + '</div>';
+      else box.innerHTML = '<div class="nwl">' + MIG.NEWS.map(function (n, i) { var pj = n[2] ? null : MIG.proj(n[1]); /* members-only (owner 2026-11-28): a visitor's copy has the date and the project, the news text is for members */ return '<a style="animation-delay:' + i * 50 + 'ms" href="project.html#' + n[1] + '"><small class="muted">📅 ' + MIG.dAr(n[0]) + '</small><b>' + (n[2] || ((pj ? pj[1] : "") + ' <small class="muted">🔒 التفاصيل للأعضاء</small>')) + '</b></a>'; }).join("") + '</div>';
     }
     $("#pjTabs").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; $$("#pjTabs button").forEach(function (x) { x.classList.toggle("on", x === b); }); draw(b.dataset.k); });
     draw("p");

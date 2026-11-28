@@ -772,7 +772,9 @@ describe("front desk (team «data»): deskCreate, deskMine, approvals of desk dr
     const a = await C.deskCreate(env, "tenders", { type: "مناقصة عامة", title: "توريد محولات كهرباء", entity: "شركة توزيع الكهرباء", gov: "CAI", deadline: "2026-12-20" }, { by: D, source_url: "https://etenders.gov.eg/Tender/123" });
     assert.equal(a.ok, true); assert.equal(a.state, "published"); assert.equal(a.collection, "tenders"); assert.match(a.ref, /^TEN-\d{4}-C\d{3}$/); assert.ok(a.published_v > 0);
     assert.equal(a.link, `${SITE}/tenders/search/#${encodeURIComponent(a.ref)}`);
-    const data = runOverlay(await latestJs(env)); assert.equal(data.c.tend.a[0].ref, a.ref); assert.equal(data.c.tend.a[0].source_url, "https://etenders.gov.eg/Tender/123");
+    const data = runOverlay(await latestJs(env)); assert.equal(data.c.tend.a[0].ref, a.ref); assert.equal(data.c.tend.a[0].title, "توريد محولات كهرباء");
+    /* members-only opportunities (owner 2026-11-28, src/opp-fields.js): the source link and the entity stay out of the PUBLIC overlay — a member gets them from GET /api/me/opps (ov) */
+    assert.equal(data.c.tend.a[0].source_url, undefined); assert.equal(data.c.tend.a[0].entity, undefined);
     const row = await env.DB.prepare("SELECT * FROM cc_content WHERE id = ?").bind(a.id).first();
     assert.equal(row.created_by, D); assert.equal(row.source, "desk");
     const au = (await env.DB.prepare("SELECT * FROM cc_audit WHERE target_id = ?").bind(a.id).all()).results;

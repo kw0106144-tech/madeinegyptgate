@@ -1011,15 +1011,22 @@ html.mig-app .sx-share[data-mig-app-only][hidden]{display:inline-flex!important}
 '''
 
     SEO_JS = r'''(function(){var d=document,h=d.documentElement;
-/* a subscriber = signed in with an active paid plan (data/plan.js: «تسجيل بيانات الشركة» and up, not expired), or the team (role admin).
-   Subscribers see the issuing body of every tender (.sx-ent); anyone else who opens a tender goes to the plans (owner 2026-11-25) */
-var paid=false;try{var mc=JSON.parse(localStorage.getItem("mig-me")||"null"),mu=mc&&mc.user,mk=mu?String(mu.plan||"").toLowerCase():"";
-if(localStorage.getItem("mig-tok")&&mu)paid=mu.role==="admin"||(/^(profile|data|data_only|basic|premium|partner|core|strategic)$/.test(mk)&&!(mu.plan_expires&&Date.parse(mu.plan_expires)<Date.now()));}catch(e){}
-if(paid)h.classList.add("mig-paid");
-d.addEventListener("click",function(e){if(paid||e.defaultPrevented)return;var a=e.target.closest?e.target.closest("a[href]"):null;
-if(!a||!/^\/(?:en\/)?tender-item\//.test(a.getAttribute("href")||""))return;e.preventDefault();
+/* members-only opportunities (owner 2026-11-28): the details of tenders, RFQs, awards and projects are for a signed-in member whose plan
+   covers their market (the server's last answer, cached by data/mig-api.js: user.markets; the team: role admin). Anyone else who opens one
+   goes to the registration page with the plan that includes it preselected (#basic for Egypt, the plan of the market for an international
+   tender: data-opp-market on its list item). The same rule as data/opp-full.js on the app pages. */
+var mk0=[],adm=false;try{var mc=JSON.parse(localStorage.getItem("mig-me")||"null"),mu=mc&&mc.user;
+if(localStorage.getItem("mig-tok")&&mu){adm=mu.role==="admin";if(!(mu.plan_expires&&Date.parse(mu.plan_expires)<Date.now()))mk0=mu.markets||[];}}catch(e){}
+var can=function(m){return adm||mk0.indexOf(m==="intl"?"europe":(m||"local"))>-1;};
+if(can("local"))h.classList.add("mig-paid");
+var OPP=/^\/(?:en\/)?(?:tender-item\/[^\/?#]+|tenders\/search\/?#.+|rfq\/(?!new\/|search\/?(?:$|[?]))[^\/?#]+|rfq\/search\/?#.+|awards\/(?!search\/?(?:$|[?]))[^\/?#]+|awards\/search\/?#.+|projects\/(?!search\/?(?:$|[?]))[^\/?#]+|(?:opportunity|winner|entity|project)(?:\.html|\/)?#.+)/;
+var NEED={gulf:"premium",africa:"partner",asia:"strategic",europe:"strategic",intl:"strategic"};
+d.addEventListener("click",function(e){if(e.defaultPrevented||e.button>0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;var a=e.target.closest?e.target.closest("a[href]"):null;
+if(!a||a.hasAttribute("data-opp-free"))return;var u;try{u=new URL(a.getAttribute("href")||"",location.href);}catch(x){return;}
+if(u.host!==location.host||!OPP.test(u.pathname+(u.hash||"")))return;var me=a.closest("[data-opp-market]"),m=me?me.getAttribute("data-opp-market"):"local";
+if(can(m))return;e.preventDefault();
 try{sessionStorage.setItem("mig-gate",(a.textContent||"").replace(/\s+/g," ").trim().slice(0,120));}catch(x){}
-location.href=h.lang==="en"?"/register/?lang=en#plans":"/register/#plans";});
+location.href=(h.lang==="en"?"/register/?lang=en#":"/register/#")+(NEED[m]||"basic");});
 try{var th=localStorage.getItem("mig-theme");if(th)h.setAttribute("data-theme",th);}catch(e){}
 /* the phone menu (up to 1240px, site.py SHARED_CSS): it scrolls inside the screen below the header (--nav-top) while the page behind it stays locked (html.nav-open); each section opens from its title (accordion, the same rules as site.py SHARED_JS); a chosen link or Esc closes it */
 var b=d.getElementById("menuBtn2"),n=d.getElementById("siteNav");if(b&&n){var nmq=window.matchMedia?matchMedia("(max-width: 1240px)"):null,narrow=function(){return nmq?nmq.matches:innerWidth<=1240;},
@@ -1996,9 +2003,13 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             chips.append('<span class="chip chip-gray">%s</span>' % esc(X(L, cat['ar'], cat['en'])))
         if False and t.get('booklet') and str(t['booklet']).replace('.', '').isdigit():   # locked for members (detail_lock)
             chips.append('<span class="chip chip-gold">%s</span>' % esc(X(L, 'الكراسة ', 'Documents ') + money_egp(t['booklet'], L)))
-        return ('<li class="st-%s"><div class="tp">%s%s</div><a href="%s"%s>%s</a><span class="m">%s</span>%s</li>'
-                % (t['status'], st, dl, esc(lk(L, t['path'])), '' if L == 'ar' or not AR_RX.search(nm) else ' lang="ar"', esc(nm), ent + esc(m),
+        return ('<li class="st-%s"%s><div class="tp">%s%s</div><a href="%s"%s>%s</a><span class="m">%s</span>%s</li>'
+                % (t['status'], opp_mk(t), st, dl, esc(lk(L, t['path'])), '' if L == 'ar' or not AR_RX.search(nm) else ' lang="ar"', esc(nm), ent + esc(m),
                    ('<div class="ft">%s</div>' % ''.join(chips)) if chips else ''))
+
+    def opp_mk(t):
+        """the market of an international tender on its list item: a visitor's click goes to the plan of that market (SEO_JS, data/opp-full.js)"""
+        return (' data-opp-market="%s"' % esc(t.get('market') or 'intl')) if t.get('src') == 'intl' else ''
 
     def tender_cards(lst, L):
         return '<div class="sx-tg"><ul class="tlist">%s</ul></div>' % ''.join(tender_card(t, L) for t in lst)
@@ -2019,7 +2030,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         sec = TX(L, p.get('sector')) if p.get('sector') else None
         return ('<li class="sx-pj"><div class="top">%s%s<a href="%s">%s</a><small>%s</small></div><div class="b"><div class="vr"><b>%s</b>%s</div>%s%s</div></li>'
                 % (lazy_img(ph, photo_alt(project_photo(p), L, nm)), ('<span class="chip chip-gold">%s</span>' % esc(sec)) if sec else '', esc(('/en' if L == 'en' and p.get('en_ok') else '') + p['path']), esc(nm),
-                   esc(loc), esc(money_m(p['value'], L)), ('<span class="chip chip-green">%s</span>' % esc(stg)) if stg else '', bar,
+                   esc(loc), esc(lock_txt(L) if p.get('locked') else money_m(p['value'], L)), ('<span class="chip chip-green">%s</span>' % esc(stg)) if stg else '', bar,
                    ('<dl>%s</dl>' % ''.join(rows)) if rows else ''))
 
     def news_card(n, L, big=False):
@@ -4082,7 +4093,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         m = ' · '.join(x for x in ['', gov_name(t.get('gov'), L) or (X(L, t.get('country'), t.get('country_en') or t.get('country')) if t['src'] == 'intl' else ''),
                                    (X(L, 'آخر موعد ', 'Closes ') + fmt_date(t['deadline'], L)) if t.get('deadline') else ''] if x)
         nm = T(L, t['title'], t.get('title_en'))
-        return '<li><a href="%s"%s>%s</a> %s<span class="m">%s</span></li>' % (esc(lk(L, t['path'])), '' if L == 'ar' or not AR_RX.search(nm) else ' lang="ar"', esc(nm), st, ent + esc(m))
+        return '<li%s><a href="%s"%s>%s</a> %s<span class="m">%s</span></li>' % (opp_mk(t), esc(lk(L, t['path'])), '' if L == 'ar' or not AR_RX.search(nm) else ' lang="ar"', esc(nm), st, ent + esc(m))
 
     def tender_sort(lst):
         rank = {'soon': 0, 'open': 1, 'closed': 2, 'undated': 3}
@@ -4132,17 +4143,9 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             return page_title(T(L, n.get('title_ar')), L, keep_suffix=False, must=' | ' + fmt_date(n['date'], L))
         return tt
 
-    def detail_lock(L, kind, href):
-        """owner 2026-11-23: tender / RFQ details are for subscribers. The static page keeps what the interactive list shows (title, number,
-        entity, place, category, status, closing date); the details open in the platform for a member whose plan covers them."""
-        what = X(L, 'تفاصيل المناقصة الكاملة', 'The full tender details') if kind == 't' else X(L, 'تفاصيل الطلب الكاملة', 'The full request details')
-        return ('<div class="card2 sx-lock"><h2>🔒 %s</h2><p>%s</p><p><a class="btn btn-green" href="%s">%s</a> <a class="btn btn-line" href="%s" rel="nofollow">%s</a></p></div>'
-                % (X(L, '%s للمشتركين', '%s are for members') % what,
-                   X(L, 'ثمن الكراسة والتأمين والقيمة والوصف ورابط المصدر متاحين للمشتركين من الباقة الأساسية، في حدود أسواق باقتك.',
-                     'The document price, bid bond, value, description and source link are for members from the Basic plan, within your plan\'s markets.')
-                   if kind == 't' else
-                   X(L, 'وصف الطلب الكامل وتسجيل عرض السعر متاحين للمشتركين من الباقة الأساسية.', 'The full description and recording a quote are for members from the Basic plan.'),
-                   esc(static_url('register', L, '#plans')), X(L, 'اشترك الآن', 'Subscribe'), esc(href), X(L, 'مشترك؟ افتح التفاصيل', 'A member? Open the details')))
+    def detail_lock(L, kind, href, need='basic'):
+        """owner 2026-11-23 / 2026-11-28: tender / RFQ details are for members — the box «التفاصيل للأعضاء — سجّل الآن» (members_box)"""
+        return members_box(L, kind, href, need)
 
     def render_tender(t, L):
         P = '/en' if L == 'en' else ''
@@ -4162,7 +4165,9 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         if t['ptype']:
             facts.append((X(L, 'نوع الطرح', 'Procurement type'), esc(T(L, t['ptype']) if t['src'] != 'intl' else {'gov': X(L, 'جهة حكومية', 'Government'), 'pvt': X(L, 'قطاع خاص', 'Private')}.get(t['ptype'], t['ptype']))))
         facts.append((X(L, 'الحالة', 'Status'), tender_badge(t, L)))
-        if ent:
+        if t.get('locked'):
+            facts.append((X(L, 'الجهة', 'Issuing entity'), esc(lock_txt(L))))
+        elif ent:
             eh = S['entity_by_name'].get(t['entity'])
             facts.append((X(L, 'الجهة', 'Issuing entity'), '<span class="sx-ent">%s</span><span class="sx-ent-lk">%s</span>' % (
                 ('<a href="%s">%s</a>' % (esc(lk(L, eh['path'])), esc(ent))) if eh and eh['indexable'] and (L == 'ar' or eh.get('en')) else esc(ent),
@@ -4203,8 +4208,10 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             # shown by the browser once the deadline has passed after this build (pages are rebuilt, but not every minute)
             banner = '<p class="banner-end" data-show-after="%s" hidden>%s</p>' % (full_date(t['deadline']), X(L, 'انتهى موعد التقديم في %s.', 'The closing date passed on %s.') % fmt_date(t['deadline'], L))
         elif t['status'] == 'undated':
-            banner = '<p class="banner-info">%s</p>' % X(L, 'موعد الإغلاق غير معلن في البيانات المتاحة، والجهة غير مسمّاة. تحقق من المصدر الرسمي قبل التقديم.',
-                                                         'No closing date and no named entity in the available data. Check the official source before bidding.')
+            banner = '<p class="banner-info">%s</p>' % (X(L, 'موعد الإغلاق غير معلن في البيانات المتاحة. تحقق من الإعلان الرسمي قبل التقديم.',
+                                                          'No closing date in the available data. Check the official notice before bidding.') if t.get('locked') else
+                                                        X(L, 'موعد الإغلاق غير معلن في البيانات المتاحة، والجهة غير مسمّاة. تحقق من المصدر الرسمي قبل التقديم.',
+                                                          'No closing date and no named entity in the available data. Check the official source before bidding.'))
         sim = [x for x in S['tenders_by_cat'].get(t['cat'], []) if x is not t and x['status'] in ('open', 'soon') and x.get('page')][:5]
         sim_html = ''
         if sim:
@@ -4220,7 +4227,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             if hubs:
                 fac_links = '<section class="card2"><h2>%s</h2><div class="links">%s</div></section>' % (X(L, 'مصانع يمكنها التوريد', 'Factories that can supply'), ''.join(
                     '<a href="%s">%s <small>(%d)</small></a>' % (esc(lk(L, h['path'])), esc(sec_name(h['sec']['slug'], L, 't')), h['n']) for h in hubs))
-        sim_html = detail_lock(L, 't', '/tenders/search/#' + quote(str(t.get('fid') or t.get('ref') or ''), safe='')) + sim_html
+        sim_html = detail_lock(L, 't', '/tenders/search/#' + quote(str(t.get('fid') or t.get('ref') or ''), safe='') if t.get('src') != 'intl' else None, tender_need(t)) + sim_html
         intro = tender_summary(t, L, with_ent=False)   # the line under the title is read by everyone: no issuing body (owner 2026-11-25)
         hp = cat_photo(cat) if cat else VIS_HUB_IMG['tenders']
         body = hero(L, ch, title, intro, img=hp, alt=photo_alt(hp, L, X(L, cat['ar'], cat['en']) if cat else ''), small=True) + '<div class="wrap sx-main">%s<div class="sx-grid"><div><div class="card2"><h2>%s</h2>%s</div>%s%s</div><aside>%s</aside></div></div>' % (
@@ -4357,18 +4364,20 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         n_open = sum(1 for t in lst if t['status'] in ('open', 'soon'))
         h1 = X(L, 'مناقصات %s', 'Tenders of %s') % nm
         if len(lst) == 1:
-            intro = X(L, 'تضم المنصة مناقصة واحدة طرحتها %s، %s، مع رابط مصدرها الرسمي.' % (nm, 'سارية الآن' if n_open else 'غير سارية الآن'),
-                      'The platform holds one tender issued by %s, %s, with its official source.' % (nm, 'open now' if n_open else 'not open now'))
+            intro = X(L, 'تضم المنصة مناقصة واحدة طرحتها %s، %s؛ تفاصيلها للأعضاء.' % (nm, 'سارية الآن' if n_open else 'غير سارية الآن'),
+                      'The platform holds one tender issued by %s, %s; its details are for members.' % (nm, 'open now' if n_open else 'not open now'))
         else:
-            intro = X(L, 'تضم المنصة %s طرحتها %s، %s، لكل منها رابط المصدر الرسمي.' % (ar_qty(len(lst), N_TND_ACC), nm, ('منها ' + ar_qty(n_open, N_OPEN_NOM) + ' الآن') if n_open else 'ولا توجد بينها مناقصة سارية الآن'),
-                      'The platform holds %s issued by %s, %s, each with its official source.' % (en_qty(len(lst), 'tender', 'tenders'), nm, ('%d of them open' % n_open) if n_open else 'none of them open now'))
+            intro = X(L, 'تضم المنصة %s طرحتها %s، %s؛ تفاصيلها للأعضاء.' % (ar_qty(len(lst), N_TND_ACC), nm, ('منها ' + ar_qty(n_open, N_OPEN_NOM) + ' الآن') if n_open else 'ولا توجد بينها مناقصة سارية الآن'),
+                      'The platform holds %s issued by %s, %s; their details are for members.' % (en_qty(len(lst), 'tender', 'tenders'), nm, ('%d of them open' % n_open) if n_open else 'none of them open now'))
         hp = VIS_HUB_IMG['tenders']
         body = hero(L, ch, h1, intro, img=hp, alt=photo_alt(hp, L), small=True) + '<div class="wrap sx-main">%s<section class="sx-sec">%s</section></div>' % (
-            stats_html([(str(len(lst)), X(L, ar_noun(len(lst), 'مناقصة', 'مناقصتان', 'مناقصات', 'مناقصة'), 'tenders'), ''), (str(n_open), X(L, 'سارية الآن', 'open now'), '')]), tender_cards(lst, L))
+            stats_html([(str(len(lst)), X(L, ar_noun(len(lst), 'مناقصة', 'مناقصتان', 'مناقصات', 'مناقصة'), 'tenders'), ''), (str(n_open), X(L, 'سارية الآن', 'open now'), '')]),
+            members_box(L, 't', app_url('tenders') or None) if lst and lst[0].get('locked') else tender_cards(lst, L))   # members-only (owner 2026-11-28): which tenders an entity issued is a detail
         cnt_ = X(L, ar_qty(len(lst), N_TND_NOM) + ((' (%s)' % ar_qty(n_open, N_OPEN_NOM)) if n_open else ''), fmt_n(len(lst)) + ((' (%d open)' % n_open) if n_open else ''))
         meta = {'title': mk_title([X(L, 'مناقصات %s: %s' % (nm, cnt_), '%s Tenders: %s' % (nm, cnt_)), h1], L), 'desc': mk_desc([intro], L, X(L, 'التفاصيل على منصة صنع في مصر.', 'Details on Made in Egypt Gate.')),
                 'h1': h1, 'og_type': 'website', 'page_type': 'CollectionPage', 'jsonld_crumbs': crumb_ld,
-                'jsonld_page': jsonld_collection([(T(L, t['title'], t.get('title_en')), ('/en' if L == 'en' and t.get('en_ok') else '') + t['path']) for t in lst], url, h1,
+                'jsonld_page': {"@context": "https://schema.org", "@type": "Organization", "@id": url + '#entity', "name": nm} if lst and lst[0].get('locked') else
+                               jsonld_collection([(T(L, t['title'], t.get('title_en')), ('/en' if L == 'en' and t.get('en_ok') else '') + t['path']) for t in lst], url, h1,
                                                  {"@type": "Organization", "@id": url + '#entity', "name": nm}),
                 'kw': X(L, 'مناقصات ' + e['name'], (e['name_en'] or e['name']) + ' tenders'), 'keywords': X(L, 'مناقصات ' + e['name'], (e['name_en'] or e['name']) + ' tenders')}
         return body, meta
@@ -4457,7 +4466,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         for k, cur_ar, cur_en in (('value_egp_million', 'مليون جنيه', 'million EGP'), ('value_usd_million', 'مليون دولار', 'million USD'), ('value_eur_million', 'مليون يورو', 'million EUR')):
             if a.get(k):
                 vals.append('%s %s' % ('{:,}'.format(a[k]), X(L, cur_ar, cur_en)))
-        facts = [(X(L, 'الشركة الفائزة', 'Winner'), esc(T(L, a.get('winner_ar')))), (X(L, 'الجهة المالكة / المسندة', 'Awarding entity'), esc(T(L, a.get('awarding_entity_ar'))))]
+        lkd = a.get('locked')   # members-only (owner 2026-11-28): the winner, the entity, the value and the source are for members
+        facts = [(X(L, 'الشركة الفائزة', 'Winner'), esc(lock_txt(L) if lkd else T(L, a.get('winner_ar')))), (X(L, 'الجهة المالكة / المسندة', 'Awarding entity'), esc(lock_txt(L) if lkd else T(L, a.get('awarding_entity_ar'))))]
         if vals:
             facts.append((X(L, 'قيمة العقد', 'Contract value'), esc(X(L, ' / '.join(vals), ' / '.join(vals)))))
         if a.get('region_code'):
@@ -4470,17 +4480,18 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         if a.get('source_url'):
             facts.append((X(L, 'المصدر', 'Source'), '<a href="%s" rel="nofollow noopener" target="_blank">%s</a>' % (esc(a['source_url']), esc(urlparse(a['source_url']).netloc.replace('www.', '')))))
         facts_html = '<dl class="sx-facts">%s</dl>' % ''.join('<dt>%s</dt><dd>%s</dd>' % (k, v) for k, v in facts)
-        intro = X(L, 'ترسية %s على %s%s، بإسناد من %s.', 'Contract %s awarded to %s%s by %s.') % (title, T(L, a.get('winner_ar')), (X(L, ' بقيمة ', ' worth ') + vals[0]) if vals else '', T(L, a.get('awarding_entity_ar')))
+        intro = (X(L, 'ترسية معلنة: %s%s. الشركة الفائزة والجهة المسندة وقيمة العقد للأعضاء.', 'Published award: %s%s. The winner, the awarding entity and the value are for members.') % (title, (X(L, ' بتاريخ ', ' dated ') + fmt_date(a['date'], L)) if a.get('date') else '') if lkd else
+                 X(L, 'ترسية %s على %s%s، بإسناد من %s.', 'Contract %s awarded to %s%s by %s.') % (title, T(L, a.get('winner_ar')), (X(L, ' بقيمة ', ' worth ') + vals[0]) if vals else '', T(L, a.get('awarding_entity_ar'))))
         others = [x for x in S['awards'] if x is not a][:6]
-        main = '<div class="card2"><h2>%s</h2>%s</div>' % (X(L, 'بيانات الترسية', 'Award details'), facts_html)
+        main = '<div class="card2"><h2>%s</h2>%s</div>' % (X(L, 'بيانات الترسية', 'Award details'), facts_html) + (members_box(L, 'a', app_url('winners') or None) if lkd else '')
         main += '<section class="card2"><h2>%s</h2><div class="sx-aw"><ul class="tlist">%s</ul></div></section>' % (X(L, 'ترسيات أخرى', 'Other awards'), ''.join(
-            '<li><a href="%s">%s</a><span class="m">%s</span></li>' % (esc(('/en' if L == 'en' and x.get('en_ok') else '') + x['path']), esc(T(L, x.get('title_ar'))), esc(T(L, x.get('winner_ar')))) for x in others))
+            '<li><a href="%s">%s</a><span class="m">%s</span></li>' % (esc(('/en' if L == 'en' and x.get('en_ok') else '') + x['path']), esc(T(L, x.get('title_ar'))), esc(fmt_date(x.get('date'), L) if x.get('locked') else T(L, x.get('winner_ar')))) for x in others))
         hp = VIS_HUB_IMG['awards']
         body = hero(L, ch, title, intro, img=hp, alt=photo_alt(hp, L), small=True) + '<div class="wrap sx-main">%s</div>' % main
-        meta = {'title': mk_title([X(L, 'ترسية %s على %s', 'Award: %s to %s') % (cut(title, 40), T(L, a.get('winner_ar'))), X(L, 'ترسية: %s', 'Award: %s') % cut(title, 50)], L),
+        meta = {'title': mk_title(([] if lkd else [X(L, 'ترسية %s على %s', 'Award: %s to %s') % (cut(title, 40), T(L, a.get('winner_ar')))]) + [X(L, 'ترسية: %s', 'Award: %s') % cut(title, 50)], L),
                 'desc': mk_desc([intro], L, X(L, 'المصدر والتفاصيل على منصة صنع في مصر.', 'Source and details on Made in Egypt Gate.')), 'h1': title, 'og_type': 'website', 'page_type': 'WebPage',
                 'jsonld_crumbs': crumb_ld, 'jsonld_page': {"@context": "https://schema.org", "@type": "Thing", "@id": url + '#award', "name": title, "description": intro, "url": url},
-                'kw': kw_for('H', L, name=cut(title, 40)), 'keywords': X(L, 'ترسية, ', 'contract award, ') + T(L, a.get('winner_ar')), 'about_id': url + '#award'}
+                'kw': kw_for('H', L, name=cut(title, 40)), 'keywords': X(L, 'ترسية, ', 'contract award, ') + ('' if lkd else T(L, a.get('winner_ar'))), 'about_id': url + '#award'}
         return body, meta
 
     def render_simple_hub(L, kind, items_html, h1, intro, title_c, dparts, items_ld, cluster, kw, tail=None, path=None, img=None, alt=None, acts='', top=''):
@@ -4500,17 +4511,18 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             vals = [('%s %s' % ('{:,}'.format(a[k]), X(L, ca, ce))) for k, ca, ce in (('value_egp_million', 'مليون جنيه', 'million EGP'), ('value_usd_million', 'مليون دولار', 'million USD'), ('value_eur_million', 'مليون يورو', 'million EUR')) if a.get(k)]
             ent = TX(L, a.get('awarding_entity_ar') or '') if a.get('awarding_entity_ar') else None
             return ('<li><a href="%s">%s</a><span class="m">%s · %s</span>%s%s</li>'
-                    % (esc(('/en' if L == 'en' and a.get('en_ok') else '') + a['path']), esc(T(L, a.get('title_ar'))), esc(T(L, a.get('winner_ar'))), esc(fmt_date(a.get('date'), L)),
+                    % (esc(('/en' if L == 'en' and a.get('en_ok') else '') + a['path']), esc(T(L, a.get('title_ar'))), esc(lock_txt(L) if a.get('locked') else T(L, a.get('winner_ar'))), esc(fmt_date(a.get('date'), L)),
                        ('<small class="muted">%s</small>' % esc(ent)) if ent else '', ('<span class="chip chip-gold">%s</span>' % esc(vals[0])) if vals else ''))
         lis = ''.join(aw_li(a) for a in A)
         app = app_url('winners')
-        html = '<section class="sx-sec">%s<div class="sx-aw"><ul class="tlist">%s</ul></div>%s</section>' % (sec_head(X(L, 'الترسيات المعلنة', 'Published awards')), lis, ('<p><a href="%s">%s</a></p>' % (esc(app), X(L, 'بحث تفاعلي في الترسيات ←', 'Interactive awards search →'))) if app else '')
+        html = '<section class="sx-sec">%s%s<div class="sx-aw"><ul class="tlist">%s</ul></div>%s</section>' % (sec_head(X(L, 'الترسيات المعلنة', 'Published awards')), members_box(L, 'a') if A and A[0].get('locked') else '', lis, ('<p><a href="%s">%s</a></p>' % (esc(app), X(L, 'بحث تفاعلي في الترسيات ←', 'Interactive awards search →'))) if app else '')
         h1 = X(L, 'ترسيات المناقصات والشركات الفائزة في مصر', 'Contract Awards and Winning Companies in Egypt')
-        n_val = sum(1 for a in A if any(a.get(k) for k in ('value_egp_million', 'value_usd_million', 'value_eur_million')))
-        intro = X(L, 'نتائج ترسية معلنة لـ%d عقداً في مصر: من فاز بكل عقد ولدى أي جهة، مع رابط المصدر لكل ترسية. قيمة العقد معلنة في %d منها فقط.',
-                  'Published contract awards for %d contracts in Egypt: who won each contract and from which entity, with the source of each award. The contract value is published for %d of them only.') % (len(A), n_val)
-        n_w = len(set(a.get('winner_ar') for a in A if a.get('winner_ar')))
-        n_e = len(set(a.get('awarding_entity_ar') for a in A if a.get('awarding_entity_ar')))
+        LC = S.get('lock_counts') or {}   # members-only (owner 2026-11-28): the counts of the full records, the details for members
+        n_val = LC.get('aw_val', sum(1 for a in A if any(a.get(k) for k in ('value_egp_million', 'value_usd_million', 'value_eur_million'))))
+        intro = X(L, 'نتائج ترسية معلنة لـ%d عقداً في مصر؛ الشركة الفائزة والجهة المسندة ورابط المصدر لكل ترسية للأعضاء المشتركين. قيمة العقد معلنة في %d منها فقط.',
+                  'Published contract awards for %d contracts in Egypt; the winner, the awarding entity and the source of each award are for members. The contract value is published for %d of them only.') % (len(A), n_val)
+        n_w = LC.get('aw_win', len(set(a.get('winner_ar') for a in A if a.get('winner_ar'))))
+        n_e = LC.get('aw_ent', len(set(a.get('awarding_entity_ar') for a in A if a.get('awarding_entity_ar'))))
         top = stats_html([(str(len(A)), X(L, ar_noun(len(A), 'ترسية معلنة', 'ترسيتان معلنتان', 'ترسيات معلنة', 'ترسية معلنة'), 'published awards'), ''),
                           (str(n_val), X(L, 'بقيمة عقد معلنة', 'with a published contract value'), ''),
                           (str(n_w), X(L, ar_noun(n_w, 'شركة فائزة', 'شركتان فائزتان', 'شركات فائزة', 'شركة فائزة'), 'winning companies'), ''),
@@ -4716,7 +4728,10 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                 facts.append((X(L, lab_ar, lab_en), esc(T(L, v))))
         if stage:
             facts.append((X(L, 'المرحلة (حسب آخر خبر منشور)', 'Stage (per the latest published news)'), esc(T(L, stage))))
-        facts.append((X(L, 'القيمة', 'Value'), esc(money_m(p['value'], L))))
+        lkd = p.get('locked')   # members-only (owner 2026-11-28): owner, contractor, consultant, value, news text and source for members
+        if lkd:
+            facts.append((X(L, 'المالك والمقاول والاستشاري', 'Owner, contractor, consultant'), esc(lock_txt(L))))
+        facts.append((X(L, 'القيمة', 'Value'), esc(lock_txt(L) if lkd else money_m(p['value'], L))))
         if p['start']:
             facts.append((X(L, 'البدء', 'Start'), esc(str(p['start']))))
         if p['end']:
@@ -4724,13 +4739,15 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         if p['source']:
             facts.append((X(L, 'المصدر', 'Source'), '<a href="%s" rel="nofollow noopener" target="_blank">%s</a>' % (esc(p['source']), esc(urlparse(p['source']).netloc.replace('www.', '')))))
         facts_html = '<dl class="sx-facts">%s</dl>' % ''.join('<dt>%s</dt><dd>%s</dd>' % (k, v) for k, v in facts)
-        ups = ''.join('<li><span class="m">%s</span>%s</li>' % (esc(fmt_date(u[0], L)), esc(T(L, u[1]))) for u in p['updates'] if u and len(u) > 1)
+        ups = ''.join('<li><span class="m">%s</span>%s</li>' % (esc(fmt_date(u[0], L)), esc(T(L, u[1]) if u[1] else lock_txt(L))) for u in p['updates'] if u and len(u) > 1)
         main = '<section class="card2"><h2>%s</h2><ul class="tlist">%s</ul></section>' % (X(L, 'آخر التحديثات المنشورة', 'Latest published updates'), ups) if ups else ''
+        if lkd:
+            main = members_box(L, 'p', app_url('projects') or None) + main
         main += '<p class="note">%s</p>' % X(L, 'المنصة لا تنشر بنود توريد متوقعة أو غير مؤكدة للمشروع؛ المرجع هو المصدر الرسمي.', 'The platform does not publish expected or unconfirmed supply items; the reference is the official source.')
         sim = [x for x in S['projects'] if x is not p and (x['sector'] == p['sector'] or x['gov'] == p['gov'])][:5]
         if sim:
             main += '<section class="card2"><h2>%s</h2><ul class="sx-pjs">%s</ul></section>' % (X(L, 'مشاريع مشابهة', 'Similar projects'), ''.join(project_card(x, L) for x in sim))
-        intro = X(L, '%s – %s%s. %s.', '%s – %s%s. %s.') % (name, T(L, p['sector']), (X(L, ' في ', ' in ') + gov_name(p['gov'], L)) if p['gov'] else '', money_m(p['value'], L))
+        intro = X(L, '%s – %s%s. %s.', '%s – %s%s. %s.') % (name, T(L, p['sector']), (X(L, ' في ', ' in ') + gov_name(p['gov'], L)) if p['gov'] else '', X(L, 'التفاصيل للأعضاء', 'Details for members') if lkd else money_m(p['value'], L))
         pph = project_photo(p)
         body = hero(L, ch, name, intro, img=pph, alt=photo_alt(pph, L, name), small=True) + '<div class="wrap sx-main"><div class="sx-grid"><div>%s</div><aside><div class="card2"><h2>%s</h2>%s</div>%s</aside></div></div>' % (
             main, X(L, 'بيانات المشروع', 'Project facts'), facts_html, rfq_box(L, rfq_link(None, L)))
@@ -4751,18 +4768,19 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         if app:
             html += '<p><a href="%s">%s</a></p>' % (esc(app), X(L, 'بحث وفلترة تفاعلية في المشاريع ←', 'Interactive project search →'))
         h1 = X(L, 'مشاريع مصر الحكومية والخاصة', 'Government and Private Projects in Egypt')
-        n_val = sum(1 for p in Pj if p['value'] not in (None, ''))
-        n_ctr = sum(1 for p in Pj if p['contractor'] and not re.match(r'^\s*(?:لم يُ?علن|غير معلن|غير معروف|غير محدد|[-—–])\s*$', str(p['contractor'])))
-        intro = X(L, '%d مشروعاً في مصر من مصادر منشورة، مع المالك والمرحلة حسب آخر خبر ورابط المصدر لكل مشروع. المقاول مذكور في %d منها، والقيمة معلنة في %d فقط.',
-                  '%d projects in Egypt from published sources, with the owner, the stage per the latest news and the source of each project. The contractor is named for %d of them and the value is published for %d only.') % (len(Pj), n_ctr, n_val)
-        tot_v = sum(float(p['value']) for p in Pj if p['value'] not in (None, '') and re.match(r'^[\d.]+$', str(p['value'])))
+        LC = S.get('lock_counts') or {}   # members-only (owner 2026-11-28): the counts of the full records, the details for members
+        n_val = LC.get('pj_val', sum(1 for p in Pj if p['value'] not in (None, '')))
+        n_ctr = LC.get('pj_ctr', sum(1 for p in Pj if p['contractor'] and not re.match(r'^\s*(?:لم يُ?علن|غير معلن|غير معروف|غير محدد|[-—–])\s*$', str(p['contractor']))))
+        intro = X(L, '%d مشروعاً في مصر من مصادر منشورة بمرحلتها حسب آخر خبر؛ المالك والمقاول والقيمة والأخبار ورابط المصدر للأعضاء المشتركين. المقاول مذكور في %d منها، والقيمة معلنة في %d فقط.',
+                  '%d projects in Egypt from published sources with their stage per the latest news; the owner, the contractor, the value, the news and the source are for members. The contractor is named for %d of them and the value is published for %d only.') % (len(Pj), n_ctr, n_val)
+        tot_v = LC.get('pj_tot', sum(float(p['value']) for p in Pj if p['value'] not in (None, '') and re.match(r'^[\d.]+$', str(p['value']))))
         top = stats_html([(str(len(Pj)), X(L, ar_noun(len(Pj), 'مشروع', 'مشروعان', 'مشروعات', 'مشروعاً') + ' من مصادر منشورة', 'projects from published sources'), app or ''),
                           (money_m(tot_v, L) if tot_v else '', X(L, 'القيمة المعلنة لـ%s' % ar_count(n_val, 'مشروع واحد', 'مشروعين', 'مشروعات', 'مشروعاً'), 'declared value of %d projects' % n_val), ''),
                           (str(len(by_sec)), X(L, ar_noun(len(by_sec), 'قطاع', 'قطاعان', 'قطاعات', 'قطاعاً'), 'sectors'), ''),
                           (str(n_ctr), X(L, 'مقاولها الرئيسي معلن', 'with a named main contractor'), '')])
         top += search_box(L, app, X(L, 'ابحث باسم المشروع أو المدينة أو المالك…', 'Search by project, city or owner…'))
         hp = VIS_HUB_IMG['projects']
-        return render_simple_hub(L, 'projects', html, h1, intro, [X(L, 'مشروعات مصر %d: %d مشروعاً بالمالك والمرحلة والمصدر', 'Egypt Projects %d: %d Projects with Owner, Stage & Source') % (S['today'].year, len(Pj))], [intro],
+        return render_simple_hub(L, 'projects', html, h1, intro, [X(L, 'مشروعات مصر %d: %d مشروعاً بالقطاع والمرحلة', 'Egypt Projects %d: %d Projects by Sector and Stage') % (S['today'].year, len(Pj))], [intro],
                                  [(T(L, p['name']), ('/en' if L == 'en' and p.get('en_ok') else '') + p['path']) for p in Pj], 'M', X(L, 'مشروعات قومية في مصر', 'egypt projects'),
                                  X(L, 'المصادر على منصة صنع في مصر.', 'Sources on Made in Egypt Gate.'), img=hp, alt=photo_alt(hp, L), top=top,
                                  acts=hero_acts(L, [(X(L, '📝 اطلب عرض سعر لمواد مشروعك', '📝 Request a quote for project materials'), rfq_link(None, L), 'gold'),
@@ -5166,6 +5184,62 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                             extra = next((v for v in (tr(extra), tr(whole) if whole else None) if v and not AR_RX.search(v) and v != nm), '')
                     c['tx_' + L] = extra
 
+        lock_member_details()
+
+    def lock_member_details():
+        """members-only opportunities (owner decision 2026-11-28): tenders, RFQs, contract awards and projects keep their indexable teaser
+        on the generated pages (title, status, governorate, sector, dates); the details (issuing / awarding entity, winner, documents,
+        bond, value, description, source link, owner / contractor / consultant, the project news text) are for members and are blanked
+        HERE — after the slugs, the paths and the hub memberships were computed from the full records (no page disappears), before any
+        page, JSON-LD, sitemap or _seo/ file is written. The aggregate counts the hubs say (how many awards publish a value …) are kept
+        from the full records (S['lock_counts']); nothing says which item. The details reach a member's page from the Worker
+        (data/opp-full.js, GET /api/me/opps)."""
+        if S.get('locked_done'):
+            return
+        S['locked_done'] = True
+        A, Pj = S.get('awards') or [], S.get('projects') or []
+        no_ctr = re.compile(r'^\s*(?:لم يُ?علن|غير معلن|غير معروف|غير محدد|[-—–])\s*$')
+        S['lock_counts'] = {
+            'aw_val': sum(1 for a in A if any(a.get(k) for k in ('value_egp_million', 'value_usd_million', 'value_eur_million'))),
+            'aw_win': len(set(a.get('winner_ar') for a in A if a.get('winner_ar'))),
+            'aw_ent': len(set(a.get('awarding_entity_ar') for a in A if a.get('awarding_entity_ar'))),
+            'pj_val': sum(1 for p in Pj if p['value'] not in (None, '')),
+            'pj_ctr': sum(1 for p in Pj if p['contractor'] and not no_ctr.match(str(p['contractor']))),
+            'pj_tot': sum(float(p['value']) for p in Pj if p['value'] not in (None, '') and re.match(r'^[\d.]+$', str(p['value']))),
+        }
+        for x in S.get('tenders') or []:
+            x.update({'locked': True, 'entity': '', 'entity_en': '', 'booklet': '', 'bond': '', 'source': '', 'source_name': '', 'value': None, 'currency': '', 'via': ''})
+        for x in S.get('rfqs') or []:
+            x.update({'locked': True, 'details': '', 'details_en': '', 'delivery': '', 'qty': ''})
+        for x in A:
+            for k in [k for k in x if re.match(r'^(winner_|awarding_entity|value_|source_|entity_)', k)]:
+                x[k] = None
+            x['locked'] = True
+        for x in Pj:
+            x.update({'locked': True, 'value': None, 'owner': '', 'contractor': '', 'consultant': '', 'source': '',
+                      'updates': [[u[0], ''] for u in (x.get('updates') or []) if u]})
+
+    def members_box(L, kind, href=None, need='basic'):
+        """the box that replaces the details on a generated page: «التفاصيل للأعضاء — سجّل الآن» (owner 2026-11-28)"""
+        what = {'t': X(L, 'الجهة الطارحة وثمن الكراسة والتأمين والقيمة والوصف وجهات التواصل ورابط الإعلان الرسمي',
+                       'the issuing entity, the document price, the bid bond, the value, the description, the contacts and the official notice'),
+                'r': X(L, 'وصف الطلب الكامل والكمية ومكان التسليم وتسجيل عرض سعرك', 'the full description, the quantity, the delivery place and recording your quote'),
+                'a': X(L, 'الشركة الفائزة والجهة المسندة وقيمة العقد ورابط المصدر', 'the winning company, the awarding entity, the contract value and the source'),
+                'p': X(L, 'المالك والمقاول والاستشاري والقيمة وأخبار المشروع ورابط المصدر', 'the owner, the contractor, the consultant, the value, the project news and the source')}.get(kind, '')
+        plan = {'basic': X(L, 'الباقة الأساسية', 'the Basic plan'), 'premium': X(L, 'الباقة المميزة', 'the Premium plan'), 'partner': X(L, 'باقة الشريك الأساسي', 'the Core Partner plan'),
+                'strategic': X(L, 'باقة الشريك الاستراتيجي', 'the Strategic Partner plan')}.get(need) or X(L, 'الباقة الأساسية', 'the Basic plan')
+        btn2 = ('<a class="btn btn-line" href="%s" rel="nofollow">%s</a>' % (esc(href), X(L, 'مشترك؟ افتح التفاصيل', 'A member? Open the details'))) if href else ''
+        return ('<div class="card2 sx-lock sx-members" data-opp-lock="%s"><h2>🔒 %s</h2><p>%s</p><p><a class="btn btn-green" href="%s" data-opp-free>%s</a> %s</p></div>'
+                % (esc(kind), X(L, 'التفاصيل للأعضاء — سجّل الآن', 'Details are for members — register'),
+                   X(L, '%s متاحة للأعضاء المشتركين من %s، في حدود أسواق الباقة.', '%s are for members from %s, within the plan\'s markets.') % (what[:1].upper() + what[1:] if L == 'en' else what, plan),
+                   esc(static_url('register', L, '#' + need)), X(L, 'سجّل الآن', 'Register now'), btn2))
+
+    def lock_txt(L):
+        return X(L, '🔒 للأعضاء فقط', '🔒 Members only')
+
+    def tender_need(t):
+        return {'gulf': 'premium', 'africa': 'partner', 'asia': 'strategic', 'europe': 'strategic'}.get(t.get('market') or '', 'strategic') if t.get('src') == 'intl' else 'basic'
+
     # ------------------------------------------------------------------ page specs, rendering, EN gate, writing
     def lastmod_for(path, content_key, real_date=None):
         store = S['lastmod_store']
@@ -5251,7 +5325,7 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             return {'type': 'market', 'id': r['key'], 'title': r.get('name') or r.get('name_ar') or r['key'], 'url': 'export-market.html#' + r['key'], 'follow': False}
         if typ == 'award' and r.get('i') is not None:
             nm = r.get('winner_ar') or r.get('company') or ''
-            c = {'type': 'company', 'id': 'w%s' % r['i'], 'title': nm, 'url': 'winner.html#%s' % r['i']}
+            c = {'type': 'company', 'id': 'w%s' % r['i'], 'title': nm or r.get('title_ar') or '', 'url': 'winner.html#%s' % r['i']}
             if nm:
                 c['follow'] = {'kind': 'search', 'id': nm}
             return c

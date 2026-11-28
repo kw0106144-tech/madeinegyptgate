@@ -24,9 +24,11 @@ if (window.REAL && REAL.awards && REAL.awards.length) {
     REG.agencies.forEach(function (x) { aId[NN(x[1])] = x[0]; });
     REAL.awards.forEach(function (a, k) {
       var i = k + 1, rg = window.MIGREG ? MIGREG.name(a.region_code) : "", cn = NN(a.winner_ar), an = NN(a.awarding_entity_ar);
-      if (!cId[cn]) { cId[cn] = "rc" + i; cs.push(["rc" + i, a.winner_ar, "مقاولات", rg, "—", "", a.source_url]); }
+      /* members-only (owner 2026-11-28, tools/opp_split.js): the public copy of REAL.awards has no winner, awarding entity, value or source —
+         no company / agency record is made from an empty name; a member's page gets them back from data/opp-full.js before this runs */
+      if (cn && !cId[cn]) { cId[cn] = "rc" + i; cs.push(["rc" + i, a.winner_ar, "مقاولات", rg, "—", "", a.source_url || ""]); }
       if (an && !aId[an]) { aId[an] = "ra" + i; as.push(["ra" + i, a.awarding_entity_ar, REG.agSector(a.awarding_entity_ar), rg, PRIV.test(a.awarding_entity_ar) ? "القطاع الخاص" : REG.agType(a.awarding_entity_ar), "جهة مُرسية"]); }
-      ws.push(["RW-" + i, a.title_ar, an ? aId[an] : "", cId[cn], (a.value_egp_million || 0) * 1e6, a.date, REG.awSector(a.title_ar), "—", a.source_url, a.value_egp_million ? 0 : (a.value_usd_million || 0)]);
+      ws.push(["RW-" + i, a.title_ar, an ? aId[an] : "", cn ? cId[cn] : "", (a.value_egp_million || 0) * 1e6, a.date, REG.awSector(a.title_ar), "—", a.source_url || "", a.value_egp_million ? 0 : (a.value_usd_million || 0)]);
     });
     REG.companies = cs.concat(REG.companies); REG.agencies = as.concat(REG.agencies); REG.awards = ws.concat(REG.awards);
   })();

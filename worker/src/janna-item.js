@@ -18,6 +18,7 @@ import DATA from "./data.json";
 import ITEMS from "./items.json";
 import { norm, forLLM, instructionLike } from "./text.js";
 import { cairoDay, addDays, toolSoftError, toolBody } from "./common.js";
+import { viewerOf, lockItem } from "./opp-lock.js"; // members-only opportunities (owner 2026-11-28): a caller who may not see a tender / RFQ / award / project gets its teaser
 
 export const SITE = "https://madeinegyptgate.com/";
 /* stored paths: "/tender-item/eg-tnd-003/" (decoded UTF-8) or a site hash link "tenders/search/#OFF%3A1" (already encoded) */
@@ -288,7 +289,7 @@ export function sayItem(r) {
 }
 
 /* ---------- HTTP: same key rule and CORS as /api/janna/lookup ---------- */
-const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Janna-Key" };
+const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Janna-Key, Authorization" };
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...CORS } });
 const ITEM_TEXT = {
   bad_json: "طلب التفاصيل وصل ناقص. ابعت section و id من نتيجة janna_lookup تاني مرة واحدة بس؛ ولو فشل تاني قول إن التفاصيل مش متاحة دلوقتي، ومتخترعش بيانات.",
@@ -312,5 +313,6 @@ export async function handleItem(req, env, ctx, nowMs = Date.now()) {
   if (!a.id && !a.ref && !a.title && !a.query && !a.name) return soft("id_required", { error: "id, ref or title required", text: ITEM_TEXT.no_id });
   const r = findItem(sec, { id: a.id == null ? "" : String(a.id).slice(0, 160), ref: a.ref == null ? "" : String(a.ref).slice(0, 160), title: String(a.title || a.query || a.name || "").slice(0, 300) }, nowMs);
   /* an Anam webhook answer that is not 2xx may never reach the model (holo5 tools.md #4): POST says «not found» with 200; GET keeps 404 */
-  return json(sayItem(r), r.found || req.method === "POST" ? 200 : 404);
+  const lock = r && r.found && /^(tenders|rfqs|awards|projects)$/.test(sec) ? await viewerOf(req, env, { anam: true }, nowMs) : null;
+  return json(sayItem(lock ? lockItem(r, lock, false) : r), r.found || req.method === "POST" ? 200 : 404);
 }

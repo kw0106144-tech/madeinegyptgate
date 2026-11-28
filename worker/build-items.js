@@ -91,5 +91,8 @@ const M = ctx.MIG || {}, ST = M.STAGES || [], NA = s => (/^(لم يُعلن|لم
 (M.PROJECTS || M.PROJECTS_REAL || []).forEach(p => { if (!p || !c(p[1])) return; const nw = (p[14] || []).filter(Boolean).slice(-1)[0] || [];
   out.j.push({ id: c(p[0]), name: c(p[1]), gov: c(p[2]).replace(/^محافظة\s+/, ''), location: c(p[3]), sector: c(p[4]), stage: ST[p[5]] || '', value_mn_egp: num(p[6]), owner: NA(p[7]), contractor: NA(p[8]), consultant: NA(p[9]),
     start: c(p[10]), end: c(p[11]), news_date: c(nw[0]), news: clean(nw[1], 320), docs: c(p[15]), path: enc(HP[c(p[0])] || 'project.html#' + c(p[0])) }); });
+/* ---- members-only opportunities (owner 2026-11-28): the locked fields of the public data files (tools/opp_split.js — the site build
+   publishes the redacted copies), served only by GET /api/me/opps to a member whose plan covers them (src/opp-lock.js) */
+try { out.L = require(path.join(__dirname, '..', 'tools', 'opp_split.js')).splitDir(D).locked; } catch (e) { console.error('opp_split', e.message); out.L = {}; }
 const file = path.join(__dirname, 'src', 'items.json'); fs.writeFileSync(file, JSON.stringify(out));
 console.log('items', Object.fromEntries(Object.entries(out).map(([k, v]) => [k, Array.isArray(v) ? v.length : typeof v === 'object' ? Object.keys(v).length : v])), fs.statSync(file).size, 'bytes', Object.keys(HO).length ? 'clean URLs' : 'shim URLs (site not built)');

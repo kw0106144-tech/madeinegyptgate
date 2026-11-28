@@ -140,6 +140,9 @@ function detail(x) {
   /* owner 2026-11-23: a visitor, or a member whose plan does not cover tenders / RFQs in Egypt, sees the title and the status only —
      the details (number, entity, dates, amounts, description) open from the plan that has them, inside its markets (Egypt = "local") */
   var mkOk = !window.MIGPLAN || !MIGPLAN.inScope || MIGPLAN.inScope("local");
+  /* members-only (owner 2026-11-28): the details are not in the public data any more (data/opp-full.js) — a click goes straight to the
+     registration page with the plan that includes them preselected */
+  if (!(can && mkOk) && window.MIGOPP && MIGOPP.go) { MIGOPP.go(KIND === "t" ? "tenders" : "rfq", "local", ttl); return; }
   if (!(can && mkOk)) {
     var lf = KIND === "t" ? "tenders" : "rfq";
     body = '<h2 style="margin:0;font-size:1.15rem;line-height:1.7">' + esc(ttl) + '</h2>' + (KIND === "t" ? '<span class="st2 ' + stc(x[2]) + '" style="align-self:flex-start">' + stt(x[2]) + '</span>' : '')

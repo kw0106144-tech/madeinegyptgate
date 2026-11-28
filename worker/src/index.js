@@ -42,7 +42,8 @@ import { handleGuardEv, guardTool, guardCron } from "./guard.js"; // «حماي�
 import { handleWA, bassemCron } from "./whatsapp.js"; // /api/wa/*        respond.io webhook + Bassem's daily WhatsApp
 import { handleJannaSession } from "./janna-session.js"; // /api/janna/session  live-call session tokens (JS SDK: no third-party mark)
 import { handleTiming } from "./live-timing.js";       // /api/janna/timing   the call page's start timing beacon (numbers only)
-import { handleItem, enrichResult, absUrl, eventStatus, findItem } from "./janna-item.js"; // /api/janna/item  one item in full + the lookup results' ids / open_url / amounts
+import { handleItem, enrichResult, absUrl, eventStatus, findItem } from "./janna-item.js";
+import { handleOpps, viewerOf, lockResult, lockAnswer, lockWeb } from "./opp-lock.js"; // members-only opportunities (owner 2026-11-28): GET /api/me/opps + the tools' teasers // /api/janna/item  one item in full + the lookup results' ids / open_url / amounts
 import { handleMemory, memoryCron, budgetEnv, TICK } from "./memory.js"; // /api/advisor/memory  Bassem's memory (searches, call turns, summaries, facts)
 // ---- 0009 memory upgrades: Janna's visitor memory, «بنك المعلومات», the daily memory update ----
 import { handleVisitorMemory } from "./visitor.js";   // /api/janna/memory[/tasks]  Janna's memory of her visitors
@@ -339,11 +340,14 @@ const dayNum = d => (d ? Date.parse(d + "T12:00:00Z") / 86400000 : 0);
 /* page: 1-based (10 results at most per page); market (tenders only): local (default — the Egyptian list, as before) | gulf | africa |
    asia | europe | intl (all four) | all (Egyptian + international). opts.members = the D1 memo of src/lookup-members.js (the route reads it
    for the directory, product and customers sections; without it only the bundled data is searched); opts.nowMs = the clock (tests). */
-function search(section, query, governorate, limit, page, market, { members = null, web = null, nowMs = Date.now() } = {}) {
+/* lock (members-only opportunities, src/opp-lock.js): the caller's access from viewerOf — tenders / RFQs / awards / projects it may not see
+   come back as teasers (lockResult) and the text says the details are for members (lockAnswer); no lock (the calls report, Bassem's deep
+   research: internal, member contexts) = the full records as before */
+function search(section, query, governorate, limit, page, market, { members = null, web = null, nowMs = Date.now(), lock = null } = {}) {
   /* the paging / open-one hint only for a caller that pages or picks markets (Bassem's new definition); Janna's tool has neither */
   const paged = (page != null && page !== "") || (market != null && market !== "");
   const MX = memberIx(members);
-  if (section === "customers") return withWeb(section, customers(query, governorate, paged, MX), query, governorate, market, web, paged, nowMs);
+  if (section === "customers") return withWeb(section, customers(query, governorate, paged, MX), query, governorate, market, web, paged, nowMs, lock);
   const P = parse(query, governorate), { gov, place } = P;
   const L = Math.min(Math.max(+limit || 6, 1), 10), res = [], M = marketOf(market), mk = M.mk || "local";
   if (section === "tenders" && M.bad) return { section, query, governorate: gov || null, place: place || null, market: null, market_unknown: M.bad, markets: MARKETS, widened_to: null, count: 0, page: 1, pages: 1, per_page: L, has_more: false, results: [],
@@ -422,16 +426,17 @@ function search(section, query, governorate, limit, page, market, { members = nu
   const nAll = C.length ? res.filter(r => r[0].cls === 0).length : res.length, nRel = res.filter(r => r[0].cls === 2).length;
   const amb = C.length === 1 && C[0].amb ? { word: sayWord(P, C[0]), note: C[0].amb.note } : null;
   const pages = Math.max(1, Math.ceil(res.length / L)), pg = Math.min(Math.max(Math.floor(+page || 1), 1), 1000), from = (pg - 1) * L;
-  const top = res.slice(from, from + L).map(r => { const o = enrichResult(section, r[1]); if (o.create) { delete o.id; delete o.create; } return o; }), more = Math.max(0, res.length - from - top.length);
+  const top = res.slice(from, from + L).map(r => { const o = enrichResult(section, r[1]); if (o.create) { delete o.id; delete o.create; } return lock ? lockResult(section, o, lock) : o; }), more = Math.max(0, res.length - from - top.length);
   /* the words as the query's list items: «مواسير حديد» أو «بلاستيك» (review 2026-11-20: «مواسير أو حديد أو بلاستيك» read as if every
      word were an alternative) */
   const items = []; C.forEach(c => (items[c.part] = items[c.part] || []).push(sayWord(P, c)));
   const st = { words: items.filter(Boolean).map(x => x.join(" ")).join("» أو «"), all: nAll, rel: nRel, amb, n: C.length,
     ...(section === "tenders" ? { open: res.filter(r => isOpen(r[1].status)).length, q: String(query || "").trim().slice(0, 80) } : {}) };
-  return withWeb(section, { section, query, governorate: gov || null, place: place || null, market: section === "tenders" ? mk : undefined, widened_to: widened, count: res.length, count_all: nAll, partial: res.length > nAll,
+  const ans = withWeb(section, { section, query, governorate: gov || null, place: place || null, market: section === "tenders" ? mk : undefined, widened_to: widened, count: res.length, count_all: nAll, partial: res.length > nAll,
     ...(amb ? { ambiguous: { word: amb.word, meanings: amb.note } } : {}), page: pg, pages, per_page: L, has_more: more > 0, results: top,
     text: (widened ? "نتائج قليلة داخل " + place + " نفسها، فتمت إضافة نتائج من محافظة " + widened + ". " : "") + (pg > pages && res.length ? `دي كانت كل النتائج (${res.length}) في ${pages === 1 ? "صفحة واحدة" : pages + " صفحات"}؛ مفيش صفحة ${pg}.` : summary(section, res.length, top.slice(0, 6), gov || place, paged, query, st)) + (more && paged ? ` وفيه كمان ${more} نتيجة: اطلب page=${pg + 1}، أو هات تفاصيل نتيجة بالـ id بتاعها من platform_item.` : "") },
-    query, governorate, market, web, paged, nowMs);
+    query, governorate, market, web, paged, nowMs, lock);
+  return lock ? lockAnswer(section, ans, lock, paged) : ans;
 }
 
 /* ---------- «فرص السوق» in janna_lookup (src/web-public.js; owner switch web_leads_lookup) ----------
@@ -464,7 +469,7 @@ function webLean(it) {
   return { type: it.type, kind: WEB_TYPE[it.type], title: it.title || [WEB_TYPE[it.type], it.product].filter(Boolean).join(" "), entity: it.entity || undefined, product: it.product || undefined,
     status: st, place: webPlace(it) || undefined, official: it.official || undefined, found: it.found || undefined };
 }
-function webOf(section, query, governorate, market, web, nowMs) {
+function webOf(section, query, governorate, market, web, nowMs, lock = null) {
   const types = WEB_SECTIONS[section];
   if (!types || !web || web.off || !web.lookup || !Array.isArray(web.rows) || !web.rows.length) return null;
   const P = parse(query, governorate), C = lkConcepts(dropSectionWords(section, P.q), dirVocab).concepts;
@@ -475,7 +480,7 @@ function webOf(section, query, governorate, market, web, nowMs) {
   const rows = []; for (let i = 0; i < X.rows.length; i++) if (ok(i)) rows.push(i);
   const items = rankRows(C, matchIx(X.ix, C.map(compile)), rows).filter(r => r.cls < 2).map(r => publicItem(X.rows[r.i], nowMs));
   const ordered = items.filter(x => x.status !== "closed").concat(items.filter(x => x.status === "closed"));
-  return { count: ordered.length, items: ordered.slice(0, WEB_MAX).map(webLean) };
+  return { count: ordered.length, items: ordered.slice(0, WEB_MAX).map(webLean).map(x => (lock ? lockWeb(x, lock) : x)) };
 }
 const WEB_N = { tenders: n => (n === 1 ? "مناقصة واحدة" : n === 2 ? "مناقصتين" : n + (n <= 10 ? " مناقصات" : " مناقصة")), rfqs: n => (n === 1 ? "طلب عرض سعر واحد" : n === 2 ? "طلبين عروض أسعار" : n + (n <= 10 ? " طلبات عروض أسعار" : " طلب عرض سعر")),
   customers: n => (n === 1 ? "جهة واحدة ممكن تبقى عميل" : n === 2 ? "جهتين ممكن يبقوا عملاء" : n + (n <= 10 ? " جهات ممكن تبقى عملاء" : " جهة ممكن تبقى عميل")),
@@ -488,8 +493,8 @@ function webText(section, w, m, base) {
     + (m ? "قولهم كمعلومة وخلاص: ماتقولش إنهم على المنصة ولا إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك، ولا تعدّهم مع نتايج المنصة؛ اللي «منتهية» خلصت، واللي «ميعادها مش معروف» ماتقولش إنها مفتوحة. ولو العميل سأل جايين منين أو أكيدين قول: «ده اللي عندي عنها، والشروط والمواعيد النهائية عند الجهة نفسها»."
       : "قوليهم كمعلومة وخلاص: ماتقوليش إنهم على المنصة ولا إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك، ولا تعدّيهم مع نتايج المنصة؛ اللي «منتهية» خلصت، واللي «ميعادها مش معروف» ماتقوليش إنها مفتوحة. ولو العميل سأل جايين منين أو أكيدين قولي: «ده اللي عندي عنها، والشروط والمواعيد النهائية عند الجهة نفسها».");
 }
-function withWeb(section, o, query, governorate, market, web, m, nowMs) {
-  const w = o && typeof o === "object" ? webOf(section, query, governorate, market, web, nowMs) : null;
+function withWeb(section, o, query, governorate, market, web, m, nowMs, lock = null) {
+  const w = o && typeof o === "object" ? webOf(section, query, governorate, market, web, nowMs, lock) : null;
   if (!w || !w.count) return o;
   return { ...o, extra_count: w.count, extra: w.items, text: String(o.text || "") + webText(section, w, m, Number(o.count) || 0) };
 }
@@ -621,7 +626,7 @@ function summary(section, n, top, where, m, query, st = null) {
   return `مفيش نتيجة في ${LN} فيها كل كلمات البحث («${st.words}»)؛ أقرب النتائج: ${others}${openNote}. أهمها: ${items.join("؛ ")}. ${m ? "قولها على إنها أقرب نتايج، مش مطابقة" : "قوليها على إنها أقرب نتايج، مش مطابقة"}.${amb} ${tail}`;
 }
 
-const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Janna-Key" };
+const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS", "Access-Control-Allow-Headers": "Content-Type, X-Janna-Key, Authorization" };
 const json = (o, s = 200) => new Response(JSON.stringify(o), { status: s, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...CORS } });
 
 /* POST /api/janna/lookup answers lean for the model (speed 2026-11-20: 1.2–2.0k tokens a result list → −36 … −52 %, and 45 % of it was
@@ -689,6 +694,7 @@ const WORKER = {
     if (/^\/api\/advisor(\/|$)/.test(url.pathname)) return handleAdvisor(req, env, ctx);
     if (/^\/api\/meetings(\/|$)/.test(url.pathname)) return handleMeetings(req, env, ctx);
     if (/^\/api\/auth(\/|$)/.test(url.pathname)) return handleAuth(req, env, ctx);
+    if (/^\/api\/me\/opps\/?$/.test(url.pathname)) return handleOpps(req, env); // members-only opportunities: the locked fields of the plan (opp-lock.js) — before /api/me
     if (/^\/api\/me(\/|$)/.test(url.pathname)) return handleMe(req, env, ctx);
     if (/^\/api\/inquiries(\/|$)/.test(url.pathname)) { const res = await handleInquiries(req, env, ctx); if (req.method === "POST" && res.status === 201) { try { const j = await res.clone().json(); if (j && j.ref) ctx.waitUntil(CC.payments.onInquiryCreated(env, j.ref, CC)); } catch (e) { /* ignore */ } } return res; }
     if (/^\/api\/admin(\/|$)/.test(url.pathname)) return handleAdmin(req, env, ctx);
@@ -719,9 +725,10 @@ const WORKER = {
        them — only those approved since this bundle was built (data.json v): the older ones are in it already */
     /* the members' records and «فرص السوق» (the published web opportunities of the sections they belong to, with the owner's switch
        web_leads_lookup): each ≤ 1 D1 round trip per isolate per 10 minutes, read side by side; fail-soft */
-    const [members, web] = await Promise.all([/^(factories|suppliers|products|market|customers)$/.test(section) ? memberData(env, Date.now(), DATA.v) : null,
-      Object.prototype.hasOwnProperty.call(WEB_SECTIONS, section) ? publishedLeads(env, Date.now()) : null]);
-    const r = search(section, String(a.query || "").slice(0, 200), String(a.governorate || "").slice(0, 60), a.limit, a.page, a.market, { members, web });
+    /* members-only opportunities (opp-lock.js): who asks — the website's Bearer, else the Anam session of the webhook (its call's member) */
+    const [members, web, lock] = await Promise.all([/^(factories|suppliers|products|market|customers)$/.test(section) ? memberData(env, Date.now(), DATA.v) : null,
+      Object.prototype.hasOwnProperty.call(WEB_SECTIONS, section) ? publishedLeads(env, Date.now()) : null, viewerOf(req, env, { anam: true })]);
+    const r = search(section, String(a.query || "").slice(0, 200), String(a.governorate || "").slice(0, 60), a.limit, a.page, a.market, { members, web, lock });
     return json(post ? leanLookup(r) : r);
   },
   /* Cloudflare Email Routing → replies to deal-<id>@reply.madeinegyptgate.com (AI Deal Advisor) */

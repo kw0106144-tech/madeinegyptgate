@@ -18,7 +18,7 @@ import os as _acc_os, re as _acc_re, json as _acc_json, hashlib as _acc_hl
 
 def _acc_ver(rel):
     """the 8-character content hash site.py's _ver() puts on data files (?v=…)"""
-    f = B + rel
+    f = OUT + rel if _acc_os.path.exists(OUT + rel) else B + rel   # the PUBLISHED copy (members-only split: data/oldtend.js … differ from the repository's)
     return _acc_hl.md5(open(f, 'rb').read()).hexdigest()[:8] if _acc_os.path.exists(f) else '0'
 
 
@@ -151,7 +151,7 @@ def _acc_page():
             '<div id="mo"><div id="bx" role="dialog" aria-modal="true" aria-labelledby="bxT"></div></div><div id="tt" role="status" aria-live="polite"></div>'
             '<noscript><div class="note" style="margin:20px">لوحة التحكم محتاجة JavaScript شغّال في المتصفح.</div></noscript>'
             '<script>window.MIGOVL_ADMIN=1;window.MIGACC_CFG=' + _acc_json_js(_acc_cfg()) + ';</script>'
-            '<script src="data/mig-api.js"></script>' + ovl + '<script src="data/acc.js"></script>' + dev + _ACC_SKIP_JS + base_tail
+            '<script src="data/mig-api.js"></script>' + ovl + '<script src="data/opp-full.js"></script><script src="data/acc.js"></script>' + dev + _ACC_SKIP_JS + base_tail
             # «حماية الموقع» (data/guard.js): the same copy shortcuts as every page; the staff pages send no report (the team's own tools)
             + (guard_tag() if 'guard_tag' in globals() else '') + '</body></html>')
 
