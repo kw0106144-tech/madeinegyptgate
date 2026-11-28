@@ -276,7 +276,7 @@ export const SETTING_GROUPS = [
   { id: "manual_pay", keys: ["manual_pay_ar", "manual_pay_en"] },
 ];
 const SEED_PUBLIC = { contact_email: "info@madeinegyptgate.com", support_email: "support@madeinegyptgate.com", hotline_display: "02 38346757", hotline_tel: "+20238346757", whatsapp_display: "01279188996", whatsapp_number: "201279188996",
-  address_ar: "الجيزة – مدينة السادس من أكتوبر – الحي 11 – وجه الثقافة والعلوم – عمارة 56 (الدور الثالث)، جمهورية مصر العربية", address_en: "", social_facebook: "https://www.facebook.com/profile.php?id=61595683961104",
+  address_ar: "عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11، السادس من أكتوبر، الجيزة", address_en: "Building 56 (third floor), Culture and Science Area, 11th District, 6th of October City, Giza, Egypt", social_facebook: "https://www.facebook.com/profile.php?id=61595683961104",
   social_x: "https://x.com/egy_business_eg", social_instagram: "https://www.instagram.com/mnstmsrllmnaqsat/", social_linkedin: "https://www.linkedin.com/in/%D9%85%D9%86%D8%B5%D8%A9-%D9%85%D8%B5%D8%B1-%D9%84%D9%84%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A7%D8%AA-%D9%88%D8%A7%D9%84%D9%85%D9%88%D8%B1%D8%AF%D9%8A%D9%86-egyptbusinessgate-8a6346450/",
   social_youtube: "https://www.youtube.com/@egyptbusinessgate", operator_ar: "الجمعية المصرية للتنمية الصناعية", operator_en: "", operator_reg_ar: "جمعية غير هادفة للربح مشهرة برقم 6189 لسنة 2017 (وزارة التضامن الاجتماعي)", operator_reg_en: "",
   operator_url: "https://eafid.org/", tax_no: "", cr_no: "", vat_bp: "1400", billing_email: "", manual_pay_ar: "", manual_pay_en: "" };

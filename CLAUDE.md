@@ -75,6 +75,7 @@ responses).
 | `seo_build.part.py` | The static SEO generator (about 520 KB): data pages, hubs, Arabic pages + `/en/` twins, sitemaps, `robots.txt`, `_headers`, `_routes.json`, `_redirects`, `/_seo/*.json`, hash shims, the installable app's files and head tags (1.11), and its own validation |
 | `seo_fprof.part.py` / `seo_pprof.part.py` | Rich factory profile pages / product pages (hooks of the SEO build) |
 | `seo_app.part.py` | The app download page `/app/` + `/en/app/`, the APK channel `/downloads/android/` and `/.well-known/assetlinks.json` (hook of the SEO build, 5.7) |
+| `seo_assist.part.py` | The assistants' information pages `/janna-assistant/` + `/bassem-advisor/` (+ `/en/`, FAQPage JSON-LD of the visible Q&As) and `/llms.txt` (hook of the SEO build). The approved identity sentence, official address, phone and hours: `seo.part.py` `IDENTITY_*` / `ADDRESS_*` / `HOURS_*`, `docs/IDENTITY-APPROVED.md` |
 | `downloads/android/` | The Android APKs offered on `/app/` + `latest.json`: written by `tools/publish_apk.py`, committed (5.7). Never a debug APK |
 | `seo.part.py` | Per-page meta (`SEO` dict: description, keywords, schema type, breadcrumb, change frequency, priority) and the Organization/WebSite JSON-LD |
 | `seo/` | `config.json` (clean URLs `static_paths`, `app_paths`, `shim_keys`, `noindex_static`, thresholds, `en` gate), `sectors.json`, `governorates.json`, `keywords.json`, `tender-cats.json`, `company-media.json` (photo index of the profiles), `lastmod.json` (build state, 2.9) |
@@ -140,7 +141,7 @@ Inside `site.py`, in this order:
 Generated pages (`seo_build.part.py`): `/factories/<slug>/`, `/industrial_products/<slug>/`, `/tender-item/<slug>/`, `/rfq/<slug>/`,
 hubs `/factories/` (+ sector / governorate), `/governorates/<gov>/`, `/industrial-zones/<id>/`, `/free-zones/`, `/products/`,
 `/tenders/` (+ category / entity), `/rfq/`, `/awards/`, `/news/`, `/events/`, `/projects/`, `/offers/`, `/export/<market>/`,
-`/site-map/`, `/app/` (5.7), each with an `/en/` twin when it passes the English gate (2.2). The main menu of generated pages is `NAV` from `site.py`
+`/site-map/`, `/app/` (5.7), `/janna-assistant/`, `/bassem-advisor/`, `/llms.txt`, each with an `/en/` twin when it passes the English gate (2.2). The main menu of generated pages is `NAV` from `site.py`
 too.
 
 ### 1.4 Browser data and scripts (`data/`)

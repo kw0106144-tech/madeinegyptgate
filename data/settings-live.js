@@ -16,15 +16,18 @@
   var SEED = {
     contact_email: "info@madeinegyptgate.com", support_email: "support@madeinegyptgate.com", billing_email: "",
     hotline_display: "02 38346757", hotline_tel: "+20238346757", whatsapp_display: "01279188996", whatsapp_number: "201279188996",
-    address_ar: "الجيزة – مدينة السادس من أكتوبر – الحي 11 – وجه الثقافة والعلوم – عمارة 56 (الدور الثالث)، جمهورية مصر العربية", address_en: "",
+    address_ar: "عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11، السادس من أكتوبر، الجيزة", address_en: "Building 56 (third floor), Culture and Science Area, 11th District, 6th of October City, Giza, Egypt",
     operator_ar: "الجمعية المصرية للتنمية الصناعية", operator_en: "", operator_reg_ar: "جمعية غير هادفة للربح مشهرة برقم 6189 لسنة 2017 (وزارة التضامن الاجتماعي)", operator_reg_en: ""
   };
+  /* a stored value that is only an older default wording of the same key leaves the build's text alone: the address before the owner's
+     approved wording of 2026-11-27 (docs/IDENTITY-APPROVED.md) — the same address in another order */
+  var OLD = { address_ar: ["الجيزة – مدينة السادس من أكتوبر – الحي 11 – وجه الثقافة والعلوم – عمارة 56 (الدور الثالث)، جمهورية مصر العربية"] };
   var TEXT = { contact_email: 1, support_email: 1, billing_email: 1, hotline_display: 1, whatsapp_display: 1, address_ar: 1, operator_ar: 1, operator_reg_ar: 1 };
   var S = null, DONE = "data-mig-set-done";
   var EMAIL = /^[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9.\-]{1,190}\.[A-Za-z]{2,24}$/;
   function okUrl(u) { return W.MIGOVL && MIGOVL.okUrl ? MIGOVL.okUrl(u) && /^https:/i.test(String(u)) : /^https:\/\/[^\s"'<>`\\]+$/i.test(String(u || "")); }
   function neutral(s) { return W.MIGOVL && MIGOVL.neutral ? MIGOVL.neutral(s, 1) : String(s == null ? "" : s).replace(/[<>"'`]/g, "").replace(/\s+/g, " ").trim(); }
-  function get(k) { return S && Object.prototype.hasOwnProperty.call(S, k) && typeof S[k] === "string" ? S[k] : ""; }
+  function get(k) { var v = S && Object.prototype.hasOwnProperty.call(S, k) && typeof S[k] === "string" ? S[k] : ""; return v && OLD[k] && OLD[k].indexOf(v) > -1 ? "" : v; }
   /* the link a key builds (validated); "" = leave the href as built */
   function href(k, v) {
     if (/_email$/.test(k)) return EMAIL.test(v) ? "mailto:" + v : "";
@@ -75,6 +78,11 @@
     }
     var r = root && root.querySelectorAll ? root : document;
     [].forEach.call(r.querySelectorAll("[data-mig-setting]"), function (el) { try { one(el); } catch (e) { /* one element */ } });
+    /* <a data-mig-map="address_ar">: the map link is built from the address text itself (no coordinates) */
+    [].forEach.call(r.querySelectorAll("a[data-mig-map]"), function (el) {
+      var v = get(el.getAttribute("data-mig-map"));
+      if (v && v !== "-") { v = neutral(v).slice(0, 300); if (v) el.setAttribute("href", "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(v + "، مصر")); }
+    });
   }
   function start(data) {
     if (S || !data || !data.settings || typeof data.settings !== "object") return;
