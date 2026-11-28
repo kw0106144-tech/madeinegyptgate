@@ -1,6 +1,6 @@
 /* «فرص مناسبة لمصنعك» — proactive opportunity matching (owner 2026-11-26: «every new opportunity matched to each member's company profile
    automatically, with a 0-100 score and an alert, so the member finds them ready»; Bassem used to find them only when the member asked).
-   Owner switch opp_matching (flags.js, OFF by default, locked until migration 0016). Built for madeinegyptgate.com; the scoring has no
+   Owner switch opp_matching (flags.js, ON by default since 2026-11-28, locked until migration 0016). Built for madeinegyptgate.com; the scoring has no
    site-specific rule beyond the plan markets, so the UAE site can reuse it with its own market table.
 
    WHAT IS MATCHED (never an invented item: only opportunities that arrived through the platform's own pipelines)

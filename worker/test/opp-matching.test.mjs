@@ -123,9 +123,9 @@ describe("the score (deterministic, from the data only)", () => {
 });
 
 describe("the switch, the migration and the registry", () => {
-  test("opp_matching is OFF by default, server-side, and locked until 0016", async () => {
+  test("opp_matching is ON by default (owner 2026-11-28), server-side, and locked until 0016", async () => {
     const d = featureDef("opp_matching");
-    assert.equal(d.default, false); assert.equal(d.scope, "server"); assert.ok(FEATURE_KEYS.includes("opp_matching"));
+    assert.equal(d.default, true); assert.equal(d.scope, "server"); assert.ok(FEATURE_KEYS.includes("opp_matching"));
     const env = await envWith({ on: null, tables: false });
     const row = (await featuresView(env)).features.find(f => f.key === "opp_matching");
     assert.equal(row.effective, false); assert.ok(row.locked && /0016/.test(JSON.stringify(row.locked)));
@@ -329,7 +329,7 @@ describe("the daily alert «فرص جديدة مناسبة لمصنعك» and Ba
   test("Bassem: the top 3 unseen matches as one short line — no link, no source, nothing when the switch is off", async () => {
     const env = await many(5);
     forgetFeatures(env);
-    assert.deepEqual(await OM.topUnseen(env, "pa", 3, NOW), [], "the memo is not loaded yet = OFF (no extra read on the session path)");
+    assert.equal((await OM.topUnseen(env, "pa", 3, NOW)).length, 3, "the memo is not loaded yet = the default, ON since 2026-11-28");
     await loadFeatures(env, { fresh: true });
     const top = await OM.topUnseen(env, "pa", 3, NOW);
     assert.equal(top.length, 3);
@@ -347,6 +347,12 @@ describe("the daily alert «فرص جديدة مناسبة لمصنعك» and Ba
     const mz = await env.DB.prepare("SELECT * FROM members WHERE id = 'pz'").first();
     const cz = await bassemContext(env, { ...mz, title: "مهندس" }, "ar", {}, NOW);
     assert.ok(!cz.opps && !cz.block.includes("فرص جديدة مناسبة"));
+    // the owner switches it off: no line, no matches
+    await setSwitches(env, { opp_matching: false });
+    await loadFeatures(env, { fresh: true });
+    assert.deepEqual(await OM.topUnseen(env, "pa", 3, NOW), [], "switch off = nothing");
+    const off = await bassemContext(env, { ...m, title: "مهندس" }, "ar", {}, NOW);
+    assert.ok(!off.opps && !off.block.includes("فرص جديدة مناسبة"));
   });
   test("account deletion takes his matches (eraseStmts)", async () => {
     const env = await many(1);

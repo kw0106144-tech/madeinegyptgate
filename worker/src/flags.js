@@ -39,8 +39,8 @@
                                                  binding AND the research Workflow binding (RESEARCH) AND migration 0014 is applied
      opp_matching              matching-opps.js  «فرص مناسبة لمصنعك»: the 15-minute cron scores new opportunities against the members whose plan
                                                  includes Bassem, the daily alert e-mail, GET|POST /api/me/opportunities (off → 503
-                                                 feature_off, nothing scored or sent) and the short line in Bassem's member block. OFF by
-                                                 default; LOCKED until migration 0016 is applied
+                                                 feature_off, nothing scored or sent) and the short line in Bassem's member block. ON by
+                                                 default (owner 2026-11-28); LOCKED until migration 0016 is applied
      calls_report              calls-report.js   the daily calls report e-mail (platform cron) is skipped before any Anam / D1 read;
                                                  POST /api/admin/cc/dev/calls-report/send (+ /preview) → 503 feature_off
    The platform's own apps (user agent «MIGApp/<v> (ios|android)», app-ua.js; app parity plan 2026-11-20 — the defaults keep the apps
@@ -246,9 +246,9 @@ export const FEATURES = Object.freeze([
     lock_rule_en: "Locked until the Worker runs with its AI and research (Workflow «migate-research») bindings and 0014_research.sql is applied (GitHub → Actions → d1-migrate)",
     enforced_by: ["POST /api/advisor/research action start → 503 feature_off", "site"] },
   /* «فرص مناسبة لمصنعك» (owner 2026-11-26: every new opportunity matched to each member's company profile automatically, with a score and
-     an alert, «so the member finds them ready»): OFF by default — the owner switches it on after migration 0016 and after reading the
-     alert e-mail's wording (template opp_matches in «البريد»). Locked until 0016 is applied. */
-  { key: "opp_matching", default: false, scope: "server",
+     an alert, «so the member finds them ready»): ON by default since 2026-11-28 (the owner asked for it after migration 0016 was applied;
+     he can still switch it off in «المطوّر»). Locked until 0016 is applied. */
+  { key: "opp_matching", default: true, scope: "server",
     label_ar: "فرص مناسبة لمصنعك (مطابقة تلقائية)", label_en: "Opportunities that fit your factory (automatic matching)",
     desc_ar: "كل مناقصة أو طلب عرض سعر أو مشروع جديد بيوصل المنصة (مركز المعلومات، ومناقصات وطلبات أسعار المنصة نفسها، و«فرص السوق» المنشورة) بيتقارن أوتوماتيك بملف كل عضو باقته فيها باسم: منتجاته (بالمرادفات وأشكال الكلمة)، وقطاعه، والسوق لازم يكون جوه باقته، والشهادات اللي الإعلان طالبها قصاد شهاداته، وإن آخر ميعاد لسه ماعداش. كل فرصة بتاخد درجة من 100 وأسباب المطابقة واللي ناقص، وبتظهر للعضو في حسابه، وباسم بيعرف أهم 3 فرص لسه ماشافهاش (من غير ما يذكر أي مصدر)، والفرص اللي درجتها 70 أو أكتر بتوصله في إيميل الصبح («فرص جديدة مناسبة لمصنعك»، 5 بالكتير في اليوم، لو ملخص المتابعات اليومي شغّال وهو مش موقّف الإيميلات). مفيش فرص متألّفة، وفرصة آخر ميعادها عدّى ماتتحسبش. مقفول: مفيش مطابقة ولا إيميل ولا سطر عند باسم.",
     desc_en: "Every new tender, RFQ or project that reaches the platform (the Information Center, the platform's own tenders and RFQs, and the published «Market opportunities») is compared automatically with the profile of every member whose plan includes Bassem: his products (with synonyms and word forms), his sector, the market — which must be inside his plan — the certificates the notice asks for against his own, and a deadline that has not passed. Each opportunity gets a score out of 100 with the reasons it fits and what is missing; it appears in the member's account, Bassem knows the top 3 the member has not seen yet (without naming any source), and those scoring 70 or more reach him in the morning e-mail («New opportunities that fit your factory», at most 5 a day, while the daily follows digest is on and he has not turned the e-mails off). No invented opportunities; an opportunity whose deadline passed is never counted. Off: no matching, no e-mail and no line for Bassem.",
