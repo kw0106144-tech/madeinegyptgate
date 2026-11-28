@@ -349,17 +349,24 @@ test("handleApi: POST /api/intel/tool {action:'doc'} → JSON; the document read
 });
 test("the item page keeps the markup Bassem's screen reader uses (data/bassem-live-tools.js intelRead), in both languages", () => {
   const src = { id: "za", name: "South Africa — National Treasury eTenders OCDS API", name_ar: "جنوب أفريقيا — بوابة المناقصات الحكومية" };
-  const ar = itemHtml({ ...RW, updated_at: "2026-11-19T10:00:00.000Z" }, src, "ar", "madeinegyptgate.com", NOW);
+  /* members-only (owner 2026-11-28, util.js lockedItem): an RFQ's page is its teaser for everyone — the reader's markup is the same, the
+     details are not in it (Bassem reads them through his tool, /api/intel/tool); the full card markup below is a news page's */
+  const lockedAr = itemHtml({ ...RW, updated_at: "2026-11-19T10:00:00.000Z" }, src, "ar", "madeinegyptgate.com", NOW);
+  assert.match(lockedAr, /<main id="main">/); assert.match(lockedAr, /<div class="sx-chips">[\s\S]*?<span class="sx-st sx-st-open"/);
+  assert.match(lockedAr, /التفاصيل للأعضاء — سجّل الآن/); assert.match(lockedAr, /href="\/register\/#basic"/);
+  for (const x of ["Rand Water", "etenders.gov.za", "بوابة المناقصات الحكومية", "<dt>الجهة</dt>", "<dt>القيمة التقديرية</dt>"]) assert.ok(!lockedAr.includes(x), x);
+  const lockedEn = itemHtml({ ...RW, updated_at: "2026-11-19T10:00:00.000Z" }, src, "en", "madeinegyptgate.com", NOW);
+  assert.match(lockedEn, /Details are for members — register/); assert.match(lockedEn, /href="\/register\/\?lang=en#basic"/); assert.ok(!lockedEn.includes("Rand Water"));
+  const ar = itemHtml({ ...RW, kind: "news", updated_at: "2026-11-19T10:00:00.000Z" }, src, "ar", "madeinegyptgate.com", NOW);
   assert.match(ar, /<main id="main">/);
-  assert.match(ar, /<div class="sx-chips">[\s\S]*?<span class="sx-st sx-st-open"/, "status chip");
   assert.match(ar, /<div class="wrap sx-main">[\s\S]*?<section class="card2"><p>طلب عرض أسعار من Rand Water/, "the summary: the card's first plain paragraph");
   for (const dt of ["الجهة", "السوق", "آخر موعد", "القيمة التقديرية"]) assert.match(ar, new RegExp('<dl class="sx-facts">[\\s\\S]*?<dt>' + dt + "</dt>"), dt);
   assert.match(ar, /<p class="note">مصدر رسمي: /); assert.match(ar, /<a class="btn btn-gold" href="https:\/\/www\.etenders\.gov\.za\//);
-  const en = itemHtml({ ...RW, title_en: "Supply of water treatment chemicals", summary_en: "Rand Water requests quotations.", updated_at: "2026-11-19T10:00:00.000Z" }, src, "en", "madeinegyptgate.com", NOW);
+  const en = itemHtml({ ...RW, kind: "news", title_en: "Supply of water treatment chemicals", summary_en: "Rand Water requests quotations.", updated_at: "2026-11-19T10:00:00.000Z" }, src, "en", "madeinegyptgate.com", NOW);
   for (const dt of ["Entity", "Market", "Deadline", "Estimated value"]) assert.match(en, new RegExp("<dt>" + dt + "</dt>"), dt);
   assert.match(en, /<p class="note">Official source: /);
   /* no excerpt label before a summary written by the platform; the source's own excerpt is marked as such */
-  const orig = itemHtml({ ...RW, summary_ar: null, summary_orig: "Supply and delivery of aluminium sulphate for 24 months.", updated_at: "2026-11-19T10:00:00.000Z" }, src, "ar", "madeinegyptgate.com", NOW);
+  const orig = itemHtml({ ...RW, kind: "news", summary_ar: null, summary_orig: "Supply and delivery of aluminium sulphate for 24 months.", updated_at: "2026-11-19T10:00:00.000Z" }, src, "ar", "madeinegyptgate.com", NOW);
   assert.match(orig, /<p class="note">مقتطف من المصدر:<\/p><p>Supply and delivery/);
 });
 test("itemText never invents: no deadline → said; an unknown currency code is kept as written", () => {

@@ -1,5 +1,5 @@
 /* migate-intel — public JSON API (/api/intel/*), Bassem's Anam SERVER_WEBHOOK (/api/intel/tool) and admin endpoints. */
-import { KIND_GROUPS, KINDS, KIND_LABEL, KIND_SEG, SITE, timingSafeEqual, cairoDay, addDays, fmtDay, fmtCairo, ID_RE, normText, sqlLit, clip, stripUrls, dayOf, canonicalUrl, stripContacts, hash53 } from "./util.js";
+import { KIND_GROUPS, KINDS, KIND_LABEL, KIND_SEG, SITE, timingSafeEqual, cairoDay, addDays, fmtDay, fmtCairo, ID_RE, normText, sqlLit, clip, stripUrls, dayOf, canonicalUrl, stripContacts, hash53, lockedItem, registerUrl } from "./util.js";
 import { readItemDoc, itemFile, TOPIC_AR } from "./doc.js";
 import { sectorIndex, sectorName, SECTORS } from "./sectors.js";
 import { marketFilter, marketsFilter, marketName, PLAN_SCOPE } from "./markets.js";
@@ -119,7 +119,14 @@ export async function queryItems(db, p, nowMs = Date.now(), cap = 1000, rankAll 
   if (o.freshSince) out.fresh = ranked.filter(r => (r.first_seen_at || "") >= o.freshSince).length;
   return out;
 }
-export function publicItem(r, lang, src) {
+/* o.full: the internal callers (Bassem's tool, the mail pack) read the record itself; every public answer of a locked kind is its teaser
+   (util.js lockedItem: owner 2026-11-28 — no entity, value, summary, official link or source) + members_only and register_url */
+export function publicItem(r, lang, src, o = {}) {
+  const out = publicFull(r, lang, src);
+  if (o.full || !lockedItem(r)) return out;
+  return { ...out, summary: null, entity: null, value: null, currency: null, url: null, source: null, locked: true, members_only: true, register_url: SITE + registerUrl(lang) };
+}
+function publicFull(r, lang, src) {
   const en = lang === "en";
   return {
     id: r.id, kind: r.kind, kind_label: KIND_LABEL[r.kind] ? KIND_LABEL[r.kind][en ? 1 : 0] : r.kind, tag: r.tag || null,
@@ -226,7 +233,7 @@ export function toolText(action, total, results, p = {}) {
 /* one result as the tool gives it: `page` / `open_url` = its page on the Information Center (the screen opens it), `url` = the official
    link (never read aloud). open_url is the name the screen tool (bassem_open_item url=…) already knows from janna_lookup. */
 function toolItem(r, sm) {
-  const pi = publicItem(r, "ar", sm && sm.get(r.source_id));
+  const pi = publicItem(r, "ar", sm && sm.get(r.source_id), { full: true });
   return { id: r.id, kind: r.kind, kind_label: pi.kind_label, title: pi.title, title_ar: pi.title, entity: r.entity || null, market: r.market, market_name: pi.market_name, country: r.country || null,
     deadline: dayOf(r.deadline), status: r.status, value: r.value ?? null, currency: r.value != null ? r.currency || null : null, url: r.url, page: pi.page, open_url: pi.page };
 }
@@ -281,7 +288,7 @@ function placeOf(r, pi) {
 /* the item in full (mailPack's card too, which keeps its source for the «ابعتلي» e-mail until the owner decides); the persona gets it
    through sayIntel (no source name) */
 function itemFull(r, src) {
-  const pi = publicItem(r, "ar", src), srcName = src ? src.name_ar || src.name : "";
+  const pi = publicItem(r, "ar", src, { full: true }), srcName = src ? src.name_ar || src.name : "";
   return { id: r.id, kind: r.kind, kind_label: pi.kind_label, title: pi.title, title_orig: r.title_orig, entity: r.entity || null, market: r.market, market_name: pi.market_name, country: r.country || null,
     sector: pi.sector, published: dayOf(r.published_at), deadline: dayOf(r.deadline), status: r.status, value: r.value ?? null, currency: r.value != null ? r.currency || null : null,
     summary: r.summary_ar ? stripContacts(stripUrls(r.summary_ar)) : null, summary_original: r.summary_orig ? clip(stripContacts(stripUrls(r.summary_orig)), 600) : null,

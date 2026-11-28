@@ -53,7 +53,7 @@ PAGES['project-news'] = ('أخبار المشاريع – صنع في مصر', '
 $("#r").innerHTML = MIGREG.opts("");
 function HAY(a) { return a.map(function (s) { s = String(s == null ? "" : s); return s + " " + (window.MIGHAY ? MIGHAY(s) : ""); }).join(" ").toLowerCase(); }
 function render() { var q = $("#q").value.trim().toLowerCase(), r = $("#r").value; var l = MIG.NEWS.filter(function (n) { var p = MIG.proj(n[1]); return (!q || HAY([n[2], p ? p[1] : ""]).indexOf(q) > -1) && (!r || (p && MIGREG.of(p[2]) === r)); });
-  $("#pn").innerHTML = l.length ? l.map(function (n) { var p = MIG.proj(n[1]); return '<a href="project.html#' + n[1] + '"><small class="num">📅 ' + MIG.dAr(n[0]) + '</small><span><b>' + n[2] + '</b><br><small>' + (p ? '🏗️ ' + p[1] + ' · 📍 ' + p[3] : '') + '</small></span><span class="go">المشروع ←</span></a>'; }).join("") : '<div class="card2">لا توجد أخبار بهذا البحث.</div>'; }
+  $("#pn").innerHTML = l.length ? l.map(function (n) { var p = MIG.proj(n[1]); return '<a href="project.html#' + n[1] + '"><small class="num">📅 ' + MIG.dAr(n[0]) + '</small><span><b>' + (n[2] || '🔒 خبر المشروع للأعضاء — سجّل الآن') + '</b><br><small>' + (p ? '🏗️ ' + p[1] + ' · 📍 ' + p[3] : '') + '</small></span><span class="go">المشروع ←</span></a>'; }).join("") : '<div class="card2">لا توجد أخبار بهذا البحث.</div>'; }
 $("#q").addEventListener("input", render); $("#r").addEventListener("change", render); render();
 ''')
 HEROS['project-news'] = ('m1.jpg', '<a href="projects.html">المشاريع</a> › أخبار المشاريع', 'أخبار المشاريع', 'آخر التطورات في المشاريع المعلنة في مصر: ترسيات، وبدء تنفيذ، ومراحل جديدة، مع رابط لكل مشروع وموادّه المطلوبة.', '<a class="btn btn-gold" href="projects.html">كل المشاريع</a>')

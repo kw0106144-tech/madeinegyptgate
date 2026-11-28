@@ -17,6 +17,7 @@
    Static imports (contract §0.2): ./common.js, ./auth.js, ./data.json only. Cross-area calls go through the CC object (payments'
    payReady, the e-mail center's renderTemplate) and are optional: without them this module still works with honest defaults.
    Every module-level cache is keyed by env.DB (WeakMap): the test suite creates many environments in one process. */
+import { splitRec } from "./opp-fields.js"; // members-only opportunities (owner 2026-11-28): the locked fields never reach the public overlay
 import { readJson, line, now, iso, hmac, safeEq, jparse, secretOf, cairoDay, site, rateOk, GOV_CODES, isEmail, emailKey, mail, notify, effPlan, PLAN_LV } from "./common.js";
 import * as COMMON from "./common.js"; // planCan / planLimit arrive with integration patch P-W2 — used when present (runtime check)
 import { authUser, isLinkSession } from "./auth.js";
@@ -693,13 +694,14 @@ async function compileOverlay(env, rows, v, CC, prevData) {
     const e = {}, h = [], a = [];
     for (const r of (by[coll] || []).slice().sort(order)) {
       const live = liveOf(r), hiddenLive = !!(r.deleted || (r.live_json && r.live_hidden));
+      /* members-only opportunities (opp-fields.js): the locked fields of tenders / RFQs / awards / projects stay out of the public overlay */
       if (r.kind === "base") {
         if (hiddenLive && (r.live_json || r.deleted)) { h.push(r.base_key); if (r.seo_path) hp.add(r.seo_path); }
-        else if (live && Object.keys(live).length) { const rec = pubRec(coll, live); e[r.base_key] = rec; trPairs(coll, rec, tr); }
+        else if (live && Object.keys(live).length) { const rec = splitRec(coll, pubRec(coll, live))[0]; if (Object.keys(rec).length) e[r.base_key] = rec; trPairs(coll, rec, tr); }
       } else {
         if (!live || hiddenLive) { if (live && r.seo_path) hp.add(r.seo_path); continue; }
         if (coll === "video" && live.verified_oembed !== true) continue;
-        const rec = pubRec(coll, live); a.push(rec); trPairs(coll, rec, tr);
+        const rec = splitRec(coll, pubRec(coll, live))[0]; a.push(rec); trPairs(coll, rec, tr);
       }
     }
     h.sort();

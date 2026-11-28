@@ -138,7 +138,8 @@ test("the RW row: its official PDF attached (bytes exact, name from Content-Disp
       const canon = p1.headers.get("location");
       assert.match(canon, /^https:\/\/madeinegyptgate\.com\/intel\/(?:en\/)?rfq\/supply-and-delivery-of-water-treatment-chemicals-rw0000000a1\/$/);
       const p2 = await handlePages(new Request(canon), env, { waitUntil() {} });
-      assert.equal(p2.status, 200, canon); assert.match(await p2.text(), /Rand Water/);
+      /* members-only (util.js lockedItem): the page is the teaser — the card above (the binding) keeps the entity */
+      const body = await p2.text(); assert.equal(p2.status, 200, canon); assert.ok(!body.includes("Rand Water")); assert.match(body, /التفاصيل للأعضاء|Details are for members/);
     }
   } finally { globalThis.fetch = saved; }
 });

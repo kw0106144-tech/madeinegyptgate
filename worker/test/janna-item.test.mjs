@@ -10,8 +10,14 @@ import { resumeContext, resumeTurns, cleanTurn, RESUME_MAX_CHARS } from "../src/
 
 const S = "https://madeinegyptgate.com";
 const NOW = Date.parse("2026-11-18T12:00:00Z");
-async function call(path, { method = "GET", body, headers = {}, env = {} } = {}) {
-  const init = { method, headers: { ...headers } };
+/* members-only opportunities (owner 2026-11-28, src/opp-lock.js): these lookups are a Bassem call's webhook — its Anam session's label says
+   «madeinegyptgate-bassem-…» (Anam's GET /v1/sessions/<id> is mocked here) — so they get the full records; a visitor's teaser and the
+   member / plan rules are tested in opp-lock.test.mjs */
+const MEMBER_SID = "b0b0b0b0-0000-4000-8000-000000000001";
+const _fetch0 = globalThis.fetch;
+globalThis.fetch = async (u, init) => (String(u).startsWith("https://api.anam.ai/v1/sessions/") ? new Response(JSON.stringify({ clientLabel: "madeinegyptgate-bassem-ar" }), { status: 200, headers: { "Content-Type": "application/json" } }) : _fetch0(u, init));
+async function call(path, { method = "GET", body, headers = {}, env = { ANAM_API_KEY: "anam-test-key" } } = {}) {
+  const init = { method, headers: { "X-Anam-Session-Id": MEMBER_SID, ...headers } };
   if (body !== undefined) { init.headers["Content-Type"] = "application/json"; init.body = typeof body === "string" ? body : JSON.stringify(body); }
   const r = await worker.fetch(new Request(S + path, init), env, {});
   return { status: r.status, data: await r.json().catch(() => null), headers: r.headers };

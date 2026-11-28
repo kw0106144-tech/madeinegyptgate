@@ -495,6 +495,35 @@ Code: `src/auth.js` (login) · `src/me.js` (account) · `src/inquiries.js` (engi
 
 All JSON; errors are `{error, code}`; auth = `Authorization: Bearer <token>` (the page keeps it in localStorage `mig-tok`).
 
+## Members-only opportunities — src/opp-lock.js, src/opp-fields.js, tools/opp_split.js, data/opp-full.js (owner decision 2026-11-28)
+
+Tenders, RFQs, project news, procurement news, contract awards and the contractors' material requests are for members. A visitor sees
+the lists with the titles (sector, governorate, country, dates, status); every click on an item opens `/register/#<plan>` with the plan
+that includes it (Egypt → basic, Gulf → premium, Africa → partner, Asia / Europe → strategic, procurement news → premium).
+
+- **The split (build time).** The repository keeps the full records (the daily update and the Control Center write them as before).
+  `tools/opp_split.js` writes the published copies of `data/oldtend.js`, `oldrfq.js`, `real.js`, `projects.js` with the teaser fields
+  only (site.py, into `<site>/data/`), and `worker/build-items.js` puts the locked fields into `src/items.json` `L` (code, never a file).
+  Locked: a tender's entity, booklet, bond, source, description and procurement contacts; an RFQ's details, delivery and quantity; an
+  award's winner, awarding entity, values and source; a project's value, owner, contractor, consultant, news text and source; a lead's
+  notes and link. The published Control Center edits (`/data/overlay.js`) leave the same fields out (`opp-fields.js`, content.js).
+- **`GET /api/me/opps[?sets=t,q,rt,ri,ra,rn,p,l,en,ov]`** — Bearer (platform session, an e-mailed link session included, or Bassem's
+  advisor token). 401 `login_required` · 403 `plan` {need} · 429 `rate_limited` (120 an hour a member) · 200 {sets, withheld}. Egypt's
+  sets need the market «local» of the plan in force, an international tender its market (the Gulf: the member's chosen states), the
+  procurement news the «procurement» capability; staff (role admin, ADMIN_EMAILS, cc_staff owner / admin / manager / editor / support /
+  data) get everything. `ov` = the locked fields of the published Control Center edits (cc_content, ≤ 1 read a minute per isolate).
+- **The assistants' tools.** `/api/janna/lookup`, `/api/janna/item` and `/api/janna/opportunities` decide who asks with `viewerOf`: a
+  Bearer, else `X-Anam-Session-Id` (Anam's webhooks) → Anam `GET /v1/sessions/<id>` (memoised per isolate) → its clientLabel's tag →
+  the calls-report row (`call_sessions`, 0011) → the member's plan; a Bassem call (minted only for a Bassem plan or staff) reads as a
+  member without its row. A caller who may not see an item gets its teaser (`locked: true`, `need`) and the answer carries
+  `members_only`, `need`, `register_url`, `hint` (also appended to `text`, so the persona says the details are for members and invites
+  the registration). Internal callers (the calls report, Bassem's deep research, the «ابعتلي» mail) read the full records.
+- **The page.** `data/opp-full.js` (before `data/real.js` on every app page and on `/admin/`) reads `/api/me/opps` once a session for a
+  member (kept in sessionStorage for an hour under his token) and puts the fields back; the Control Center refuses to edit these
+  collections from a partial copy. Generated pages (`seo_build.part.py` `lock_member_details`) keep the indexable teaser and show
+  «التفاصيل للأعضاء — سجّل الآن» / "Details are for members — register"; their JSON-LD has no locked field.
+- Tests: `test/opp-lock.test.mjs` (the split, the endpoint per plan, the tools' teasers, Anam sessions).
+
 ## What the web shows about the member — src/member-web.js (owner 2026-11-21; migration 0013)
 
 Bassem once called a member «رئيس مجلس إدارة» without knowing it; the owner wants him to know who he is talking to. **Not a tool of the
