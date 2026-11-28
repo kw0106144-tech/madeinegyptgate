@@ -12,6 +12,10 @@
                                                  («محتاج تدخل», like a request without a match); the console's manual resend still routes
      bassem_morning            whatsapp.js       bassemCron: the morning message is skipped («كلّمني الساعة» keeps working)
      daily_digest              digest.js         dailyJobs: digests + deadline reminders skipped (the item sync and housekeeping still run)
+     member_daily_report       daily-mail.js     the 10:00 member / partner (PDF) reports skipped (locked until migration 0015)
+     request_teasers           teasers.js        no teaser to unregistered directory factories (locked until migration 0015)
+     owner_daily_report        daily-mail.js     the owner's daily report to TEAM_EMAIL skipped (locked until migration 0015)
+     info_alerts               info-alerts.js    no instant alert to TEAM_EMAIL (a member's e-mail stop, «couldn't register»)
      whatsapp_send             whatsapp.js       waLive() false → every send is a dry run: an extra OFF on top of «مفاتيح الخدمات»
                                acc-keys.js       POST /keys/wa-test (the owner's test message) → 409 feature_off; can_send_test false
      bassem_web_search         websearch.js      POST /api/advisor/web → feature_off (200, the model hears the text)
@@ -127,6 +131,30 @@ export const FEATURES = Object.freeze([
     desc_ar: "إيميل وإشعار الصبح بالجديد اللي يطابق متابعات العضو، وتذكير قبل آخر موعد بـ 7 أيام وبيوم. لو قفلته، مفيش ملخصات ولا تذكيرات.",
     desc_en: "The morning e-mail / notification with new items matching a member's follows, and reminders 7 days and 1 day before a deadline. Off: no digests and no reminders.",
     enforced_by: ["cron: daily digests + deadline reminders"] },
+  /* the owner's 2026-11-28 mail decisions (daily-mail.js, teasers.js, info-alerts.js; migration 0015): all ON by default (his decision) */
+  { key: "member_daily_report", default: true, scope: "server",
+    label_ar: "التقرير اليومي للأعضاء الساعة 10 الصبح (إيميل)", label_en: "Members' daily report at 10:00 (e-mail)",
+    desc_ar: "كل يوم الساعة 10 الصبح بتوقيت القاهرة، كل عضو مسجّل بيوصله إيميل بالفرص والأخبار الجديدة اللي تطابق منتجاته وقطاعه (في حدود باقته)، والطلبات اللي وصلته واللي لسه مستنية رده. أعضاء باقات الشركاء بيوصلهم «تقرير باسم اليومي» ومعاه ملف PDF بكل التفاصيل. مفيش جديد = مفيش إيميل، وفي كل إيميل رابط إيقاف. لو قفلته، مفيش تقارير.",
+    desc_en: "Every day at 10:00 Cairo time each registered member gets an e-mail with the new opportunities and news matching his products and sector (within his plan) and the requests he received or still has to answer. Partner plans get «Bassem's daily report» with a PDF holding every detail. Nothing new = no e-mail; every e-mail has a stop link. Off: no reports.",
+    lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0015_mail_reports.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0015_mail_reports.sql is applied (GitHub → Actions → d1-migrate)",
+    enforced_by: ["cron: the 10:00 member / partner reports"] },
+  { key: "request_teasers", default: true, scope: "server",
+    label_ar: "دعوة المصانع غير المسجّلة للطلبات الجديدة (إيميل)", label_en: "New-request invitations to unregistered factories (e-mail)",
+    desc_ar: "لما مشتري يبعت طلب، المصانع المسجّلة المطابقة بيوصلها الطلب كامل زي الأول، والمصانع اللي في الدليل ومش مسجّلة وليها إيميل شركة رسمي (info@ / sales@ … على موقع الشركة نفسها، عمره ما يكون إيميل شخص) بيوصلها عنوان الطلب والقطاع والمنطقة وآخر موعد بس ورابط التسجيل — من غير اسم المشتري ولا بيانات تواصل ولا كميات ولا قيمة. إيميل واحد لكل طلب لكل مصنع، حد يومي، ورابط إيقاف. لو قفلته، مفيش دعوات.",
+    desc_en: "When a buyer sends a request, matching registered factories get the full request as before; directory factories that are not registered and have an official company address (info@ / sales@ … on the company's own domain, never a person's) get only the request's title, sector, region and closing date with the registration link — no buyer, no contact, no quantity, no value. One e-mail per request per factory, a daily cap, a stop link. Off: no invitations.",
+    lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0015_mail_reports.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0015_mail_reports.sql is applied (GitHub → Actions → d1-migrate)",
+    enforced_by: ["cron: request teasers (every 15 minutes)"] },
+  { key: "owner_daily_report", default: true, scope: "server",
+    label_ar: "تقرير المالك اليومي على info@ (إيميل)", label_en: "Owner's daily report to info@ (e-mail)",
+    desc_ar: "كل يوم بعد نص الليل بيوصل لإيميل المنصة (info@madeinegyptgate.com) تقرير باللي اتنشر على المنصة اليوم اللي فات (عدد وعناوين لكل قسم) وكل إيميل المنصة بعته (الشركة والإيميل واتبعتله إيه). لو قفلته، مفيش تقرير.",
+    desc_en: "Every night after midnight the platform's mailbox (info@madeinegyptgate.com) gets a report of what was published the day before (counts and titles per section) and every e-mail the platform sent (company, address, what). Off: no report.",
+    lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0015_mail_reports.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0015_mail_reports.sql is applied (GitHub → Actions → d1-migrate)",
+    enforced_by: ["cron: the owner's daily report"] },
+  { key: "info_alerts", default: true, scope: "server",
+    label_ar: "تنبيهات فورية على info@ (إيقاف الإيميلات ومشاكل التسجيل)", label_en: "Instant alerts to info@ (e-mail stops, registration trouble)",
+    desc_ar: "إيميل فوري لإيميل المنصة لما عضو يوقّف الإيميلات (الشركة والإيميل والوقت — الإيقاف بيوقف الإيميلات بس، مفيش حذف حساب ولا بيانات)، ولما حد يقول لجنة أو باسم إنه كان عايز يسجّل ومعرفش (قال إيه، بيانات التواصل اللي ادّاها، والوقت). لو قفلته، مفيش تنبيهات.",
+    desc_en: "An instant e-mail to the platform's mailbox when a member stops e-mails (company, address, time — only the e-mails stop, no account or data is deleted) and when someone tells Janna or Bassem they wanted to register but could not (what they said, the contact they gave, the time). Off: no alerts.",
+    enforced_by: ["POST /api/unsub (a member's stop) → alert", "POST /api/janna/register-help · /api/advisor/register-help", "the call memory (user turns)", "POST /api/inquiries (the message)"] },
   { key: "calls_report", default: true, scope: "server",
     label_ar: "تقرير مكالمات جنة وباسم اليومي (إيميل)", label_en: "Daily Janna & Bassem calls report (e-mail)",
     desc_ar: "كل يوم الصبح في الميعاد اللي بتحدده (الافتراضي ٨:٣٠ بتوقيت القاهرة) بيوصل لمستلمي التقرير إيميل بمكالمات جنة وباسم في اليوم اللي فات: مين كلّم، سأل عن إيه، اتقاله إيه، الأدوات رجّعت إيه، النتيجة، وتقييم تلقائي لكل مكالمة. لو قفلته، مفيش تقرير ولا أي قراية من Anam علشانه.",
@@ -385,6 +413,7 @@ export async function stateOf(env, d) {
       if (!(await researchStoreOn(env))) return { locked: T("migration_needed", "مقفول لحد ما ملف قاعدة البيانات 0014_research.sql يتشغّل (GitHub ← Actions ← d1-migrate)", "Locked until the database file 0014_research.sql is applied (GitHub → Actions → d1-migrate)"), needs: null, ready: false };
       return NONE;
     }
+    if (d.key === "member_daily_report" || d.key === "request_teasers" || d.key === "owner_daily_report") return (await mailStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
     if (d.key === "web_leads" || d.key === "web_leads_public" || d.key === "web_leads_lookup") return (await leadsStoreOn(env)) ? NONE : { locked: T("migration_needed", d.lock_rule_ar, d.lock_rule_en), needs: null, ready: false };
     // the daily calls report (calls-report.js): an e-mail route (the e-mail center's config, RESEND_API_KEY or the SEND_EMAIL binding) and a recipient
     if (d.key === "calls_report") {
@@ -426,6 +455,14 @@ export async function leadsStoreOn(env) {
   LEADS_MEMO.set(db, { ok, at: Date.now() }); return ok;
 }
 export const forgetLeadsStore = env => { const db = dbOf(env); if (db) LEADS_MEMO.delete(db); };
+/* migration 0015 (mail_sends, the owner's 2026-11-28 mail decisions) applied? the same memo rule */
+const MAIL_MEMO = new WeakMap(); // env.DB → {ok, at}
+export async function mailStoreOn(env) {
+  const db = dbOf(env); if (!db) return false;
+  const m = MAIL_MEMO.get(db); if (m && (m.ok || Date.now() - m.at < 60000)) return m.ok;
+  let ok = false; try { await db.prepare("SELECT 1 AS x FROM mail_sends LIMIT 1").first(); ok = true; } catch (e) { ok = false; }
+  MAIL_MEMO.set(db, { ok, at: Date.now() }); return ok;
+}
 /* migration 0014 (research_jobs, «بحث وكتابة عميقة») applied? the same memo rule */
 const RESEARCH_MEMO = new WeakMap(); // env.DB → {ok, at}
 export async function researchStoreOn(env) {

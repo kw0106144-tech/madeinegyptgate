@@ -64,6 +64,7 @@ import { roleOf, sessionVia, ROLE_PERMS, auditStmt, hasTable, rid } from "./acc-
 import { originOf, originOk } from "./janna-session.js";
 import { syncTasks, tasksContext, tasksApi, tasksOn } from "./tasks.js";           // 0009: the tasks of each call
 import { captureKnowledge, knownWords } from "./knowledge.js";                       // 0009: «بنك المعلومات»
+import { checkTurns } from "./info-alerts.js";                                     // «wanted to register but couldn't» → an alert to info@ (owner 2026-11-28)
 
 export const CONTEXT_MAX = 3000, RECALL_MAX = 8; // 0009: + the open tasks and «ملخص العميل» (janna-session.js still caps the whole block at BLOCK_MAX)
 /* every kind the table holds (0008 CHECK): this API writes search / turn / summary / fact, the daily job (daily.js) writes day; tasks and
@@ -768,7 +769,8 @@ export async function writeMemory(env, id, b, { nowMs = Date.now(), cors = "", a
     if (kind === "summary" && Array.isArray(b.tools) && b.tools.length > LIM.tools) return bad("tools", cors, "at most " + LIM.tools);
     if (!(await rowsOk(env, id, tr.rows.length + (kind === "summary" ? 1 : 0), nowMs))) return cap();
     await store(env, await turnRows(id, callId, tr.rows, at, agent));
-    if (kind === "turns") return out({ ok: true, kind: "turns", stored: tr.rows.length }, 201, cors);
+    if (kind === "turns") { await checkTurns(env, id, agent, tr.rows, nowMs); return out({ ok: true, kind: "turns", stored: tr.rows.length }, 201, cors); } // «wanted to register but couldn't» → info@
+
     const startedAt = typeof b.started_at === "string" && Number.isFinite(Date.parse(b.started_at)) ? iso(Date.parse(b.started_at)) : "";
     const s = await rebuildSummary(env, id, callId, { tools: toolsOf(b.tools), final: b.final === true, startedAt, nowMs, agent, lang });
     if (s.empty) return out({ ok: true, kind: "summary", summary: null, skipped: "no_client_words", text: "" }, 201, cors); // U18: no visit

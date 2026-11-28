@@ -375,7 +375,7 @@ describe("honesty: settings that really apply, notifications, follows", () => {
     await env.DB.prepare("INSERT INTO unsubscribes (email_key, list, created_at) VALUES ('d@x.test', 'all', 'x')").run();
     await api(env, "POST", "/api/me/prefs", { token: u.token, body: { email_digest: true } });
     const rows = (await env.DB.prepare("SELECT list FROM unsubscribes ORDER BY list").all()).results.map(x => x.list);
-    assert.deepEqual(rows, ["bassem", "incoming", "updates"]); // digest back on, the rest of "all" kept (bassem = Bassem's daily e-mail)
+    assert.deepEqual(rows, ["bassem", "daily", "incoming", "teaser", "updates"]); // digest back on, the rest of "all" kept (bassem = Bassem's daily e-mail; daily = the 10:00 report; teaser = 2026-11-28)
   });
   test("follows: market / product kinds accepted; page ids (ET003, OT-…) resolve for deadline reminders; links open the item", async () => {
     const env = env0();

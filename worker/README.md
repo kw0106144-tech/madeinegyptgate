@@ -50,7 +50,7 @@ Then: `cd /home/user/madeinegyptgate && node worker/build-index.js` (cleaned dat
   `in_progress`, receipt e-mail with Reply-To `TEAM_EMAIL`) · bell for every admin account (`team_needed`, url `inbox.html#<REF>`) ·
   e-mail to `TEAM_EMAIL` + `ADMIN_EMAILS` with the candidate factories · `GET /api/admin/inquiries/:id` → `needs_team`, `candidates[]`
   `{name, governorate, sector, source:"directory"|"web", url, profile_url, snippet, origin, score}` (admins only; directory = not
-  registered, never contacted) · `POST /api/admin/inquiries/:id/candidates/refresh` → `{candidates, web_search, at}` ·
+  registered: they never get the request itself — only the teaser of `src/teasers.js`, see «Request teasers» below) · `POST /api/admin/inquiries/:id/candidates/refresh` → `{candidates, web_search, at}` ·
   `POST /api/admin/inquiries/:id/reply {body, body_en?, channel:"email"|"whatsapp"|"both", status?:"in_progress"|"replied"|"closed"}` →
   `{ok, sent:{email, whatsapp}, status, fallback?}` («إحنا اللي هنرد»: buyer-visible event `team_reply`, actor `team`; WhatsApp only with an
   approved buyer template — otherwise the e-mail carries it). List: `items[].needs_team`, `counts.needs_team`, `?status=needs_team`.
@@ -586,8 +586,10 @@ Refs look like `MIG-26-7KQ4PX` (6 random characters). The buyer's receipt links 
 
 ## How the automatic routing works (owner decision 1)
 - **Who can receive:** only REGISTERED members on basic, premium, partner or strategic, whose plan was set by the platform
-  (`verified`), not expired, with an email, and not paused (`inbox_paused`, or "incoming" unsubscribed). Directory
-  factories that are not members are never contacted. Factory phones are never shown; buyer email/phone are never sent to
+  (`verified`), not expired, with an email, and not paused (`inbox_paused`, or "incoming" unsubscribed). Unregistered
+  directory factories may receive ONLY the teaser (title + registration link) at their official company e-mail, one per request, with a
+  stop link; the full request goes only to registered members (owner decision 2026-11-28, `src/teasers.js`). The full request asks the
+  member to answer within one business day. Factory phones are never shown; buyer email/phone are never sent to
   factories — both sides write through the platform addresses.
 - **Matching** (`src/matching.js`): sector + products/keywords of the member vs. the request text, product, sector and
   basket items, with Arabic normalisation (أ/إ/آ→ا, ة→ه, ى→ي, diacritics, «ال», plural/nisba endings, stop words and
@@ -621,6 +623,46 @@ Refs look like `MIG-26-7KQ4PX` (6 random characters). The buyer's receipt links 
   becomes `replied`. Factories get a bell notification for each routed request and each buyer message.
 - **Cron (every 15 min):** one reminder to a factory that has not answered after 48 h; auto-close after 30 days with a
   final email; once a day after 07:00 Cairo: follow digests and 7-day / 1-day deadline reminders; Bassem's WhatsApp.
+
+## Request teasers, the daily reports, the owner's report and the alerts to info@ — src/teasers.js, src/daily-mail.js, src/info-alerts.js, src/mail-sends.js, src/pdf-report.js (owner decisions 2026-11-28; migration 0015)
+
+- **Request teasers** (`teasers.js`, switch `request_teasers`, default ON). Every 15 minutes (platform cron, `daily-mail.js mailCron`) the
+  open requests (rfq, basket, a contact on a factory's page) of the last 3 days, at least 10 minutes old, are looked at once: the
+  directory profiles the matching engine lists (`candidates.js directoryCandidates`; a targeted request: only its target) that are NOT a
+  member's profile and have an OFFICIAL company address get the teaser — the title (amounts, quantities, phones, e-mails, links removed),
+  sector, region, closing date, the registration link with the plan that receives that market (`/register/#basic|premium|partner|strategic`)
+  and «you can answer within one business day after creating an account». Never the buyer, a contact, a quantity or a value. Addresses:
+  `directory_contacts` (0015; the team adds them: `GET|POST /api/admin/cc/outreach/contacts`, `DELETE …/:id` — permissions
+  `legacy.contacts` / `directory.write`, audited) and `cc_legacy_companies` rows linked to the profile (`factory_ref`), both through
+  `officialEmail()` (a role mailbox — info@, sales@, contact@ … — on the company's own domain, never free mail, never a person's name; the
+  domain must be the source page's / web site's). One per request per address (`mail_sends`), one per address per Cairo day, a daily cap
+  `TEASER_DAILY_CAP` (default 50), `TEASER_PER_REQUEST` (default 5), list `teaser` (List-Unsubscribe header + link; a stopped address is
+  skipped), the block list, and nothing while the owner's `registrations` switch is off.
+- **The full request** to matching members (`inquiries.js sendRoute`) now asks them to answer within one business day.
+- **«التقرير اليومي»** (`daily-mail.js`, switch `member_daily_report`, default ON): from 10:00 Cairo (`MEMBER_REPORT_TIME`) to 21:00, in
+  batches of 15 a tick, every registered member (plan in force other than visitor; never a directory profile): the new items of the last
+  24 h (digest.js `seen_items`; projects from `items.json j`, first seen tracked as `seen_items` kind `project` with its own baseline)
+  matching his sector / products / factory profile products — tenders, RFQs, projects, procurement news, awards inside his plan
+  (`digest.js inScope`), news for everyone — and his own activity (requests received in 24 h, requests waiting for his answer).
+  What matches outside his plan is only counted with the plan that includes it; a count alone sends nothing. Nothing to report → no
+  e-mail. List `daily`, template `member_daily_report` (`mday-`).
+- **Bassem's daily report** (partner / strategic — the plans with `bassem`): the same e-mail as `partner_daily_report` (`pday-`) with a PDF
+  (`pdf-report.js`: Arabic shaped right to left, DejaVu Sans subset in `pdf-font.js`, multi-page) holding every detail: opportunities
+  with entity, sector, place, dates and status, the matching requests, the news and the day's market counts in his plan. The PDF only
+  goes on a route that carries attachments (Resend / Brevo). Bassem's morning note (`whatsapp.js`) is unchanged.
+- **«تقرير المالك اليومي»** (switch `owner_daily_report`, default ON): from 00:30 Cairo (`OWNER_REPORT_TIME`) for the day that ended, to
+  `TEAM_EMAIL` (info@madeinegyptgate.com): what was published (the items that first appeared, per section with titles; members' approved
+  products and company profiles; new members; requests received) and every e-mail sent that day (time, company, address, template,
+  masked subject — `mail_outbox`, written by `email-center.js` for every sent message and kept 3 days), with a CSV of the list. The only
+  place recipient addresses appear.
+- **Alerts to info@** (`info-alerts.js`, switch `info_alerts`, default ON, no migration needed — the dedupe is in `rl`): a member stops
+  e-mails (`ev.js` POST `/api/unsub`, any e-mail list or `all`: company, address, list, time — only those e-mails stop, nothing is deleted);
+  someone could not register — the tool `POST /api/janna/register-help` · `/api/advisor/register-help` (`{said, name?, company?, email?,
+  phone?, page?}`, X-Janna-Key when JANNA_KEY is set, 6 an hour per network, always 200 with a `text` for the persona; definitions:
+  `docs/janna/REGISTER-HELP-TOOL.md`), the user turns of Janna's / Bassem's call memory (`memory.js` → `checkTurns`, `regTrouble()`), and
+  a request / message that says it (`inquiries.js`). One alert per speaker per day, 40 a day at most.
+- Without migration `0015_mail_reports.sql` the teasers and reports are skipped (`mailCron` → `no_0015`; the three switches show «locked»).
+- Tests: `test/mail-reports.test.mjs`.
 
 ## Plans (server truth; owner decision 3)
 `visitor` (signed in, no plan) · `profile` ("بيانات الشركة فقط", alias `data`) · `basic` · `premium` · `partner` · `strategic`.

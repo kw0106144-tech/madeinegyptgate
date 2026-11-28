@@ -7,6 +7,7 @@
    GET  /api/unsub?e=&l=&s=   → confirmation page (link scanners do not unsubscribe anyone)
    POST /api/unsub?e=&l=&s=   → unsubscribed (also RFC 8058 one-click "List-Unsubscribe=One-Click"); the result page offers to
                                 turn it back on (action=resub, same signed link) — and so do the account settings. */
+import { unsubAlert } from "./info-alerts.js"; // a MEMBER's stop → an instant alert to the platform's own mailbox (owner 2026-11-28)
 import { json, err, preflight, line, sha256, hmac, safeEq, unb64url, now, secretOf, LISTS, cairoDay, esc, rateOk, ipHash, site, membersByMailbox, resubscribe, prefsOf } from "./common.js";
 
 const METRICS = ["view", "wa_click", "web_click", "inquiry"];
@@ -52,14 +53,14 @@ export async function handleEv(req, env) {
 
 const page = (title, body, form) => new Response(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>${esc(title)}</title><style>body{font-family:Tahoma,Arial,sans-serif;background:#f6f4ee;color:#1d2b22;margin:0;padding:40px 16px}main{max-width:520px;margin:auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 10px 30px -15px rgba(0,0,0,.25)}button{background:#0b5d3b;color:#fff;border:0;border-radius:999px;padding:10px 22px;font:inherit;cursor:pointer}button.alt{background:#fff;color:#0b5d3b;border:1px solid #0b5d3b}p[dir=ltr]{color:#555}</style></head><body><main>${body}${form || ""}</main></body></html>`,
   { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'", "X-Frame-Options": "DENY" } });
-const NAMES = { digest: ["ملخص المتابعات وتذكير المواعيد", "follow digests and deadline reminders"], updates: ["تحديثات طلباتك", "updates on your requests"], incoming: ["الطلبات الواردة من المنصة", "incoming requests from the platform"], bassem: ["رسالة باسم اليومية على الإيميل", "Bassem's daily e-mail"], all: ["كل رسائل المنصة (عدا أكواد الدخول)", "all platform emails (except sign-in codes)"], whatsapp: ["رسائل الواتساب من المنصة", "WhatsApp messages from the platform"] };
+const NAMES = { digest: ["ملخص المتابعات وتذكير المواعيد", "follow digests and deadline reminders"], updates: ["تحديثات طلباتك", "updates on your requests"], incoming: ["الطلبات الواردة من المنصة", "incoming requests from the platform"], bassem: ["رسالة باسم اليومية على الإيميل", "Bassem's daily e-mail"], daily: ["التقرير اليومي من المنصة (الساعة 10 الصبح)", "the platform's daily report (10:00)"], teaser: ["دعوات الطلبات الجديدة في مجالكم من المنصة", "invitations about new requests in your field"], all: ["كل رسائل المنصة (عدا أكواد الدخول)", "all platform emails (except sign-in codes)"], whatsapp: ["رسائل الواتساب من المنصة", "WhatsApp messages from the platform"] };
 async function setDigest(env, key, on) {
   for (const m of await membersByMailbox(env, key, "id, prefs_json")) { const p = prefsOf(m); p.email_digest = on; await env.DB.prepare("UPDATE members SET prefs_json = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(p), now(), m.id).run(); }
 }
 async function setInbox(env, key, on) {
   for (const m of await membersByMailbox(env, key, "id")) await env.DB.prepare("UPDATE members SET inbox_paused = ?, updated_at = ? WHERE id = ?").bind(on ? 0 : 1, now(), m.id).run();
 }
-export async function handleUnsub(req, env) {
+export async function handleUnsub(req, env, ctx) {
   env = env || {};
   const url = new URL(req.url), e = url.searchParams.get("e") || "", l = url.searchParams.get("l") || "", s = url.searchParams.get("s") || "";
   const good = LISTS.includes(l) && /^[A-Za-z0-9_-]{4,400}$/.test(e) && safeEq(s, (await hmac(secretOf(env) || "mig", "unsub|" + e + "|" + l)).slice(0, 22));
@@ -82,6 +83,7 @@ export async function handleUnsub(req, env) {
   await env.DB.prepare("INSERT INTO unsubscribes (email_key, list, created_at) VALUES (?, ?, ?) ON CONFLICT(email_key, list) DO NOTHING").bind(key, l, now()).run();
   if (l === "incoming" || l === "all") await setInbox(env, key, false);
   if (l === "digest" || l === "all") await setDigest(env, key, false);
+  { const a = unsubAlert(env, key, l).catch(() => null); if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(a); else await a; } // only the e-mails stop: nothing is deleted
   return page("تم", `<h2>تم الإيقاف ✅</h2><p>مش هتوصلك رسائل «${esc(NAMES[l][0])}» تاني. لو ضغطت بالغلط تقدر ترجّعها من الزرار ده (الرابط بيفضل شغال)${l === "incoming" ? "، أو من «الواتساب والإيميل» في لوحة التحكم" : l === "digest" ? "، أو من اختيار «ملخص المتابعات على الإيميل» في لوحة التحكم" : ""}.</p><p dir="ltr">Done — you will no longer receive ${esc(NAMES[l][1])}. Clicked by mistake? Turn it back on with this button (the link keeps working).</p>`,
     `<form method="post"><input type="hidden" name="action" value="resub"><button class="alt" type="submit">رجّعها تاني / Turn it back on</button></form>`);
 }

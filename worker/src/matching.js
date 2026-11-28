@@ -5,7 +5,8 @@
    A Gulf request is checked by country (inquiryCountry): a GCC state only reaches the members whose plan covers that state; another Arab
    country ("ARAB": Iraq, Jordan, Lebanon, Syria, Yemen, Palestine) reaches every plan with the Gulf market (DESIGN Q1); an unknown Gulf
    country only the plans with all six (or a Premium member who has not chosen yet). North Africa (Libya, Sudan, Morocco, Algeria,
-   Tunisia, Mauritania) is Africa. Directory factories that are not members are never contacted.
+   Tunisia, Mauritania) is Africa. Directory factories that are not members never get the request: only the teaser (title + registration
+   link) at their official company e-mail, one per request, with a stop link (teasers.js, owner decision 2026-11-28).
    Score = sector match + product/keyword overlap (Arabic normalisation: alef/ya/ta-marbuta, diacritics, «ال», plurals,
    stop words, common English → Arabic) + same governorate bonus; a member who owns the targeted directory profile always
    matches. Ranking: premium-and-above first («أولوية») — but only when the match itself is relevant (score at least 8 and at least

@@ -36,6 +36,7 @@ import { listKnowledge, answerKnowledge } from "./knowledge.js"; // 0009: «بن
 import { loadServiceKeys } from "./service-keys.js";
 import { userOut } from "./common.js";
 import * as DREQ from "./delete-requests.js";        // 0010: «طلبات حذف الحساب» — the owner's queue (requests only: the deletion is members.delete)
+import * as OUT from "./teasers.js";                  // 0015: request teasers — the directory profiles' official addresses («/outreach/contacts»)
 import * as DEV from "./acc-dev.js";                  // «🛠️ المطوّر» — the owner-only developer panel
 import { loadFeatures } from "./flags.js";           // the feature switches (≤ 1 D1 read per isolate per 30 s)
 import * as BMEET from "./bassem-meetings.js";        // «📞 اجتماعات باسم» — Bassem joins the team's Meet / Zoom / Teams calls (Anam Meetings API)
@@ -149,6 +150,10 @@ const ROUTES = [
   R("PUT", P("/customers/:id/note"), "customers.write", (q, e, c, a, u, m) => MEM.putCustomerNote(q, e, c, a, m[1])),
   R("GET", P("/legacy/companies"), "legacy.contacts", (q, e, c, a, u) => ORD.legacyCompanies(e, u)),
   R("PATCH", P("/legacy/companies/:id"), "directory.link", (q, e, c, a, u, m) => ORD.patchLegacyCompany(q, e, c, a, m[1])),
+  // 0015: the official company addresses of directory profiles that are not members (request teasers, teasers.js) — admin-only, audited
+  R("GET", P("/outreach/contacts"), "legacy.contacts", (q, e, c, a, u) => OUT.listContacts(e, u)),
+  R("POST", P("/outreach/contacts"), "directory.write", (q, e, c, a) => OUT.addContacts(q, e, c, a)),
+  R("DELETE", P("/outreach/contacts/:id"), "directory.write", (q, e, c, a, u, m) => OUT.offContact(q, e, c, a, m[1])),
   R("GET", P("/legacy/messages"), "orders.read", (q, e, c, a, u) => ORD.legacyMessages(e, u)),
   R("PATCH", P("/legacy/messages/:id"), "orders.note", (q, e, c, a, u, m) => ORD.patchLegacyMessage(q, e, c, a, m[1])),
   R("DELETE", P("/legacy/messages/:id"), "orders.close", (q, e, c, a, u, m) => ORD.deleteLegacyMessage(q, e, c, a, m[1]), { adminOnly: true }),
