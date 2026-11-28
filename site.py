@@ -504,7 +504,7 @@ def _data_len(fn, var):
     try:
         import json as _jd
         _s = open(B + 'data/' + fn, encoding='utf-8').read(); _i = _s.index('window.' + var + '=') + len('window.' + var + '=')
-        return len(_jd.JSONDecoder().raw_decode(_s[_i:].lstrip())[0])
+        return len([x for x in _jd.JSONDecoder().raw_decode(_s[_i:].lstrip())[0] if x is not None])   # a null slot = a removed listing (data/oldfac.js)
     except Exception:
         return 0
 def _fill_counts(h):

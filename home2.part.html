@@ -901,7 +901,7 @@ html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
   if (window.MIGLANG === "en" && $("#facLbl")) $("#facLbl").textContent = "verified factories with data from their official sources";
   $$('[data-k="fac"]').forEach(function (el) { if (window.MIGFAC && MIGFAC.length) { el.dataset.count = MIGFAC.length; el.textContent = MIGFAC.length; } });
   $$('[data-k="zones"]').forEach(function (el) { if (window.MIGZONES && MIGZONES.length) { el.dataset.count = MIGZONES.length; el.textContent = MIGZONES.length; } });
-  (function () { var R0 = window.REAL || {}, n = { dir: (window.MIGOLDFAC || []).length || (window.MIGFAC || []).length, aw: (R0.awards || []).length, tend: (R0.tenders || []).length + (R0.tenders_intl || []).length };
+  (function () { var R0 = window.REAL || {}, n = { dir: (window.MIGOLDFAC || []).filter(function (o) { return !!o; }).length || (window.MIGFAC || []).length, aw: (R0.awards || []).length, tend: (R0.tenders || []).length + (R0.tenders_intl || []).length };
     Object.keys(n).forEach(function (k) { $$('[data-k="' + k + '"]').forEach(function (el) { if (n[k]) { el.dataset.count = n[k]; el.textContent = n[k]; } else { var a = el.closest("a"); if (a) a.hidden = true; } }); }); })();
   $$('[data-k="prod"]').forEach(function (el) { if (window.MIGOLDP && MIGOLDP.length) { var pn = window.MIGOVL ? MIGOVL.count("prod") : MIGOLDP.length; el.dataset.count = pn; el.textContent = pn; } });
 
