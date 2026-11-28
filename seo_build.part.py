@@ -223,6 +223,28 @@ def _seo_build_module(HOST):
                 out.append(s2)
         return ' '.join(out)
 
+    CUT_TAIL_RX = re.compile(r'\s*(?:…|\.\.\.)\s*$')
+    CUT_END_RX = re.compile(r'[.!؟?]["”»)\]]*$')
+
+    def drop_cut_tail(text, force=False):
+        """a text the old site's import cut off (it ends with «…»; force: the Arabic this translation comes from was cut) keeps its
+        complete sentences only: the unfinished last one is dropped, and nothing is left when no complete sentence of 40 letters
+        or more remains (owner 2026-11-28: nothing half-captured is shown). The data file keeps the text as imported, because the
+        English dictionary is keyed by that exact text (company_desc_en looks it up, then cuts the translation the same way)."""
+        t = (text or '').rstrip()
+        cut = bool(CUT_TAIL_RX.search(t))
+        if not t or not (cut or force):
+            return text or ''
+        body = CUT_TAIL_RX.sub('', t)
+        if not cut and CUT_END_RX.search(body):
+            return body                       # a translation that ends with a full sentence
+        parts = [p for p in SENT_SPLIT_RX.split(body) if p and p.strip()]
+        parts = parts[:-1]                    # the unfinished sentence
+        while parts and (not CUT_END_RX.search(parts[-1].strip()) or re.search(r'(?:^|[\s:])\(?\d{1,2}[.)]$', parts[-1].strip())):
+            parts.pop()                       # a piece that does not end a sentence («…» inside the text, a bare «1.» list number)
+        out = ' '.join(p.strip() for p in parts).strip()
+        return out if len(out) >= 40 else ''
+
     def scrub(text):
         """privacy: no phone / fax / hotline / WhatsApp / e-mail / raw URL / street address from a company text reaches the static output;
         template filler («لوريم إيبسوم», "It is a well-known fact that a reader…") counts as no text"""
@@ -586,7 +608,7 @@ def _seo_build_module(HOST):
         for i, x in enumerate(D.get('fac', [])):
             if x is None:                      # hidden in the Control Center (null in data.json)
                 continue
-            d = scrub(facd[i] if i < len(facd) else '')
+            d = scrub(drop_cut_tail(facd[i] if i < len(facd) else ''))
             desc_count[d] = desc_count.get(d, 0) + 1
         slugs_seen = set()
         for i, x in enumerate(D.get('fac', [])):
@@ -600,7 +622,7 @@ def _seo_build_module(HOST):
             slugs_seen.add(ls)
             if ls.isascii() and ls.lower() in reserved:
                 raise RuntimeError('seo_build: legacy slug "%s" collides with a hub slug' % ls)
-            d = scrub(facd[i] if i < len(facd) else '')
+            d = scrub(drop_cut_tail(facd[i] if i < len(facd) else ''))   # an import-cut description keeps its complete sentences
             c = {'kind': 'member', 'i': i, 'hid': str(i), 'name': re.sub(r'\s+', ' ', x[0]).strip(), 'sector': x[1], 'sslug': norm_sector(x[1]),
                  'type': x[3] or '', 'verified': bool(x[4]), 'logo': (x[5], x[6]) if isinstance(x[5], int) and x[5] >= 0 else None,
                  'legacy': ls, 'loc': x[2] or '', 'gov': x[10] or '', 'flags': x[11] or 0, 'desc': d, 'desc_raw': (facd[i] if i < len(facd) else '') if d else '',
@@ -2816,7 +2838,9 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         o = {"@context": "https://schema.org", "@type": "NewsArticle", "@id": url + '#article', "headline": cut(T(L, n.get('title_ar')), 110),
              "datePublished": n.get('date'), "dateModified": n.get('date'), "image": [SITE + pct(img)], "author": {"@id": SITE + '/#org'},
              "publisher": {"@id": SITE + '/#org'}, "inLanguage": 'en' if L == 'en' else 'ar-EG',
-             "mainEntityOfPage": {"@id": url + '#webpage'}, "description": clip(T(L, n.get('summary_ar') or ''), 300)}
+             "mainEntityOfPage": {"@id": url + '#webpage'}}
+        if n.get('summary_ar'):
+            o['description'] = clip(T(L, n.get('summary_ar') or ''), 300)
         if n.get('url') and not news_own(n):
             o['isBasedOn'] = n['url']
         return o
@@ -3009,6 +3033,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                     v = tr(src)
                     if v:
                         break
+            if v and c['kind'] == 'member' and CUT_TAIL_RX.search(c.get('desc_raw') or ''):
+                v = drop_cut_tail(v, force=True) or None     # the Arabic was cut by the import: so is its translation
             v = scrub(v) if v else None
             v = v or None
         else:
@@ -4516,14 +4542,17 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
         if g:
             facts.append((X(L, 'المحافظة', 'Governorate'), esc(X(L, g['ar'], g['en']))))
         facts_html = '<dl class="sx-facts">%s</dl>' % ''.join('<dt>%s</dt><dd>%s</dd>' % (k, v) for k, v in facts)
+        # a story whose summary the old site's import had cut off has none any more (data/real.js, owner 2026-11-28): no «short summary» note then
         if own:
-            src_html = '<p class="note">%s</p>' % X(L, 'ملخص قصير من أرشيف أخبار المنصة (نُشر أصلاً على موقع المنصة السابق).', "A short summary from the platform's news archive (first published on the platform's previous website).")
+            src_html = '<p class="note">%s</p>' % (X(L, 'ملخص قصير من أرشيف أخبار المنصة (نُشر أصلاً على موقع المنصة السابق).', "A short summary from the platform's news archive (first published on the platform's previous website).") if summ else
+                                                   X(L, 'من أرشيف أخبار المنصة (نُشر أصلاً على موقع المنصة السابق).', "From the platform's news archive (first published on the platform's previous website)."))
         else:
             src_html = ('<p class="note">%s</p><a class="btn btn-line" href="%s" rel="nofollow noopener" target="_blank">%s</a>'
-                        % (X(L, 'ملخص قصير من المنصة؛ النص الكامل في المصدر الأصلي.', 'A short summary by the platform; the full story is at the original source.'), esc(n.get('url')),
+                        % (X(L, 'ملخص قصير من المنصة؛ النص الكامل في المصدر الأصلي.', 'A short summary by the platform; the full story is at the original source.') if summ else
+                           X(L, 'الخبر كاملاً في المصدر الأصلي.', 'The full story is at the original source.'), esc(n.get('url')),
                            X(L, 'اقرأ الخبر في المصدر الأصلي ↗', 'Read the full story at the source ↗')))
-        main = ('<div class="card2"><img src="%s" alt="%s" width="1200" height="900" loading="lazy" style="width:100%%;height:auto;border-radius:12px;aspect-ratio:4/3;object-fit:cover"><p>%s</p>%s</div>%s'
-                % (esc(img), esc(title), esc(summ), src_html, rel_html))
+        main = ('<div class="card2"><img src="%s" alt="%s" width="1200" height="900" loading="lazy" style="width:100%%;height:auto;border-radius:12px;aspect-ratio:4/3;object-fit:cover">%s%s</div>%s'
+                % (esc(img), esc(title), ('<p>%s</p>' % esc(summ)) if summ else '', src_html, rel_html))
         body = hero(L, ch, title, '') + '<div class="wrap sx-main"><div class="sx-grid"><div>%s</div><aside><div class="card2">%s</div></aside></div></div>' % (main, facts_html)
         meta = {'title': news_title(n, L), 'desc': mk_desc([summ], L, X(L, 'المصدر: %s.' % (n.get('source_name') or ''), 'Source: %s.' % (n.get('source_name') or ''))), 'h1': title, 'og_type': 'article',
                 'og_image': img, 'page_type': 'WebPage', 'jsonld_page': jsonld_news(n, url, L, img), 'jsonld_crumbs': crumb_ld, 'kw': title, 'keywords': X(L, 'أخبار الصناعة المصرية', 'egypt industry news'),
