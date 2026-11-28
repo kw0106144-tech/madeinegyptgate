@@ -12,11 +12,45 @@ previous text back (the version of the file before that write, in git history).
 | File | Persona / tool | `updatedAt` (live since) | sha256 | Characters |
 |---|---|---|---|---|
 | `janna-ar.systemPrompt.md` | Janna AR `5f06d835-22cc-4460-b412-84cefa9e565b` | `2026-11-28T12:07:00.199Z` | `d5f449441b06c76a9dbdd87e5bb08ebaad5067803b4ea83487779ae10a17d2d6` | 30,331 (a read says 30,332: 🌐 counts 2) |
-| `janna-en.systemPrompt.md` | Janna EN `e5101653-65b4-44a6-85e5-ec2e78f82685` | `2026-11-28T12:28:48.465Z` | `6055c9ff409147e83a6d206a5d5869d3f3eaece0d21dbdf6911212d93535a0f7` | 35,705 (a read says 35,706) |
-| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-28T12:31:30.922Z` | `713693add2ed75d50166bd07179d9dc7b637a998f88382be905fb8e7da32ec6d` | 35,022 (the API says 35,023) |
+| `janna-en.systemPrompt.md` | Janna EN `e5101653-65b4-44a6-85e5-ec2e78f82685` | `2026-11-28T14:47:48.021Z` | `7423caf6cc8f9144f1191445865d958d652cfa8fd408fe2915cbaa1e96f8ded7` | 35,954 (a read says 35,955) |
+| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-28T14:42:26.608Z` | `6544178b46829ba9c33d13e6bec350d250ad77eff267604073f8e8e24e87ea0a` | 35,228 (the API says 35,229) |
 | `bassem_save_profile.description.md` | tool `bassem_save_profile` `4c3b35f3-0590-44d7-85d1-321eeb21c79e` | `2026-11-20T08:37:02.665Z` | `41eaa3ade439de9372710286ac29e0594d4f884b1ac0478777e5a068b829c55a` | 894 |
 | `bassem-notify-send.tools.md` | tools `bassem_notify_member` `325b182c-e5e0-42d0-a130-658919faf12f` and `bassem_send_email` `a00e4d99-df41-4a43-8c66-39bdfa3d2495` | `2026-11-21T22:06:40.549Z` / `2026-11-21T22:06:43.489Z` | (the bodies are in the file) | |
 | `janna_lookup.tool.json` | tool `janna_lookup` `29fd5087-5eff-4919-afb2-3d01b8cc70de` (Janna AR and Janna EN) and `platform_item` `6ccedda8` | `2026-11-28T09:27:54.863Z` / `2026-11-28T09:27:59.484Z` | `9d52be6431fcf1dcd9ecd39b301e4758b20553adba47a7956de9a8aac7f0f0b5` (the file) | description 909 |
+
+## Round 6 — one daily e-mail, buyers and news auto-published, the 11th District (owner 2026-11-28), applied on 2026-11-28
+
+The owner, 2026-11-28: merge the partner e-mails into one, publish buyers and news that have an official source, the approved English, and
+«شيل اي حاجه قديمه احنا عدلناها»; the Anam writes were approved by the owner in advance. `systemPrompt` only: every other field (LLM, voice,
+avatar, `toolIds`, `languageCode`, greeting, director notes, voice detection) was left as it was. Each persona was read first: its live
+`updatedAt` was the one in Round 5 and its live text (total length and visible start) was the file here. Janna AR was not changed.
+
+| UTC | Write | Changed | `updatedAt` before → after | Length the API returned |
+|---|---|---|---|---|
+| 14:42:26 | Bassem, `anam_persona_update` (`systemPrompt`) | the three daily-report lines + the auto-publish line (below) | `2026-11-28T12:31:30.922Z` → `2026-11-28T14:42:26.608Z` | 35,229 = the file (35,228) + 1 for 🌐 |
+| 14:47:48 | Janna EN, `systemPrompt` | the office address + the auto-publish line (below) | `2026-11-28T12:28:48.465Z` → `2026-11-28T14:47:48.021Z` | 35,955 = the file (35,954) + 1 |
+
+Bassem:
+- «- التقرير اليومي: كل يوم الساعة 10 الصبح المنصة بتبعتله على إيميله تقرير بالفرص الجديدة …» → «… بتبعتله على إيميله إيميل واحد: في أوله رسالة
+  صباح الخير بتاعتك، وبعدها تقرير بالفرص الجديدة …» (the rest of the line as it was).
+- «- كل يوم الصبح بتبعتله «صباح الخير»: …» → «- كل يوم الصبح بتبعتله «صباح الخير» في أول تقرير الساعة 10 على الإيميل: …».
+- The first-meeting question «تحب أبعتلك صباح الخير والجديد الساعة كام؟ وغالباً بتبقى فاضي إمتى علشان أكلمك ونشتغل سوا؟» → «تحب أكلمك على
+  الواتساب الساعة كام لما يشتغل؟ وغالباً بتبقى فاضي إمتى علشان أكلمك ونشتغل سوا؟» (the rest of the line as it was).
+- After «… قوله إنها بقت على المنصة، من غير لينك ولا مصدر؛» (the `on_platform` clause of «الصدق مش علامة»): «والمشترين والأخبار اللي من مصدر
+  رسمي بتتنشر على المنصة تلقائي كمان، والزوار بيشوفوا منها لمحة بس والتفاصيل للأعضاء؛».
+
+Janna EN:
+- "… Culture and Science Area, District 11, 6th of October City …" → "… Culture and Science Area, 11th District, 6th of October City …" (as
+  `ADDRESS_EN` in `seo.part.py`).
+- After "… its details are for subscribed members, no link and no source;" (the `on_platform` clause of "Honesty, not a label"): "buyers
+  and news from an official source are published on the platform automatically too, and a visitor gets only a teaser: a buyer as "a
+  company that could become your customer" with its sector (its name is for members), a news item by its title;".
+
+A read is trimmed, so the check is the total length and the visible start; the text sent was the file in each case (compared byte for
+byte with the request).
+
+**Rollback of this round.** Send back these two files at the commit before this round (`git show dc46cac:anam/live/<file>`, their sha256
+were Janna EN `6055c9ff…` and Bassem `713693ad…`), `systemPrompt` only, with the `updatedAt` in the table above.
 
 ## Round 5 — no "not a government body" line (owner 2026-11-28), applied on 2026-11-28
 

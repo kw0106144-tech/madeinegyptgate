@@ -1,3 +1,13 @@
+# Applied on 2026-11-28 (third write) — one daily e-mail, buyers and news auto-published, the 11th District (Bassem, Janna EN)
+
+**Status: APPLIED on 2026-11-28, `systemPrompt` only (owner 2026-11-28: merge the partner e-mails, publish buyers and news with an official
+source, «شيل اي حاجه قديمه احنا عدلناها»; Anam writes approved by the owner in advance).** Bassem: the daily report is one e-mail that opens
+with his «صباح الخير», the «صباح الخير» line says it comes at the top of the 10 o'clock report, the first-meeting question asks when to call
+him on WhatsApp once it is on, and buyers and news from an official source are auto-published too (visitors get a teaser). Janna EN: the
+office is in the "11th District" (as `ADDRESS_EN`), and the same buyers-and-news line for visitors. Janna AR unchanged. Exact sentences,
+writes, `updatedAt` stamps and length checks: `anam/live/README.md` → «Round 6». The prepared copies here (`personas/`, `calls/`,
+`bassem-email/`) are not applied and were not changed.
+
 # Applied on 2026-11-28 (second write) — no "not a government body" line (Janna AR, Janna EN, Bassem)
 
 **Status: APPLIED on 2026-11-28, `systemPrompt` only (owner, word for word: «المنصه رسميه امسح كلمه مش جهه حكوميه متجودش من عندك»,
