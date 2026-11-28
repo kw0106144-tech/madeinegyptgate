@@ -281,7 +281,7 @@ def _about_counts():
             return _j.JSONDecoder().raw_decode(s[i:].lstrip())[0]
         except Exception:
             return None
-    F = arr('oldfac.js', 'MIGOLDFAC')
+    F = [o for o in (arr('oldfac.js', 'MIGOLDFAC') or []) if o]   # a null slot = a removed listing (its index stays reserved)
     fac = len([o for o in F if o[3] == 'مصنع']) if F else 0
     com = len([o for o in F if o[3] != 'مصنع']) if F else 0
     Z = arr('zones.js', 'MIGZONES')
