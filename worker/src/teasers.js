@@ -10,7 +10,9 @@
    TEASER_PER_REQUEST (5). Never a profile a member owns (members.factory_ref), never an address of a member account, never the buyer.
    Where the addresses come from (admin-only, never public): directory_contacts (0015, the team adds them with the page of the company's
    site that publishes the address) and the old site's imported companies linked to the profile (cc_legacy_companies.factory_ref), each
-   through officialEmail() (with the company's web site when the row has one).
+   through officialEmail() (with the company's web site when the row has one), and the official e-mails of the researched directory rows
+   (data/facx.js element 10, owner decision 2026-11-28 → worker/build-index.js data.json «oe»: the e-mail, the company's site, the page that
+   publishes it), through the same officialEmail() with that site.
    Rules: one e-mail per request per address (mail_sends teaser|<ref>|<email_key>, claimed before sending), one teaser per address per
    Cairo day, a daily cap for the whole platform (TEASER_DAILY_CAP, default 50; the requests left wait for the next day while they are
    at most 3 days old), the stop link of list «teaser» in every e-mail (List-Unsubscribe header + link, common.js mail(); a stopped
@@ -21,7 +23,7 @@ import { mail, line, str, jparse, emailKey, cairoDay, addDays, govName, isBlocke
 import { directoryCandidates } from "./candidates.js";
 import { featureOn } from "./flags.js";
 import { storeOn, claim, settle, statusOf, sentOn, exists, officialEmail, planForMarket } from "./mail-sends.js";
-import { hasTable, dirRow, factoryNames, fail, batch, body as ccBody, paging, all as ccAll, first as ccFirst } from "./acc-base.js";
+import { hasTable, dirRow, dirOfficial, factoryNames, fail, batch, body as ccBody, paging, all as ccAll, first as ccFirst } from "./acc-base.js";
 
 export const TEASER_LIM = Object.freeze({ perRequest: 5, dailyCap: 50, inquiriesPerTick: 3, waitMin: 10, maxAgeDays: 3, closeDays: 30, title: 90 });
 const capOf = env => Math.max(0, Math.min(1000, parseInt(env && env.TEASER_DAILY_CAP, 10) >= 0 ? parseInt(env.TEASER_DAILY_CAP, 10) : TEASER_LIM.dailyCap));
@@ -84,6 +86,11 @@ export async function officialAddresses(env, refs) {
     for (const r of await rows(`SELECT factory_ref, company, email, web FROM cc_legacy_companies WHERE factory_ref IN (${ph}) AND email != '' ORDER BY id`, ...R)) {
       const e = officialEmail(r.email, r.web); if (e && !out.has(r.factory_ref)) out.set(r.factory_ref, { email: e, company: r.company });
     }
+  for (const ref of R) {                                                                    // researched rows: data/facx.js official_email (data.json oe)
+    if (out.has(ref)) continue;
+    const o = dirOfficial(ref); if (!o || !/^https:\/\/[^\s"<>]+$/i.test(o.source_url)) continue;   // the page that publishes it
+    for (const em of o.emails) { const e = officialEmail(em, o.web || o.source_url); if (e) { const f = dirRow(ref); out.set(ref, { email: e, company: f ? f[0] : "" }); break; } }
+  }
   if (!out.size) return out;
   for (const r of await rows(`SELECT factory_ref FROM members WHERE factory_ref IN (${ph})`, ...R)) out.delete(r.factory_ref); // a member's profile: the full request path
   const keys = [...out.values()].map(x => emailKey(x.email));
