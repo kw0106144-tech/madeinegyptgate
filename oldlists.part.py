@@ -106,8 +106,9 @@ function render() {
   $("#olP").innerHTML = (PAGE > 1 ? '<button type="button" data-p="' + (PAGE - 1) + '">‹</button>' : '') + pg.map(function (p) { return '<button type="button" data-p="' + p + '"' + (p === PAGE ? ' class="on"' : '') + '>' + fmt(p) + '</button>'; }).join("") + (PAGE < pages ? '<button type="button" data-p="' + (PAGE + 1) + '">›</button>' : '');
 }
 var CTX0 = window.MIG_CTX || null;
-/* a tender's description (MIGTEND[14]) and the issuer's procurement contacts (MIGTEND[15], one «label: value» per line) — owner 2026-11-25:
-   every tender carries its contacts; this part of detail() is reached by subscribers only (the locked branch below replaces the body) */
+/* a tender's description (MIGTEND[14]) and the issuer's details (MIGTEND[15], one «label: value» per line) — owner 2026-11-25:
+   this part of detail() is reached by subscribers only (the locked branch below replaces the body). data/oldtend.js is a public file,
+   so [15] holds no e-mail, phone or person's name (CLAUDE.md 2.5, audit 2026-11-27): the issuer's address at most */
 function tdet(x) {
   var h = "", d = String(x[14] || "").trim(), c = String(x[15] || "").trim();
   if (d) h += '<div><b style="display:block;margin-bottom:4px">' + T("تفاصيل المناقصة", "Tender details") + '</b><p style="margin:0;line-height:1.9;white-space:pre-line">' + esc(d) + '</p></div>';
@@ -120,7 +121,7 @@ function tdet(x) {
       else v = esc(v);
       return '<dt>' + esc(k || T("تواصل", "Contact")) + '</dt><dd>' + v + '</dd>';
     }).join("");
-    if (rows) h += '<div><b style="display:block;margin-bottom:4px">📞 ' + T("جهات التواصل", "Contacts") + '</b><dl>' + rows + '</dl></div>';
+    if (rows) h += '<div><b style="display:block;margin-bottom:4px">🏛️ ' + T("بيانات الجهة", "Issuer details") + '</b><dl>' + rows + '</dl></div>';
   }
   return h;
 }

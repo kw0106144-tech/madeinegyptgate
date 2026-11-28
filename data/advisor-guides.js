@@ -117,10 +117,10 @@
         L("عند الترسية: ضمان حسن التنفيذ خلال 20 يومًا من خطاب نية الترسية للشركات من خارج البحرين (10 أيام للمحلية)، بنسبة 5% إلى 10% في السلع والخدمات و10% في الإنشاءات.",
           "On award: performance bond within 20 days of the Letter of Intent for companies outside Bahrain (10 days for local ones), 5%-10% for goods and services and 10% for construction.")
       ],
-      registration: L("التسجيل على منظومة المناقصات الإلكترونية إلزامي لشراء الوثائق والتقديم، والدعم الفني عبر helpdesk@tenderboard.gov.bh أو +973 17566666. " + (isLocal
+      registration: L("التسجيل على منظومة المناقصات الإلكترونية إلزامي لشراء الوثائق والتقديم. " + (isLocal
           ? "هذه مناقصة «محلية»: يقتصر الاشتراك فيها قانونًا على الموردين المرخص لهم بمزاولة النشاط في البحرين، وتعامل شركات دول مجلس التعاون كشركات وطنية وفق الضوابط. الشركة المصرية غير المسجلة في البحرين لا يمكنها التقديم مباشرة؛ المسار العملي هو التوريد عبر موزع أو وكيل مسجل في البحرين."
           : "هذه مناقصة «دولية»: يجوز للشركات الأجنبية غير المسجلة في البحرين المشاركة، بشرط التسجيل وفق الأنظمة البحرينية خلال 30 يومًا من الترسية."),
-        "Registration on the eTendering system is mandatory to buy documents and bid; helpdesk: helpdesk@tenderboard.gov.bh, +973 17566666. " + (isLocal
+        "Registration on the eTendering system is mandatory to buy documents and bid. " + (isLocal
           ? "This is a LOCAL tender: by law participation is limited to suppliers authorised to do business in Bahrain, and GCC companies are treated as national companies under the applicable rules. An Egyptian company not registered in Bahrain cannot bid directly; the practical route is to supply through a Bahrain-registered distributor or agent."
           : "This is an INTERNATIONAL tender: foreign companies not registered in Bahrain may participate, provided they register under Bahraini regulations within 30 days of the award.")),
       language: "Arabic / English (international tenders are advertised in both)",
