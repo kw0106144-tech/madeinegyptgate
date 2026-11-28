@@ -2792,6 +2792,13 @@ is kept in `web_leads` for the data team. NEVER public: no page, no overlay, no 
 - A lead is recorded only from a FRESH provider answer (a cached one is not counted again), one sighting at most per clock hour, and keeps
   the team's decision when it is found again; a rejected link is read for every candidate of a hunt, however many there are. Tests:
   `worker/test/web-leads.test.mjs`, `worker/test/web-hunt.test.mjs`.
+- **Amendment (owner 2026-11-20 / 2026-11-28): published at once behind the auto-publish gate.** A new / accepted lead is shown on «فرص السوق»
+  and in `janna_lookup` (worker/src/web-public.js) only when it passes the same official-source gate for every kind (worker/README.md
+  "Published on the platform"): tenders / RFQs — an official source page and a closing date ahead; projects — an official source page;
+  buyers / buyer lists — the company's own site or a public body's page, never a directory, aggregator, marketplace, social network or a
+  person, never a company the directory has; news — a government / public body, the company's own site or an official news agency, inside
+  the news window (31 days); none with a personal contact or a duplicate. Each desk item says so: `published`, `public_why` (`unofficial`,
+  `no_deadline`, `closed`, `no_date`, `old`, `duplicate`, `personal`, `status`, `type`, `empty`) + `public_why_ar` / `public_why_en`.
 
 ---
 

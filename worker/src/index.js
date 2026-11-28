@@ -43,7 +43,7 @@ import { handleWA, bassemCron } from "./whatsapp.js"; // /api/wa/*        respon
 import { handleJannaSession } from "./janna-session.js"; // /api/janna/session  live-call session tokens (JS SDK: no third-party mark)
 import { handleTiming } from "./live-timing.js";       // /api/janna/timing   the call page's start timing beacon (numbers only)
 import { handleItem, enrichResult, absUrl, eventStatus, findItem } from "./janna-item.js";
-import { handleOpps, viewerOf, lockResult, lockAnswer, lockWeb } from "./opp-lock.js"; // members-only opportunities (owner 2026-11-28): GET /api/me/opps + the tools' teasers // /api/janna/item  one item in full + the lookup results' ids / open_url / amounts
+import { handleOpps, viewerOf, lockResult, lockAnswer, lockWeb, registerUrl } from "./opp-lock.js"; // members-only opportunities (owner 2026-11-28): GET /api/me/opps + the tools' teasers // /api/janna/item  one item in full + the lookup results' ids / open_url / amounts
 import { handleMemory, memoryCron, budgetEnv, TICK } from "./memory.js"; // /api/advisor/memory  Bassem's memory (searches, call turns, summaries, facts)
 // ---- 0009 memory upgrades: Janna's visitor memory, «بنك المعلومات», the daily memory update ----
 import { handleVisitorMemory } from "./visitor.js";   // /api/janna/memory[/tasks]  Janna's memory of her visitors
@@ -454,18 +454,28 @@ function search(section, query, governorate, limit, page, market, { members = nu
    platform's own data or a registered company, a closed one never as open, an undated one never as open. */
 const WEB_SECTIONS = { tenders: ["tender"], rfqs: ["rfq"], customers: ["buyer", "buyer_list"], projects: ["project"], news: ["news"] };
 /* the auto-publish gate's «not a duplicate» (web-public.js, owner 2026-11-28): a web lead whose title is one of the platform's own tenders /
-   RFQs (this bundle: the tenders list, the RFQs, the intel centre's tenders / RFQs) is not published again — the same words, or one title
-   inside the other when both are long */
+   RFQs (this bundle: the tenders list, the RFQs, the intel centre's tenders / RFQs) or news (the information centre's news) is not
+   published again — the same words, or one title inside the other when both are long; a web buyer / buyer list that names a company the
+   directory already has (its name without «شركة / مصنع / company …», the same words, or the directory's name inside the buyer's title) */
 let KNOWN_T = null;
 const knownKey = s => norm(String(s || "")).replace(/[^\p{L}\p{N}]+/gu, "");
+const CO_WORDS = new Set(["شركه", "شركات", "مصنع", "مصانع", "مجموعه", "company", "co", "factory", "factories", "group", "ltd", "llc", "inc", "plc", "sae", "s", "a", "e", "the", "for", "and", "of", "لل", "و"]);
+const coKey = s => norm(String(s || "")).split(" ").filter(w => w && !CO_WORDS.has(w)).join("");
 export function knownTitle(type, title) {
   if (!KNOWN_T) {
-    KNOWN_T = { tender: [], rfq: [] };
+    KNOWN_T = { tender: [], rfq: [], news: [], buyer: [] };
     const add = (k, t) => { const x = knownKey(t); if (x.length >= 12) KNOWN_T[k].push(x); };
     for (const t of DATA.t || []) add("tender", t && t[3]);
     for (const q of DATA.q || []) add("rfq", q && q[2]);
-    for (const i of DATA.i || []) if (i && (i[0] === "tender" || i[0] === "rfq")) add(i[0], i[5]);
-    KNOWN_T.set = { tender: new Set(KNOWN_T.tender), rfq: new Set(KNOWN_T.rfq) };
+    for (const i of DATA.i || []) if (i && (i[0] === "tender" || i[0] === "rfq" || i[0] === "news")) add(i[0], i[5]);
+    for (const f of DATA.f || []) { const x = coKey(f && f[0]); if (x.length >= 6) KNOWN_T.buyer.push(x); }
+    KNOWN_T.set = { tender: new Set(KNOWN_T.tender), rfq: new Set(KNOWN_T.rfq), news: new Set(KNOWN_T.news), buyer: new Set(KNOWN_T.buyer) };
+  }
+  if (type === "buyer" || type === "buyer_list") {
+    const k = coKey(title);
+    if (k.length < 6) return false;
+    if (KNOWN_T.set.buyer.has(k)) return true;
+    return KNOWN_T.buyer.some(x => x.length >= 10 && k.includes(x));
   }
   const k = knownKey(title), list = KNOWN_T[type];
   if (!list || k.length < 12) return false;
@@ -505,7 +515,8 @@ function webOf(section, query, governorate, market, web, nowMs, lock = null) {
   const rows = []; for (let i = 0; i < X.rows.length; i++) if (ok(i)) rows.push(i);
   const items = rankRows(C, matchIx(X.ix, C.map(compile)), rows).filter(r => r.cls < 2).map(r => publicItem(X.rows[r.i], nowMs)).filter(liveItem);
   const ordered = items.filter(x => x.status !== "closed").concat(items.filter(x => x.status === "closed"));
-  return { count: ordered.length, items: ordered.slice(0, WEB_MAX).map(webLean).map(x => (lock ? lockWeb(x, lock) : x)) };
+  /* locked before it is said: a visitor's buyer has no name, so its line is its kind and product (webLean) */
+  return { count: ordered.length, items: ordered.slice(0, WEB_MAX).map(x => (lock ? lockWeb(x, lock) : x)).map(webLean) };
 }
 const WEB_N = { tenders: n => (n === 1 ? "مناقصة واحدة" : n === 2 ? "مناقصتين" : n + (n <= 10 ? " مناقصات" : " مناقصة")), rfqs: n => (n === 1 ? "طلب عرض سعر واحد" : n === 2 ? "طلبين عروض أسعار" : n + (n <= 10 ? " طلبات عروض أسعار" : " طلب عرض سعر")),
   customers: n => (n === 1 ? "جهة واحدة ممكن تبقى عميل" : n === 2 ? "جهتين ممكن يبقوا عملاء" : n + (n <= 10 ? " جهات ممكن تبقى عملاء" : " جهة ممكن تبقى عميل")),
@@ -517,13 +528,15 @@ function webText(section, w, m, base, locked = false) {
   return ` ${base ? "وكمان فيه" : "بس فيه"} ${WEB_N[section](w.count)}${shown < w.count ? ` (أهم ${shown})` : ""}: ${w.items.map(webLine).join("؛ ")}. `
     + (m ? "دول منشورين على المنصة في «فرص السوق»: قولهم كمعلومة وخلاص، من غير ما تقول إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك، ولا تعدّهم مع نتايج المنصة؛ اللي «منتهية» خلصت، واللي «ميعادها مش معروف» ماتقولش إنها مفتوحة. ولو العميل سأل جايين منين أو أكيدين قول: «ده اللي عندي عنها، والشروط والمواعيد النهائية عند الجهة نفسها»."
       : "دول منشورين على المنصة في «فرص السوق»: قوليهم كمعلومة وخلاص، من غير ما تقولي إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك، ولا تعدّيهم مع نتايج المنصة؛ اللي «منتهية» خلصت، واللي «ميعادها مش معروف» ماتقوليش إنها مفتوحة. ولو العميل سأل جايين منين أو أكيدين قولي: «ده اللي عندي عنها، والشروط والمواعيد النهائية عند الجهة نفسها».")
-    + (locked ? (m ? " الجهة صاحبة الفرصة وتفاصيلها للأعضاء المشتركين: قول العنوان والمكان والميعاد بس، وادعيه يسجّل علشان يشوف التفاصيل." : " الجهة صاحبة الفرصة وتفاصيلها للأعضاء المشتركين: قولي العنوان والمكان والميعاد بس، وادعيه يسجّل علشان يشوف التفاصيل.") : "");
+    + (locked ? (m ? " الجهة أو الشركة صاحبة الفرصة وتفاصيلها للأعضاء المشتركين: قول العنوان والمكان والميعاد بس، وادعيه يسجّل علشان يشوف التفاصيل." : " الجهة أو الشركة صاحبة الفرصة وتفاصيلها للأعضاء المشتركين: قولي العنوان والمكان والميعاد بس، وادعيه يسجّل علشان يشوف التفاصيل.") : "");
 }
 function withWeb(section, o, query, governorate, market, web, m, nowMs, lock = null) {
   const w = o && typeof o === "object" ? webOf(section, query, governorate, market, web, nowMs, lock) : null;
   if (!w || !w.count) return o;
-  const locked = !!(lock && lock.who === "visitor" && section !== "customers" && section !== "news");
-  return { ...o, extra_count: w.count, extra: w.items, text: String(o.text || "") + webText(section, w, m, Number(o.count) || 0, locked) };
+  /* members-only (owner 2026-11-28): every kind of «فرص السوق» — buyers and news too — is a visitor's teaser, with the registration offered */
+  const locked = !!(lock && lock.who === "visitor");
+  const reg = locked && !o.members_only ? { members_only: true, need: "basic", register_url: registerUrl("basic") } : {};
+  return { ...o, ...reg, extra_count: w.count, extra: w.items, text: String(o.text || "") + webText(section, w, m, Number(o.count) || 0, locked) };
 }
 
 /* ---------- section=customers (U2, src/lookup-customers.js) ----------

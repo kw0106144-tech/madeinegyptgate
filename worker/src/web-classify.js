@@ -63,10 +63,11 @@ export const NEWS = Object.freeze(["youm7.com", "masrawy.com", "almalnews.com", 
   "elwatannews.com", "akhbarelyom.com", "vetogate.com", "cairo24.com", "dostor.org", "alarabiya.net", "aawsat.com", "skynewsarabia.com", "bbc.com", "cnbcarabia.com",
   "asharqbusiness.com", "economymiddleeast.com", "theafricareport.com", "bloomberg.com", "ft.com", "sis.gov.eg", "elaosboa.com", "almalnews.net", "alwafd.news"]);
 const NEWS_PATH = /\/(news|article|articles|story|stories|akhbar|press-releases?|blog|details)(\/|$)/i;
-/* reference pages: never a lead */
-const REFERENCE = Object.freeze(["wikipedia.org", "wikimedia.org", "wiktionary.org", "britannica.com", "youtube.com", "youtu.be", "quora.com", "reddit.com", "scribd.com", "slideshare.net"]);
-/* personal profiles and chat links (review S9): never returned, never stored. LinkedIn keeps its company pages */
-const SOCIAL = Object.freeze(["facebook.com", "fb.com", "fb.me", "instagram.com", "x.com", "twitter.com", "tiktok.com", "threads.net", "snapchat.com", "wa.me", "whatsapp.com",
+/* reference pages: never a lead (exported for web-public.js: never a buyer's or a news item's official source) */
+export const REFERENCE = Object.freeze(["wikipedia.org", "wikimedia.org", "wiktionary.org", "britannica.com", "youtube.com", "youtu.be", "quora.com", "reddit.com", "scribd.com", "slideshare.net"]);
+/* personal profiles and chat links (review S9): never returned, never stored. LinkedIn keeps its company pages (exported for web-public.js:
+   social media is never a buyer's or a news item's official source) */
+export const SOCIAL = Object.freeze(["facebook.com", "fb.com", "fb.me", "instagram.com", "x.com", "twitter.com", "tiktok.com", "threads.net", "snapchat.com", "wa.me", "whatsapp.com",
   "t.me", "telegram.me", "telegram.org", "vk.com", "pinterest.com", "linktr.ee"]);
 export function personalLink(u) {
   const h = bareHost(u && u.hostname), p = String((u && u.pathname) || "").toLowerCase();
