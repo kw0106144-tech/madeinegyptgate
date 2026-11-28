@@ -1,8 +1,10 @@
 # «register_help» — the assistants' tool for «I wanted to register but couldn't» (owner decision 2026-11-28)
 
-Prepared for the owner / the parent session to apply in Anam. **Nothing here is applied by the code**: the Worker endpoint is live once
-`deploy-worker` deploys it, and the detection on the conversation turns works without the tool (`worker/src/info-alerts.js`). Every
-Anam write needs the owner's OK (CLAUDE.md 1.1).
+**Applied in Anam on 2026-11-28** (owner's advance approval for the assistants task): `janna_register_help`
+`fc179425-c14c-4325-a152-6228de0a64a3` is attached to Janna AR and Janna EN, `bassem_register_help` `35049741-22a6-426f-a201-e9f368b04501` to
+Bassem, with the definition below, and the prompt lines below are in their prompts (`anam/live/*.systemPrompt.md`, `anam/live/README.md` round 4).
+The Worker endpoint is live once `deploy-worker` deploys it, and the detection on the conversation turns works without the tool
+(`worker/src/info-alerts.js`).
 
 ## Endpoints (Worker `janna-lookup`, existing route families — no new route)
 

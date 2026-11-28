@@ -13,11 +13,14 @@
   - «اليد التي تساند المصنع المصري ليستمر وينتشر»
   - «بجانب المصنع المصري… ومستمرون»
   - «بوابة المنتج الصناعي المصري إلى الأسواق المحلية والدولية»
-- **التعريف:** منصة صنع في مصر هي المرجع الرقمي الأول لربط المصانع والموردين بالمشترين المحليين والدوليين. تشغّلها وتديرها الجمعية المصرية للتنمية الصناعية لخدمة المصانع الوطنية في محافظات مصر الـ27، ودعم التحول الرقمي للقطاع الصناعي، وفتح أسواق جديدة للمنتج المصري في بيئة موثوقة وشفافة.
+- **التعريف المعتمد من صاحب المنصة (2026-11-27):** «منصة صنع في مصر هي منظومة رقمية متكاملة للصناعة والتوريدات والمشتريات والتصدير، تعمل تحت مظلة الجمعية المصرية للتنمية الصناعية، أُطلقت في عام 2020، وتُعد المنصة الأولى التي تساعد المصانع المصرية في التوسع محلياً وخليجياً وعالمياً، ووصول المنتجات المصرية إلى حصة سوقية متطورة.»
+- **Approved definition (English translation used on the site):** Made in Egypt Gate is an integrated digital ecosystem for industry, supply, procurement and export, operating under the umbrella of the Egypt Industrial Development Association. Launched in 2020, it is the first platform that helps Egyptian factories expand locally, across the Gulf and worldwide, and helps Egyptian products reach a growing, more advanced market share.
+- **المالك والمشغّل (المعتمدين 2026-11-19، بالحرف):** «المالك: الجمعية المصرية للتنمية الصناعية» — «جمعية غير هادفة للربح مشهرة برقم 6189 لسنة 2017 (وزارة التضامن الاجتماعي)» — «المشغّل: الحسيني جروب وشركاءه، استقبال الطلبات وتسجيل الشركاء وخدمة العملاء والتطوير».
+- **المقر ومواعيد العمل:** عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11، السادس من أكتوبر، الجيزة — التليفون 02 38346757 — من الأحد للخميس، من 8 صباحاً حتى 4 عصراً؛ الجمعة والسبت إجازة.
 - **الهدف الواحد:** أن يجد كل مصنع مصري طريقاً أقصر إلى المشتري. المنصة تعرّف السوق بالمنتج الوطني، وتربط المصانع والموردين بالمشترين والموزعين والمقاولين والاستشاريين والجهات الحكومية والقطاع الخاص داخل مصر وخارجها.
 
 **س: يعني إيه منصة صنع في مصر؟**
-ج: هي «المنصة الوطنية الموحدة B2B»، المرجع الرقمي لربط المصانع والموردين بالمشترين المحليين والدوليين. فيها دليل المصانع، والسوق الإلكتروني، والمناقصات، وطلبات عروض الأسعار، والمشاريع، ورادار الفرص، وصفحة لكل محافظة من محافظات مصر الـ27.
+ج: منصة صنع في مصر هي منظومة رقمية متكاملة للصناعة والتوريدات والمشتريات والتصدير، تعمل تحت مظلة الجمعية المصرية للتنمية الصناعية، أُطلقت في عام 2020، وتُعد المنصة الأولى التي تساعد المصانع المصرية في التوسع محلياً وخليجياً وعالمياً، ووصول المنتجات المصرية إلى حصة سوقية متطورة. فيها دليل المصانع، والسوق الإلكتروني، والمناقصات، وطلبات عروض الأسعار، والمشاريع، ورادار الفرص، وصفحة لكل محافظة من محافظات مصر الـ27.
 
 ### ما الذي تقدمه المنصة لكل مصنع (نطاق الخدمات – Scope of Services)
 ملف تعريفي رقمي للمنشأة · دليل المصانع والموردين · قاعدة بيانات المنتجات الصناعية · نظام طلبات عروض الأسعار (RFQ) · متابعة المناقصات والمشاريع حسب المحافظة والقطاع · إدارة الكتالوجات والشهادات · دليل المقاولين والاستشاريين · دليل جهات التمويل والشحن والتأمين (للتعريف فقط) · مسارات تصدير لخمسة أسواق (المحلي، الخليجي، الأفريقي، الآسيوي، الأوروبي) · الفعاليات والمعارض وشهادات الشراكة حسب الباقة.
@@ -32,14 +35,15 @@
 ## 2. الجهة المشغّلة (Operator)
 الروابط: https://madeinegyptgate.com/about.html#structure — https://madeinegyptgate.com/legal.html#status
 
-- **المشغّل الرسمي:** الجمعية المصرية للتنمية الصناعية (Egypt Industrial Development Association).
+- **المالك:** الجمعية المصرية للتنمية الصناعية (Egypt Industrial Development Association).
+- **المشغّل:** الحسيني جروب وشركاءه، استقبال الطلبات وتسجيل الشركاء وخدمة العملاء والتطوير (Operator: ElHouseni Group & Partners — receiving requests, partner registration, customer service and development).
 - **الصفة القانونية:** جمعية غير هادفة للربح، مشهرة برقم **6189 لسنة 2017**، وتعمل تحت إشراف **وزارة التضامن الاجتماعي**.
 - **الموقع الرسمي للجمعية:** https://eafid.org/
 - **دور الجمعية:** الإدارة التقنية والتشغيلية، والتعاقد مع المنشآت وإصدار الفواتير الضريبية، وتحصيل رسوم الاشتراك إلكترونياً فقط عبر بوابة الدفع (البطاقات البنكية والمحافظ الإلكترونية)، وخدمة العملاء ودعم الأعضاء.
 - **المقر:** الجيزة – مدينة السادس من أكتوبر – الحي 11 – وجه الثقافة والعلوم – عمارة 56 (الدور الثالث)، جمهورية مصر العربية.
 
 **س: المنصة تابعة لمين؟**
-ج: بتشغّلها وبتديرها «الجمعية المصرية للتنمية الصناعية»، جمعية غير هادفة للربح مشهرة برقم 6189 لسنة 2017 (eafid.org).
+ج: «المالك: الجمعية المصرية للتنمية الصناعية»، «جمعية غير هادفة للربح مشهرة برقم 6189 لسنة 2017 (وزارة التضامن الاجتماعي)»، و«المشغّل: الحسيني جروب وشركاءه، استقبال الطلبات وتسجيل الشركاء وخدمة العملاء والتطوير».
 
 **س: هل المنصة جهة حكومية؟**
 ج: لا. المنصة منصة معلومات وأعمال خاصة غير حكومية، ولا تتبع أي جهة حكومية. هي مش جهة تعاقدات حكومية، ولا بتطرح مناقصات باسمها، ولا بتقيّم العطاءات، ولا بترسّي عقود ولا بتضمن الترسية. التقديم على المناقصات الحكومية بيكون من بواباتها الرسمية زي بوابة التعاقدات العامة المصرية (etenders.gov.eg) وهيئة الشراء الموحد وبوابات الموردين في الشركات العامة وقطاعي البترول والكهرباء.
@@ -150,7 +154,9 @@
 | البريد الرسمي | info@madeinegyptgate.com |
 | الدعم الفني | support@madeinegyptgate.com |
 | المقر الرئيسي | الجيزة – مدينة السادس من أكتوبر – الحي 11 – وجه الثقافة والعلوم – عمارة 56 (الدور الثالث)، جمهورية مصر العربية |
-| الجهة المشغّلة | الجمعية المصرية للتنمية الصناعية – eafid.org |
+| مواعيد العمل | من الأحد للخميس، من 8 صباحاً حتى 4 عصراً؛ الجمعة والسبت إجازة |
+| المالك | الجمعية المصرية للتنمية الصناعية – eafid.org |
+| المشغّل | الحسيني جروب وشركاءه |
 
 **س: إزاي أتواصل معاكم؟**
 ج: أهلاً بيك، تقدر تتواصل معانا على البريد info@madeinegyptgate.com (والدعم support@madeinegyptgate.com)، أو موبايل/واتساب 01279188996، أو الخط الساخن 02 38346757. وعنوانا في الجيزة – مدينة السادس من أكتوبر – الحي 11 – وجه الثقافة والعلوم – عمارة 56، الدور الثالث.
@@ -185,7 +191,7 @@
 
 **Who we are** (https://madeinegyptgate.com/about.html#who): Made in Egypt Gate (madeinegyptgate.com) — slogan "The Unified National B2B Platform". It is the digital reference connecting Egyptian factories and suppliers in all 27 governorates with local and international buyers, distributors, contractors, consultants, government entities and the private sector, supporting the industrial sector's digital transformation and the "Made in Egypt" brand, aligned with Egypt Vision 2030 and the National Industry Strategy. Services: factory profile, directories, products database, RFQs, tenders & projects, catalogues, finance/shipping directory (info only), export routes to five markets (local, Gulf, African, Asian, European). Directory figures (computed from the platform's data): 2,926 member companies (1,380 factories and 1,546 companies & suppliers, after merging duplicate listings) plus 94 public-source factories that are not registered, so more than 3,000 unique companies across 27 governorates; 5 target markets, 5 annual plans; 64 industrial, investment and free zones (13 of them free zones). No member is verified yet.
 
-**Operator** (https://madeinegyptgate.com/legal.html#status): Egypt Industrial Development Association (الجمعية المصرية للتنمية الصناعية) — non-profit association registered under No. 6189 of 2017, supervised by the Ministry of Social Solidarity, website eafid.org. It runs operations, member contracts, tax invoices, electronic-only payments and customer service. The platform is private and non-governmental, not a contracting authority, does not award tenders or guarantee awards, and does not provide or broker financing. It is not affiliated with the Ministry of Industry, IDA, IMC, the Federation of Egyptian Industries (اتحاد الصناعات المصرية), GAFI or SCZone (referenced for information only).
+**Owner and operator** (https://madeinegyptgate.com/legal.html#status): Owner: Egypt Industrial Development Association (الجمعية المصرية للتنمية الصناعية) — A non-profit association registered under No. 6189 of 2017 (Ministry of Social Solidarity), website eafid.org. Operator: ElHouseni Group & Partners — receiving requests, partner registration, customer service and development. Office: Building 56 (third floor), Culture and Science Area, District 11, 6th of October City, Giza; phone 02 38346757; Sunday to Thursday, 8 am to 4 pm. It runs operations, member contracts, tax invoices, electronic-only payments and customer service. The platform is private and non-governmental, not a contracting authority, does not award tenders or guarantee awards, and does not provide or broker financing. It is not affiliated with the Ministry of Industry, IDA, IMC, the Federation of Egyptian Industries (اتحاد الصناعات المصرية), GAFI or SCZone (referenced for information only).
 
 **Vision:** the first digital reference connecting Egyptian factories with buyers, contributing to Egypt Vision 2030. **Mission:** a smart industrial platform uniting factories, products, suppliers and customers in one system. **Values:** reliability, transparency, partnership, factory first, sustainability, innovation. **Goals (6):** stronger Egyptian-product presence; export support; opportunities closer to factories (Law No. 5 of 2015); linking investors and factories; digital transformation; data for decisions.
 

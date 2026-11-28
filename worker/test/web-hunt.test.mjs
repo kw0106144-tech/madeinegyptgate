@@ -13,6 +13,7 @@ import { forgetWebCache, WS_ENDPOINTS, WS_VOICES, WS_TEXT, WS_NOTE, WS_PER_MIN_J
 import { parseHunt, planHunt, pickResults, huntText, HUNT_MS, INTENTS } from "../src/web-hunt.js";
 import { productNeed, industryNeed, classify, relevant, PORTALS, ENTITIES, onHost, canonUrl, personalLink, urlPII } from "../src/web-classify.js";
 import { forgetLeadsStore } from "../src/flags.js";
+import { platformLine } from "../src/web-public.js";
 
 const SITE = "https://madeinegyptgate.com";
 const CFG = "test-config-secret-0123456789abcdef-xyz";
@@ -230,8 +231,16 @@ describe("the hunt: running it (parallel, deadline, cap units, cache)", () => {
       ["rfq", "Buy rubber rollers - buying request"], ["buyer", "Qena Paper Industry Company"], ["buyer_list", "Paper manufacturers in Egypt"], ["project", "افتتاح مصنع ورق جديد بتكلفة 2 مليار"]]);
     assert.ok(d.results.every(x => x.market === "الجيزة" && !("url" in x) && !("source" in x) && !("snippet" in x) && !("aggregator" in x)), JSON.stringify(d.results));
     assert.deepEqual(d.counts, { tender: 2, rfq: 1, buyer: 1, buyer_list: 1, project: 1 });
-    assert.ok(d.results[0].official && d.results[1].official);
-    assert.equal(d.text, "لقيت مناقصتين وطلب عرض سعر واحد وشركة واحدة ممكن تبقى عميل وقايمة واحدة بمصانع ممكن تبقى عملاء ومشروع جديد واحد لـ «سلندرات درافيل» في الجيزة. اتنين منها مناقصات رسمية.");
+    /* members-only (owner 2026-11-28): Janna's call without a member's sign-in is a visitor's — a tender / RFQ / project as its teaser (no
+       entity, no official mark) + the hint to invite the registration */
+    assert.ok(d.results.filter(x => ["tender", "rfq", "project"].includes(x.type)).every(x => !("official" in x) && !("entity" in x)), JSON.stringify(d.results));
+    assert.deepEqual([d.members_only, d.register_url], [true, "https://madeinegyptgate.com/register/#basic"]); assert.match(d.hint, /details are for subscribed members/);
+    /* the auto-publish gate: the two official tenders with a closing date ahead are added to «فرص السوق»; the RFQ of a marketplace and the
+       project of a newspaper are not (no official source page) */
+    const onP = d.results.filter(x => x.on_platform);
+    assert.ok(!d.results.some(x => x.on_platform && (x.type === "rfq" || x.type === "project")), JSON.stringify(d.results));
+    assert.equal(d.text, "لقيت مناقصتين وطلب عرض سعر واحد وشركة واحدة ممكن تبقى عميل وقايمة واحدة بمصانع ممكن تبقى عملاء ومشروع جديد واحد لـ «سلندرات درافيل» في الجيزة. اتنين منها مناقصات رسمية."
+      + (onP.length ? " " + platformLine(onP.length, "janna_ar") : ""));
     assert.ok(!/https?:|www\.|@|موثّق|هتكلّم|الإنترنت|موقع|مواقع|بوابة|المصدر|نتأكد|etimad|tradekey|kompass|find tender/i.test(d.text));
     /* inside, for the data team: the same six with their links and sites (web-leads.js) */
     assert.deepEqual((await leads(env)).map(l => [l.type, l.site]), [["tender", "tenders.etimad.sa"], ["tender", "find-tender.service.gov.uk"], ["rfq", "tradekey.com"], ["buyer", "qenapaper.com"], ["buyer_list", "eg.kompass.com"], ["project", "almalnews.com"]]);
@@ -391,7 +400,9 @@ describe("the hunt and Janna's search: endpoints, voices, switches", () => {
     const env = hEnv(); reply.by = ATLAL_WEB;
     const e = await jHunt(env, { ...ATLAL, lang: "en" });
     assert.ok(!AR.test(e.data.text), e.data.text);
-    assert.equal(e.data.text, "I found 2 tenders, 1 RFQ, 1 company that could become a customer, 1 list of plants that could become customers and 1 new project for “industrial rubber rollers” in Giza. 2 of them are official tenders.");
+    const eOn = e.data.results.filter(x => x.on_platform).length;
+    assert.equal(e.data.text, "I found 2 tenders, 1 RFQ, 1 company that could become a customer, 1 list of plants that could become customers and 1 new project for “industrial rubber rollers” in Giza. 2 of them are official tenders."
+      + (eOn ? " " + platformLine(eOn, "janna_en") : ""));
     assert.ok(e.data.results.every(x => x.market === "Giza"), "the place in the language she speaks");
     const w = await jWeb(env, { query: "مستوردين درافيل", lang: "en", market: "ke" });
     assert.ok(!AR.test(w.data.text), w.data.text);
@@ -414,7 +425,10 @@ describe("the hunt and Janna's search: endpoints, voices, switches", () => {
     const r = await jWeb(env, { query: "rubber rollers importers Kenya", lang: "ar" });
     assert.equal(r.status, 200, r.text);
     assert.deepEqual(r.data.results.map(x => x.type), ["other", "tender"]);
-    assert.equal(r.data.text, "لقيت نتيجتين عن «rubber rollers importers Kenya».");
+    /* the Kenyan tender: a government host (go.ke) with a closing date — on the platform while that date is ahead (the auto-publish gate) */
+    const ahead = "2026-12-01" >= new Date(Date.now() + 2 * 3600000).toISOString().slice(0, 10);
+    assert.equal(r.data.text, "لقيت نتيجتين عن «rubber rollers importers Kenya»." + (ahead ? " " + platformLine(1, "janna_ar") : ""));
+    assert.deepEqual(r.data.results.map(x => !!x.on_platform), [false, ahead]);
     assert.deepEqual(r.data.results.map(x => x.title), ["Rubber roller importers Kenya", "Tender for rubber rollers — closing date 2026-12-01"]);
     assert.equal(pcalls()[0].body.query, "rubber rollers importers Kenya");
     assert.equal(await rl(env, capKeyJanna(Date.now())), 1, "her share counts her searches too");
@@ -426,7 +440,7 @@ describe("the hunt: leads for the data desk (web-leads.js, migration 0012)", () 
     const env = hEnv(); reply.by = q => (/^مناقصة توريد/.test(q) ? [R("مناقصة توريد درافيل — للاستعلام 01012345678 أو sales@mill-example.com", "https://tenders.etimad.sa/T/1?utm_source=x", "توريد درافيل للمطبعة")] : []);
     const a = { product: "سلندرات درافيل", intents: "tenders" };
     const said = await jHunt(env, a);
-    assert.ok(!/etimad|https?:|utm_|توريد درافيل للمطبعة/.test(JSON.stringify(said.data)), "the persona: no link, no site, no snippet — " + said.text);
+    assert.ok(!/etimad|https?:|utm_|توريد درافيل للمطبعة/.test(JSON.stringify({ ...said.data, register_url: undefined })), "the persona: no link, no site, no snippet (the platform's own registration page apart) — " + said.text);
     let L = await leads(env);
     assert.equal(L.length, 1);
     assert.deepEqual([L[0].site, L[0].snippet], ["tenders.etimad.sa", "توريد درافيل للمطبعة"], "inside: the site and the snippet are kept for the team");

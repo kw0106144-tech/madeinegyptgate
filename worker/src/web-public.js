@@ -23,10 +23,19 @@
    src/lookup-members.js; its switch web_leads_lookup is the one of that read), 2 minutes for the public page (WL.page_ttl; its switch
    web_leads_public is asked each time, flags.js memo 30 s); concurrent requests share one read; forgetPublished() after a desk decision
    in the same isolate (other isolates follow within their ttl). Fail-soft: no DB, no table (0012 not applied), a read error → nothing
-   published, never an error to the caller. Read only: nothing here writes to D1. */
+   published, never an error to the caller. Read only: nothing here writes to D1.
+   THE AUTO-PUBLISH GATE (owner 2026-11-28: what the assistants find outside is added to the platform automatically, members-only like the
+   rest, ONLY when it is a real opportunity): a tender / RFQ is published only when its source page is OFFICIAL (an official procurement
+   portal or a public body's own site: web-classify.js PORTALS / ENTITIES, or a government host) and the notice's own words give a closing
+   date that is today or later (not cancelled); a project only from an official source page; none of them when the platform already has
+   the same opportunity (useKnown: the titles of the platform's own tenders / RFQs) or another published lead says it (type + title); never
+   with personal contact data (above). A published tender / RFQ whose date passes leaves the lists the same day (liveItem). The reason a
+   lead is not published is the desk's public_why: unofficial | no_deadline | closed | duplicate (besides status | type | personal | empty).
+   Buyers, buyer lists and news keep the rules above. What a VISITOR gets of a published tender / RFQ / project is its teaser (opp-lock.js
+   lockWeb: no entity, no official mark): the details are for members. */
 import { norm, maskPII, MASK_EMAIL, MASK_PHONE, forLLM, instructionLike, asciiDigits } from "./text.js";
-import { bareHost, onHost, PORTALS, AGGREGATORS, NEWS, DIRECTORIES, MARKETS_B2B } from "./web-classify.js";
-import { featureOn, loadFeatures, valueOf } from "./flags.js";
+import { bareHost, onHost, portalOf, PORTALS, AGGREGATORS, NEWS, DIRECTORIES, MARKETS_B2B } from "./web-classify.js";
+import { featureOn, loadFeatures, valueOf, leadsStoreOn } from "./flags.js";
 import { cairoDay, addDays, GOV_CODES } from "./common.js";
 import { viewerOf, lockWeb } from "./opp-lock.js"; // members-only opportunities (owner 2026-11-28): a tender's / RFQ's / project's owner and official mark for members
 
@@ -34,6 +43,21 @@ export const PUBLIC_TYPES = Object.freeze(["tender", "rfq", "buyer", "buyer_list
 export const WL = Object.freeze({ ttl: 10 * 60 * 1000, page_ttl: 2 * 60 * 1000, rows: 300, title: 110, entity: 80, product: 60, per_page: 20, max_page: 50, q: 80 });
 const DATED = new Set(["tender", "rfq"]);
 const OK_STATUS = ["new", "accepted"];
+/* the auto-publish gate (header): an official source page — the classifier's mark, or (not an aggregator) an official portal / a public
+   body / a government host */
+const GOV_HOST = /(?:^|\.)(?:gov|gouv|gob|govt|go|mil)\.[a-z]{2,3}$|(?:^|\.)(?:gov|mil|int)$/i;
+const OFFICIAL_TYPES = new Set(["tender", "rfq", "project"]);
+export function officialSource(r) {
+  if (!r) return false;
+  if (Number(r.official)) return true;
+  if (Number(r.aggregator)) return false;
+  const host = bareHost(r.site || "");
+  return !!host && (portalOf(host) === "portal" || portalOf(host) === "entity" || GOV_HOST.test(host));
+}
+/* the platform's own opportunities (index.js hands in a check on its bundled tenders / RFQs): a web lead that repeats one is not published */
+let KNOWN = null;
+export function useKnown(fn) { KNOWN = typeof fn === "function" ? fn : null; }
+const knownTo = (type, title) => { try { return !!(KNOWN && title && KNOWN(type, title)); } catch (e) { return false; } };
 
 /* ---------------- personal data ---------------- */
 const HANDLE = /(?:^|[\s(«"'،,:])@[A-Za-z0-9_.]{2,}/;
@@ -228,21 +252,31 @@ const GOV_EN = new Map(Object.values(GOV_CODES).map(([ar, en]) => [norm(ar), en]
 
 /* one row → {pub (the public fields, and only them), hay (the search text), match (index.js: what janna_lookup matches on), cancelled} |
    null when the row is not published (the reason: publicState) */
-export function publicOf(r) {
-  const why = whyNot(r); if (why) return null;
+export function publicOf(r, nowMs = Date.now()) {
+  const j = judge(r, nowMs);
+  return j.why ? null : j.x;
+}
+/* → {why: "" | the reason it is not published, x: publicOf's answer when published} */
+function judge(r, nowMs = Date.now()) {
+  const why = whyNot(r); if (why) return { why, x: null };
   const type = r.type, host = String(r.site || ""), t0 = titleOf(r);
   const aggr = !!Number(r.aggregator);
   const title = publicTitle(t0, host, type, aggr);
   const entity = entityOf(t0, r.snippet, host, type, aggr);
   const product = (() => { const p = tidy(forLLM(r.product || "", 120)); return p && !personalIn(p) && !instructionLike(p, { money: false }) ? clipW(p, WL.product) : ""; })();
-  if (!title && !product) return null; // nothing to say in the platform's words
+  if (!title && !product) return { why: "empty", x: null }; // nothing to say in the platform's words
   const dated = DATED.has(type), text = t0 + " . " + String(r.snippet || "");
   const deadline = dated ? deadlineOf(text) : "", cancelled = dated && CANCELLED.test(norm(text) + " " + text);
+  /* the auto-publish gate (header): official source, a closing date ahead, not one the platform has */
+  if (OFFICIAL_TYPES.has(type) && !officialSource(r)) return { why: "unofficial", x: null };
+  if (dated && (cancelled || (deadline && deadline < cairoDay(nowMs)))) return { why: "closed", x: null };
+  if (dated && !deadline) return { why: "no_deadline", x: null };
+  if (OFFICIAL_TYPES.has(type) && knownTo(type, title || t0)) return { why: "duplicate", x: null };
   const gov = String(r.governorate || "").slice(0, 40), found = (() => { const t = Date.parse(String(r.first_seen || "")); return Number.isFinite(t) ? cairoDay(t) : String(r.first_seen || "").slice(0, 10); })(); // the Cairo day it was found (a UTC slice is yesterday after 22:00 UTC)
   const pub = { id: Number(r.id) || 0, type, title, ...(entity ? { entity } : {}), ...(product ? { product } : {}), market: String(r.market || "").slice(0, 20),
     ...(gov ? { governorate: gov, ...(GOV_EN.get(norm(gov)) ? { governorate_en: GOV_EN.get(norm(gov)) } : {}) } : {}),
     ...(dated ? { deadline } : {}), ...(officialOf(r) ? { official: true } : {}), found: /^\d{4}-\d{2}-\d{2}$/.test(found) ? found : "" };
-  return { pub, cancelled, hay: norm([title, entity, product, gov].join(" ")), match: [title, entity].join(" "), words: [product, forLLM(r.query || "", 200)].join(" ") };
+  return { why: "", x: { pub, cancelled, hay: norm([title, entity, product, gov].join(" ")), match: [title, entity].join(" "), words: [product, forLLM(r.query || "", 200)].join(" ") } };
 }
 /* why a row is not on the platform: "" (it is) | "status" (rejected / hidden by the team) | "type" (not an opportunity) | "personal" */
 export function whyNot(r) {
@@ -257,15 +291,38 @@ export function whyNot(r) {
   if (instructionLike(String(r.title || ""), { money: false })) return "personal";
   return "";
 }
-const officialOf = r => !!(r && Number(r.official)) && DATED.has(String(r.type || ""));
+const officialOf = r => !!r && DATED.has(String(r.type || "")) && officialSource(r);
 /* the stored title as it may be read: an official notice's masked reference numbers cut out */
 const MASK_NUM = new RegExp("(?:(?:رقم|No\\.?|Ref\\.?|Number|#)\\s*)?" + MASK_PHONE, "gi");
 const titleOf = r => (officialOf(r) ? String(r.title || "").replace(MASK_NUM, " ").replace(/\s+/g, " ").trim() : String(r.title || ""));
 /* the desk's view of one row: is it on the platform now, and if not, why (web-leads.js itemOf) */
-export function publicState(r) {
-  const why = whyNot(r);
-  if (why) return { published: false, why };
-  return publicOf(r) ? { published: true, why: "" } : { published: false, why: "empty" };
+export function publicState(r, nowMs = Date.now()) {
+  const j = judge(r, nowMs);
+  return j.why ? { published: false, why: j.why } : { published: true, why: "" };
+}
+/* would a lead found right now be published (the hunt / search say «اتضافت على المنصة» only then): the same gate on the row recordLeads
+   writes — r: {type, title, snippet, url, official, aggregator, product, market} */
+export function wouldPublish(r, nowMs = Date.now()) {
+  if (!r || !PUBLIC_TYPES.includes(r.type)) return false;
+  let site = ""; try { site = bareHost(new URL(String(r.url || "")).hostname); } catch (e) { return false; }
+  return !judge({ id: 0, status: "new", type: r.type, title: forLLM(r.title, 160), snippet: forLLM(r.snippet, 300), site, official: r.official ? 1 : 0, aggregator: r.aggregator ? 1 : 0,
+    product: forLLM(r.product || "", 120), market: r.market || "", governorate: "", first_seen: new Date(nowMs).toISOString() }, nowMs).why;
+}
+
+/* is the platform publishing what the assistants find now: the leads store (0012), its owner switch web_leads, and one of the two places
+   that show them (web_leads_public: the page; web_leads_lookup: janna_lookup) — never throws */
+export async function publishingOn(env) {
+  try {
+    if (!env || !env.DB || !(await leadsStoreOn(env)) || !(await featureOn(env, "web_leads"))) return false;
+    return (await featureOn(env, "web_leads_public")) || (await featureOn(env, "web_leads_lookup"));
+  } catch (e) { return false; }
+}
+/* the persona's line for n found opportunities the platform adds (members-only like the rest); voice: janna | janna_en | bassem … */
+export function platformLine(n, voice) {
+  const en = /_en$/.test(String(voice || "")), bassem = /^bassem/.test(String(voice || ""));
+  if (en) return n === 1 ? "One of them is added to the platform's «Market opportunities»; its details are for subscribed members." : `${n} of them are added to the platform's «Market opportunities»; their details are for subscribed members.`;
+  if (bassem) return n === 1 ? "وواحدة منهم اتضافت على المنصة في «فرص السوق»." : `و${n === 2 ? "اتنين" : n} منهم اتضافوا على المنصة في «فرص السوق».`;
+  return n === 1 ? "وواحدة منهم اتضافت على المنصة في «فرص السوق»، وتفاصيلها للأعضاء المشتركين." : `و${n === 2 ? "اتنين" : n} منهم اتضافوا على المنصة في «فرص السوق»، وتفاصيلهم للأعضاء المشتركين.`;
 }
 
 /* ---------------- the reader (one read per isolate per ttl) ---------------- */
@@ -285,7 +342,7 @@ async function load(env, nowMs) {
   const seen = new Set(), rows = [];
   for (const r of [].concat(...lists).sort((a, b) => String(b.first_seen).localeCompare(String(a.first_seen)) || Number(b.id) - Number(a.id))) {
     if (r.via === "research") continue; // «بحث وكتابة عميقة»: never published (above)
-    const x = publicOf(r); if (!x) continue;
+    const x = publicOf(r, nowMs); if (!x) continue;
     const k = x.pub.type + "|" + norm(x.pub.title || x.pub.product); // the same notice on several sites (syndication): once, the first found
     if (seen.has(k)) continue; seen.add(k); rows.push(x);
   }
@@ -307,6 +364,8 @@ export function publicItem(x, nowMs = Date.now()) {
   const p = x.pub;
   return DATED.has(p.type) ? { ...p, status: statusOf(p.deadline, x.cancelled, nowMs) } : { ...p, status: "" };
 }
+/* still on the platform today: a tender / RFQ whose closing date passed since the memo was read leaves the lists (the gate, header) */
+export const liveItem = it => !!it && !(DATED.has(it.type) && it.status !== "open" && it.status !== "closing");
 
 /* ---------------- GET /api/janna/opportunities (the public page /market-opportunities/) ----------------
    ?type=tender|rfq|buyer|buyer_list|project|news &market=<code> &q=<words> &page=<1…> → 200 {ok, items, total, page, pages, per_page, counts,
@@ -337,9 +396,10 @@ export async function handlePublicLeads(req, env, ctx, nowMs = Date.now()) {
   const type = PUBLIC_TYPES.includes(sp.get("type")) ? sp.get("type") : "", market = /^[a-z]{2,8}$/.test(String(sp.get("market") || "")) ? sp.get("market") : "";
   const qw = norm(String(sp.get("q") || "").slice(0, WL.q)).split(" ").filter(w => w.length >= 2).slice(0, 6);
   const hit = x => (!market || x.pub.market === market) && (!qw.length || qw.every(w => x.hay.includes(w)));
-  const base = m.rows.filter(hit), list = base.filter(x => !type || x.pub.type === type);
+  const rows = m.rows.filter(x => liveItem(publicItem(x, nowMs))); // a closing date that passed since the read: off the lists (the gate)
+  const base = rows.filter(hit), list = base.filter(x => !type || x.pub.type === type);
   const counts = {}; for (const x of base) counts[x.pub.type] = (counts[x.pub.type] || 0) + 1;
-  const mk = new Map(); for (const x of m.rows) if (x.pub.market && (!type || x.pub.type === type)) mk.set(x.pub.market, (mk.get(x.pub.market) || 0) + 1);
+  const mk = new Map(); for (const x of rows) if (x.pub.market && (!type || x.pub.type === type)) mk.set(x.pub.market, (mk.get(x.pub.market) || 0) + 1);
   /* members-only (owner 2026-11-28): a visitor gets the opportunities without their entity and official mark (lockWeb); a signed-in member
      whose plan covers Egypt gets them in full — never from the shared cache */
   const acc = req.headers.get("Authorization") ? await viewerOf(req, env, { anam: false }, nowMs) : null, full = acc && acc.who !== "visitor";

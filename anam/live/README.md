@@ -11,12 +11,51 @@ previous text back (the version of the file before that write, in git history).
 
 | File | Persona / tool | `updatedAt` (live since) | sha256 | Characters |
 |---|---|---|---|---|
-| `janna-ar.systemPrompt.md` | Janna AR `5f06d835-22cc-4460-b412-84cefa9e565b` | `2026-11-21T22:23:03.777Z` | `460fdeee003b17fae25e97204358e1aeb2f7fdafe3d1292bbbbac57f2c3897c8` | 28,073 (a read says 28,074: see round 3) |
-| `janna-en.systemPrompt.md` | Janna EN `e5101653-65b4-44a6-85e5-ec2e78f82685` | `2026-11-21T22:24:43.882Z` | `56a2af3e44492fd3649d7c8b0878ed42c4841dd50805bff1ee853809f48edff8` | 32,691 (a read says 32,692: see round 3) |
-| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-21T22:27:48.673Z` | `d79fb363221e02f2f1840d6bfd5886162828f0c5ea80426518cc3d82615c19e4` | 33,239 (the API says 33,240: see round 3) |
+| `janna-ar.systemPrompt.md` | Janna AR `5f06d835-22cc-4460-b412-84cefa9e565b` | `2026-11-28T09:31:51.917Z` | `63e4d39f4b1b337adaaa6d2f13314d77bfec44c915d34da753ba9951c8873161` | 30,346 (a read says 30,347: 🌐 counts 2) |
+| `janna-en.systemPrompt.md` | Janna EN `e5101653-65b4-44a6-85e5-ec2e78f82685` | `2026-11-28T09:33:30.156Z` | `1ea3bc38f8df473407fb5f666e40bdec5214712284effba92426cbe3ff97da1b` | 35,734 (a read says 35,735) |
+| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-28T09:36:30.739Z` | `3bdd5bdfbed6e626586fa02e06911710ef6d05bea11c05393a5fb0b55439b609` | 35,037 (the API says 35,038) |
 | `bassem_save_profile.description.md` | tool `bassem_save_profile` `4c3b35f3-0590-44d7-85d1-321eeb21c79e` | `2026-11-20T08:37:02.665Z` | `41eaa3ade439de9372710286ac29e0594d4f884b1ac0478777e5a068b829c55a` | 894 |
 | `bassem-notify-send.tools.md` | tools `bassem_notify_member` `325b182c-e5e0-42d0-a130-658919faf12f` and `bassem_send_email` `a00e4d99-df41-4a43-8c66-39bdfa3d2495` | `2026-11-21T22:06:40.549Z` / `2026-11-21T22:06:43.489Z` | (the bodies are in the file) | |
-| `janna_lookup.tool.json` | tool `janna_lookup` `29fd5087-5eff-4919-afb2-3d01b8cc70de` (Janna AR and Janna EN) | `2026-11-20T12:49:00.983Z` | `9d52be6431fcf1dcd9ecd39b301e4758b20553adba47a7956de9a8aac7f0f0b5` (the file) | description 909 |
+| `janna_lookup.tool.json` | tool `janna_lookup` `29fd5087-5eff-4919-afb2-3d01b8cc70de` (Janna AR and Janna EN) and `platform_item` `6ccedda8` | `2026-11-28T09:27:54.863Z` / `2026-11-28T09:27:59.484Z` | `9d52be6431fcf1dcd9ecd39b301e4758b20553adba47a7956de9a8aac7f0f0b5` (the file) | description 909 |
+
+## Round 4 — the assistants round (identity, titles for visitors, always search outside, auto-publish, registration help), applied on 2026-11-28
+
+The owner decided it on 2026-11-28 and approved the Anam changes of the task in advance (brief «the six assistants»). Backups of what was live
+before, byte for byte with the tool lists: `docs/janna/anam-backup-2026-11-28.md` (Janna AR + EN) and `docs/bassem/anam-backup-2026-11-28.md`.
+The prompts were built from the previous copies here (their `updatedAt` had not moved since round 3) by
+`anam/rounds/2026-11-28-assistants/build_prompts.py` (each replacement exactly once); the tool writes are in `tools.applied.json` there.
+
+| UTC | Write | Fields sent | `updatedAt` before → after |
+|---|---|---|---|
+| 09:27:09 | `janna_register_help` `fc179425-c14c-4325-a152-6228de0a64a3`, `anam_tool_create` (SERVER_WEBHOOK → `/api/janna/register-help`) | the whole body | — → created |
+| 09:27:10 | `bassem_register_help` `35049741-22a6-426f-a201-e9f368b04501`, `anam_tool_create` (→ `/api/advisor/register-help`) | the whole body | — → created |
+| 09:27:54 | `janna_lookup` `29fd5087` (Janna), `anam_tool_update` | `description` | `2026-11-23T00:03:51.609Z` → `2026-11-28T09:27:54.863Z` |
+| 09:27:59 | `platform_item` `6ccedda8` (all three), `anam_tool_update` | `description` | `2026-11-20T13:19:41.946Z` → `2026-11-28T09:27:59.484Z` |
+| 09:31:51 | Janna AR, `anam_persona_update` | `systemPrompt`, `toolIds` (17 → 18: + `janna_register_help`) | `2026-11-21T22:23:03.777Z` → `2026-11-28T09:31:51.917Z` |
+| 09:33:30 | Janna EN, `anam_persona_update` | `systemPrompt`, `toolIds` (17 → 18) | `2026-11-21T22:24:43.882Z` → `2026-11-28T09:33:30.156Z` |
+| 09:36:30 | Bassem, `anam_persona_update` | `systemPrompt`, `toolIds` (25 → 26: + `bassem_register_help`) | `2026-11-21T22:27:48.673Z` → `2026-11-28T09:36:30.739Z` |
+
+(The two `createdAt` stamps the API returned read 02:27 UTC; the later writes read 09:27–09:36; they were seconds apart in this session.)
+
+- **What changed in the prompts.** (1) The old platform definition («عمرها ٨ سنين، أول منصة وطنية…» / "8 years old…", and «تشغّلها الجمعية…» in
+  «إزاي تقنعي» / HOW TO PERSUADE / Bassem's «# حقائق») is replaced by the owner's approved identity sentence (2026-11-27), the owner / operator lines of
+  2026-11-19 word for word (Arabic; English as in the site's footer), the office address, the phone 02 38346757 and the working hours (Sunday to
+  Thursday, 8 to 4). Janna EN says the English translation the site uses (pending the owner's look) and the Arabic sentence. (2) Janna: titles only
+  for a visitor (title, sector, place, closing date); `members_only` / `locked` results: the details are for members, the plan of `need`, the
+  registration offered with `janna_navigate`, never `register_url` read aloud. Bassem: members get the full details; `members_only` = a market
+  outside his plan; the daily 10:00 report with its PDF when he asks. (3) Never «مفيش» / «مش لاقية» / "not found": when the platform returns nothing,
+  search outside in the same reply and answer like a search assistant; the «not found» numbers question now goes to the web search or the team
+  (a task); the tag guides and cue examples no longer model a «nothing found» answer. (4) `on_platform` results (the hunt / search text says «اتضافت
+  على المنصة في «فرص السوق»») may be said to be on the platform now, details for members, never a link or a source. (5) The «wanted to register but
+  couldn't» tool lines of `docs/janna/REGISTER-HELP-TOOL.md`.
+- **Untouched.** Voice, LLM, avatar, director notes, `voiceDetectionOptions`, greetings; the language, barge-in, noise, memory, tour, meeting and
+  price sections; the emotion tags and # STYLE CUES except the one cue example per persona that modelled «nothing found» (tags unchanged). The
+  plans price sync (`worker/src/acc-plans.js` `rewritePrompt`), run offline on the old and the new texts, finds its blocks and changes nothing.
+  The four web tools' descriptions are unchanged (near the 1,024-character limit; the prompts and the tools' own `text` carry the new rules).
+- **Checked.** `anam_session_list active=true` was empty before the writes. Every update carried `expectedUpdatedAt` and got no 409. Each reply's
+  trimmed total equals the file here + 1 (🌐), its visible part is the start of the file, and `toolIds` are the lists above.
+- **Rollback.** Prompts: these files at `08d0fdd` (= the backups), `systemPrompt` + the old `toolIds` of the backup, with `expectedUpdatedAt` = the new
+  `updatedAt` above. Tools: `before` in `anam/rounds/2026-11-28-assistants/tools.applied.json`; the two new tools can stay (unattached they do nothing).
 
 ## Round 3 (hunt + search, «no source», no bare «مفيش»), applied on 2026-11-21
 

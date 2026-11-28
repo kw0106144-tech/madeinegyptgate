@@ -1,0 +1,124 @@
+{
+ "_note": "2026-11-28 assistants round: the tool writes as sent (descriptions only for the two updated tools; full bodies for the two created ones).",
+ "updated": [
+  {
+   "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
+   "name": "janna_lookup",
+   "field": "description",
+   "updatedAt_before": "2026-11-23T00:03:51.609Z",
+   "updatedAt_after": "2026-11-28T09:27:54.863Z",
+   "before": "Search the platform's REAL directory and get results you can say aloud: factories & companies (by activity/product and governorate), products, Egyptian tenders, RFQs, retail offers, industrial cities, projects, events (exhibitions), news and awards. Use it when the visitor asks which factories / suppliers / tenders / offers exist. A SELLER's potential customers: section=customers, query = the industries that use his product in ONE list («ورق، كرتون، طباعة، بلاستيك»), governorate = his governorate, not the city (6th of October = الجيزة); they are directory factories, not purchase requests. Two or three names of ONE product go in one query («سلندرات درافيل rollers»), no governorate for tenders / RFQs. Say only what the result's `text` and results contain - never invent names, numbers or contacts. Also call janna_search with the query's main word only (the screen matches the whole phrase). Each result has an `id`: all its details with platform_item.",
+   "after": "Search the platform's REAL directory and get results you can say aloud: factories & companies (by activity/product and governorate), products, Egyptian tenders, RFQs, retail offers, industrial cities, projects, events, news and awards. A SELLER's potential customers: section=customers, query = the industries that use his product in ONE list («ورق، كرتون، طباعة، بلاستيك»), governorate = his governorate, not the city (6th of October = الجيزة); they are directory factories, not purchase requests. Two or three names of ONE product go in one query («سلندرات درافيل rollers»), no governorate for tenders / RFQs. Say only what the result's `text` and results contain - never invent names, numbers or contacts. Also call janna_search with the query's main word only. Each result has an `id`: all its details with platform_item. members_only: details for members only - say title, place, deadline; invite registration (need). Nothing found: never say so - search outside (janna_web_hunt / janna_web_search)."
+  },
+  {
+   "id": "6ccedda8-5896-4b9b-b3ae-c8ed462a4b3d",
+   "name": "platform_item",
+   "field": "description",
+   "updatedAt_before": "2026-11-20T13:19:41.946Z",
+   "updatedAt_after": "2026-11-28T09:27:59.484Z",
+   "before": "Get EVERYTHING the platform has about ONE item before you talk about it: a tender's entity, number, deadline, status, place, bid bond (قيمة التأمين), booklet price (ثمن الكراسة), estimated value and official documents link; an RFQ's request, quantity and delivery place; a factory's activity, products, location and summary; a project's owner, contractor, value and latest news; an award's winner and value; an offer's price. Pass `id` from the janna_lookup result (best), else `ref`, else the title. Say ONLY what the returned `text` and fields contain: a missing field is NOT on the platform - say so, never guess it; contact is through the platform (never invent phones or e-mails); never read links aloud. found:false = not on the platform: say so and search again with janna_lookup. Then show it on the screen: Bassem with bassem_open_item (url = the result's open_url); Janna with janna_search (same section + the item's title).",
+   "after": "Get EVERYTHING the platform has about ONE item before you talk about it: a tender's entity, number, deadline, status, place, bid bond (قيمة التأمين), booklet price (ثمن الكراسة), estimated value and official documents link; an RFQ's request, quantity and delivery place; a factory's activity, products, location and summary; a project's owner, contractor, value and latest news; an award's winner and value; an offer's price. Pass `id` from the janna_lookup result (best), else `ref`, else the title. Say ONLY what the returned `text` and fields contain: a missing field is NOT on the platform, never guess it; contact is through the platform; never read links aloud. members_only: the caller's plan does not include the details - say the teaser and the plan that includes them (need). found:false: search again with janna_lookup, then outside (web search), never a bare «not found». Then show it: Bassem with bassem_open_item (url = open_url); Janna with janna_search (same section + its title)."
+  }
+ ],
+ "created": [
+  {
+   "id": "fc179425-c14c-4325-a152-6228de0a64a3",
+   "createdAt": "2026-11-28T02:27:09.890Z",
+   "attached_to": [
+    "Janna AR 5f06d835",
+    "Janna EN e5101653"
+   ],
+   "body": {
+    "name": "janna_register_help",
+    "type": "SERVER_WEBHOOK",
+    "description": "Call this ONLY when the person says they wanted to register (sign up, subscribe to a plan, create an account, get or use the sign-in code, pay for a plan) and could not — an error, a page that does not work, a code that never arrived, a payment that failed. It alerts the platform team at once. Ask first (one short question) for an e-mail or mobile number the team can use, unless they already gave one; if they do not want to give one, call it anyway. Send their own words in `said`. Call it once per conversation. Never call it for a plain question about how to register — answer that yourself. Say exactly what the returned `text` says; never promise a time.",
+    "config": {
+     "url": "https://madeinegyptgate.com/api/janna/register-help",
+     "method": "POST",
+     "awaitResponse": true,
+     "parameters": {
+      "type": "object",
+      "required": [
+       "said"
+      ],
+      "properties": {
+       "said": {
+        "type": "string",
+        "description": "What the person said about the problem, in their own words"
+       },
+       "name": {
+        "type": "string",
+        "description": "The name they gave (optional)"
+       },
+       "company": {
+        "type": "string",
+        "description": "Their company, if they said it (optional)"
+       },
+       "email": {
+        "type": "string",
+        "description": "The e-mail they gave for the team to reach them (optional)"
+       },
+       "phone": {
+        "type": "string",
+        "description": "The mobile number they gave (optional)"
+       },
+       "page": {
+        "type": "string",
+        "description": "The page they were on, if known (optional)"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "35049741-22a6-426f-a201-e9f368b04501",
+   "createdAt": "2026-11-28T02:27:10.221Z",
+   "attached_to": [
+    "Bassem 19ef9078"
+   ],
+   "body": {
+    "name": "bassem_register_help",
+    "type": "SERVER_WEBHOOK",
+    "description": "Call this ONLY when the member (or someone with him) says they wanted to register, renew or upgrade the plan (sign up, subscribe, create an account, get or use the sign-in code, pay) and could not — an error, a page that does not work, a code that never arrived, a payment that failed. It alerts the platform team at once. Ask first (one short question) for an e-mail or mobile number the team can use, unless he already gave one; if he does not want to give one, call it anyway. Send his own words in `said`. Call it once per conversation. Never call it for a plain question about how to register or upgrade — answer that yourself. Say exactly what the returned `text` says; never promise a time.",
+    "config": {
+     "url": "https://madeinegyptgate.com/api/advisor/register-help",
+     "method": "POST",
+     "awaitResponse": true,
+     "parameters": {
+      "type": "object",
+      "required": [
+       "said"
+      ],
+      "properties": {
+       "said": {
+        "type": "string",
+        "description": "What the person said about the problem, in their own words"
+       },
+       "name": {
+        "type": "string",
+        "description": "The name they gave (optional)"
+       },
+       "company": {
+        "type": "string",
+        "description": "Their company, if they said it (optional)"
+       },
+       "email": {
+        "type": "string",
+        "description": "The e-mail they gave for the team to reach them (optional)"
+       },
+       "phone": {
+        "type": "string",
+        "description": "The mobile number they gave (optional)"
+       },
+       "page": {
+        "type": "string",
+        "description": "The page they were on, if known (optional)"
+       }
+      }
+     }
+    }
+   }
+  }
+ ]
+}

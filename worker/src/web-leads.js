@@ -34,7 +34,10 @@ export const REASONS = Object.freeze({ off_topic: ["مش عن المنتج", "No
 /* a rejection for every product (a hunt never brings the link back); «مش عن المنتج» / no reason: for the same product only */
 const GLOBAL_REASONS = ["old", "duplicate", "not_credible", "advert", "hidden"];
 const WHY_NAMES = Object.freeze({ status: ["مرفوضة أو مخفية", "Rejected or hidden"], type: ["مش فرصة واضحة", "Not a clear opportunity"], personal: ["فيها بيانات شخصية", "Holds personal data"],
-  empty: ["مفيش عنوان ينفع يتعرض من غير المصدر", "No title that can be shown without its source"] });
+  empty: ["مفيش عنوان ينفع يتعرض من غير المصدر", "No title that can be shown without its source"],
+  /* the auto-publish gate (owner 2026-11-28, web-public.js): official source, a closing date ahead, not one the platform has */
+  unofficial: ["مصدرها مش صفحة رسمية", "Its source is not an official page"], no_deadline: ["مفيش آخر ميعاد مكتوب فيها", "No closing date in it"],
+  closed: ["ميعادها خلص أو اتلغت", "Closed or cancelled"], duplicate: ["موجودة على المنصة بالفعل", "Already on the platform"] });
 /* rejected_in: the links one rejectedOf() read covers — a hunt has ≤ 60 candidates; D1 binds ≤ 100 values a statement (90 + 4 + 1) */
 export const LEADS_LIMITS = Object.freeze({ per_answer: 12, rejected_in: 90, note: 300 });
 const RANK = t => `CASE ${t} WHEN 'tender' THEN 6 WHEN 'rfq' THEN 5 WHEN 'project' THEN 4 WHEN 'buyer' THEN 3 WHEN 'buyer_list' THEN 2 WHEN 'news' THEN 1 ELSE 0 END`;

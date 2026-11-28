@@ -8,18 +8,20 @@ import { test, describe, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import worker, { search, WEB_MAX } from "../src/index.js";
+import worker, { search, WEB_MAX, knownTitle } from "../src/index.js";
 import { D1 } from "./helpers.mjs";
 import { issueSession } from "../src/auth.js";
 import { recordLeads, rejectedOf, leadHash, productKey } from "../src/web-leads.js";
 import { forgetLeadsStore, featureDef, stateOf, publicFeatures, forgetFeatures } from "../src/flags.js";
-import { publishedLeads, resetPublished, resetRate, publicTitle, entityOf, publicOf, deadlineOf, statusOf, whyNot, personalIn, siteLabels, WL, PUBLIC_TYPES } from "../src/web-public.js";
+import { publishedLeads, resetPublished, resetRate, publicTitle, entityOf, publicOf, deadlineOf, statusOf, whyNot, personalIn, siteLabels, WL, PUBLIC_TYPES,
+  publicState, officialSource, wouldPublish, liveItem, publicItem, useKnown, publishingOn, platformLine } from "../src/web-public.js";
+import DATA from "../src/data.json";
 import { resetMembers } from "../src/lookup-members.js";
 import { cairoDay, addDays } from "../src/common.js";
 import { forLLM } from "../src/text.js";
 
 const SITE = "https://madeinegyptgate.com", O = "/api/janna/opportunities", L = "/api/team/desk/leads";
-const TODAY = cairoDay(Date.now()), FUT = addDays(TODAY, 30), PAST = addDays(TODAY, -10), SOON = addDays(TODAY, 3);
+const TODAY = cairoDay(Date.now()), FUT = addDays(TODAY, 30), PAST = addDays(TODAY, -10), SOON = addDays(TODAY, 3), FUT2 = addDays(TODAY, 20);
 const env0 = extra => ({ DB: new D1(), ADVISOR_SECRET: "adv-secret-for-tests", RESEND_API_KEY: "re_test", MAIL_FROM: "منصة صنع في مصر <noreply@madeinegyptgate.com>", TEAM_EMAIL: "team@madeinegyptgate.com",
   ADMIN_EMAILS: "owner@mig.test", PLATFORM_KEY: "pk-test-123", CONFIG_SECRET: "test-config-secret-0123456789abcdef-xyz", ...(extra || {}) });
 function mkCtx() { const p = []; return { waitUntil(x) { p.push(Promise.resolve(x).catch(() => null)); }, async done() { while (p.length) await Promise.all(p.splice(0)); } }; }
@@ -55,42 +57,47 @@ async function seed(env) {
     "آخر موعد لتقديم العروض " + FUT + " — رقم المنافسة 251139011436", { official: true, query: "منافسة توريد كابلات السعودية" })], { persona: "bassem", via: "hunt", product: "كابلات", market: "sa", nowMs: now });
   await recordLeads(env, [
     R("tender", "https://www.tendersinfo.com/details/2", "Egypt: tender for supply of power cables | TendersInfo", "Closing date: " + PAST + ". Tender for power cables.", { aggregator: true, query: "tender supply of cables Egypt" }),
-    R("tender", "https://eetc.net.eg/tenders/3", "تعلن الشركة المصرية لنقل الكهرباء عن طرح مناقصة توريد كابلات جهد عالي", "مناقصة عامة لتوريد كابلات جهد عالي", { official: true, query: "مناقصة توريد كابلات مصر" }),
+    R("tender", "https://eetc.net.eg/tenders/3", "تعلن الشركة المصرية لنقل الكهرباء عن طرح مناقصة توريد كابلات جهد عالي", "مناقصة عامة لتوريد كابلات جهد عالي، آخر موعد لتقديم العطاءات " + FUT2, { official: true, query: "مناقصة توريد كابلات مصر" }),
+    R("tender", "https://eetc.net.eg/tenders/9", "مناقصة توريد كابلات ألياف ضوئية", "مناقصة عامة لتوريد كابلات ألياف ضوئية", { official: true, query: "مناقصة توريد كابلات مصر" }),
     R("rfq", "https://www.tradekey.com/buyoffer/cables-4.html", "Buy power cables 500 meters - TradeKey", "We are looking for supplier of power cables, closing date " + SOON, { query: "buying request cables" }),
+    R("rfq", "https://www.eehc.gov.eg/rfq/9", "طلب عروض أسعار لتوريد كابلات نحاسية", "آخر موعد لتلقي العروض " + SOON, { query: "طلب عروض أسعار كابلات" }),
     R("rfq", "https://classifieds.example.com/ad/5", "مطلوب كابلات للتواصل 01012345678", "واتساب 01012345678", { query: "مطلوب توريد كابلات" }),
     R("buyer", "https://www.qenapaper.com/", "Qena Paper Industry Company - Home", "Leading paper mill in Upper Egypt, contact info@qenapaper.com", { query: "مصانع ورق في مصر" }),
     R("buyer", "https://www.alamal-elec.example/", "شركة الأمل للمقاولات الكهربائية", "مقاولات كهربائية وتوريدات", { query: "مقاولين كهرباء مصر" }),
     R("project", "https://www.youm7.com/story/6", "مصنع جديد للكابلات في العين السخنة باستثمارات 50 مليون دولار | اليوم السابع", "خبر عن مصنع كابلات", { query: "مصنع كابلات جديد" }),
+    R("project", "https://www.gafi.gov.eg/news/8", "مجمع صناعي جديد للكابلات في العين السخنة", "خبر عن مجمع كابلات", { query: "مصنع كابلات جديد" }),
     R("news", "https://www.almalnews.com/7", "ارتفاع أسعار النحاس يرفع تكلفة الكابلات - جريدة المال", "النحاس والكابلات", { query: "كابلات" }),
   ], { persona: "janna", via: "hunt", product: "كابلات", market: "eg", nowMs: now + 1000 });
 }
 const all = async (env, sql, ...a) => (await env.DB.prepare(sql).bind(...a).all()).results;
 const idOf = async (env, like) => Number(await env.DB.prepare("SELECT id FROM web_leads WHERE url LIKE ?").bind(like).first("id"));
 /* nothing in an answer may say where an opportunity came from */
-const SOURCE_RX = /https?:|www\.|\b[a-z0-9-]+\.(?:com|net|org|sa|eg|gov|example)\b|etimad|tendersinfo|tradekey|youm7|almalnews|qenapaper|alamal|classifieds|اعتماد|اليوم السابع|جريدة المال|TradeKey|TendersInfo/i;
-const SNIPPET_RX = /Leading paper mill|We are looking for supplier|رقم المنافسة|مناقصة عامة لتوريد|خبر عن مصنع|النحاس والكابلات|buying request|DetailsForVisitor/i;
+const SOURCE_RX = /https?:|www\.|\b[a-z0-9-]+\.(?:com|net|org|sa|eg|gov|example)\b|etimad|tendersinfo|tradekey|youm7|almalnews|qenapaper|alamal|classifieds|eehc|gafi|اعتماد|اليوم السابع|جريدة المال|TradeKey|TendersInfo/i;
+const SNIPPET_RX = /Leading paper mill|We are looking for supplier|رقم المنافسة|مناقصة عامة لتوريد|خبر عن مصنع|خبر عن مجمع|النحاس والكابلات|buying request|DetailsForVisitor|لتلقي العروض/i;
+const GAFI = "project:مجمع صناعي جديد للكابلات في العين السخنة", EEHC = "طلب عروض أسعار لتوريد كابلات نحاسية";
 const PUB_KEYS = new Set(["id", "type", "title", "entity", "product", "market", "governorate", "governorate_en", "deadline", "official", "found", "status"]);
 
 beforeEach(() => { resetPublished(); resetRate(); resetMembers(); });
 
 describe("«فرص السوق»: what is published, in the platform's words", () => {
-  test("new / accepted leads without personal data are published at once; rejected, hidden, other and personal ones never", async () => {
+  test("new / accepted leads that pass the auto-publish gate are published at once; rejected, hidden, other, personal, unofficial, undated and closed ones never", async () => {
     const env = env0(); await seed(env);
     await env.DB.prepare("INSERT INTO web_leads (url_hash, url, title, site, type, first_seen, last_seen) VALUES ('x1', 'https://shop.example/p', 'a shop page', 'shop.example', 'other', ?, ?)").bind(new Date().toISOString(), new Date().toISOString()).run();
     const m = await publishedLeads(env, Date.now(), { ttl: 1 });
     assert.equal(m.off, false);
     const by = Object.fromEntries(m.rows.map(x => [x.pub.type + ":" + x.pub.title, x.pub]));
-    assert.deepEqual(Object.keys(by).sort(), ["buyer:شركة الأمل للمقاولات الكهربائية", "news:ارتفاع أسعار النحاس يرفع تكلفة الكابلات", "project:مصنع جديد للكابلات في العين السخنة باستثمارات 50 مليون دولار",
-      "rfq:Buy power cables 500 meters", "tender:Egypt: tender for supply of power cables", "tender:تعلن الشركة المصرية لنقل الكهرباء عن طرح مناقصة توريد كابلات جهد عالي",
-      "tender:منافسة توريد كابلات كهربائية لمستشفى الملك فهد"].sort(), "the site names cut; the classified with a phone number, the buyer with an e-mail and the «other» page left out");
+    assert.deepEqual(Object.keys(by).sort(), ["buyer:شركة الأمل للمقاولات الكهربائية", "news:ارتفاع أسعار النحاس يرفع تكلفة الكابلات", GAFI,
+      "rfq:" + EEHC, "tender:تعلن الشركة المصرية لنقل الكهرباء عن طرح مناقصة توريد كابلات جهد عالي",
+      "tender:منافسة توريد كابلات كهربائية لمستشفى الملك فهد"].sort(), "the site names cut; the classified with a phone number, the buyer with an e-mail, the «other» page, the aggregator's closed tender, the undated tender, the marketplace RFQ and the newspaper's project left out");
     const e = by["tender:منافسة توريد كابلات كهربائية لمستشفى الملك فهد"];
     assert.deepEqual([e.official, e.deadline, e.market, e.product, e.found], [true, FUT, "sa", "كابلات", TODAY], "official, its deadline read from its own words (the masked reference number is no contact)");
     assert.equal(by["tender:تعلن الشركة المصرية لنقل الكهرباء عن طرح مناقصة توريد كابلات جهد عالي"].entity, "الشركة المصرية لنقل الكهرباء");
-    assert.equal(by["tender:Egypt: tender for supply of power cables"].deadline, PAST);
+    assert.equal(by["tender:تعلن الشركة المصرية لنقل الكهرباء عن طرح مناقصة توريد كابلات جهد عالي"].deadline, FUT2);
+    assert.equal(by["rfq:" + EEHC].official, true, "a government host is an official source page");
     for (const p of Object.values(by)) for (const k of Object.keys(p)) assert.ok(PUB_KEYS.has(k), "public field " + k);
     assert.ok(!SOURCE_RX.test(JSON.stringify(m.rows.map(x => x.pub))) && !SNIPPET_RX.test(JSON.stringify(m.rows.map(x => x.pub))));
     /* the team's decisions */
-    await env.DB.prepare("UPDATE web_leads SET status = 'rejected', reason = 'hidden' WHERE url LIKE '%tradekey%'").run();
+    await env.DB.prepare("UPDATE web_leads SET status = 'rejected', reason = 'hidden' WHERE url LIKE '%eehc.gov.eg%'").run();
     await env.DB.prepare("UPDATE web_leads SET status = 'rejected', reason = 'old' WHERE url LIKE '%tendersinfo%'").run();
     await env.DB.prepare("UPDATE web_leads SET status = 'accepted' WHERE url LIKE '%youm7%'").run();
     resetPublished();
@@ -128,8 +135,9 @@ describe("«فرص السوق»: what is published, in the platform's words", ()
     assert.equal(publicTitle("Tender for cables - Acme Portal", "acme.io", "tender", true), "Tender for cables");
     assert.equal(entityOf("Tender for cables - Acme", "", "acme.io", "tender", true), "", "aggregator = 1");
     for (const [title, site, aggr] of [["توريد كابلات - Bidsmarket", "bidsmarket.net", 1], ["Tender for cables - BidAssist", "bidassist.com", 0]]) {
-      const x = publicOf(row({ type: "tender", title, site, aggregator: aggr }));
-      assert.ok(x && !/bidsmarket|bidassist/i.test(JSON.stringify(x.pub)), JSON.stringify(x && x.pub));
+      const x = publicTitle(title, site, "tender", !!aggr);
+      assert.ok(x && !/bidsmarket|bidassist/i.test(x), x);
+      assert.equal(publicOf(row({ type: "tender", title, site, aggregator: aggr })), null, "an aggregator is no official source page: never published");
     }
     assert.equal(deadlineOf("آخر موعد لتقديم العطاءات يوم الأحد الموافق 15/12/2026"), "2026-12-15");
     assert.equal(deadlineOf("Closing Date: 15 December 2026"), "2026-12-15");
@@ -145,6 +153,56 @@ describe("«فرص السوق»: what is published, in the platform's words", ()
   });
 });
 
+describe("the auto-publish gate (owner 2026-11-28): official source, a closing date ahead, not a duplicate, no personal contact", () => {
+  const row = o => ({ id: 1, status: "new", type: "tender", title: "مناقصة توريد محولات كهربائية", snippet: "آخر موعد لتقديم العطاءات " + FUT, site: "etenders.gov.eg", official: 1, aggregator: 0, first_seen: new Date().toISOString(), ...o });
+  test("a tender / RFQ: official source + a closing date that is today or later; a project: an official source; buyers and news as before", () => {
+    assert.deepEqual(publicState(row()), { published: true, why: "" });
+    assert.equal(publicState(row({ official: 0, site: "tendersinfo.com", aggregator: 1 })).why, "unofficial");
+    assert.equal(publicState(row({ official: 0, site: "some-company.example" })).why, "unofficial", "a company site is no official source page");
+    assert.equal(publicState(row({ official: 0, site: "moh.gov.eg" })).why, "", "a government host is one");
+    assert.ok(officialSource({ site: "worldbank.org" }) && officialSource({ site: "tenders.go.ke" }) && officialSource({ site: "mof.gov.qa" }) && !officialSource({ site: "gov-tenders.example.com" }));
+    assert.ok(!officialSource({ site: "moh.gov.eg", aggregator: 1 }), "an aggregator never");
+    assert.equal(publicState(row({ snippet: "مناقصة عامة" })).why, "no_deadline");
+    assert.equal(publicState(row({ snippet: "آخر موعد لتقديم العطاءات " + PAST })).why, "closed");
+    assert.equal(publicState(row({ title: "إلغاء مناقصة توريد محولات كهربائية" })).why, "closed", "cancelled");
+    assert.equal(publicState(row({ snippet: "آخر موعد لتقديم العطاءات " + TODAY })).why, "", "the closing day itself is still ahead");
+    const later = Date.parse(addDays(TODAY, 31) + "T12:00:00Z");
+    assert.equal(publicState(row(), later).why, "closed", "the same lead the day after its closing date");
+    assert.equal(publicState(row({ type: "project", official: 0, site: "youm7.com", title: "مصنع جديد للمحولات في السادات", snippet: "" })).why, "unofficial");
+    assert.equal(publicState(row({ type: "project", official: 0, site: "gafi.gov.eg", title: "مصنع جديد للمحولات في السادات", snippet: "" })).why, "");
+    assert.equal(publicState(row({ type: "buyer", official: 0, site: "acme-mills.example", title: "Acme Paper Mills", snippet: "paper mill" })).why, "", "a buyer: as before");
+    assert.equal(publicState(row({ type: "news", official: 0, site: "almalnews.com", title: "ارتفاع أسعار النحاس", snippet: "" })).why, "", "news: as before");
+    assert.equal(publicState(row({ title: "مناقصة توريد محولات للتواصل 01012345678" })).why, "personal", "never with a personal contact");
+  });
+  test("not a duplicate: a tender / RFQ the platform already has is not published again (the bundled tenders, RFQs and intel items)", () => {
+    const t = (DATA.t || []).map(x => x[3]).find(x => x && x.length >= 20);
+    assert.ok(t, "a platform tender title");
+    assert.equal(publicState(row({ title: t })).why, "duplicate");
+    assert.equal(publicState(row({ title: t + " " })).why, "duplicate", "the same words");
+    useKnown(null);
+    assert.equal(publicState(row({ title: t })).why, "", "without the platform's titles: published");
+    useKnown(knownTitle); // index.js's own check back
+    assert.equal(publicState(row({ title: t })).why, "duplicate");
+  });
+  test("wouldPublish (the hunt / search): the same gate on what they found; liveItem drops a tender whose date passed since the read", async () => {
+    const now = Date.now();
+    assert.ok(wouldPublish({ type: "tender", url: "https://etenders.gov.eg/Tender/1", title: "مناقصة توريد محولات", snippet: "آخر موعد " + FUT, official: true }, now));
+    assert.ok(!wouldPublish({ type: "tender", url: "https://www.tendersinfo.com/d/1", title: "Tender for transformers", snippet: "Closing date " + FUT, aggregator: true }, now));
+    assert.ok(!wouldPublish({ type: "rfq", url: "https://www.tradekey.com/b/1", title: "Buy transformers", snippet: "closing date " + FUT }, now));
+    assert.ok(!wouldPublish({ type: "other", url: "https://etenders.gov.eg/x", title: "x" }, now) && !wouldPublish({ type: "tender", url: "not a url", title: "x" }, now));
+    const x = publicOf(row({ snippet: "آخر موعد لتقديم العطاءات " + SOON }), now);
+    assert.ok(liveItem(publicItem(x, now)) && !liveItem(publicItem(x, Date.parse(addDays(TODAY, 5) + "T12:00:00Z"))));
+    assert.ok(liveItem({ type: "buyer", status: "" }));
+    /* publishing on: the leads store + web_leads + one of the places that show them */
+    const env = env0(); assert.equal(await publishingOn(env), true);
+    await env.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES ('features', 'system', ?, ?)").bind(JSON.stringify({ v: 1, values: { web_leads_public: false, web_leads_lookup: false } }), new Date().toISOString()).run();
+    forgetFeatures(env); assert.equal(await publishingOn(env), false);
+    assert.equal(await publishingOn({}), false);
+    assert.match(platformLine(2, "janna_ar"), /^واتنين منهم اتضافوا على المنصة في «فرص السوق»، وتفاصيلهم للأعضاء المشتركين\.$/);
+    assert.ok(!/[ء-ي]/.test(platformLine(1, "janna_en")) && /^وواحدة منهم اتضافت على المنصة في «فرص السوق»\.$/.test(platformLine(1, "bassem")));
+  });
+});
+
 describe("GET /api/janna/opportunities (the public page)", () => {
   test("only the opportunity — never a link, a site, a domain, the snippet, the query, the persona or a contact; closed ones last and never counted open", async () => {
     const env = env0(); await seed(env);
@@ -155,22 +213,22 @@ describe("GET /api/janna/opportunities (the public page)", () => {
     assert.ok(!SOURCE_RX.test(r.text), "no source in the public JSON: " + r.text.match(SOURCE_RX));
     assert.ok(!SNIPPET_RX.test(r.text) && !/janna|bassem|"hunt"|"search"|@|[0-9٠-٩]{7,}|محجوب/i.test(r.text));
     const d = r.data;
-    assert.deepEqual([d.ok, d.total, d.page, d.pages, d.per_page], [true, 7, 1, 1, WL.per_page]);
+    assert.deepEqual([d.ok, d.total, d.page, d.pages, d.per_page], [true, 6, 1, 1, WL.per_page]);
     for (const it of d.items) for (const k of Object.keys(it)) assert.ok(PUB_KEYS.has(k), "public field " + k);
     const st = Object.fromEntries(d.items.filter(x => x.status).map(x => [x.title, x.status]));
-    assert.deepEqual(st, { "منافسة توريد كابلات كهربائية لمستشفى الملك فهد": "open", "Buy power cables 500 meters": "closing",
-      "تعلن الشركة المصرية لنقل الكهرباء عن طرح مناقصة توريد كابلات جهد عالي": "unknown", "Egypt: tender for supply of power cables": "closed" });
-    assert.equal(d.items[d.items.length - 1].status, "closed", "a closed tender is listed last");
-    assert.equal(d.open, 2, "open + closing only: the closed and the undated are not open");
-    assert.deepEqual(d.counts, { tender: 3, rfq: 1, buyer: 1, project: 1, news: 1 });
-    assert.deepEqual(d.markets, [{ code: "eg", n: 6 }, { code: "sa", n: 1 }]);
+    assert.deepEqual(st, { "منافسة توريد كابلات كهربائية لمستشفى الملك فهد": "open", [EEHC]: "closing",
+      "تعلن الشركة المصرية لنقل الكهرباء عن طرح مناقصة توريد كابلات جهد عالي": "open" }, "only tenders / RFQs with a closing date ahead are on the page");
+    assert.equal(d.open, 3);
+    assert.deepEqual(d.counts, { tender: 2, rfq: 1, buyer: 1, project: 1, news: 1 });
+    assert.deepEqual(d.markets, [{ code: "eg", n: 5 }, { code: "sa", n: 1 }]);
+    assert.ok(d.items.filter(x => ["tender", "rfq", "project"].includes(x.type)).every(x => !("entity" in x) && !("official" in x)), "a visitor: the teaser (members-only)");
     assert.equal(d.items.find(x => x.type === "buyer").governorate, undefined);
     /* filters */
-    let f = await api(env, "GET", O + "?type=tender"); assert.deepEqual([f.data.total, f.data.counts.news], [3, 1], "counts keep the other types for the chips");
+    let f = await api(env, "GET", O + "?type=tender"); assert.deepEqual([f.data.total, f.data.counts.news], [2, 1], "counts keep the other types for the chips");
     f = await api(env, "GET", O + "?market=sa"); assert.deepEqual(f.data.items.map(x => x.title), ["منافسة توريد كابلات كهربائية لمستشفى الملك فهد"]);
     f = await api(env, "GET", O + "?q=" + encodeURIComponent("النحاس")); assert.deepEqual(f.data.items.map(x => x.type), ["news"]);
     f = await api(env, "GET", O + "?q=" + encodeURIComponent("الشركة المصرية")); assert.deepEqual(f.data.items.map(x => x.type), ["tender"], "the entity is searched");
-    f = await api(env, "GET", O + "?type=job&market=<script>&page=99"); assert.deepEqual([f.status, f.data.total, f.data.page], [200, 7, 1], "unknown filters are ignored");
+    f = await api(env, "GET", O + "?type=job&market=<script>&page=99"); assert.deepEqual([f.status, f.data.total, f.data.page], [200, 6, 1], "unknown filters are ignored");
   });
   test("the owner's switch off, no 0012 table, a wrong method, too many requests", async () => {
     const env = env0(); await seed(env);
@@ -198,10 +256,10 @@ describe("GET /api/janna/opportunities (the public page)", () => {
     const m = await publishedLeads(env, Date.now() + WL.page_ttl + 1000, { ttl: WL.page_ttl }); assert.equal(m.off, false); assert.equal(reads, 4, "the page's memo is 2 minutes old");
     await publishedLeads(env, Date.now() + WL.page_ttl + 2000); assert.equal(reads, 4, "janna_lookup keeps it for 10 minutes");
     const dk = await member(env, "u-data", "data@mig.test", { staff: "data" });
-    await api(env, "PUT", L + "/" + (await idOf(env, "%tradekey%")), { token: dk.token, body: { status: "rejected", reason: "hidden" } });
+    await api(env, "PUT", L + "/" + (await idOf(env, "%eehc.gov.eg%")), { token: dk.token, body: { status: "rejected", reason: "hidden" } });
     const r = await api(env, "GET", O);
     assert.equal(reads, 6, "the hide is read at once in this isolate");
-    assert.ok(!r.data.items.some(x => x.title === "Buy power cables 500 meters"));
+    assert.ok(!r.data.items.some(x => x.title === EEHC));
   });
 });
 
@@ -214,6 +272,9 @@ describe("the data desk: «🙈 إخفاء من المنصة» and «↩ رجّ�
     const pub = Object.fromEntries(g.data.items.map(i => [i.site, [i.published, i.public_why]]));
     assert.deepEqual(pub["classifieds.example.com"], [false, "personal"]); assert.deepEqual(pub["qenapaper.com"], [false, "personal"]);
     assert.deepEqual(pub["tenders.etimad.sa"], [true, ""]);
+    assert.deepEqual([pub["tendersinfo.com"], pub["tradekey.com"], pub["youm7.com"]], [[false, "unofficial"], [false, "unofficial"], [false, "unofficial"]], "the auto-publish gate: no official source page");
+    const undated = g.data.items.find(i => i.url === "https://eetc.net.eg/tenders/9");
+    assert.deepEqual([undated.published, undated.public_why, undated.public_why_ar], [false, "no_deadline", "مفيش آخر ميعاد مكتوب فيها"]);
     assert.equal(g.data.items.find(i => i.site === "tenders.etimad.sa").url, "https://tenders.etimad.sa/Tender/DetailsForVisitor?id=1", "the desk keeps the source and the link");
     const id = await idOf(env, "%etimad%");
     let p = await api(env, "PUT", L + "/" + id, { token: dk.token, body: { status: "rejected", reason: "hidden" } });
@@ -243,22 +304,27 @@ describe("janna_lookup: the published opportunities after the platform's own res
     assert.equal(r.status, 200, r.text);
     const d = r.data;
     assert.deepEqual([d.count, d.count_all, d.results.length], [base.count, base.count_all, base.results.length], "the platform's numbers never grow with them");
-    assert.equal(d.extra_count, 3); assert.ok(d.extra.length <= WEB_MAX);
+    assert.equal(d.extra_count, 2); assert.ok(d.extra.length <= WEB_MAX);
     assert.ok(!SOURCE_RX.test(JSON.stringify(d.extra)) && !SNIPPET_RX.test(JSON.stringify(d.extra)), JSON.stringify(d.extra));
     for (const x of d.extra) { assert.deepEqual(Object.keys(x).filter(k => !["type", "kind", "title", "entity", "product", "status", "place", "official", "found"].includes(k)), []); assert.equal(x.url, undefined); }
     assert.ok(d.text.startsWith(base.text), "the platform's text first, unchanged");
     const extraText = d.text.slice(base.text.length);
-    assert.match(extraText, /^ (وكمان|بس) فيه 3 مناقصات/);
-    assert.match(extraText, /Egypt: tender for supply of power cables — منتهية، آخر ميعاد كان /);
-    assert.match(extraText, /الشركة المصرية لنقل الكهرباء — ميعادها مش معروف/);
-    assert.match(extraText, /ماتقوليش إنهم على المنصة ولا إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك/);
+    assert.match(extraText, /^ (وكمان|بس) فيه مناقصتين/);
+    assert.match(extraText, new RegExp("الشركة المصرية لنقل الكهرباء — مفتوحة، آخر ميعاد " + FUT2));
+    assert.ok(!/Egypt: tender for supply of power cables|ألياف ضوئية/.test(extraText), "the closed and the undated tenders are not on the platform");
+    assert.match(extraText, /دول منشورين على المنصة في «فرص السوق»: قوليهم كمعلومة وخلاص، من غير ما تقولي إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك/);
     assert.match(extraText, /«ده اللي عندي عنها، والشروط والمواعيد النهائية عند الجهة نفسها»/);
     assert.ok(!SOURCE_RX.test(extraText) && !/من الإنترنت|من برّه|مش متحقق/.test(extraText.replace(/«ده اللي عندي عنها[^»]*»/, "")), "no mark of where they came from");
-    assert.equal(d.extra.findIndex(x => /منتهية/.test(x.status || "")), d.extra.length - 1, "the closed one last");
+    /* a visitor's call (no member behind the Anam session): the teaser and the invitation to register */
+    resetPublished();
+    const v = (await api(env, "POST", "/api/janna/lookup", { body: { section: "tenders", query: "كابلات" } })).data;
+    assert.equal(v.extra_count, 2); assert.ok(v.extra.every(x => !("entity" in x) && !("official" in x)), JSON.stringify(v.extra));
+    assert.match(v.text, /الجهة صاحبة الفرصة وتفاصيلها للأعضاء المشتركين: قولي العنوان والمكان والميعاد بس، وادعيه يسجّل/);
     /* Bassem (his tool pages / picks markets): masculine; a market keeps only that market's */
     const b = (await lookup(env, { section: "tenders", query: "كابلات", page: 1, market: "gulf" })).data;
-    assert.equal(b.extra_count, 1); assert.match(b.text, /قولهم كمعلومة وخلاص: ماتقولش/); assert.equal(b.extra[0].place, "السعودية");
-    assert.equal((await lookup(env, { section: "tenders", query: "كابلات", page: 1, market: "local" })).data.extra_count, 2);
+    assert.equal(b.extra_count, 1); assert.match(b.text, /دول منشورين على المنصة في «فرص السوق»: قولهم كمعلومة وخلاص، من غير ما تقول/); assert.equal(b.extra[0].place, "السعودية");
+    assert.ok(!/للأعضاء المشتركين: قول/.test(b.text), "a member's call: no invitation");
+    assert.equal((await lookup(env, { section: "tenders", query: "كابلات", page: 1, market: "local" })).data.extra_count, 1);
     assert.equal((await lookup(env, { section: "tenders", query: "طائرات فضائية" })).data.extra, undefined, "nothing that matches: nothing added");
   });
   test("rfqs, customers, projects and news get theirs; factories / products never; a section listing without words never", async () => {
@@ -267,7 +333,7 @@ describe("janna_lookup: the published opportunities after the platform's own res
     let d = await q("rfqs", "كابلات"); assert.deepEqual([d.extra_count, d.extra[0].kind, d.extra[0].status.startsWith("مفتوحة وبتقفل قريب")], [1, "طلب عرض سعر", true]);
     d = await q("customers", "مقاولات كهربائية"); assert.equal(d.extra_count, 1); assert.equal(d.extra[0].title, "شركة الأمل للمقاولات الكهربائية"); assert.match(d.text, /جهة واحدة ممكن تبقى عميل/);
     assert.ok(!/عضو على المنصة|«عضو/.test(JSON.stringify(d.extra)), "never tagged a member");
-    d = await q("projects", "كابلات"); assert.equal(d.extra_count, 1); assert.ok(!/اليوم السابع/.test(JSON.stringify(d)));
+    d = await q("projects", "كابلات"); assert.equal(d.extra_count, 1); assert.ok(!/اليوم السابع|باستثمارات 50 مليون/.test(JSON.stringify(d)), "the newspaper's project is not published; the official one is");
     d = await q("news", "النحاس"); assert.equal(d.extra_count, 1); assert.ok(!/جريدة المال|almalnews/.test(JSON.stringify(d)));
     for (const x of d.results || []) { assert.equal(x.source, undefined); assert.equal(x.documents_url, undefined); }
     assert.equal((await q("factories", "كابلات")).extra, undefined);
