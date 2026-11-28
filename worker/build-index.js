@@ -34,6 +34,11 @@ const FD = ctx.MIGOLDFACD || [];
 const rows = [];
 (ctx.MIGOLDFAC || []).forEach((f, i) => { const prods = (f[9] || []).filter(x => !img(x) && c(x) !== c(f[0])).slice(0, 10).map(c); rows.push({ r: [c(f[0]), c(f[3]), c(f[1]), c(f[2]) || GN(f[10]), prods.join('، '), 'company.html#' + (f[16] || i)], n: keyWords(c(f[0]), ...(f[9] || []).filter(x => !img(x)).map(c)), d: keyWords(FD[i]), sub: c(f[12]) }); });
 ((ctx.MIGFACX && ctx.MIGFACX.list) || []).forEach((f, i) => rows.push({ r: [c(f[0]), c(f[3]), c(f[1]), c(f[2]), c(f[4]).replace(/(\+?\d[\d\s-]{7,}\d)/g, '').slice(0, 160), 'company.html#x' + i], n: keyWords(f[0]), d: keyWords(f[4]), sub: '' }));
+/* oe = the OFFICIAL company e-mails of researched directory rows (data/facx.js element 10, owner decision 2026-11-28): ref → [e-mails, web site,
+   source page]. Admin-side only (the Worker bundle, never a public file); teasers.js officialAddresses() passes each through officialEmail(). */
+out.oe = {};
+((ctx.MIGFACX && ctx.MIGFACX.list) || []).forEach((f, i) => { const o = f[10]; if (o && Array.isArray(o.official_email) && o.official_email.length)
+  out.oe['x' + i] = [o.official_email.slice(0, 3).map(c), c(o.web || f[9] || ''), c((o.sources || [])[0] || f[8] || '')]; });
 out.fs = [...new Set(rows.map(x => x.sub).filter(Boolean))];
 const SUB = new Map(out.fs.map((s, i) => [s, i]));
 const VOC = new Map(), bags = rows.map(x => { const n = new Set(x.n); return [x.n, x.d.filter(k => !n.has(k) && LK.indexable(k))]; });

@@ -175,6 +175,33 @@ def _seo_build_module(HOST):
     SENT_SPLIT_RX = re.compile(r'(?<=[.!؟?…])(?<![A-Z]\.[A-Z]\.)(?<!\bSt\.)(?<!\bNo\.)(?<!\bRd\.)(?<!\bDr\.)(?<!\bMr\.)(?<!\bEng\.)(?<!\bد\.)(?<!\bم\.)\s+|\n+')   # not after «P.O.», «St.», «Dr.», «د.»
     CLAUSE_SPLIT_RX = re.compile(r'(\s*[,،;؛]\s*|\s+[-–—]\s+|\s*\|\s*)')
 
+    # official company contacts of researched directory rows (owner decision 2026-11-28): what official_of() accepts
+    OFFICIAL_TEL_RX = re.compile(r'^(?:1[5-9]\d{3}|0800\d{7}|02[2-4]\d{7}|03\d{7}|0(?:13|15|40|45|46|47|48|50|55|57|62|64|65|66|68|69|82|84|86|88|92|93|95|96|97)\d{7})$')
+    OFFICIAL_ROLE_RX = re.compile(r'^(?:info|sales|export|exports|marketing|contact|customerservice|customer\.care|cs|office|mail|enquiries|inquiries|'
+                                  r'inquiry|orders|plant|factory|headoffice|logistics)$')
+    FREE_MAIL_RX = re.compile(r'^(?:gmail|yahoo|hotmail|outlook|live|icloud|aol|msn|ymail|mail|protonmail|yandex)\.', re.I)
+    URL_RX_FULL = re.compile(r'^https?://[^\s"<>]+$', re.I)
+
+    def official_domain(url):
+        h = (urlparse(url).netloc or '').lower().split(':')[0]
+        h = h[4:] if h.startswith('www.') else h
+        p = h.split('.')
+        if len(p) >= 3 and p[-2] in ('com', 'net', 'org', 'co', 'gov', 'edu') and len(p[-1]) == 2:
+            return '.'.join(p[-3:])
+        return '.'.join(p[-2:]) if len(p) >= 2 else ''
+
+    def official_tel_fmt(t):
+        """national display and E.164 link of an official number: 02 2267 8627 / +20222678627; a short hotline stays 16580"""
+        if len(t) == 5:
+            return t, t
+        if t.startswith('0800'):
+            return '%s %s %s' % (t[:4], t[4:7], t[7:]), '+20' + t[1:]
+        if t.startswith('02'):
+            return '%s %s %s' % (t[:2], t[2:6], t[6:]), '+20' + t[1:]
+        if t.startswith('03'):
+            return '%s %s %s' % (t[:2], t[2:5], t[5:]), '+20' + t[1:]
+        return '%s %s %s' % (t[:3], t[3:6], t[6:]), '+20' + t[1:]
+
     def _is_phone(s):
         d = re.sub(r'\D', '', s)
         plus = bool(re.match(r'^[\s(]*(?:\+|00)', s))
@@ -602,6 +629,62 @@ def _seo_build_module(HOST):
         S['zone_rx'] = [(zid, wrx(pats)) for zid, pats in cfg.get('zone_match', {}).items() if not zid.startswith('_') and zid in S['zone_by_id']]
         # --- members (oldfac) and public-source factories (facx)
         companies = []
+
+        def official_of(x, name):
+            """element 10 of a researched data/facx.js row: the company's OFFICIAL public contacts (owner decision 2026-11-28) — a
+            switchboard / landline / short hotline (never a mobile), a generic role e-mail on the company's own domain, the website,
+            the full address, founding year, certificates and export markets. Each value is checked again here; a value that fails
+            is dropped and reported (problems), never shown. Rendered only in the profile's «بيانات التواصل الرسمية» block and
+            its JSON-LD; deploy/stage.py allows exactly these values there and nowhere else."""
+            o = x[10] if len(x) > 10 and isinstance(x[10], dict) else None
+            if not o:
+                return None
+            web = o.get('web') or x[9] or ''
+            web = web if URL_RX_FULL.match(web) else ''
+            own = official_domain(web)
+            doms = set([own] + [str(dm).lower() for dm in (o.get('email_domains') or [])]) - {''}
+            out = {'key': hashlib.sha1(name.encode('utf-8')).hexdigest()[:10]}
+            tels = []
+            for t in o.get('official_tel') or []:
+                t = re.sub(r'\D', '', str(t))
+                if OFFICIAL_TEL_RX.match(t):
+                    tels.append(t)
+                else:
+                    S.setdefault('official_problems', []).append('facx official_tel refused (not a landline / hotline): %s' % name)
+            ems = []
+            for e in o.get('official_email') or []:
+                e = str(e).strip().lower()
+                m = re.match(r'^([a-z0-9._%+-]+)@([a-z0-9.-]+\.[a-z]{2,})$', e)
+                if m and official_domain('https://' + m.group(2)) in doms and not FREE_MAIL_RX.match(m.group(2)) and (
+                        OFFICIAL_ROLE_RX.match(m.group(1)) or m.group(1) in m.group(2).replace('-', '')):
+                    ems.append(e)
+                else:
+                    S.setdefault('official_problems', []).append('facx official_email refused (not a role address on the company domain): %s' % name)
+            if tels:
+                out['tel'] = tels[:4]
+            if ems:
+                out['email'] = ems[:3]
+            if web:
+                out['web'] = web
+            for k in ('address', 'address_en'):
+                v = re.sub(r'\s+', ' ', str(o.get(k) or '')).strip()
+                if v and not has_contact(v):
+                    out[k] = v
+            if re.match(r'^(1[89]\d\d|20[0-2]\d)$', str(o.get('founded') or '')):
+                out['founded'] = str(o['founded'])
+            certs = []
+            for cv in o.get('certs') or []:
+                pair = (cv, cv) if isinstance(cv, str) else (tuple(cv) + ('', ''))[:2]
+                if pair[0] and not has_contact(pair[0] + ' ' + pair[1]):
+                    certs.append(pair)
+            if certs:
+                out['certs'] = certs
+            ex = [tuple(v)[:2] for v in (o.get('export') or []) if isinstance(v, list) and len(v) >= 2]
+            if ex:
+                out['export'] = ex
+            out['sources'] = [u for u in (o.get('sources') or []) if URL_RX_FULL.match(u)][:8]
+            return out if len(out) > 2 else None
+
         reserved = set(S['sec_by_slug']) | {'page', 'search', 'downloads', 'category'}
         facd = D.get('facd', [])
         desc_count = {}
@@ -677,11 +760,16 @@ def _seo_build_module(HOST):
                 k += 1
             used.add(slug)
             gov = (D.get('facx_gov') or [''] * (i + 1))[i] or mf.get('region_code') or ''
+            off = official_of(x, name)
             d = scrub(x[4] or '')
             c = {'kind': 'public', 'i': i, 'hid': hid, 'name': name, 'name_en': name_en, 'sector': x[1], 'sslug': norm_sector(x[1]), 'type': x[3] or 'مصنع',
                  'verified': False, 'logo': None, 'legacy': '', 'loc': x[2] or '', 'gov': gov if gov in S['gov_by_code'] else '', 'flags': 0,
                  'desc': d, 'desc_raw': (x[4] or '') if d else '', 'dup_desc': False, 'names': list((D.get('facx_fp') or {}).get(x[0]) or []), 'source': x[8] or '', 'website': x[9] or '',
                  'path': '/factories/%s/' % slug, 'legacy_path': '', 'pfx': '', 'team': team}
+            if off:
+                c['official'] = off
+                if not c['website'] and off.get('web'):
+                    c['website'] = off['web']
             c['words'] = words(d)
             companies.append(c)
         for c in companies:
@@ -2789,6 +2877,27 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
             same = [u for u in (c.get('website'),) if u]
             if same:
                 o['sameAs'] = same
+        off = c.get('official')
+        if off:
+            # the company's OFFICIAL public contacts and facts (owner decision 2026-11-28; data/facx.js element 10): the same
+            # values as the page's «بيانات التواصل الرسمية» block, nothing else (deploy/stage.py allows exactly these)
+            if off.get('tel'):
+                o['telephone'] = official_tel_fmt(off['tel'][0])[1]
+            if off.get('email'):
+                o['email'] = off['email'][0]
+            if off.get('web'):
+                o['url'] = off['web']
+            st = off.get('address') if L == 'ar' else off.get('address_en')
+            if st:
+                addr['streetAddress'] = st
+            if off.get('founded'):
+                o['foundingDate'] = off['founded']
+            if off.get('certs'):
+                o['hasCredential'] = [{"@type": "EducationalOccupationalCredential", "credentialCategory": "certification",
+                                       "name": X(L, a_, b_ or a_)} for a_, b_ in off['certs'] if (L == 'ar' or b_ or not AR_RX.search(a_))]
+            ex = [X(L, a_, b_) for a_, b_ in (off.get('export') or [])]
+            if ex:
+                o['areaServed'] = [{"@type": "Place", "name": n_} for n_ in ex]
         return o
 
     def jsonld_product(p, url, L):
@@ -3303,7 +3412,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                    X(L, 'يصل طلبك تلقائياً للمصانع المسجّلة المناسبة، ولو مفيش مصنع مسجّل مناسب، فريق المنصة يتابع طلبك بنفسه.',
                      'Your request reaches the matching registered factories automatically; if no registered factory matches, the platform team follows it up personally.'),
                    esc(href), X(L, 'اطلب عرض سعر مجاناً', 'Request a free quote'),
-                   X(L, 'لا نعرض أرقام هواتف أو بريد المنشآت؛ التواصل يتم عبر نموذج طلب عرض السعر فقط.', 'Company phone numbers and e-mails are not published; contact goes through the RFQ form only.')))
+                   X(L, 'لا نعرض أسماء أو أرقام أو بريد أشخاص، ولا بيانات تواصل المصانع الأعضاء؛ التواصل عبر المنصة يتم بنموذج طلب عرض السعر.',
+                     'No names, numbers or e-mails of individuals and no contact details of member factories are published; contact via the platform goes through the RFQ form.')))
 
     def cta_box(L, title, text, href, label, rel=''):
         return ('<div class="cta"><h2 style="font-size:1.05rem">%s</h2><p>%s</p><a class="btn btn-green" href="%s"%s>%s</a></div>'
@@ -3579,8 +3689,8 @@ if(!a||!a.hash||a.pathname!==location.pathname||list.contains(a))return;var id=h
                   'The directory holds %s unique companies: %s member companies%s. Counted from the data on %s; no estimated figures.') % (
                     fmt_n(n), fmt_n(n_mem), ver_pub_tail(L, n_ver, n_ver_mem, n_pub), fmt_date(S['today'], L))),
                (X(L, 'هل تنشر المنصة أرقام هواتف المصانع؟', 'Does the platform publish factory phone numbers?'),
-                X(L, 'لا. لا نعرض أرقام هواتف أو بريد المنشآت؛ التواصل يتم عبر نموذج طلب عرض السعر، ويصل طلبك تلقائياً للمصانع المسجّلة المناسبة، ولو مفيش مصنع مسجّل مناسب، فريق المنصة يتابع طلبك بنفسه.',
-                  'No. Company phone numbers and e-mails are not published; contact goes through the request-for-quotation form, which reaches the matching registered factories, and the platform team follows up when none matches.'))]
+                X(L, 'لا نعرض بيانات تواصل المصانع الأعضاء ولا أسماء أو أرقام أو بريد أشخاص؛ التواصل يتم عبر نموذج طلب عرض السعر، ويصل طلبك تلقائياً للمصانع المسجّلة المناسبة، ولو مفيش مصنع مسجّل مناسب، فريق المنصة يتابع طلبك بنفسه. أما ملفات الدليل المأخوذة من مصادر عامة فتعرض فقط بيانات التواصل الرسمية التي تنشرها الشركة نفسها (السنترال والبريد العام والموقع والعنوان) مع مصادرها.',
+                  'Contact details of member factories and names, numbers or e-mails of individuals are not published; contact goes through the request-for-quotation form, which reaches the matching registered factories, and the platform team follows up when none matches. Directory profiles built from public sources show only the official contact details the company itself publishes (switchboard, general e-mail, website and address), with their sources.'))]
         crumb_items = [home_crumb(L), (X(L, 'دليل المصانع', 'Factory directory'), lk(L, '/factories/'))]
         title_c = [X(L, 'دليل المصانع المصرية: %s حسب القطاع والمحافظة' % ar_qty(n, N_FACCO_NOM), 'Egyptian Manufacturers Directory: %s Factories by Sector & Governorate' % fmt_n(n)),
                    X(L, 'دليل المصانع المصرية (%s)' % ar_qty(n, N_EST_NOM), 'Egyptian Manufacturers Directory (%s)' % fmt_n(n))]
@@ -6688,8 +6798,31 @@ location.replace(%s);})();'''
             if 'VideoObject' in s:
                 problems.append('%s: VideoObject' % r['p'])
         # privacy on EVERY generated page (spec §0/A3, honesty review): main text, meta description and JSON-LD; any phone format
+        off_by_key = {c['official']['key']: c['official'] for c in S.get('companies') or [] if c.get('official')}
         for r in gen:
             s = open(OUT + r['p'].lstrip('/') + 'index.html', encoding='utf-8').read()
+            if '<!--official:' in s:
+                # a profile's «بيانات التواصل الرسمية» block (owner decision 2026-11-28): its own official values are allowed there and in
+                # the JSON-LD telephone / email / streetAddress of the same company; anything else (or anywhere else) is still a problem
+                offs = [off_by_key.get(k) for k in re.findall(r'<!--official:([0-9a-f]{10})-->', s)]
+                if not all(offs) or len(offs) != 1:
+                    problems.append('%s: official contact block of an unknown company' % r['p'])
+                else:
+                    o_ = offs[0]
+                    blk = re.search(r'<!--official:[0-9a-f]{10}-->([\s\S]*?)<!--/official-->', s)
+                    allowed_txt = [x for t_ in o_.get('tel') or [] for x in official_tel_fmt(t_)] + list(o_.get('email') or [])
+                    rest = blk.group(1) if blk else ''
+                    for x in sorted(allowed_txt, key=len, reverse=True):
+                        rest = rest.replace(x, ' ')
+                    if has_contact(_html.unescape(re.sub(r'<[^>]+>', ' ', rest))):
+                        problems.append('%s: official contact block holds a value that is not the company\'s official contact' % r['p'])
+                    s = s[:blk.start()] + s[blk.end():] if blk else s
+                    vals = set(allowed_txt) | {o_.get('address') or '', o_.get('address_en') or ''}
+
+                    def _ld_ok(m):
+                        v = json.loads('"%s"' % m.group(2))
+                        return ' ' if v in vals else m.group(0)
+                    s = re.sub(r'"(telephone|email|streetAddress)"\s*:\s*"((?:[^"\\]|\\.)*)"', _ld_ok, s)
             ld_txt = ' '.join(re.findall(r'<script type="application/ld\+json"[^>]*>([\s\S]*?)</script>', s))
             txt = _main_text(s) + ' ' + _html.unescape(r.get('d') or '') + ' ' + ld_txt
             if has_contact(txt) or re.search(r'"(?:telephone|email|faxNumber|streetAddress)"\s*:', ld_txt):
@@ -6919,6 +7052,7 @@ location.replace(%s);})();'''
         t1 = time.time()
         problems, dups = validate(OUT, validate_sample)
         problems += S.get('pwa_problems') or []
+        problems += S.get('official_problems') or []
         problems += (app_dl or {}).get('problems') or []
         tm['validate'] = round(time.time() - t1, 1)
         total_files = 0
@@ -6996,7 +7130,7 @@ location.replace(%s);})();'''
             S=S, B=B, SITE=SITE, esc=esc, X=X, T=T, tr=tr, lk=lk, pct=pct, nfc=nfc, sha=sha, abs_url=abs_url, crumbs=crumbs, home_crumb=home_crumb,
             type_label=type_label, sec_name=sec_name, gov_name=gov_name, city_text=city_text, company_desc_en=company_desc_en, first_words=first_words,
             fmt_date=fmt_date, is_team=is_team, is_pub=is_pub, rfq_link=rfq_link, static_url=static_url, en_gate=en_gate,
-            VER_AR=VER_AR, VER_EN=VER_EN, PUB_AR=PUB_AR, PUB_EN=PUB_EN, AR_RX=AR_RX, scrub=scrub)))
+            VER_AR=VER_AR, VER_EN=VER_EN, PUB_AR=PUB_AR, PUB_EN=PUB_EN, AR_RX=AR_RX, scrub=scrub, official_tel_fmt=official_tel_fmt)))
     # APPDL hook: «تطبيق صنع في مصر» — /app/ + /en/app/ (Android APK download, iPhone from Safari, QR code), /downloads/android/ (the APKs
     # of the repository + latest.json, tools/publish_apk.py), the 302 /app/android.apk, /.well-known/assetlinks.json (seo/config.json "app")
     if os.path.exists(B + 'seo_app.part.py'):

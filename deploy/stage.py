@@ -230,10 +230,12 @@ def html_contacts(doc):
         elif low == "mailto:":
             out += emails_in(v[7:])
     out += contacts(html.unescape(TAG_RX.sub(" ", body)))
+    oall = _W.get("official_all") or {}
     for s in scripts:
+        # an inline copy of data/facx.js (app pages): its official values are the data file's own (allowed there too)
         t = s.translate(ARABIC_DIGITS)
-        out += [m.group(0) for m in STRICT_MOBILE_RX.finditer(t) if not _allowed_phone(m.group(0))]
-        out += emails_in(t)
+        out += _with_allow(oall, lambda t_: [m.group(0) for m in STRICT_MOBILE_RX.finditer(t_) if not _allowed_phone(m.group(0))] + emails_in(t_), t) \
+            if (oall and "official_email" in t) else ([m.group(0) for m in STRICT_MOBILE_RX.finditer(t) if not _allowed_phone(m.group(0))] + emails_in(t))
     return out
 
 
@@ -248,6 +250,79 @@ def load_privacy_allow(path):
             ALLOW["literals"].add(s.lower() if "@" in s else s)
             if re.fullmatch(r"[+\d\s\-./()]{6,}", s):
                 ALLOW["keys"].add(phone_key(s))
+
+
+# ------------------------------------------------------------------------- official contacts of directory profiles
+# Owner decision 2026-11-28: the researched public-source profiles of data/facx.js (FAC2) show the company's OFFICIAL
+# contacts (switchboard / landline / short hotline, a generic role e-mail on the company's own domain, the website) in
+# the profile's «بيانات التواصل الرسمية» block and its JSON-LD. The allow-list is built from that data field only:
+# exactly those values, only inside <!--official:KEY--> … <!--/official--> of that company's page (KEY = sha1 of the
+# Arabic name, first 10 hex digits, as seo_build official_of()) and in the same page's JSON-LD telephone / email.
+# Everything else stays refused (imported member contacts, mobiles, personal e-mails, any other place).
+OFFICIAL = {}                                   # key -> {"keys": set(phone keys), "emails": set(lower)}
+OFFICIAL_ERR = []
+OFFICIAL_TEL_RX = re.compile(r"^(?:1[5-9]\d{3}|0800\d{7}|02[2-4]\d{7}|03\d{7}|0(?:13|15|40|45|46|47|48|50|55|57|62|64|65|66|68|69|"
+                             r"82|84|86|88|92|93|95|96|97)\d{7})$")
+OFFICIAL_ROLE_RX = re.compile(r"^(?:info|sales|export|exports|marketing|contact|customerservice|customer\.care|cs|office|mail|"
+                              r"enquiries|inquiries|inquiry|orders|plant|factory|headoffice|logistics)$")
+FREE_MAIL_RX = re.compile(r"^(?:gmail|yahoo|hotmail|outlook|live|icloud|aol|msn|ymail|mail|protonmail|yandex)\.", re.I)
+
+
+def _reg_domain(host):
+    h = (host or "").lower().split(":")[0]
+    h = h[4:] if h.startswith("www.") else h
+    p_ = h.split(".")
+    if len(p_) >= 3 and p_[-2] in ("com", "net", "org", "co", "gov", "edu") and len(p_[-1]) == 2:
+        return ".".join(p_[-3:])
+    return ".".join(p_[-2:]) if len(p_) >= 2 else ""
+
+
+def load_official(site):
+    """data/facx.js FAC2 rows with an official-contact object (element 10) -> OFFICIAL; a value that breaks the rule
+    (a mobile, a free-mail or foreign-domain address, a personal mailbox) is an error, never allowed"""
+    OFFICIAL.clear()
+    del OFFICIAL_ERR[:]
+    try:
+        t = read_text(os.path.join(site, "data", "facx.js"))
+    except Exception:
+        return
+    m = re.search(r"var FAC2 = (\[\n[\s\S]*?\n\]);", t or "")
+    if not m:
+        return
+    try:
+        rows = json.loads(m.group(1))
+    except ValueError as e:
+        OFFICIAL_ERR.append("data/facx.js FAC2 does not parse as JSON: %s" % e)
+        return
+    for r in rows:
+        if not (isinstance(r, list) and len(r) > 10 and isinstance(r[10], dict)):
+            continue
+        o, name = r[10], r[0]
+        key = hashlib.sha1(name.encode("utf-8")).hexdigest()[:10]
+        web = o.get("web") or r[9] or ""
+        doms = {_reg_domain(urlsplit(web).netloc)} | {str(d).lower() for d in (o.get("email_domains") or [])}
+        doms.discard("")
+        ent = {"keys": set(), "emails": set()}
+        for tel in o.get("official_tel") or []:
+            d = re.sub(r"\D", "", str(tel))
+            if OFFICIAL_TEL_RX.match(d) and not STRICT_MOBILE_RX.search(d):
+                ent["keys"].add(phone_key(d))
+                if d.startswith("0"):
+                    ent["keys"].add(phone_key("+20" + d[1:]))   # phone_key keeps «20…» of an 8-digit Alexandria number in E.164
+            else:
+                OFFICIAL_ERR.append("%s: official_tel %s is not a landline / switchboard / hotline" % (name, tel))
+        for e in o.get("official_email") or []:
+            e = str(e).strip().lower()
+            mm = re.match(r"^([a-z0-9._%+-]+)@([a-z0-9.-]+\.[a-z]{2,})$", e)
+            ok = bool(mm) and _reg_domain(mm.group(2)) in doms and not FREE_MAIL_RX.match(mm.group(2))
+            if ok:
+                loc = mm.group(1)
+                ok = bool(OFFICIAL_ROLE_RX.match(loc) or loc in mm.group(2).replace("-", ""))
+            if ok:
+                ent["emails"].add(e)
+            else:
+                OFFICIAL_ERR.append("%s: official_email %s is not a role address on the company's own domain" % (name, e))
+        OFFICIAL[key] = ent
 
 
 # ----------------------------------------------------------------------------------------------------- the 26k claim
@@ -1264,11 +1339,15 @@ def jsonld_problems(obj, in_platform=False, out=None, path="$"):
         types = t if isinstance(t, list) else [t]
         if "VideoObject" in types:
             out.append("VideoObject at %s" % path)
+        off = _W.get("page_official") or {}
         if not here:
             for k in ("telephone", "email", "faxNumber"):
-                if k in obj:
+                if k in obj and not (k == "telephone" and isinstance(obj[k], str) and phone_key(obj[k]) in off.get("keys", ())) \
+                        and not (k == "email" and isinstance(obj[k], str) and obj[k].strip().lower() in off.get("emails", ())):
                     out.append("%s on %s at %s" % (k, obj.get("@id") or t, path))
         for k, v in obj.items():
+            if off and k in ("telephone", "email") and isinstance(v, str) and (phone_key(v) in off.get("keys", ()) or v.strip().lower() in off.get("emails", ())):
+                continue
             jsonld_problems(v, here, out, path + "." + k)
     elif isinstance(obj, list):
         for i, v in enumerate(obj):
@@ -1322,6 +1401,8 @@ def _init_worker(ctx):
     _W["gone_rx_c"] = [re.compile(x) for x in ctx.get("gone_rx", [])]
     _W["cache"] = {}
     ALLOW["keys"], ALLOW["literals"] = set(ctx.get("allow_keys", ())), set(ctx.get("allow_literals", ()))
+    off = ctx.get("official") or {}
+    _W["official_all"] = {"keys": set(k for v in off.values() for k in v["keys"]), "emails": set(e for v in off.values() for e in v["emails"])}
 
 
 def ref_status(p):
@@ -1371,6 +1452,25 @@ def _local_path(u, base_url):
     return nfc(unquote(sp.path or "/"))
 
 
+OFFICIAL_BLOCK_RX = re.compile(r"<!--official:([0-9a-f]{10})-->")
+OFFICIAL_SPAN_RX = re.compile(r"<!--official:[0-9a-f]{10}-->[\s\S]*?<!--/official-->")
+
+
+def _with_allow(off, fn, *args):
+    """run fn with the official values of one company added to the allow-list (then restore it)"""
+    keys0, lit0 = set(ALLOW["keys"]), set(ALLOW["literals"])
+    ALLOW["keys"] |= set(off.get("keys") or ())
+    ALLOW["literals"] |= set(off.get("emails") or ())
+    try:
+        return fn(*args)
+    finally:
+        ALLOW["keys"], ALLOW["literals"] = keys0, lit0
+
+
+def _contacts_except(t, off):
+    return _with_allow(off, contacts, t) if off else contacts(t)
+
+
 def scan_page(item):
     rel, path = item
     text = read_text(path)
@@ -1386,6 +1486,15 @@ def scan_page(item):
         r["claim"] = "%s: …%s…" % (rel, snippet(text, span))
     if "claude:viewport-fit-sides" in head:
         r["overlay"] = True
+    off_keys = OFFICIAL_BLOCK_RX.findall(text) if "<!--official:" in text else []
+    page_off = {}
+    if off_keys:
+        offm = _W.get("official") or {}
+        if len(set(off_keys)) != 1 or off_keys[0] not in offm:
+            r["official_bad"] = "%s: official block %s" % (rel, ",".join(sorted(set(off_keys))))
+        else:
+            page_off = {"keys": set(offm[off_keys[0]]["keys"]), "emails": set(offm[off_keys[0]]["emails"])}
+    _W["page_official"] = page_off
     ld_bad, ld_hits, ld_urls = [], [], []
     for block in JSONLD_RX.findall(text):
         try:
@@ -1395,13 +1504,20 @@ def scan_page(item):
             continue
         flat = json.dumps(obj, ensure_ascii=False) if "\\u" in block else block
         if ("VideoObject" in flat or '"telephone"' in flat or '"email"' in flat or '"faxNumber"' in flat
-                or contacts(flat)):
+                or _contacts_except(flat, page_off)):
             probs = jsonld_problems(obj)
             if probs:
                 ld_hits.append("%s: %s" % (rel, "; ".join(probs[:3])))
         ld_urls += jsonld_self_urls(obj)
     r["ld_bad"], r["ld_hits"] = ld_bad, ld_hits
-    c = html_contacts(text)
+    _W["page_official"] = {}
+    c = []
+    if page_off:
+        # inside the block: only this company's official values may appear; outside it: none of them
+        for bm in OFFICIAL_SPAN_RX.finditer(text):
+            c += _with_allow(page_off, html_contacts, bm.group(0))
+        text = OFFICIAL_SPAN_RX.sub(" ", text)
+    c += html_contacts(text)
     if c:
         r["contacts"] = "%s: %s" % (rel, ", ".join(sorted(set(c))[:4]))
     # local references
@@ -1607,7 +1723,9 @@ def run_checks(out, a, rep):
         s_ = nfc(unquote(src_))
         if not dyn_ and to_.startswith("/") and not served_by_functions(s_, inc_r, exc_r):
             static_redirects[s_] = nfc(unquote(to_.split("#")[0].split("?")[0]))
+    load_official(site)
     ctx = {"files": frozenset(all_files), "exact": exact, "prefixes": prefixes, "gone_rx": gone_rx,
+           "official": {k: {"keys": sorted(v["keys"]), "emails": sorted(v["emails"])} for k, v in OFFICIAL.items()},
            "allow_keys": sorted(ALLOW["keys"]), "allow_literals": sorted(ALLOW["literals"]), "legacy_live": legacy,
            "static_redirects": static_redirects}
     t0 = time.time()
@@ -1623,6 +1741,8 @@ def run_checks(out, a, rep):
             claim_hits.append(r["claim"])
         if r.get("overlay"):
             overlay.append(rel)
+        if r.get("official_bad"):
+            OFFICIAL_ERR.append(r["official_bad"])
         ld_bad += r["ld_bad"]
         ld_hits += r["ld_hits"]
         if r.get("contacts"):
@@ -1647,6 +1767,11 @@ def run_checks(out, a, rep):
     if contact_warn:
         rep.warn("privacy_static_pages", "phone- or e-mail-like strings on %d site.py page(s) that are not the platform's "
                  "own (review: public hotlines are fine, a company's number is not)" % len(contact_warn), contact_warn)
+    if OFFICIAL_ERR:
+        rep.error("official_contacts", "official company contacts (data/facx.js element 10) that break the owner's rule "
+                  "(landline / hotline and a role e-mail on the company's own domain only), or an official block of an "
+                  "unknown company", list(OFFICIAL_ERR))
+    rep.stats["official_contact_profiles"] = len(OFFICIAL)
     if ld_bad:
         rep.error("jsonld_parse", "JSON-LD blocks that do not parse on %d page(s)" % len(ld_bad), ld_bad)
     if ld_hits:
@@ -1701,7 +1826,12 @@ def run_checks(out, a, rep):
                 if span:
                     (text_hits_err if strict else text_hits_warn).append(
                         "%s: claim-like …%s…" % (rel, snippet(text, span, 25)))
-            c = contacts(text)
+            if rel == "data/facx.js" and OFFICIAL:
+                allk = {"keys": set().union(*[v["keys"] for v in OFFICIAL.values()]),
+                        "emails": set().union(*[v["emails"] for v in OFFICIAL.values()])}
+                c = _with_allow(allk, contacts, text)
+            else:
+                c = contacts(text)
             if c:
                 (text_hits_err if strict else text_hits_warn).append("%s: %d contact(s), e.g. %s" % (
                     rel, len(c), " | ".join(sorted(set(c))[:3])))

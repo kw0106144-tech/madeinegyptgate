@@ -9,7 +9,8 @@ import { cairoToUtc } from "../src/meetings.js";
 import { cairoDay } from "../src/common.js";
 import { directoryCandidates } from "../src/candidates.js";
 import { officialEmail, planForMarket } from "../src/mail-sends.js";
-import { teasersCron, teaserTitle, teaserFacts } from "../src/teasers.js";
+import { teasersCron, teaserTitle, teaserFacts, teaseInquiry, officialAddresses } from "../src/teasers.js";
+import DATA from "../src/data.json";
 import { memberReportsCron, ownerReportCron, mailCron } from "../src/daily-mail.js";
 import { regTrouble } from "../src/info-alerts.js";
 import { items, syncSeen } from "../src/digest.js";
@@ -64,6 +65,36 @@ describe("official company addresses", () => {
   });
   test("the registration plan of a request's market", () => {
     assert.deepEqual(["local", "gulf", "africa", "asia", "europe"].map(planForMarket), ["basic", "premium", "partner", "strategic", "strategic"]);
+  });
+});
+
+describe("researched directory rows: their official e-mail (data/facx.js element 10 → data.json oe) is a teaser source", () => {
+  const contactTo = ref => ({ ref: "T-" + ref, kind: "contact", target_type: "factory", target_id: "company.html#" + ref, target_name: "", payload: { product: "سبائك حديد" },
+    items: [], sector: "", created_at: now(), email_key: "buyer@buyer.test" });
+  const withOe = async (patch, fn) => { const keep = { ...(DATA.oe || {}) }; DATA.oe = { ...keep, ...patch }; try { return await fn(); } finally { DATA.oe = keep; } };
+  test("the bundled official address of a researched profile gets the teaser (role mailbox on the company's own site, with its source page)", async () => {
+    const row = (DATA.f || []).find(f => /company\.html#x\d+$/.test(f[5])), ref = /#(x\d+)$/.exec(row[5])[1];
+    await withOe({ [ref]: [["Sales@Acme-Co.com.eg"], "https://www.acme-co.com.eg", "https://www.acme-co.com.eg/contact"] }, async () => {
+      const env = env0();
+      const a = await officialAddresses(env, [ref]);
+      assert.equal(a.get(ref).email, "sales@acme-co.com.eg");
+      assert.equal(a.get(ref).company, row[0]);
+      const r = await teaseInquiry(env, contactTo(ref));
+      assert.equal(r.sent, 1, JSON.stringify(r));
+      const [t] = teasersTo("sales@acme-co.com.eg");
+      assert.ok(t, "teaser sent"); assert.ok(!/buyer@buyer\.test/.test(t.text));
+      assert.equal((await teaseInquiry(env, contactTo(ref))).sent, 0, "once per request");
+      await addMember(env, { id: "m9", email: "owner@x.test", factory_ref: ref });           // once the profile is a member's: no teaser
+      assert.equal((await officialAddresses(env, [ref])).size, 0);
+    });
+  });
+  test("the same rules: no personal mailbox, no free mail, no address off the company's site, no source page → nothing", async () => {
+    const env = env0();
+    await withOe({ x900001: [["ahmed.ali@acme-co.com"], "https://acme-co.com", "https://acme-co.com/contact"], x900002: [["info@gmail.com"], "", "https://acme-co.com/contact"],
+      x900003: [["info@other-co.com"], "https://acme-co.com", "https://acme-co.com/contact"], x900004: [["info@acme-co.com"], "https://acme-co.com", ""] }, async () => {
+      const a = await officialAddresses(env, ["x900001", "x900002", "x900003", "x900004"]);
+      assert.equal(a.size, 0, JSON.stringify([...a]));
+    });
   });
 });
 
