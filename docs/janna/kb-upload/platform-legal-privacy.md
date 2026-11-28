@@ -12,14 +12,11 @@
 
 **طبيعة الدور:**
 - المنصة **دليل وسوق إلكتروني ووسيط معلوماتي**: تعرض المصانع ومنتجاتها، وتنشر طلبات الأسعار والفرص والمناقصات من مصادرها.
-- **ليست وزارة ولا جهة حكومية ولا بوابة تعاقدات حكومية ولا جهة تعاقدية**: لا تطرح مناقصات باسمها، ولا تقيّم العطاءات، ولا تختار الفائزين، ولا تُرسي عقوداً، وليست بديلاً عن بوابة التعاقدات العامة المصرية.
+- لا تطرح مناقصات باسمها، ولا تقيّم العطاءات، ولا تختار الفائزين، ولا تُرسي عقوداً، وليست بديلاً عن بوابة التعاقدات العامة المصرية.
 - **لا تقدّم تمويلاً ولا تتوسط فيه**؛ بتحيل فقط للجهات الرسمية المختصة.
 - رسوم العضوية مقابل خدمات رقمية ومعلوماتية وظهور ودعم أعمال، **وليست** رسوم مناقصة أو ترسية أو ترخيص حكومي، **ولا تضمن أي نتيجة تجارية**.
 - الدفع **إلكتروني فقط** عبر بوابة الدفع (بطاقات بنكية ومحافظ إلكترونية)؛ لا كاش ولا تحويل بنكي.
 - العقد في أي صفقة بين المشتري والمورّد مباشرة.
-
-س: هل المنصة جهة حكومية؟
-ج: لا. بتشغّلها جمعية غير هادفة للربح، وهي ليست وزارة ولا جهة حكومية ولا بوابة تعاقدات حكومية.
 
 ## 2. الشروط والأحكام (Terms & Conditions)
 الرابط: https://madeinegyptgate.com/legal.html#terms
@@ -96,7 +93,7 @@
 
 - **المصادر:** مصادر رسمية مفتوحة (بوابة التعاقدات العامة المصرية etenders.gov.eg، هيئة الشراء الموحد، مواقع الجهات الحكومية والهيئات الاقتصادية وشركات قطاع الأعمال العام وشركات البترول والكهرباء)، أو المشترين وشركاء الأعمال والأعضاء. النشر **للإعلام والتنبيه فقط** مع ذكر المصدر.
 - **المرجعية:** المرجع الوحيد للشروط والمواعيد وكراسة الشروط هو **الجهة المالكة للمنافسة** ومنصتها، وفق قانون التعاقدات التي تبرمها الجهات العامة 182 لسنة 2018 (بالنسبة للجهات الخاضعة له). المصنع يتحقق من المصدر قبل التقديم.
-- **حدود المسؤولية:** المنصة ليست جهة مشتريات ولا طرفاً في أي منافسة، ولا علاقة لها بالتأهيل أو التقييم أو الترسية، ولا تتحمل أي تعديل أو إلغاء من الجهة المالكة.
+- **حدود المسؤولية:** المنصة لا علاقة لها بالتأهيل أو التقييم أو الترسية، ولا تتحمل أي تعديل أو إلغاء من الجهة المالكة.
 - **لا ضمان للترسية** أو أمر شراء أو عقد. والإشارة لأفضلية المنتج المصري (القانون 5 لسنة 2015) للإعلام فقط، وتطبيقها من اختصاص الجهة المتعاقدة.
 - **الشركات الفائزة:** النتائج تُعرض كما أعلنتها الجهات رسمياً، ولأي منشأة طلب تصحيح بياناتها عبر الشكاوى.
 
@@ -161,12 +158,12 @@
 
 Source: https://madeinegyptgate.com/legal.html (updated 16 Nov 2026, v2.0); each section at legal.html#<id>.
 
-- **Legal Status (#status):** National unified B2B industrial platform for Egypt's 27 governorates. Operator: Egypt Industrial Development Association, non-profit No. 6189/2017, supervised by the Ministry of Social Solidarity (eafid.org); Giza – 6th of October City – District 11 – Building 56, 3rd floor. Hotline 02 38346757, mobile/WhatsApp 01279188996, info@ / support@madeinegyptgate.com. A directory, e-marketplace and information intermediary — not a ministry, government body, procurement portal or contracting authority; no financing. Fees buy digital services and guarantee no outcome. Electronic payment only (cards, e-wallets); no cash or bank transfer. Deals are directly between buyer and supplier.
+- **Legal Status (#status):** National unified B2B industrial platform for Egypt's 27 governorates. Operator: Egypt Industrial Development Association, non-profit No. 6189/2017, supervised by the Ministry of Social Solidarity (eafid.org); Giza – 6th of October City – District 11 – Building 56, 3rd floor. Hotline 02 38346757, mobile/WhatsApp 01279188996, info@ / support@madeinegyptgate.com. A directory, e-marketplace and information intermediary; no financing. Fees buy digital services and guarantee no outcome. Electronic payment only (cards, e-wallets); no cash or bank transfer. Deals are directly between buyer and supplier.
 - **Terms (#terms):** Use = acceptance. Users: legal establishments (valid CR and tax card) or authorized reps. No misleading data, scraping/spam, impersonation or hacking (Law 175/2018). Members guard their credentials. Verify tenders at the source. Platform may amend terms and suspend violators after notice (appeal via complaints). No guarantee of quality, deal execution or awards; no indirect-damage liability.
 - **Membership (#membership):** No free registration. Annual, excl. 14% VAT: Company Listing Only 4,000 EGP; Basic 10,000; Premium 25,000; Core Partner 50,000; Strategic Partner 100,000. Documents: CR, tax card, industrial license/factory registry (if any), VAT certificate, logo, stamped form. Review in 3 working days. "Verified" = documents complete, not a product guarantee. Online or in-person at HQ, same benefits. 12-month term; 30-day renewal notice; lapsed profiles hidden, data kept 90 days. Pro-rated upgrades anytime. No guarantee of tenders/contracts.
 - **Privacy (#privacy):** Law 151/2020. Collects company, representative and aggregated usage data; card/wallet data stays with the payment gateway. Data never sold; shared only as needed with relevant parties, contracted providers or authorities. Rights: access, withdraw consent, correct/erase, restrict/object, breach notice, complaint to the Personal Data Protection Center. Requests: info@madeinegyptgate.com, reply within 30 days.
 - **Refunds (#refund):** Full refund if rejected after payment, or cancelled within 2 working days before core services activate. After activation generally none (statutory rights preserved, Law 181/2018). Ads/banners: no refund once publishing starts; a campaign can be postponed 48 hours before its start. Request via dashboard or email; refunded to original e-payment method within 14 working days; e-credit note issued via ETA e-invoicing.
-- **Tenders (#tenders):** Info from official open sources or members, for information only; owning entity and its official platform are the sole reference (Law 182/2018, for entities subject to it). Platform is not a party; no award guarantee; Law 5/2015 preference mention is informational.
+- **Tenders (#tenders):** Info from official open sources or members, for information only; owning entity and its official platform are the sole reference (Law 182/2018, for entities subject to it). No award guarantee; Law 5/2015 preference mention is informational.
 - **RFQ (#rfq):** Genuine, specific requests; offers binding while valid; collusion banned (Law 3/2005); platform holds no deal funds; ratings moderated.
 - **IP (#ip):** Platform assets protected (Law 82/2002); members own their content and grant a non-exclusive display license; infringements (reported by email with proof) removed within 5 working days of being proven.
 - **Cookies (#cookies):** Essential, analytics (aggregated), marketing (consent only); browser-controllable.

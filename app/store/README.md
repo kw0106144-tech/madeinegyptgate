@@ -30,7 +30,7 @@ Default language: Arabic (Play: `ar`; App Store: Arabic, with English (U.S.) add
 - Janna "the smart assistant … speaks Egyptian Arabic and English", live video call: `data/janna.js`, `data/janna-live.js`.
 - Bassem "the smart deals advisor" for Core Partner / Strategic Partner members: `advisor.part.py`, `data/plan.js`.
 - Owner / operator lines: word for word as approved by the owner (CLAUDE.md 2.7), in the footer's order.
-- "a directory, an e-marketplace and an information intermediary; not a government body or a contracting authority": `legal.part.py`.
+- "a directory, an e-marketplace and an information intermediary": `legal.part.py`.
 - No counts that change (members, companies, tenders): the listing would go stale; the only numbers are the 27 governorates and the
   five export markets, as the site states them.
 

@@ -157,7 +157,7 @@
 
 ## 13. حدود مهمة (Important Limits)
 - الرسوم مقابل خدمات المنصة الرقمية والظهور ودعم الأعمال، **مش رسوم مناقصة أو ترسية أو ترخيص أو تسجيل حكومي**، والتسجيل **لا يضمن** الفوز بمناقصة أو عقد ولا حداً أدنى من الفرص.
-- المشغّل (الجمعية المصرية للتنمية الصناعية) مش جهة حكومية ولا جهة تعاقدات، ولا بيقدّم تمويل.
+- المشغّل (الجمعية المصرية للتنمية الصناعية) مابيقدّمش تمويل.
 - **مش متاح حالياً:** تسجيل مجاني، دفع نقدي، تحويل بنكي، تقسيط، خدمات تدريب أو توظيف. للاستفسار تواصل مع خدمة العملاء.
 
 ---
@@ -198,7 +198,7 @@
 - **Payment:** gateway only: cards (Visa, Mastercard, Meeza) or mobile e-wallets; no cash, bank transfer, bank account or installments mentioned. Two emails: ETA e-invoice incl. VAT (supplier: Egypt Industrial Development Association) and login details (change password at first login). Documents reviewed within 3 business days.
 - **Renewal/refund** (legal.html#membership, #refund): reminder 30 days before expiry; non-renewal hides profile, data kept 90 days; pro-rata upgrade anytime. Full refund if rejected for documents or cancelled within 2 business days before services start; generally none after activation (Consumer Protection Law 181/2018 where applicable); ads non-refundable once live (postpone 48 h before); request via dashboard or info@; refund to original card/wallet within 14 business days with an e-credit note.
 - **Dashboard** (dashboard.html): opportunities, services, my factory, subscription & invoices (#billing), users & notifications. Forgot password → WhatsApp 01279188996.
-- **Limits:** fees are not tender/award/licensing fees; no award guarantee; operator is not a government or contracting body; no financing, training or employment services.
+- **Limits:** fees are not tender/award/licensing fees; no award guarantee; no financing, training or employment services.
 
 ---
 

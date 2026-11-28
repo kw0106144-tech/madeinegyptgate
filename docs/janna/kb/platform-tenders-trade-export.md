@@ -1,7 +1,7 @@
 # المناقصات وطلبات الأسعار والتصدير والتجارة (Tenders, RFQs, Export & Trade)
 
 > مرجع «جنة» للفرص التجارية على منصة صنع في مصر (https://madeinegyptgate.com/).
-> قاعدة ثابتة: المنصة **منصة معلومات وسوق إلكتروني**؛ مش جهة حكومية ولا جهة تعاقدات، ولا بتطرح مناقصات ولا بترسّيها ولا بتضمن الترسية، ولا بتقدّم تمويل ولا بتتوسط فيه، ولا بتمسك أموال الصفقات. التعاقد والدفع والتسليم بين الطرفين مباشرة.
+> قاعدة ثابتة: المنصة **منصة معلومات وسوق إلكتروني**؛ مابتطرحش مناقصات ولا بترسّيها ولا بتضمن الترسية، ولا بتقدّم تمويل ولا بتتوسط فيه، ولا بتمسك أموال الصفقات. التعاقد والدفع والتسليم بين الطرفين مباشرة.
 
 ---
 
@@ -89,7 +89,7 @@ https://madeinegyptgate.com/deal.html#shipping
 
 - **موانئ وشحن:** هيئة ميناء الإسكندرية (الإسكندرية والدخيلة)، هيئة ميناء دمياط، المنطقة الاقتصادية لقناة السويس (العين السخنة وشرق بورسعيد)، الهيئة القومية لسكك حديد مصر، مصر للطيران للشحن، أرامكس، DHL.
 - **تأمين:** الشركة المصرية لضمان الصادرات، مصر للتأمين، أليانز مصر، أكسا مصر.
-- الأسعار والتغطيات تُطلب من الشركة مباشرة، والمنصة مش طرف.
+- الأسعار والتغطيات تُطلب من الشركة مباشرة.
 
 ---
 
@@ -170,7 +170,7 @@ https://madeinegyptgate.com/intl.html
 
 ## English Summary
 
-- **Status:** information platform & B2B marketplace (operated by the Egypt Industrial Development Association); not a government/procuring entity; no awarding/guarantees, finance, brokerage or holding of deal funds.
+- **Status:** information platform & B2B marketplace (operated by the Egypt Industrial Development Association); no awarding/guarantees, finance, brokerage or holding of deal funds.
 - **Tenders** (tenders.html): government tenders/practices/auctions from open official sources (etenders.gov.eg, Unified Procurement Authority, public-sector, petroleum and electricity companies), split by Egypt's 27 governorates, with status/activity filters, booklet price, initial insurance, deadline and source link. **Apply directly with the issuing entity** (etenders.gov.eg under Public Contracts Law 182/2018). Egyptian-product preference: Law 5/2015 (local-content ratio), applied by the contracting entity. Available on paid plans (Basic and above) with tracking, deadline alerts and product matching. Winners/awards: Partner & Strategic plans; agencies page lists issuing entities.
 - **RFQs** (rfqs.html): real purchase requests. Buyers submit via contact.html#rfq-form; requests go to matching factories; offers arrive in the account and via WhatsApp; track at track.html. Subscribed factories reply from the factory dashboard ("requests received") with unit price, lead time, validity and documents. Rules: genuine requests, binding offers during validity, no collusion (Competition Law 3/2005), parties contract and pay directly.
 - **Deal journey** (deal.html): RFQ → offer → agreement (PO, Incoterms 2020) → finance → shipping & insurance → delivery & rating.

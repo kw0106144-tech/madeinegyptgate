@@ -228,7 +228,7 @@ def assist_module(H):
         ar = ['# منصة صنع في مصر', '', '> ' + (HOST.get('IDENTITY_AR') or ''), '',
               'المالك: الجمعية المصرية للتنمية الصناعية', 'جمعية غير هادفة للربح مشهرة برقم 6189 لسنة 2017 (وزارة التضامن الاجتماعي).',
               'المشغّل: الحسيني جروب وشركاءه، استقبال الطلبات وتسجيل الشركاء وخدمة العملاء والتطوير', '',
-              'المنصة منصة معلومات وأعمال، وليست جهة حكومية ولا جهة تعاقدات حكومية، ولا ترسي العقود. تفاصيل المناقصات وطلبات الأسعار والترسيات والمشاريع للأعضاء المشتركين وفق باقاتهم.', '',
+              'المنصة منصة معلومات وأعمال، لا ترسي العقود. تفاصيل المناقصات وطلبات الأسعار والترسيات والمشاريع للأعضاء المشتركين وفق باقاتهم.', '',
               '## الأقسام الرئيسية', '']
         ar += ['- [%s](%s)' % (a, u(p)) for p, a, e in main]
         if secs:
@@ -240,7 +240,7 @@ def assist_module(H):
         en = ['# Made in Egypt Gate', '', '> ' + (HOST.get('IDENTITY_EN') or ''), '',
               'Owner: Egypt Industrial Development Association', 'A non-profit association registered under No. 6189 of 2017 (Ministry of Social Solidarity).',
               'Operator: ElHouseni Group & Partners — receiving requests, partner registration, customer service and development', '',
-              'The platform is an information and business platform, not a government body or a government contracting authority, and it does not award contracts. The details of tenders, RFQs, contract awards and projects are for subscribed members within their plans.', '',
+              'The platform is an information and business platform, and it does not award contracts. The details of tenders, RFQs, contract awards and projects are for subscribed members within their plans.', '',
               '## Main sections', '']
         en += ['- [%s](%s)' % (e, u(('/en' + p) if en_ok(p) else p)) for p, a, e in main]
         if secs:

@@ -11,12 +11,39 @@ previous text back (the version of the file before that write, in git history).
 
 | File | Persona / tool | `updatedAt` (live since) | sha256 | Characters |
 |---|---|---|---|---|
-| `janna-ar.systemPrompt.md` | Janna AR `5f06d835-22cc-4460-b412-84cefa9e565b` | `2026-11-28T09:31:51.917Z` | `63e4d39f4b1b337adaaa6d2f13314d77bfec44c915d34da753ba9951c8873161` | 30,346 (a read says 30,347: 🌐 counts 2) |
-| `janna-en.systemPrompt.md` | Janna EN `e5101653-65b4-44a6-85e5-ec2e78f82685` | `2026-11-28T09:33:30.156Z` | `1ea3bc38f8df473407fb5f666e40bdec5214712284effba92426cbe3ff97da1b` | 35,734 (a read says 35,735) |
-| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-28T09:36:30.739Z` | `3bdd5bdfbed6e626586fa02e06911710ef6d05bea11c05393a5fb0b55439b609` | 35,037 (the API says 35,038) |
+| `janna-ar.systemPrompt.md` | Janna AR `5f06d835-22cc-4460-b412-84cefa9e565b` | `2026-11-28T12:07:00.199Z` | `d5f449441b06c76a9dbdd87e5bb08ebaad5067803b4ea83487779ae10a17d2d6` | 30,331 (a read says 30,332: 🌐 counts 2) |
+| `janna-en.systemPrompt.md` | Janna EN `e5101653-65b4-44a6-85e5-ec2e78f82685` | `2026-11-28T12:28:48.465Z` | `6055c9ff409147e83a6d206a5d5869d3f3eaece0d21dbdf6911212d93535a0f7` | 35,705 (a read says 35,706) |
+| `bassem.systemPrompt.md` | Bassem `19ef9078-5252-42a4-bbdf-9a3c4a38a4be` | `2026-11-28T12:31:30.922Z` | `713693add2ed75d50166bd07179d9dc7b637a998f88382be905fb8e7da32ec6d` | 35,022 (the API says 35,023) |
 | `bassem_save_profile.description.md` | tool `bassem_save_profile` `4c3b35f3-0590-44d7-85d1-321eeb21c79e` | `2026-11-20T08:37:02.665Z` | `41eaa3ade439de9372710286ac29e0594d4f884b1ac0478777e5a068b829c55a` | 894 |
 | `bassem-notify-send.tools.md` | tools `bassem_notify_member` `325b182c-e5e0-42d0-a130-658919faf12f` and `bassem_send_email` `a00e4d99-df41-4a43-8c66-39bdfa3d2495` | `2026-11-21T22:06:40.549Z` / `2026-11-21T22:06:43.489Z` | (the bodies are in the file) | |
 | `janna_lookup.tool.json` | tool `janna_lookup` `29fd5087-5eff-4919-afb2-3d01b8cc70de` (Janna AR and Janna EN) and `platform_item` `6ccedda8` | `2026-11-28T09:27:54.863Z` / `2026-11-28T09:27:59.484Z` | `9d52be6431fcf1dcd9ecd39b301e4758b20553adba47a7956de9a8aac7f0f0b5` (the file) | description 909 |
+
+## Round 5 — no "not a government body" line (owner 2026-11-28), applied on 2026-11-28
+
+The owner, word for word: «المنصه رسميه امسح كلمه مش جهه حكوميه متجودش من عندك» and «شيلها من كل الأماكن في التلات منصات»; the Anam write
+was approved by the owner. One clause was removed from each prompt and nothing was added; every other field (LLM, voice, avatar, `toolIds`,
+`languageCode`, greeting, director notes, voice detection) was left as it was. Each persona was read first, and its `updatedAt` was the one
+in Round 4.
+
+| UTC | Write | Removed | `updatedAt` before → after | Length the API returned |
+|---|---|---|---|---|
+| 12:04:31 | Janna AR, `anam_persona_update` (`systemPrompt`) | «ومش جهة حكومية» | `2026-11-28T09:31:51.917Z` → `2026-11-28T12:04:31.111Z` | 30,303: wrong, the line «A result that truly matches:» of the examples had been left out of the text sent |
+| 12:07:00 | Janna AR again, the file exactly | the same | `2026-11-28T12:04:31.111Z` → `2026-11-28T12:07:00.199Z` | 30,332 = the file (30,331) + 1 for 🌐 |
+| 12:28:48 | Janna EN, `systemPrompt` | "and is not a government body" | `2026-11-28T09:33:30.156Z` → `2026-11-28T12:28:48.465Z` | 35,706 = the file + 1 |
+| 12:31:30 | Bassem, `systemPrompt` | «مش جهة حكومية و» | `2026-11-28T09:36:30.739Z` → `2026-11-28T12:31:30.922Z` | 35,023 = the file + 1 |
+
+For about two and a half minutes (12:04:31 to 12:07:00) Janna AR's live prompt lacked that one example line; the second write restored it.
+A read is trimmed, so the check is the total length and the visible start; the text sent was the file in each case.
+
+The owner's two follow-ups of the same day (no «not a contracting / procurement body», no «not a party to …») needed no further prompt
+change: the live prompts had no such line. Kept, because they are not about what kind of body the platform is: «جهة مؤسسية مش وسيط تجاري» /
+"an institution, not a commercial broker", «مش منصة إعلانات ولا أخبار», and «مابتضمنش ترسية».
+
+**Rollback of this round.** Send back these files at the commit before this round (`git show 8e26392:anam/live/<file>`, sha256 in the table of
+Round 4), `systemPrompt` only, with the `updatedAt` in the table above.
+
+Knowledge: the Janna folder «Made in Egypt Gate — Janna knowledge» (`b8113c0c…`) still holds 0 documents, so no uploaded document had the
+phrase. The repository's sources for it (`docs/janna/kb/`, `docs/janna/kb-upload/`) were cleaned in the same PR.
 
 ## Round 4 — the assistants round (identity, titles for visitors, always search outside, auto-publish, registration help), applied on 2026-11-28
 
