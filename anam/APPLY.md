@@ -1,3 +1,19 @@
+# Applied on 2026-11-28 — the assistants round (Janna AR, Janna EN, Bassem)
+
+**Status: APPLIED on 2026-11-28 (owner's advance approval for the task «the six assistants»).** What changed in Anam, with the exact writes and
+`updatedAt` stamps: `anam/live/README.md` → «Round 4». Backups of what was live before: `docs/janna/anam-backup-2026-11-28.md`,
+`docs/bassem/anam-backup-2026-11-28.md`. Tool bodies as sent: `anam/rounds/2026-11-28-assistants/tools.applied.json`.
+
+- Created: `janna_register_help` `fc179425-c14c-4325-a152-6228de0a64a3` (Janna AR + EN) and `bassem_register_help`
+  `35049741-22a6-426f-a201-e9f368b04501` (Bassem), SERVER_WEBHOOK → `/api/janna/register-help` / `/api/advisor/register-help`
+  (`docs/janna/REGISTER-HELP-TOOL.md`; no header, like the other `/api/janna/*` webhooks, because `JANNA_KEY` is not set — if it ever is, add
+  `X-Janna-Key` to all of them in the same step).
+- Updated (description only): `janna_lookup` `29fd5087` (Janna) and `platform_item` `6ccedda8` (all three): `members_only`, never a bare «not found».
+- Personas (`systemPrompt` + `toolIds`): the approved identity + owner / operator lines + address, phone, hours; titles only for visitors; always
+  search outside; `on_platform` results; the registration-help lines.
+
+The sections below are the older 2026-11-19 consolidation plan, kept for history.
+
 # Anam changes for the consolidation (holo4 + holo5 + holo6 + memory 0009 + noise) — APPLY ORDER
 
 **Status: PREPARED, NOT APPLIED.** Nothing was written to Anam. The Anam calls were read-only, on 2026-11-19 at about 13:05–13:12 UTC:

@@ -52,6 +52,8 @@ import { featureOn } from "./flags.js"; // «🛠️ المطوّر» bassem_web
 import { anonymize } from "./knowledge.js"; // a person's name / self-introduction never goes to a provider (review S9)
 import { classify, personalLink, urlPII, onHost, PORTALS, ENTITIES, AGGREGATORS, DIRECTORIES, MARKETS_B2B, NEWS } from "./web-classify.js";
 import { recordLeads } from "./web-leads.js";
+import { wouldPublish, publishingOn, platformLine } from "./web-public.js"; // the auto-publish gate (owner 2026-11-28)
+import { viewerOf, lockWeb } from "./opp-lock.js"; // members-only: a visitor's call gets the teaser of a tender / RFQ / project
 
 export const WS_TIMEOUT_MS = 6000, WS_CACHE_S = 3600, WS_MAX_RESULTS = 5, WS_PER_SITE = 2, WS_MAX_BODY = 8192, WS_MAX_Q = 200, WS_PER_MIN = 30, WS_PER_MIN_JANNA = 12;
 /* Janna's hourly part of her daily share (review S6): an eighth of it, at least 6 (one hunt) */
@@ -613,7 +615,7 @@ async function serveSearch(req, env, ctx, nowMs, who) {
   /* Janna's lang is the language she speaks: the search language follows the query's script */
   const p = parseArgs(who === "janna" ? { ...a, lang: undefined } : a);
   if (p.error) return soft(W.path, voice, p.error, 400);
-  const r = await webSearch(env, cfg, p, nowMs, { persona: who });
+  const [r, acc] = await Promise.all([webSearch(env, cfg, p, nowMs, { persona: who }), who === "janna" ? viewerOf(req, env, { anam: true }, nowMs) : null]);
   const refused = r.error ? refusal(W.path, voice, r, nowMs) : null; if (refused) return refused;
   if (r.error) { console.error("websearch", cfg.provider, r.reason, r.status || 0); return soft(W.path, voice, "websearch_failed", 502); }
   const cls = r.results.map(x => classify(x, { intent: p.kind === "companies" ? "buyers" : "" }));
@@ -622,8 +624,20 @@ async function serveSearch(req, env, ctx, nowMs, who) {
   if (!r.cached && ctx && typeof ctx.waitUntil === "function")
     ctx.waitUntil(recordLeads(env, results.map((x, i) => ({ ...x, official: cls[i].official, aggregator: cls[i].aggregator, query: p.q, lang: p.lang })), { persona: who, via: "search", market: p.market ? p.market.code : "", nowMs }));
   /* the persona and the call: the information itself — no link, site, source or snippet (owner 2026-11-20) */
-  const en = isEn(voice), said = results.map((x, i) => sayResult(x, cls[i], { market: p.market ? (en ? p.market.en : p.market.ar) : "", product: p.q, en }));
-  return out({ count: said.length, results: said, text: spokenText(said, p, voice), kind: p.kind, market: p.market ? p.market.code : null, cached: r.cached, note: WS_NOTE });
+  const en = isEn(voice);
+  /* the auto-publish gate (web-public.js): what of it the platform adds to «فرص السوق» — the same rows recordLeads keeps (no news from a search) */
+  const pubOn = results.length ? await publishingOn(env) : false;
+  const onP = results.map((x, i) => pubOn && x.type !== "news" && wouldPublish({ ...x, official: cls[i].official, aggregator: cls[i].aggregator, market: p.market ? p.market.code : "" }, nowMs));
+  let said = results.map((x, i) => ({ ...sayResult(x, cls[i], { market: p.market ? (en ? p.market.en : p.market.ar) : "", product: p.q, en }), ...(onP[i] ? { on_platform: true } : {}) }));
+  const added = onP.filter(Boolean).length;
+  let text = spokenText(said, p, voice) + (added ? " " + platformLine(added, voice) : "");
+  /* members-only (owner 2026-11-28): Janna with a visitor — a tender / RFQ / project without its entity and official mark */
+  const vis = !!(acc && acc.who === "visitor" && said.some(x => ["tender", "rfq", "project"].includes(x.type)));
+  if (vis) said = said.map(x => lockWeb(x, null));
+  return out({ count: said.length, results: said, text, kind: p.kind, market: p.market ? p.market.code : null, cached: r.cached, note: WS_NOTE,
+    ...(vis ? { members_only: true, register_url: "https://madeinegyptgate.com/register/" + (en ? "?lang=en" : "") + "#basic",
+      hint: "visitor: say the titles, places and dates only; the issuing body and the details are for subscribed members — invite him to register (janna_navigate page=register plan=basic)" } : {}),
+    ...(!said.length ? { hint: "nothing came back: never answer with «مفيش» / not found alone — say what the platform has on it, that the platform keeps searching every day, and offer the next step" } : {}) });
 }
 /* an exception inside a handler is a soft websearch_failed (nit 10): one log line, never a 500 to the model */
 async function guarded(req, env, ctx, nowMs, who) {

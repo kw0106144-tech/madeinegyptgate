@@ -57,7 +57,7 @@ import { handleWebSearch, handleJannaWebSearch, WS_MARKETS } from "./websearch.j
 import { handleJannaHunt, handleBassemHunt } from "./web-hunt.js";
 // ---- «فرص السوق» (src/web-public.js): the web leads published on the platform — GET /api/janna/opportunities (the page /market-opportunities/)
 //      and, in janna_lookup, after the platform's own results (switches web_leads_public / web_leads_lookup; never a source) ----
-import { publishedLeads, publicItem, handlePublicLeads } from "./web-public.js";
+import { publishedLeads, publicItem, liveItem, useKnown, handlePublicLeads } from "./web-public.js";
 // ---- 📎 photos in Janna's and Bassem's chats (src/chat-media.js, switch chat_photos): read once by Workers AI, never stored ----
 import * as CHATMEDIA from "./chat-media.js";
 import * as RESEARCH from "./research.js"; // «بحث وكتابة عميقة»: POST|GET /api/advisor/research[/<id>[/doc|/mail]] (Bassem's deep jobs, switch research_bassem)
@@ -453,6 +453,26 @@ function search(section, query, governorate, limit, page, market, { members = nu
    extra_count / extra. The text says them as information only: never a site, a source or a link (none is in them), never as the
    platform's own data or a registered company, a closed one never as open, an undated one never as open. */
 const WEB_SECTIONS = { tenders: ["tender"], rfqs: ["rfq"], customers: ["buyer", "buyer_list"], projects: ["project"], news: ["news"] };
+/* the auto-publish gate's «not a duplicate» (web-public.js, owner 2026-11-28): a web lead whose title is one of the platform's own tenders /
+   RFQs (this bundle: the tenders list, the RFQs, the intel centre's tenders / RFQs) is not published again — the same words, or one title
+   inside the other when both are long */
+let KNOWN_T = null;
+const knownKey = s => norm(String(s || "")).replace(/[^\p{L}\p{N}]+/gu, "");
+export function knownTitle(type, title) {
+  if (!KNOWN_T) {
+    KNOWN_T = { tender: [], rfq: [] };
+    const add = (k, t) => { const x = knownKey(t); if (x.length >= 12) KNOWN_T[k].push(x); };
+    for (const t of DATA.t || []) add("tender", t && t[3]);
+    for (const q of DATA.q || []) add("rfq", q && q[2]);
+    for (const i of DATA.i || []) if (i && (i[0] === "tender" || i[0] === "rfq")) add(i[0], i[5]);
+    KNOWN_T.set = { tender: new Set(KNOWN_T.tender), rfq: new Set(KNOWN_T.rfq) };
+  }
+  const k = knownKey(title), list = KNOWN_T[type];
+  if (!list || k.length < 12) return false;
+  if (KNOWN_T.set[type].has(k)) return true;
+  return k.length >= 30 && list.some(x => x.length >= 30 && (x.includes(k) || k.includes(x)));
+}
+useKnown(knownTitle);
 export const WEB_MAX = 4;
 const WEB_MK = { local: ["eg"], gulf: ["gulf", "sa", "ae", "kw", "qa", "om", "bh"], africa: ["africa", "ma", "dz", "tn", "ly", "sd", "ke", "ng", "et", "za"],
   asia: ["asia", "cn", "in", "tr", "jo", "iq"], europe: ["europe", "de", "it", "fr", "es", "gb", "ru"] };
@@ -483,7 +503,7 @@ function webOf(section, query, governorate, market, web, nowMs, lock = null) {
   const M = marketOf(market), pick = market != null && market !== "" && M.mk ? M.mk : "", G = P.gov ? norm(P.gov) : "";
   const ok = i => { const p = X.rows[i].pub; if (G && !norm(p.governorate || "").includes(G)) return false; if (pick && WEB_MK[pick] && !WEB_MK[pick].includes(p.market)) return false; return !(pick === "intl" && p.market === "eg"); };
   const rows = []; for (let i = 0; i < X.rows.length; i++) if (ok(i)) rows.push(i);
-  const items = rankRows(C, matchIx(X.ix, C.map(compile)), rows).filter(r => r.cls < 2).map(r => publicItem(X.rows[r.i], nowMs));
+  const items = rankRows(C, matchIx(X.ix, C.map(compile)), rows).filter(r => r.cls < 2).map(r => publicItem(X.rows[r.i], nowMs)).filter(liveItem);
   const ordered = items.filter(x => x.status !== "closed").concat(items.filter(x => x.status === "closed"));
   return { count: ordered.length, items: ordered.slice(0, WEB_MAX).map(webLean).map(x => (lock ? lockWeb(x, lock) : x)) };
 }
@@ -492,16 +512,18 @@ const WEB_N = { tenders: n => (n === 1 ? "مناقصة واحدة" : n === 2 ? "
   projects: n => (n === 1 ? "مشروع جديد واحد" : n === 2 ? "مشروعين جداد" : n + (n <= 10 ? " مشاريع جديدة" : " مشروع جديد")), news: n => (n === 1 ? "خبر واحد" : n === 2 ? "خبرين" : n + (n <= 10 ? " أخبار" : " خبر")) };
 function webLine(x) { return [x.title, x.entity, x.status, x.place].filter(Boolean).join(" — "); }
 /* the text the persona gets for them (m = Bassem: masculine). base = the platform's own count (0: «بس فيه …», else «وكمان فيه …») */
-function webText(section, w, m, base) {
+function webText(section, w, m, base, locked = false) {
   const shown = w.items.length;
   return ` ${base ? "وكمان فيه" : "بس فيه"} ${WEB_N[section](w.count)}${shown < w.count ? ` (أهم ${shown})` : ""}: ${w.items.map(webLine).join("؛ ")}. `
-    + (m ? "قولهم كمعلومة وخلاص: ماتقولش إنهم على المنصة ولا إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك، ولا تعدّهم مع نتايج المنصة؛ اللي «منتهية» خلصت، واللي «ميعادها مش معروف» ماتقولش إنها مفتوحة. ولو العميل سأل جايين منين أو أكيدين قول: «ده اللي عندي عنها، والشروط والمواعيد النهائية عند الجهة نفسها»."
-      : "قوليهم كمعلومة وخلاص: ماتقوليش إنهم على المنصة ولا إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك، ولا تعدّيهم مع نتايج المنصة؛ اللي «منتهية» خلصت، واللي «ميعادها مش معروف» ماتقوليش إنها مفتوحة. ولو العميل سأل جايين منين أو أكيدين قولي: «ده اللي عندي عنها، والشروط والمواعيد النهائية عند الجهة نفسها».");
+    + (m ? "دول منشورين على المنصة في «فرص السوق»: قولهم كمعلومة وخلاص، من غير ما تقول إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك، ولا تعدّهم مع نتايج المنصة؛ اللي «منتهية» خلصت، واللي «ميعادها مش معروف» ماتقولش إنها مفتوحة. ولو العميل سأل جايين منين أو أكيدين قول: «ده اللي عندي عنها، والشروط والمواعيد النهائية عند الجهة نفسها»."
+      : "دول منشورين على المنصة في «فرص السوق»: قوليهم كمعلومة وخلاص، من غير ما تقولي إن الشركة عضو أو مسجّلة عندنا، ومفيش اسم موقع ولا مصدر ولا لينك، ولا تعدّيهم مع نتايج المنصة؛ اللي «منتهية» خلصت، واللي «ميعادها مش معروف» ماتقوليش إنها مفتوحة. ولو العميل سأل جايين منين أو أكيدين قولي: «ده اللي عندي عنها، والشروط والمواعيد النهائية عند الجهة نفسها».")
+    + (locked ? (m ? " الجهة صاحبة الفرصة وتفاصيلها للأعضاء المشتركين: قول العنوان والمكان والميعاد بس، وادعيه يسجّل علشان يشوف التفاصيل." : " الجهة صاحبة الفرصة وتفاصيلها للأعضاء المشتركين: قولي العنوان والمكان والميعاد بس، وادعيه يسجّل علشان يشوف التفاصيل.") : "");
 }
 function withWeb(section, o, query, governorate, market, web, m, nowMs, lock = null) {
   const w = o && typeof o === "object" ? webOf(section, query, governorate, market, web, nowMs, lock) : null;
   if (!w || !w.count) return o;
-  return { ...o, extra_count: w.count, extra: w.items, text: String(o.text || "") + webText(section, w, m, Number(o.count) || 0) };
+  const locked = !!(lock && lock.who === "visitor" && section !== "customers" && section !== "news");
+  return { ...o, extra_count: w.count, extra: w.items, text: String(o.text || "") + webText(section, w, m, Number(o.count) || 0, locked) };
 }
 
 /* ---------- section=customers (U2, src/lookup-customers.js) ----------

@@ -35,6 +35,8 @@ import { WS_HEADER, WS_MAX_BODY, WS_NOTE, WS_MARKETS, voiceOf, isEn, soft, refus
   reserveUnits, giveBack, sayable, sayResult } from "./websearch.js";
 import { productNeed, industryNeed, classify, relevant, namedIn, canonUrl, bareHost, SERVICE_RX } from "./web-classify.js";
 import { recordLeads, rejectedOf, leadHash, productKey } from "./web-leads.js";
+import { wouldPublish, publishingOn, platformLine } from "./web-public.js"; // the auto-publish gate (owner 2026-11-28): «اتضافت على المنصة» only for what it publishes
+import { viewerOf, lockWeb } from "./opp-lock.js"; // members-only: a visitor's call gets the teaser (no entity / official mark) of a tender / RFQ / project
 
 export const HUNT_MS = 4500, HUNT_MAX = 6, HUNT_RESULTS = 6, HUNT_PER_SITE = 2, HUNT_REJECT_WAIT_MS = 400;
 export const INTENTS = Object.freeze(["tenders", "rfq", "buyers", "projects"]);
@@ -268,7 +270,12 @@ export async function runHunt(env, cfg, h, { who = "bassem", voice = "bassem", n
   const rows = picked.filter(x => x.fresh).map(x => ({ ...x.r, type: x.c.type, official: x.c.official, aggregator: x.c.aggregator, query: x.q.q, lang: x.q.lang }));
   if (rows.length) wait(recordLeads(env, rows, { persona: who, via: via || "hunt", product: h.product, market: h.market ? h.market.code : "", governorate: h.gov ? h.gov.ar : "", nowMs }));
   console.log("web-hunt", who, "planned", plan.length, "sent", send.length - skipped, "cached", plan.length - misses.length, "kept", picked.length, "ms", Date.now() - t0);
-  const body = answer(picked, h, need, voice, { plan, sent: send.length - skipped, cached: plan.length - misses.length, partial, hints, ambiguous, asked: intents });
+  /* the auto-publish gate (web-public.js): which of them the platform adds to «فرص السوق» (members-only like the rest) — never for the deep
+     research job's rows (via research) */
+  const pubOn = via !== "research" && picked.length ? await publishingOn(env) : false;
+  const onPlatform = picked.map(x => pubOn && wouldPublish({ ...x.r, type: x.c.type, official: x.c.official, aggregator: x.c.aggregator, product: h.product, market: h.market ? h.market.code : "" }, nowMs));
+  if (!picked.length) hints.push("nothing new from this hunt: never answer with «مفيش» / not found alone — say what the platform has for him (customers, matching RFQs after his subscription), that the platform keeps searching every day, and offer the next step");
+  const body = answer(picked, h, need, voice, { plan, sent: send.length - skipped, cached: plan.length - misses.length, partial, hints, ambiguous, asked: intents, onPlatform });
   if (!withSources) return { body };
   return { body, internal: picked.map(x => ({ url: x.r.url, site: x.r.source || "", date: x.r.date || "", title: x.r.title || "", snippet: x.r.snippet || "", type: x.c.type, official: !!x.c.official, aggregator: !!x.c.aggregator, query: x.q.q })) };
 }
@@ -277,12 +284,25 @@ export async function runHunt(env, cfg, h, { who = "bassem", voice = "bassem", n
 function answer(picked, h, need, voice, m) {
   const counts = {}; for (const x of picked) counts[x.c.type] = (counts[x.c.type] || 0) + 1;
   let text = huntText(picked, h, need, voice, m.asked);
+  const added = (m.onPlatform || []).filter(Boolean).length;
+  if (added) text += " " + platformLine(added, voice);
   if (m.ambiguous) text += " " + ambiguousText(m.ambiguous, voice);
   const en = isEn(voice), where = h.gov ? (en ? h.gov.en : h.gov.ar) : h.market ? (en ? h.market.en : h.market.ar) : "";
   return { count: picked.length, counts,
-    results: picked.map(x => sayResult(x.r, x.c, { market: where, product: en && need.en ? need.en : h.product, en })),
+    results: picked.map((x, i) => ({ ...sayResult(x.r, x.c, { market: where, product: en && need.en ? need.en : h.product, en }), ...((m.onPlatform || [])[i] ? { on_platform: true } : {}) })),
     text, query: [h.product, h.market ? h.market.ar : "العالم"].join(" · "), market: h.market ? h.market.code : "world", queries: m.plan.length, sent: m.sent, cached: m.cached, partial: !!m.partial,
     note: WS_NOTE, ...(m.hints.length ? { hint: m.hints.join("; ") } : {}), ...(m.ambiguous ? { ambiguous: m.ambiguous } : {}) };
+}
+
+/* members-only (owner 2026-11-28): Janna's call with a visitor gets a tender / RFQ / project as its teaser — title, place, date — without the
+   entity or the official mark (opp-lock.js lockWeb), and the hint to invite the registration; a member's call (or Bassem's) gets it all */
+export function visitorBody(body, voice) {
+  if (!body || !Array.isArray(body.results)) return body;
+  const lock = body.results.some(x => x && ["tender", "rfq", "project"].includes(x.type));
+  if (!lock) return body;
+  const en = isEn(voice);
+  return { ...body, results: body.results.map(x => lockWeb(x, null)), members_only: true, register_url: "https://madeinegyptgate.com/register/" + (en ? "?lang=en" : "") + "#basic",
+    hint: [body.hint, "visitor: say the titles, places and dates only; the issuing body and the details are for subscribed members — invite him to register (janna_navigate page=register plan=basic)"].filter(Boolean).join("; ") };
 }
 
 /* ---------- HTTP: POST /api/janna/hunt (Janna) · POST /api/advisor/hunt (Bassem) ---------- */
@@ -303,12 +323,12 @@ async function serveHunt(req, env, ctx, nowMs, who) {
   if (!(who === "janna" ? cfg.janna_ready : cfg.ready)) return soft(W.path, voice, "websearch_off", 503, { reason: who === "janna" ? cfg.janna_reason : cfg.reason });
   const h = parseHunt(a);
   if (h.error) return soft(W.path, voice, h.error, 400);
-  const r = await runHunt(env, cfg, h, { who, voice, nowMs, ctx });
+  const [r, acc] = await Promise.all([runHunt(env, cfg, h, { who, voice, nowMs, ctx }), who === "janna" ? viewerOf(req, env, { anam: true }, nowMs) : null]);
   if (r.error === "product_required" || r.error === "industries_required") return soft(W.path, voice, r.error, 400);
   if (r.error === "product_ambiguous") { toolSoftError(W.path, "product_ambiguous"); return out({ error: "product_ambiguous", code: "product_ambiguous", http: 200, ambiguous: r.ambiguous, count: 0, results: [], text: ambiguousText(r.ambiguous, voice), note: WS_NOTE }); }
   const refused = r.error ? refusal(W.path, voice, r, nowMs) : null; if (refused) return refused;
   if (r.error) return soft(W.path, voice, "websearch_failed", 502);
-  return out(r.body);
+  return out(acc && acc.who === "visitor" ? visitorBody(r.body, voice) : r.body);
 }
 async function guarded(req, env, ctx, nowMs, who) {
   try { return await serveHunt(req, env, ctx, nowMs, who); }

@@ -1,9 +1,9 @@
 {
- "_note": "Live tool bodies as sent (masked enum values are the real lists below). Updated 2026-11-20 13:19 UTC: sections customers, projects, events, news, awards (worker 4dfb634 live).",
+ "_note": "Live tool bodies as sent (masked enum values are the real lists below). Updated 2026-11-20 13:19 UTC: sections customers, projects, events, news, awards (worker 4dfb634 live). Updated 2026-11-28 09:27 UTC: janna_lookup (Janna) and platform_item descriptions (members_only, never a bare «not found»), anam/rounds/2026-11-28-assistants.",
  "janna_lookup_janna": {
   "id": "29fd5087-5eff-4919-afb2-3d01b8cc70de",
-  "updatedAt": "2026-11-20T13:19:35.847Z",
-  "previous_updatedAt": "2026-11-20T12:49:00.983Z",
+  "updatedAt": "2026-11-28T09:27:54.863Z",
+  "previous_updatedAt": "2026-11-23T00:03:51.609Z",
   "section_enum": [
    "factories",
    "suppliers",
@@ -23,7 +23,8 @@
    "section",
    "governorate"
   ],
-  "note": "no page / limit / market on purpose (worker/src/index.js `paged` → Bassem's masculine text)"
+  "note": "no page / limit / market on purpose (worker/src/index.js `paged` → Bassem's masculine text)",
+  "description": "Search the platform's REAL directory and get results you can say aloud: factories & companies (by activity/product and governorate), products, Egyptian tenders, RFQs, retail offers, industrial cities, projects, events, news and awards. A SELLER's potential customers: section=customers, query = the industries that use his product in ONE list («ورق، كرتون، طباعة، بلاستيك»), governorate = his governorate, not the city (6th of October = الجيزة); they are directory factories, not purchase requests. Two or three names of ONE product go in one query («سلندرات درافيل rollers»), no governorate for tenders / RFQs. Say only what the result's `text` and results contain - never invent names, numbers or contacts. Also call janna_search with the query's main word only. Each result has an `id`: all its details with platform_item. members_only: details for members only - say title, place, deadline; invite registration (need). Nothing found: never say so - search outside (janna_web_hunt / janna_web_search)."
  },
  "janna_lookup_bassem": {
   "id": "b23b3762-3333-4212-9564-e4c813433212",
@@ -54,8 +55,8 @@
  },
  "platform_item_shared": {
   "id": "6ccedda8-5896-4b9b-b3ae-c8ed462a4b3d",
-  "updatedAt": "2026-11-20T13:19:41.946Z",
-  "previous_updatedAt": "2026-11-19T20:08:02.049Z",
+  "updatedAt": "2026-11-28T09:27:59.484Z",
+  "previous_updatedAt": "2026-11-20T13:19:41.946Z",
   "section_enum": [
    "tenders",
    "rfqs",
@@ -68,7 +69,7 @@
    "news",
    "events"
   ],
-  "description": "unchanged"
+  "description": "Get EVERYTHING the platform has about ONE item before you talk about it: a tender's entity, number, deadline, status, place, bid bond (قيمة التأمين), booklet price (ثمن الكراسة), estimated value and official documents link; an RFQ's request, quantity and delivery place; a factory's activity, products, location and summary; a project's owner, contractor, value and latest news; an award's winner and value; an offer's price. Pass `id` from the janna_lookup result (best), else `ref`, else the title. Say ONLY what the returned `text` and fields contain: a missing field is NOT on the platform, never guess it; contact is through the platform; never read links aloud. members_only: the caller's plan does not include the details - say the teaser and the plan that includes them (need). found:false: search again with janna_lookup, then outside (web search), never a bare «not found». Then show it: Bassem with bassem_open_item (url = open_url); Janna with janna_search (same section + its title)."
  },
  "rollback": "send the previous enums: janna_lookup 7 values (factories, suppliers, products, tenders, rfqs, offers, cities), platform_item 8 values (without news, events), and the previous descriptions in git history of this file / anam/tools.create.json",
  "previous_record": {

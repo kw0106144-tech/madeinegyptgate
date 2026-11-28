@@ -216,7 +216,9 @@ describe("the cron: new opportunities → matches (bounded, by cursor)", () => {
     const env = await envWith();
     const tok = await member(env, "p1", { profile: PIPES });
     const t = ISO(NOW - 3600e3);
-    const ins = (title, status = "new") => env.DB.prepare("INSERT INTO web_leads (url_hash, url, title, site, snippet, type, market, first_seen, last_seen, status) VALUES (?, ?, ?, 'buyer.example', 'نحتاج كمية كبيرة', 'rfq', 'eg', ?, ?, ?)").bind("h" + title.length + status, "https://buyer.example/rfq/" + title.length, title, t, t, status).run();
+    /* the auto-publish gate (web-public.js, owner 2026-11-28): an RFQ is published only from an official source page with a closing date ahead */
+    const due = new Date(Date.parse(TODAY) + 20 * 864e5).toISOString().slice(0, 10);
+    const ins = (title, status = "new") => env.DB.prepare("INSERT INTO web_leads (url_hash, url, title, site, snippet, type, market, first_seen, last_seen, status) VALUES (?, ?, ?, 'buyer.gov.eg', ?, 'rfq', 'eg', ?, ?, ?)").bind("h" + title.length + status, "https://buyer.gov.eg/rfq/" + title.length, title, "نحتاج كمية كبيرة، آخر موعد لتلقي العروض " + due, t, t, status).run();
     await ins("طلب عرض سعر أنابيب بلاستيك قطر 4 بوصة"); await ins("طلب عرض سعر أنابيب بلاستيك مرفوض", "rejected");
     await setSwitches(env, { opp_matching: true, web_leads_public: false });
     let r = await OM.oppCron(env, NOW);
@@ -226,7 +228,7 @@ describe("the cron: new opportunities → matches (bounded, by cursor)", () => {
     const rows = await rowsOf(env, "p1");
     assert.equal(rows.length, 1, "the rejected lead is not published, so never matched"); assert.equal(rows[0].source, "web");
     const g = await api(env, "GET", { token: tok });
-    assert.equal(g.data.items.length, 1); assert.ok(!JSON.stringify(g.data).includes("buyer.example"), "no source, no link out");
+    assert.equal(g.data.items.length, 1); assert.ok(!JSON.stringify(g.data).includes("buyer.gov.eg"), "no source, no link out");
     await env.DB.prepare("UPDATE web_leads SET status = 'rejected', reason = 'hidden'").run();
     assert.equal((await api(env, "GET", { token: tok })).data.items.length, 0);
   });
