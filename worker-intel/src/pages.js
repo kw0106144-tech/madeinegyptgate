@@ -4,7 +4,7 @@
    /intel/sitemap.xml (+ chunks ≤ 5,000 URLs). 410 for hidden/removed items; noindex for items closed > 30 days. */
 import { SHELL } from "./shell.js";
 import { siteShell } from "./siteshell.js";
-import { SITE, KIND_SEG, KIND_LABEL, esc, jsonLd, fmtDay, fmtCairo, cairoDay, addDays, ID_RE, slugify } from "./util.js";
+import { SITE, KIND_SEG, KIND_LABEL, esc, jsonLd, fmtDay, fmtCairo, cairoDay, addDays, ID_RE, slugify, lockedItem, MEMBERS_BOX, registerUrl } from "./util.js";
 import { sectorName, SECTORS } from "./sectors.js";
 import { marketName, flag } from "./markets.js";
 import { queryItems } from "./api.js";
@@ -76,7 +76,8 @@ function crumbs(lang, list) {
 }
 function li(it, lang, src) {
   const en = lang === "en";
-  const meta = [it.entity, flag(it.market) + " " + marketName(it.market, lang), it.deadline ? t("deadline", lang) + " " + fmtDay(it.deadline, lang) : "", src ? (en ? src.name : src.name_ar || src.name) : ""].filter(Boolean).map(esc).join(" · ");
+  const lk = lockedItem(it);   // members-only (util.js): the list keeps the market and the deadline; the entity and the source are for members
+  const meta = [lk ? "" : it.entity, flag(it.market) + " " + marketName(it.market, lang), it.deadline ? t("deadline", lang) + " " + fmtDay(it.deadline, lang) : "", !lk && src ? (en ? src.name : src.name_ar || src.name) : ""].filter(Boolean).map(esc).join(" · ");
   const st = shownTitle(it, lang);
   return `<li><a href="${esc(itemPath(it, lang))}">${st.orig ? `<span lang="${esc(st.lang)}" dir="auto">${esc(st.text)}</span>` : esc(st.text)}</a>${st.orig ? origMark(lang) : ""} ${statusBadge(it, lang)}${it.tag === "tender_news" ? ` <span class="sx-st sx-st-undated">${t("tenderNews", lang)}</span>` : ""}<span class="m">${meta}</span></li>`;
 }
@@ -129,7 +130,15 @@ export async function listPage(env, lang, kindSeg, params, host, nowMs = Date.no
   return renderPage(lang, { shell, title: t(kindSeg, lang) + (q.page > 1 ? ` — ${q.page}` : "") + (lang === "en" ? " | Made in Egypt Gate" : " | صنع في مصر"), description: (lang === "en" ? "Daily-updated " : "تحديث يومي: ") + t(kindSeg, lang), path: q.page > 1 && !filtered ? qs(q.page) : path, noindex: filtered, alt: { ar: altBase("ar"), en: altBase("en") }, jsonld: [{ "@context": "https://schema.org", "@type": "CollectionPage", url: SITE + path, name: t(kindSeg, lang), inLanguage: lang === "en" ? "en" : "ar-EG" }, { "@context": "https://schema.org", ...c.ld }], main }, host);
 }
 
-export function itemHtml(it, src, lang, host, nowMs = Date.now(), shell) {
+/* «التفاصيل للأعضاء — سجّل الآن» (owner 2026-11-28): the box that replaces the details of a members-only item */
+export function membersBox(lang) {
+  const i = lang === "en" ? 1 : 0;
+  return `<section class="card2 sx-lock sx-members"><h2>🔒 ${MEMBERS_BOX.title[i]}</h2><p>${MEMBERS_BOX.text[i]}</p><p><a class="btn btn-green" href="${esc(registerUrl(lang))}">${MEMBERS_BOX.btn[i]}</a></p></section>`;
+}
+export function itemHtml(it0, src0, lang, host, nowMs = Date.now(), shell) {
+  /* members-only (util.js lockedItem): a tender / RFQ / project / tender news page keeps its teaser (title, type, market and country,
+     sector, dates, status); the entity, the value, the summary, the official link and the source never reach the page or its JSON-LD */
+  const lk = lockedItem(it0), it = lk ? { ...it0, entity: null, value: null, currency: null, summary_ar: null, summary_en: null, summary_orig: null, url: "" } : it0, src = lk ? null : src0;
   const en = lang === "en", seg = KIND_SEG[it.kind] || "news", path = itemPath(it, lang);
   const st = shownTitle(it, lang), h1 = st.text;
   const summary = (en ? it.summary_en : it.summary_ar);
@@ -152,13 +161,13 @@ export function itemHtml(it, src, lang, host, nowMs = Date.now(), shell) {
 ${h1 !== it.title_orig ? `<p class="note">${t("origTitle", lang)}: <span lang="${esc(it.lang || "")}" dir="auto">${esc(it.title_orig)}</span></p>` : ""}
 ${summary || h1 !== it.title_orig ? `<p class="note">${t("aiNote", lang)}</p>` : ""}
 <dl class="sx-facts">${facts.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
-<p class="note">${labelLine}</p>
-<p><a class="btn btn-gold" href="${esc(it.url)}" rel="nofollow noopener" target="_blank">${t("official", lang)} ↗</a></p></section>
+${lk ? "" : `<p class="note">${labelLine}</p>
+<p><a class="btn btn-gold" href="${esc(it.url)}" rel="nofollow noopener" target="_blank">${t("official", lang)} ↗</a></p>`}</section>${lk ? membersBox(lang) : ""}
 </div><div><section class="card2 cta"><h2>${en ? "Need help?" : "محتاج مساعدة؟"}</h2><p>${en ? "The platform team can help you prepare and submit your offer." : "فريق المنصة يساعدك في تجهيز العرض والتقديم."}</p><a class="btn btn-line" href="${en ? "/contact/#rfq-form" : "/contact/#rfq-form"}">${t("help", lang)}</a></section></div></div>
 <p class="note intel-upd">${t("updated", lang)}: <time datetime="${esc(it.updated_at || "")}">${esc(fmtCairo(it.updated_at, lang))}</time></p></div>`;
   const desc = (summary || it.summary_orig || h1).slice(0, 160);
-  const ld = seg === "news" ? { "@context": "https://schema.org", "@type": "NewsArticle", headline: h1.slice(0, 110), datePublished: it.published_at || it.first_seen_at, dateModified: it.updated_at || it.first_seen_at, inLanguage: en ? "en" : "ar-EG", mainEntityOfPage: SITE + path, isBasedOn: it.url, description: desc, publisher: { "@type": "Organization", name: "منصة صنع في مصر", url: SITE + "/", logo: { "@type": "ImageObject", url: SITE + "/img/logo-site.png" } }, sourceOrganization: srcName ? { "@type": "Organization", name: srcName } : undefined }
-    : { "@context": "https://schema.org", "@type": "WebPage", url: SITE + path, name: h1, inLanguage: en ? "en" : "ar-EG", dateModified: it.updated_at || it.first_seen_at, isBasedOn: it.url, about: { "@type": "Thing", name: it.title_orig, ...(it.entity ? { description: it.entity } : {}) }, ...(it.deadline ? { expires: it.deadline } : {}) };
+  const ld = seg === "news" ? { "@context": "https://schema.org", "@type": "NewsArticle", headline: h1.slice(0, 110), datePublished: it.published_at || it.first_seen_at, dateModified: it.updated_at || it.first_seen_at, inLanguage: en ? "en" : "ar-EG", mainEntityOfPage: SITE + path, ...(lk ? {} : { isBasedOn: it.url }), description: desc, publisher: { "@type": "Organization", name: "منصة صنع في مصر", url: SITE + "/", logo: { "@type": "ImageObject", url: SITE + "/img/logo-site.png" } }, sourceOrganization: srcName ? { "@type": "Organization", name: srcName } : undefined }
+    : { "@context": "https://schema.org", "@type": "WebPage", url: SITE + path, name: h1, inLanguage: en ? "en" : "ar-EG", dateModified: it.updated_at || it.first_seen_at, ...(lk ? {} : { isBasedOn: it.url }), about: { "@type": "Thing", name: it.title_orig, ...(it.entity ? { description: it.entity } : {}) }, ...(it.deadline ? { expires: it.deadline } : {}) };
   /* hidden=2: a news item the relevance rule unlisted (engine.js newsSweep) — its page still answers, out of the index */
   return renderPage(lang, { shell, title: h1.slice(0, 90) + (en ? " | Made in Egypt Gate" : " | صنع في مصر"), description: desc, path, noindex: closedOld || it.hidden === 2, ogType: seg === "news" ? "article" : "website", alt: { ar: itemPath(it, "ar"), en: itemPath(it, "en") }, jsonld: [ld, { "@context": "https://schema.org", ...c.ld }], main }, host);
 }

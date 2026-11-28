@@ -9,6 +9,17 @@ export const KIND_GROUPS = {
   rfq: ["rfq"],
   news: ["news"],
 };
+/* members-only opportunities (owner decision 2026-11-28): tenders (government, semi-government, private), RFQs, projects and project news,
+   and the news about a tender (tag tender_news) are for the platform's members. On /intel/ pages and in /api/intel/feed | item everyone
+   gets the teaser (title, sector, market / country, dates, status) and the box «التفاصيل للأعضاء — سجّل الآن» → /register/#basic; the
+   details (entity, value, summary, the official link, the source) stay for the service binding (mailpack) and Bassem's tool (TOOL_KEY).
+   This Worker cannot tell a member (no session check here), so the lock applies to every public caller. */
+export const lockedItem = r => !!r && (/^(tender_|rfq$|project)/.test(String(r.kind || "")) || r.tag === "tender_news");
+export const MEMBERS_BOX = { title: ["التفاصيل للأعضاء — سجّل الآن", "Details are for members — register"],
+  text: ["الجهة والقيمة والملخص والرابط الرسمي والمصدر متاحين للأعضاء المشتركين في المنصة من الباقة الأساسية، في حدود أسواق الباقة.",
+    "The entity, the value, the summary, the official link and the source are for the platform's members from the Basic plan, within the plan's markets."],
+  btn: ["سجّل الآن", "Register now"] };
+export const registerUrl = lang => "/register/" + (lang === "en" ? "?lang=en" : "") + "#basic";
 /* URL segment for each kind (item pages /intel/<seg>/<slug>-<id>/) */
 export const KIND_SEG = { tender_gov: "tenders", tender_semi: "tenders", tender_private: "tenders", rfq: "rfq", project: "projects", project_news: "projects", news: "news" };
 export const KIND_LABEL = {

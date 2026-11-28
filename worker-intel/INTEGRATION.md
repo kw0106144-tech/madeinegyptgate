@@ -194,3 +194,12 @@ isolate fetches one notify's files at a time (worker/src/notify-items.js `fileSl
 **Deploy order**: any. An older janna-lookup never calls it; with an older migate-intel the pack answers the plain 404 and janna-lookup
 falls back to `GET /api/intel/item/<id>` through the same binding (card + links, «جلب الملفات من مركز المعلومات مش شغال دلوقتي»).
 
+
+## Members-only opportunities (owner decision 2026-11-28)
+Tenders (government, semi-government, private), RFQs, projects / project news and the news about a tender (`tag = tender_news`) are for
+the platform's members. This Worker cannot check a member's session, so EVERY public caller of `/intel/` pages and
+`/api/intel/feed | item | brief` gets the teaser of those kinds (title, sector, market / country, dates, status — `members_only: true`,
+`register_url`) and the item page shows «التفاصيل للأعضاء — سجّل الآن» / "Details are for members — register" → `/register/#basic`
+instead of the entity, the value, the summary, the official link and the source; their JSON-LD has no `isBasedOn`. The full record stays
+for the service binding (`/api/intel/mailpack` on `PACK_HOST`) and Bassem's tool (`/api/intel/tool` with `X-Intel-Key`). General news is
+unchanged. Rule: `src/util.js` `lockedItem`; tests: `test/members-only.test.mjs`.

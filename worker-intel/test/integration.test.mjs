@@ -349,7 +349,9 @@ test("item page: AI-written title or summary carries the unofficial machine-tran
   const src = { name: "Islamic Development Bank – Project procurement tenders", name_ar: "البنك الإسلامي للتنمية – مناقصات المشروعات" };
   const ai = itemHtml({ ...base, title_orig: "Construction of Roads at AIH Bagauda Kano", title_ar: "إنشاء طرق في كانو", summary_ar: "مناقصة لإنشاء طرق." }, src, "ar", "madeinegyptgate.com", NOW);
   assert.ok(ai.includes("ترجمة آلية غير رسمية") && ai.includes("وليست ترجمة رسمية من الجهة المصدرة"));
-  assert.ok(ai.includes("البنك الإسلامي للتنمية"), "the source is cited");
+  assert.ok(!ai.includes("البنك الإسلامي للتنمية") && !ai.includes("isdb.org"), "members-only (util.js lockedItem): a tender's page names no source and has no official link");
+  assert.ok(ai.includes("التفاصيل للأعضاء — سجّل الآن"));
+  assert.ok(itemHtml({ ...base, kind: "news", title_orig: "Construction of Roads at AIH Bagauda Kano", title_ar: "إنشاء طرق في كانو", summary_ar: "خبر." }, src, "ar", "madeinegyptgate.com", NOW).includes("البنك الإسلامي للتنمية"), "a news page cites its source");
   const plain = itemHtml({ ...base, title_orig: "Construction of Roads at AIH Bagauda Kano" }, src, "en", "madeinegyptgate.com", NOW);
   assert.ok(!plain.includes("unofficial machine translation"));
   const en = itemHtml({ ...base, title_orig: "Construction of Roads at AIH Bagauda Kano", title_en: "Roads construction, AIH Bagauda (Kano)" }, src, "en", "madeinegyptgate.com", NOW);
