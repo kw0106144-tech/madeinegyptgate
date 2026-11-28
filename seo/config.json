@@ -11,6 +11,8 @@
  "min_company_words_with_products": 20,
  "min_company_products": 3,
  "min_facx_words": 40,
+ "min_facx_words_with_products": 10,
+ "min_facx_products": 2,
  "min_product_words": 20,
  "product_index_image": true,
  "min_product_words_with_image": 0,

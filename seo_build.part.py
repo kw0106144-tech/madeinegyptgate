@@ -301,7 +301,7 @@ def _seo_build_module(HOST):
     # ------------------------------------------------------------------ configuration
     CFG_DEFAULT = {
         "min_hub_members": 5, "min_tender_cat": 3, "min_tender_entity": 3, "min_tender_entity_page": 2, "min_company_words": 35, "min_company_words_with_products": 20,
-        "min_company_products": 3, "min_facx_words": 40, "min_product_words": 20, "min_gov_items": 3, "news_index_min_words": 150,
+        "min_company_products": 3, "min_facx_words": 40, "min_facx_words_with_products": 10, "min_facx_products": 2, "min_product_words": 20, "min_gov_items": 3, "news_index_min_words": 150,
         "tender_expired_index_days": 90, "tender_undated_index": False, "listing_page_size": 50, "slug_mode": "legacy", "offer_default_days": 14,
         "sitemap_max_urls": 10000, "max_pages": 18000, "today": None, "fonts": "google",
         "en": {"enabled": True, "only_indexable": True, "min_text_nodes_ratio": 0.95, "max_arabic_ratio": 0.05},
@@ -854,7 +854,14 @@ def _seo_build_module(HOST):
         if kind == 'company':
             if rec['kind'] == 'public':
                 ok = rec['words'] >= cfg['min_facx_words']
-                return ok, ('public_desc_%dw' % rec['words']) + ('' if ok else '<%d' % cfg['min_facx_words'])
+                if ok:
+                    return True, 'public_desc_%dw' % rec['words']
+                # owner 2026-11-28 («ظبط كل البيانات انها تظهر في جوجل»): a researched profile with a real description AND its real
+                # product list is indexed too (description + products + governorate + sector is a useful page, no padding)
+                npx = len(rec.get('names') or [])
+                if rec['words'] >= int(cfg.get('min_facx_words_with_products', 10)) and npx >= int(cfg.get('min_facx_products', 2)):
+                    return True, 'public_desc_%dw+%dproducts' % (rec['words'], npx)
+                return False, 'public_desc_%dw<%d' % (rec['words'], cfg['min_facx_words'])
             if rec['dup_desc']:
                 return False, 'duplicate_description'
             if rec['words'] >= cfg['min_company_words']:
