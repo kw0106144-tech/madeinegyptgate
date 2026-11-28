@@ -17,6 +17,7 @@ import { line, str, now, iso, hmac, safeEq, json, err, preflight, jparse, prefsO
 import { waNumber } from "./meetings.js";
 import { advisorCallLink } from "./advisor.js";
 import { respondioToken, respondioChannel, svc, waSwitchNow } from "./service-keys.js";
+import { morningInReport } from "./mail-sends.js"; // the partner's 10:00 report carries the morning e-mail (owner 2026-11-28 «ادمج الإيميلين»)
 import { featureOn, featureSync } from "./flags.js"; // «🛠️ المطوّر»: whatsapp_send (an extra OFF) · bassem_morning (the morning message)
 
 const API = "https://api.respond.io/v2";
@@ -265,13 +266,16 @@ export async function inbound(env, b, ctx, nowMs = Date.now()) {
      same content: he asks how they are, the real count of new items in their scope today (or the next step of an open deal), and
      «تحب نشتغل سوا إمتى النهارده؟» with one-click links advisor.html#when=now|noon|evening|skip plus a link that opens Bassem.
      Needs a valid address the platform holds for the member (phone / WhatsApp opt-in NOT required); list "bassem" (unsubscribable).
+     ONE e-mail a day (owner 2026-11-28 «ادمج الإيميلين»): while the 10:00 report runs (mail-sends.js morningInReport) this e-mail is NOT
+     sent here: the note opens the partner's 10:00 report (daily-mail.js), or goes alone from there on a day with nothing to report;
+     a failed WhatsApp send marks morning_sent_day "mail:<day>" so that report carries it.
    Call time = call_today_at (chosen today on WhatsApp / with Bassem / by the #when= links), else the standing session_time on the
    member's days; "مش النهارده" skips today → bassem_call_ready template (+ the text queued), or inside the window a text with a
    one-time sign-in link advisor.html?live=1#login=<code>&live=1 (single use, 12 h) that opens the live video call with Bassem;
    WhatsApp not live / failed → the same «أنا جاهز… اضغط هنا ونتكلم فيديو» by e-mail. */
 const TRANSIENT = /respond\.io (429|5\d\d)|respond\.io: (?!no messageId)|resend (429|5\d\d)|resend: |cloudflare: /;
 const whoOf = m => [m.title, m.name].filter(Boolean).join(" ") || m.company || "";
-async function nextDealStep(env, m) {
+export async function nextDealStep(env, m) {
   try {
     return await env.DB.prepare("SELECT title, next_action, due_date FROM deals WHERE member_id = ? AND stage NOT IN ('won', 'lost') AND next_action != '' ORDER BY (due_date = '') ASC, due_date ASC, updated_at DESC LIMIT 1").bind(m.id).first();
   } catch (e) { return null; }
@@ -283,8 +287,14 @@ export const MORNING_WHY = Object.freeze({
   off: "رسالة باسم اليومية لباقة الشريك. إرسال الواتساب من المنصة لسه مش شغّال، فرسايل باسم بتوصلك على الإيميل بس. توقفها من لوحة التحكم أو من الرابط ده. / Bassem's daily note for partner plans. WhatsApp sending from the platform is not live yet, so Bassem's messages reach you by e-mail only. Stop it from your dashboard or with the link below.",
   live: "رسالة باسم اليومية لباقة الشريك. توقفها من لوحة التحكم أو من الرابط ده. / Bassem's daily note for partner plans. Stop it from your dashboard or with the link below.",
 });
-/* live: WhatsApp's state as the run decided it (bassemCron's waLive; a direct caller gets it from this request's memo) */
-export async function morningEmail(env, m, n, step, day = cairoDay(), live = waLive(env)) {
+/* the same note when it travels inside the partner's 10:00 report (daily-mail.js, owner 2026-11-28 «ادمج الإيميلين»): the footer's stop link
+   is the report's (list daily), so the note carries its own stop link for the list bassem (unsubUrl) */
+export const MORNING_WHY_IN_REPORT = Object.freeze({
+  off: "رسالة باسم اليومية لباقة الشريك جوّه التقرير ده. إرسال الواتساب من المنصة لسه مش شغّال، فرسايل باسم بتوصلك على الإيميل بس. توقفها من لوحة التحكم أو من رابط «إيقاف رسالة باسم» اللي فوق، والرابط اللي تحت بيوقف التقرير اليومي. / Bassem's daily note for partner plans is part of this report. WhatsApp sending from the platform is not live yet, so Bassem's messages reach you by e-mail only. Stop it from your dashboard or with the «stop Bassem's note» link above; the link below stops the daily report.",
+  live: "رسالة باسم اليومية لباقة الشريك جوّه التقرير ده. توقفها من لوحة التحكم أو من رابط «إيقاف رسالة باسم» اللي فوق، والرابط اللي تحت بيوقف التقرير اليومي. / Bassem's daily note for partner plans is part of this report. Stop it from your dashboard or with the «stop Bassem's note» link above; the link below stops the daily report.",
+});
+/* the morning note's text (the e-mail below, and the partner's 10:00 report when it carries the note) */
+export function morningText(env, m, n, step) {
   const who = whoOf(m), S = site(env), W = k => `${S}advisor.html#when=${k}`;
   const cnt = n && n.count ? n.count : 0;
   const ar = `صباح الخير${who ? " يا " + who : ""} ☀️\nأنا باسم، مستشارك في منصة صنع في مصر. يا رب تكون بخير وصحتك تمام النهارده — طمّني عليك.\n\n` +
@@ -295,9 +305,12 @@ export async function morningEmail(env, m, n, step, day = cairoDay(), live = waL
     (cnt ? `New for you today: ${cnt} opportunit${cnt === 1 ? "y" : "ies"} in your plan's scope${n.top ? " — top: " + n.top : ""}.` :
       `Nothing new in your sector so far today${step ? `, but we have a follow-up: ${line(step.next_action, 160)}${step.due_date ? " (due " + step.due_date + ")" : ""}.` : "; we can review your open deals together."}`) +
     `\n\nWhen shall we work together today? One click: now ${W("now")} · noon ${W("noon")} · evening ${W("evening")} · not today ${W("skip")}\nOpen Bassem: ${S}advisor.html`;
+  return { subject: `صباح الخير${who ? " يا " + who : ""} ☀️ — باسم من منصة صنع في مصر / Good morning from Bassem`, ar, en };
+}
+/* live: WhatsApp's state as the run decided it (bassemCron's waLive; a direct caller gets it from this request's memo) */
+export async function morningEmail(env, m, n, step, day = cairoDay(), live = waLive(env)) {
   return mail(env, { id: `bm-${m.id}-${day}`, to: m.email, lang: "ar", list: "bassem", fromName: "باسم — منصة صنع في مصر", replyTo: team(env) || undefined,
-    subject: `صباح الخير${who ? " يا " + who : ""} ☀️ — باسم من منصة صنع في مصر / Good morning from Bassem`, ar, en,
-    why: live ? MORNING_WHY.live : MORNING_WHY.off });
+    ...morningText(env, m, n, step), why: live ? MORNING_WHY.live : MORNING_WHY.off });
 }
 export async function callEmail(env, m, link, day = cairoDay()) {
   const who = whoOf(m);
@@ -316,6 +329,10 @@ export async function bassemCron(env, nowMs = Date.now(), newCount) {
   const morningOn = await featureOn(env, "bassem_morning");
   if (!morningOn) out.morning_skipped = "feature_off";
   const day = cairoDay(nowMs), hm = cairoHM(nowMs), dow = cairoDow(nowMs);
+  // one e-mail a day (owner 2026-11-28): while the 10:00 report runs (0015 + member_daily_report), the morning note goes by e-mail INSIDE it
+  // (daily-mail.js) and not here; WhatsApp stays here. morning_sent_day "mail:<day>" = WhatsApp failed today, the 10:00 report carries it
+  const inReport = morningOn && mailOk && (await morningInReport(env));
+  if (inReport) out.morning_email = "in_daily_report";
   const bp = plansWith("bassem"); // the plans matrix decides who has Bassem (default: partner, strategic)
   const { results } = await env.DB.prepare(`SELECT * FROM members WHERE plan IN (${bp.map(() => "?").join(", ") || "''"}) AND verified = 1 AND (phone != '' OR email != '') LIMIT 1000`).bind(...bp).all();
   for (const m of results || []) {
@@ -330,7 +347,7 @@ export async function bassemCron(env, nowMs = Date.now(), newCount) {
     // morning message
     const mt = /^\d{2}:\d{2}$/.test(p.morning_time) ? p.morning_time : "09:00";
     const days = Array.isArray(p.days) && p.days.length ? p.days : [0, 1, 2, 3, 4, 5, 6];
-    if (morningOn && m.morning_sent_day !== day && days.includes(dow) && hm >= mt && hm <= "22:00") {
+    if (morningOn && m.morning_sent_day !== day && m.morning_sent_day !== "mail:" + day && days.includes(dow) && hm >= mt && hm <= "22:00" && (viaWA || !inReport)) {
       const claim = await env.DB.prepare("UPDATE members SET morning_sent_day = ? WHERE id = ? AND morning_sent_day != ?").bind(day, m.id, day).run();
       if (claim.meta && claim.meta.changes) {
         const n = typeof newCount === "function" ? await newCount(m) : null; // REAL new items in the member's scope (digest.js)
@@ -342,7 +359,9 @@ export async function bassemCron(env, nowMs = Date.now(), newCount) {
           r = await sendToMember(env, m, { text, template: "bassem_morning", params: [who || "حضرتك"] }, nowMs);
         }
         if (r.sent) out.morning++; // WhatsApp only
-        else {
+        else if (inReport && viaMail) { // the 10:00 report carries it by e-mail (a transient failure: WhatsApp again on the next run)
+          await env.DB.prepare("UPDATE members SET morning_sent_day = ? WHERE id = ? AND morning_sent_day = ?").bind(TRANSIENT.test(r.error || "") ? "" : "mail:" + day, m.id, day).run();
+        } else {
           const e = viaMail ? await morningEmail(env, m, n, n && n.count ? null : await nextDealStep(env, m), day, live) : { sent: false, error: "no email" };
           if (e.sent) out.email_morning++;
           else if (!e.skipped) { out.failed++; if (TRANSIENT.test(r.error || "") || TRANSIENT.test(e.error || "")) await env.DB.prepare("UPDATE members SET morning_sent_day = '' WHERE id = ? AND morning_sent_day = ?").bind(m.id, day).run(); } // transient → retry next run

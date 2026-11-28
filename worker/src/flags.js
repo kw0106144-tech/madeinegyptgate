@@ -11,8 +11,10 @@
      rfq_autoroute             inquiries.js      no automatic routing (new requests, cron retries, re-match): the team handles them
                                                  («محتاج تدخل», like a request without a match); the console's manual resend still routes
      bassem_morning            whatsapp.js       bassemCron: the morning message is skipped («كلّمني الساعة» keeps working)
+                               daily-mail.js     the partner's 10:00 report goes without Bassem's morning note
      daily_digest              digest.js         dailyJobs: digests + deadline reminders skipped (the item sync and housekeeping still run)
-     member_daily_report       daily-mail.js     the 10:00 member / partner (PDF) reports skipped (locked until migration 0015)
+     member_daily_report       daily-mail.js     the 10:00 member / partner (PDF) reports skipped (locked until migration 0015); Bassem's
+                               whatsapp.js       morning e-mail then goes on its own again (while ON it travels inside the partner's report)
      request_teasers           teasers.js        no teaser to unregistered directory factories (locked until migration 0015)
      owner_daily_report        daily-mail.js     the owner's daily report to TEAM_EMAIL skipped (locked until migration 0015)
      info_alerts               info-alerts.js    no instant alert to TEAM_EMAIL (a member's e-mail stop, «couldn't register»)
@@ -128,8 +130,8 @@ export const FEATURES = Object.freeze([
     enforced_by: ["POST /api/inquiries (routing)", "cron: delivery retries", "re-match when a member joins"] },
   { key: "bassem_morning", default: true, scope: "server",
     label_ar: "رسالة باسم الصباحية", label_en: "Bassem's morning message",
-    desc_ar: "رسالة «صباح الخير» اليومية من باسم للأعضاء (واتساب لما يشتغل، وإلا إيميل). لو قفلته، مفيش رسايل صباحية؛ مواعيد «كلّمني الساعة» بتفضل شغالة.",
-    desc_en: "Bassem's daily good-morning message to members (WhatsApp once live, otherwise e-mail). Off: no morning messages; «call me at» times keep working.",
+    desc_ar: "رسالة «صباح الخير» اليومية من باسم للأعضاء (واتساب لما يشتغل، وإلا إيميل — وطول ما التقرير اليومي شغّال بتيجي جوّه تقرير باسم الساعة 10، إيميل واحد في اليوم). لو قفلته، مفيش رسايل صباحية؛ مواعيد «كلّمني الساعة» بتفضل شغالة.",
+    desc_en: "Bassem's daily good-morning message to members (WhatsApp once live, otherwise e-mail — while the daily report runs it comes inside Bassem's 10:00 report, one e-mail a day). Off: no morning messages; «call me at» times keep working.",
     enforced_by: ["cron: Bassem's morning message"] },
   { key: "daily_digest", default: true, scope: "server",
     label_ar: "الملخص اليومي وتذكير المواعيد", label_en: "Daily digest & deadline reminders",
@@ -139,8 +141,8 @@ export const FEATURES = Object.freeze([
   /* the owner's 2026-11-28 mail decisions (daily-mail.js, teasers.js, info-alerts.js; migration 0015): all ON by default (his decision) */
   { key: "member_daily_report", default: true, scope: "server",
     label_ar: "التقرير اليومي للأعضاء الساعة 10 الصبح (إيميل)", label_en: "Members' daily report at 10:00 (e-mail)",
-    desc_ar: "كل يوم الساعة 10 الصبح بتوقيت القاهرة، كل عضو مسجّل بيوصله إيميل بالفرص والأخبار الجديدة اللي تطابق منتجاته وقطاعه (في حدود باقته)، والطلبات اللي وصلته واللي لسه مستنية رده. أعضاء باقات الشركاء بيوصلهم «تقرير باسم اليومي» ومعاه ملف PDF بكل التفاصيل. مفيش جديد = مفيش إيميل، وفي كل إيميل رابط إيقاف. لو قفلته، مفيش تقارير.",
-    desc_en: "Every day at 10:00 Cairo time each registered member gets an e-mail with the new opportunities and news matching his products and sector (within his plan) and the requests he received or still has to answer. Partner plans get «Bassem's daily report» with a PDF holding every detail. Nothing new = no e-mail; every e-mail has a stop link. Off: no reports.",
+    desc_ar: "كل يوم الساعة 10 الصبح بتوقيت القاهرة، كل عضو مسجّل بيوصله إيميل بالفرص والأخبار الجديدة اللي تطابق منتجاته وقطاعه (في حدود باقته)، والطلبات اللي وصلته واللي لسه مستنية رده. أعضاء باقات الشركاء بيوصلهم «تقرير باسم اليومي» ومعاه ملف PDF بكل التفاصيل، وفي أوله رسالة باسم الصباحية (إيميل واحد في اليوم). مفيش جديد = مفيش إيميل (والشريك بتوصله رسالة باسم لوحدها)، وفي كل إيميل رابط إيقاف. لو قفلته، مفيش تقارير، ورسالة باسم الصباحية بترجع إيميل لوحدها.",
+    desc_en: "Every day at 10:00 Cairo time each registered member gets an e-mail with the new opportunities and news matching his products and sector (within his plan) and the requests he received or still has to answer. Partner plans get «Bassem's daily report» with a PDF holding every detail, opened by Bassem's morning note (one e-mail a day). Nothing new = no e-mail (a partner gets Bassem's note alone); every e-mail has a stop link. Off: no reports, and Bassem's morning note goes as an e-mail on its own again.",
     lock_rule_ar: "مقفول لحد ما ملف قاعدة البيانات 0015_mail_reports.sql يتشغّل (GitHub ← Actions ← d1-migrate)", lock_rule_en: "Locked until the database file 0015_mail_reports.sql is applied (GitHub → Actions → d1-migrate)",
     enforced_by: ["cron: the 10:00 member / partner reports"] },
   { key: "request_teasers", default: true, scope: "server",

@@ -7,9 +7,16 @@
      (never a free-mail provider, never a person's address); when the company's web site is known, the domain must be that site's. */
 import { line, isEmail, emailKey, cairoDay, PLAN_SCOPE, planCan, team } from "./common.js";
 import { hasTable } from "./acc-base.js";
+import { featureOn } from "./flags.js";
 
 export const MS_LIM = Object.freeze({ retries: 3 });
 export const storeOn = env => hasTable(env, "mail_sends");
+/* one e-mail a day for a partner (owner 2026-11-28 «ادمج الإيميلين»): while the 10:00 report runs (0015 + the owner's member_daily_report
+   switch), Bassem's morning note goes by e-mail INSIDE the partner's report (daily-mail.js) and whatsapp.js bassemCron sends no separate
+   morning e-mail; either switch off or no 0015 → the morning e-mail goes on its own as before */
+export async function morningInReport(env) {
+  try { return (await storeOn(env)) && (await featureOn(env, "member_daily_report")); } catch (e) { return false; }
+}
 
 /* → true when THIS call claimed the row (a new one, or a failed one under the retry limit) */
 export async function claim(env, { kind, ref, email = "", company = "", factory_ref = "", nowMs = Date.now() }) {

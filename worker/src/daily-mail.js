@@ -9,7 +9,14 @@
    2) Partner plans (the plans with «bassem» in the matrix: partner, strategic) get the same report as Bassem's daily report WITH a PDF
       (pdf-report.js) holding every detail: the opportunities with their entity, sector, place, dates and status, the matching requests,
       the news and the day's market counts inside his plan. The PDF goes only on a route that carries attachments (Resend / Brevo); on the
-      SEND_EMAIL fallback the e-mail says the details are in his dashboard. Bassem's own morning note (whatsapp.js) is unchanged.
+      SEND_EMAIL fallback the e-mail says the details are in his dashboard.
+      ONE e-mail a day (owner 2026-11-28 «ادمج الإيميلين»): Bassem's morning note (whatsapp.js morningText: how he is, the real count of new
+      items in his plan, «تحب نشتغل سوا إمتى النهارده؟» with the one-click times, the link to Bassem) goes INSIDE this report, above it, with
+      its own stop link for the list bassem; whatsapp.js bassemCron then sends no separate morning e-mail (mail-sends.js morningInReport;
+      WhatsApp, when it is his channel, still carries the note at his morning time). The note keeps its own rules (morningPart): the
+      owner's bassem_morning switch, his pause and days, once a Cairo day (members.morning_sent_day), his stop of the list bassem, the
+      «البريد» switch of bassem_morning_email. Nothing to report (or the report stopped: list daily / «البريد» switch of
+      partner_daily_report) → the note alone, exactly the old morning e-mail (bm-, list bassem); no note → the report alone (pday-).
    3) «تقرير المالك اليومي» — from 00:30 Cairo (OWNER_REPORT_TIME) for the day that just ended, to the platform's own mailbox (TEAM_EMAIL =
       info@madeinegyptgate.com): what was published that day (counts and titles per section — the data items that first appeared, the
       projects, the members' approved products and company profiles, the new members, the requests received) and EVERY e-mail the platform
@@ -18,11 +25,12 @@
    Cron: platformCron → mailCron every 15 minutes: the request teasers (teasers.js), then the member reports in batches (DM_LIM.batch a
    tick, between 10:00 and 21:00), then the owner's report once. Numbers are counted from the data; nothing is invented. */
 import ITEMS from "./items.json";
-import { mail, line, iso, jparse, cairoDay, cairoHM, addDays, site, effPlan, planCan, PLAN_NAME, isEmail, isBlocked, unsubscribed, govName } from "./common.js";
-import { items as dataItems, newSince, inScope, isProcurement } from "./digest.js";
+import { mail, line, iso, jparse, cairoDay, cairoHM, cairoDow, addDays, site, team, effPlan, planCan, prefsOf, PLAN_NAME, isEmail, isBlocked, unsubscribed, unsubUrl, govName } from "./common.js";
+import { items as dataItems, newSince, inScope, isProcurement, newCountFor } from "./digest.js";
+import { morningText, morningEmail, nextDealStep, waLive, MORNING_WHY_IN_REPORT } from "./whatsapp.js";
 import { tokens, norm, stem } from "./text.js";
 import { GENERIC } from "./matching.js";
-import { attachOk, TEMPLATES } from "./email-center.js";
+import { attachOk, templateOn, TEMPLATES } from "./email-center.js";
 import { reportPdf, toBase64 } from "./pdf-report.js";
 import { featureOn } from "./flags.js";
 import { storeOn, claim, settle, statusOf, ownerBox, planForMarket } from "./mail-sends.js";
@@ -91,9 +99,12 @@ export async function memberReport(env, m, fresh, nowMs = Date.now()) {
 }
 const oppLine = (env, h, today) => { const it = h.it, st = statusAr(it.deadline, today);
   return `• [${LABEL[h.k][0]}] ${line(it.title, 200)}${it.entity ? " — " + line(it.entity, 80) : ""}${it.gov && norm(it.gov) !== norm("غير محددة") ? " (" + line(it.gov, 40) + ")" : ""}${it.deadline ? " · آخر موعد " + it.deadline + (st ? " (" + st + ")" : "") : ""}\n  ${abs(env, it.url)}`; };
-export function reportText(env, m, R, { day, pdf = false, partner = false } = {}) {
+/* morning: Bassem's morning note for a partner ({ar, en} of whatsapp.js morningText + stop: the list bassem's stop link) — it opens the e-mail */
+export function reportText(env, m, R, { day, pdf = false, partner = false, morning = null } = {}) {
   const today = day, who = m.name ? " يا " + line(m.name, 40) : "", S = site(env), L = [], E = [];
-  L.push(`صباح الخير${who}،\nده ${partner ? "تقرير باسم اليومي" : "تقريرك اليومي"} من منصة صنع في مصر ليوم ${day}${m.company ? " — " + line(m.company, 80) : ""}.`);
+  const intro = `ده ${partner ? "تقرير باسم اليومي" : "تقريرك اليومي"} من منصة صنع في مصر ليوم ${day}${m.company ? " — " + line(m.company, 80) : ""}.`;
+  if (morning) L.push(morning.ar + (morning.stop ? `\n\nإيقاف رسالة باسم الصباحية بس (التقرير اليومي بيفضل يوصلك): ${morning.stop}` : ""), intro);
+  else L.push(`صباح الخير${who}،\n${intro}`);
   if (R.opps.length) { L.push(`فرص جديدة تطابق نشاطك (${R.opps.length}):\n` + R.opps.slice(0, DM_LIM.mailOpps).map(h => oppLine(env, h, today)).join("\n") + (R.opps.length > DM_LIM.mailOpps ? `\n… و${R.opps.length - DM_LIM.mailOpps} كمان${pdf ? " في ملف الـ PDF المرفق" : " على المنصة"}.` : "")); }
   if (R.news.length) L.push(`أخبار في مجالك (${R.news.length}):\n` + R.news.slice(0, DM_LIM.mailNews).map(h => `• ${line(h.it.title, 200)}${h.it.date ? " (" + h.it.date + ")" : ""}\n  ${abs(env, h.it.url)}`).join("\n"));
   for (const [plan, n] of R.locked) L.push(`فيه كمان ${n} ${n === 1 ? "فرصة جديدة" : "فرص جديدة"} في مجالك تفاصيلها للأعضاء في ${PLAN_NAME[plan][0]}: ${S}register/#${plan}`);
@@ -102,7 +113,8 @@ export function reportText(env, m, R, { day, pdf = false, partner = false } = {}
   if (R.pending.length) act.push(`• طلبات لسه مستنية ردك: ${R.pending.length} — ردّ عليها من لوحة التحكم («طلبات واردة لي»): ${S}dashboard.html#incoming`);
   if (act.length) L.push("نشاط حسابك:\n" + act.join("\n"));
   if (partner) L.push(pdf ? "التفاصيل كاملة (الفرص بجهاتها ومواعيدها، الطلبات المطابقة، الأخبار، والسوق النهارده في نطاق باقتك) في ملف الـ PDF المرفق." : `التفاصيل كاملة في لوحة التحكم: ${S}dashboard.html`);
-  E.push(`Good morning,\nYour daily report from Made in Egypt Gate for ${day}:`);
+  if (morning) E.push(morning.en + (morning.stop ? `\n\nStop Bassem's note only (the daily report keeps coming): ${morning.stop}` : ""), `Your daily report from Made in Egypt Gate for ${day}:`);
+  else E.push(`Good morning,\nYour daily report from Made in Egypt Gate for ${day}:`);
   E.push([`- New opportunities matching your activity: ${R.opps.length}`, `- News in your field: ${R.news.length}`, ...R.locked.map(([p, n]) => `- ${n} more matching opportunit${n === 1 ? "y" : "ies"} for members of the ${PLAN_NAME[p][1]} plan: ${S}register/#${p}`),
     `- Requests you received in the last 24 hours: ${R.received.length}`, `- Requests still waiting for your answer: ${R.pending.length}${R.pending.length ? " — answer from your dashboard: " + S + "dashboard.html#incoming" : ""}`].join("\n"));
   E.push(pdf ? "Every detail is in the attached PDF. Titles are listed above as published." : "Titles are listed above as published.");
@@ -142,9 +154,22 @@ export function reportPdfOf(env, m, R, { day }) {
   return reportPdf({ title: `Bassem daily report ${day}`, blocks: B });
 }
 
+/* ---------- Bassem's morning note inside a partner's report: the rules of whatsapp.js bassemCron's morning message → {live} or null ---------- */
+async function morningPart(env, m, day, nowMs) {
+  if (!(await featureOn(env, "bassem_morning"))) return null;                       // the owner's switch: no morning message on any channel
+  const p = prefsOf(m), days = Array.isArray(p.days) && p.days.length ? p.days : [0, 1, 2, 3, 4, 5, 6], sd = String(m.morning_sent_day || "");
+  if (!m.verified || p.pause || !days.includes(cairoDow(nowMs)) || sd === day) return null; // bassemCron's members (plan set by the platform); paused, not one of his days, already sent today
+  const live = waLive(env);
+  if (live && p.wa_optin && m.phone && sd !== "mail:" + day) return null;           // WhatsApp is his channel (and did not fail today)
+  if ((await unsubscribed(env, m.email, "bassem")) || !(await templateOn(env, "bassem_morning_email"))) return null;
+  return { live, sd };
+}
+/* once a Cairo day across channels: the same members.morning_sent_day claim as bassemCron (released when the e-mail did not go) */
+const claimMorning = async (env, m, from, day) => { const r = await env.DB.prepare("UPDATE members SET morning_sent_day = ? WHERE id = ? AND morning_sent_day = ?").bind(day, m.id, from).run(); return !!(r.meta && r.meta.changes); };
+
 /* ---------- 1) + 2) the members' reports (batches per tick) ---------- */
 export async function memberReportsCron(env, nowMs = Date.now(), { batch = DM_LIM.batch } = {}) {
-  const out = { sent: 0, skipped: 0, failed: 0 };
+  const out = { sent: 0, skipped: 0, failed: 0, with_morning: 0 };
   if (!(await featureOn(env, "member_daily_report"))) return { ...out, off: "feature_off" };
   const hm = cairoHM(nowMs), day = cairoDay(nowMs);
   if (hm < timeOf(env.MEMBER_REPORT_TIME, DM_LIM.time) || hm > DM_LIM.until) return { ...out, waiting: "time" };
@@ -157,22 +182,29 @@ export async function memberReportsCron(env, nowMs = Date.now(), { batch = DM_LI
   const pdfOk = attachOk(env);
   for (const m of results) {
     if (!(await claim(env, { kind: "daily_run", ref: day + "|" + m.id, nowMs }))) continue;
-    let st = "skipped";
+    let st = "skipped", am = null;
     try {
-      if (effPlan(m, iso(nowMs)) !== "visitor" && isEmail(String(m.email)) && !(await unsubscribed(env, m.email, "daily")) && !(await isBlocked(env, { email: m.email }))) {
-        const R = await memberReport(env, m, fresh, nowMs);
-        if (!R.empty) {
-          const partner = planCan(m, "bassem", iso(nowMs)), pdf = partner && pdfOk, kind = partner ? "partner_daily" : "member_daily";
+      if (effPlan(m, iso(nowMs)) !== "visitor" && isEmail(String(m.email)) && !(await isBlocked(env, { email: m.email }))) {
+        const partner = planCan(m, "bassem", iso(nowMs));
+        am = partner ? await morningPart(env, m, day, nowMs) : null;                 // Bassem's morning note goes in this e-mail
+        const R = (await unsubscribed(env, m.email, "daily")) ? null : await memberReport(env, m, fresh, nowMs);
+        const withReport = !!R && !R.empty && (!am || (await templateOn(env, "partner_daily_report")));
+        if (am && !(await claimMorning(env, m, am.sd, day))) am = null;
+        if (am) { am.n = await newCountFor(env, m, nowMs); am.step = am.n && am.n.count ? null : await nextDealStep(env, m); } // REAL counts (digest.js), as bassemCron
+        if (withReport) {
+          const pdf = partner && pdfOk, kind = partner ? "partner_daily" : "member_daily";
           if (await claim(env, { kind, ref: day, email: m.email, company: m.company, nowMs })) {
-            const T = reportText(env, m, R, { day, pdf, partner });
+            const T = reportText(env, m, R, { day, pdf, partner, morning: am ? { ...morningText(env, m, am.n, am.step), stop: await unsubUrl(env, m.email, "bassem") } : null });
             const attachments = pdf ? [{ filename: `bassem-report-${day}.pdf`, type: "application/pdf", b64: toBase64(reportPdfOf(env, m, R, { day })) }] : undefined;
-            const res = await mail(env, { id: `${partner ? "pday-" : "mday-"}${m.id}-${day}`, to: m.email, lang: "ar", list: "daily", company: m.company, ...(partner ? { fromName: "باسم من منصة صنع في مصر" } : {}), attachments, ...T,
-              why: "وصلتك لأنك عضو مسجّل على منصة صنع في مصر / You are a registered member of Made in Egypt Gate." });
+            const res = await mail(env, { id: `${partner ? "pday-" : "mday-"}${m.id}-${day}`, to: m.email, lang: "ar", list: "daily", company: m.company, ...(partner ? { fromName: "باسم من منصة صنع في مصر" } : {}), ...(am ? { replyTo: team(env) || undefined } : {}), attachments, ...T,
+              why: "وصلتك لأنك عضو مسجّل على منصة صنع في مصر / You are a registered member of Made in Egypt Gate." + (am ? "\n" + MORNING_WHY_IN_REPORT[am.live ? "live" : "off"] : "") });
             st = statusOf(res); await settle(env, { kind, ref: day, email: m.email }, st);
           }
-        }
+        } else if (am) st = statusOf(await morningEmail(env, m, am.n, am.step, day, am.live)); // nothing to report: the note alone (the old morning e-mail)
       }
     } catch (e) { st = "failed"; console.error("member report", (e && e.message) || "error"); }
+    if (am && st === "sent") out.with_morning++;
+    else if (am) { try { await env.DB.prepare("UPDATE members SET morning_sent_day = ? WHERE id = ? AND morning_sent_day = ?").bind(am.sd, m.id, day).run(); } catch (e) { /* fail soft */ } } // not sent: the note waits for the retry
     await settle(env, { kind: "daily_run", ref: day + "|" + m.id }, st); // failed → tried again on a later tick (at most 3 times)
     out[st === "sent" ? "sent" : st === "failed" ? "failed" : "skipped"]++;
   }

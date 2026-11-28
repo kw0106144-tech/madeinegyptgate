@@ -1956,7 +1956,7 @@ the others accept subject/intro/outro overrides only (their bodies are composed 
 | `follow_digest` | `digest-` (digest.js) | member | digest | | subject |
 | `deadline_reminder` | `dl-` (digest.js) | member | digest | | subject |
 | `team_mood_flag` | `wamood-` (whatsapp.js) | TEAM_EMAIL | — | | subject |
-| `bassem_morning_email` | `bm-<member>-<day>` (whatsapp.js, Bassem's morning message by e-mail when WhatsApp is off) | member | bassem | | subject |
+| `bassem_morning_email` | `bm-<member>-<day>` (Bassem's morning message by e-mail when WhatsApp is off: whatsapp.js, or daily-mail.js on a day the partner has nothing to report; while the 10:00 report runs the note goes INSIDE the partner's `pday-` report instead, owner 2026-11-28) | member | bassem | | subject |
 | `bassem_call_email` | `bc-<member>-<day>` (whatsapp.js, Bassem's call note by e-mail) | member | bassem | | subject |
 | `meeting_confirmation` | `mc-` (meetings.js) | visitor | — | ✓ | subject |
 | `meeting_cancelled` | `mx-` | visitor | — | ✓ | subject |

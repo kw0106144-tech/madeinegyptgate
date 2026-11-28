@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import worker, { tenderStatus, search } from "../src/index.js";
 import { D1, waSwitchOn } from "./helpers.mjs";
+import { storeJson, forgetFeatures } from "../src/flags.js";
 import { inquiriesCron } from "../src/inquiries.js";
 import { bassemCron } from "../src/whatsapp.js";
 import { directoryCandidates, webCandidates } from "../src/candidates.js";
@@ -316,9 +317,11 @@ describe("Bassem: WhatsApp when live, otherwise e-mail (once per Cairo day)", ()
   }
   const at = (d, hm) => cairoToUtc(d, hm);
   const count = n => async () => ({ count: n, top: n ? "مناقصة كابلات الجهد المتوسط" : "" });
+  // the morning e-mail on its own = the owner's 10:00 report switched off (while it runs, the note goes inside it: mail-reports.test.mjs)
+  const solo = async env => { await env.DB.prepare("INSERT INTO cc_settings (k, scope, v, updated_at) VALUES ('features', 'system', ?, ?)").bind(storeJson({ member_daily_report: false }, {}), new Date().toISOString()).run(); forgetFeatures(env); return env; };
   test("WA off (no token / WA_DRY_RUN=1) → one Arabic-first email per day with the REAL count, #when= links and a link to Bassem", async () => {
     for (const extra of [{}, { RESPONDIO_TOKEN: "rt", WA_DRY_RUN: "1" }]) {
-      const env = env0(extra);
+      const env = await solo(env0(extra));
       await partner(env, { wa_optin: true, morning_time: "09:00" });
       sent.length = 0;
       assert.equal((await bassemCron(env, at("2026-11-20", "08:50"), count(3))).email_morning, 0);
@@ -341,7 +344,7 @@ describe("Bassem: WhatsApp when live, otherwise e-mail (once per Cairo day)", ()
     }
   });
   test("no phone / no WhatsApp opt-in is not needed for the email; WA on + send OK → WhatsApp only, no email", async () => {
-    const env = env0({ RESPONDIO_TOKEN: "rt" });
+    const env = await solo(env0({ RESPONDIO_TOKEN: "rt" }));
     await partner(env, { morning_time: "09:00" }, { phone: "" });
     sent.length = 0;
     assert.equal((await bassemCron(env, at("2026-11-20", "09:05"), count(0))).email_morning, 1);
@@ -354,7 +357,7 @@ describe("Bassem: WhatsApp when live, otherwise e-mail (once per Cairo day)", ()
     assert.ok(!sent.some(s => s.to === "core@f.test"));
   });
   test("WA on but the template is refused (still 'submitted' at Meta) → the same day's email instead", async () => {
-    const env = await waSwitchOn(env0({ RESPONDIO_TOKEN: "rt" }));
+    const env = await solo(await waSwitchOn(env0({ RESPONDIO_TOKEN: "rt" })));
     await partner(env, { wa_optin: true, morning_time: "09:00" });
     mockFetch({ respondStatus: 400 });
     const r = await bassemCron(env, at("2026-11-20", "09:05"), count(1));

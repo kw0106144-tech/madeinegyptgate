@@ -237,7 +237,8 @@ export const TEMPLATES = Object.freeze([
     about_ar: "العناصر الجديدة اللي تطابق متابعات العضو (مرة في اليوم).", about_en: "New items matching the member's follows (once a day).",
     sample_ar: "جديد متابعاتك اليوم (‹n›) / Your follows today", sample_en: "جديد متابعاتك اليوم (‹n›) / Your follows today" }),
   /* daily-mail.js (owner 2026-11-28): 10:00 Cairo, every registered member — the new opportunities / news matching him (within his plan) and
-     his own activity; nothing to report → no e-mail. Partner plans get it as Bassem's report with the PDF (partner_daily_report) */
+     his own activity; nothing to report → no e-mail. Partner plans get it as Bassem's report with the PDF (partner_daily_report), opened by
+     Bassem's morning note: ONE e-mail a day (owner 2026-11-28; bassem_morning_email alone only when there is nothing to report) */
   T({ key: "member_daily_report", group: "digest", to: "member", list: "daily", prefixes: ["mday-"], name_ar: "التقرير اليومي للعضو (10 الصبح)", name_en: "Member's daily report (10:00)",
     about_ar: "الساعة 10 الصبح بتوقيت القاهرة: الفرص والأخبار الجديدة اللي تطابق منتجات العضو وقطاعه ومنطقته (في حدود باقته)، والطلبات اللي وصلته واللي لسه مستنية رده. مفيش جديد = مفيش إيميل.",
     about_en: "10:00 Cairo time: the new opportunities and news matching the member's products, sector and region (within his plan), and the requests he received and those still waiting for his answer. Nothing new = no e-mail.",
@@ -252,11 +253,12 @@ export const TEMPLATES = Object.freeze([
     sample_ar: "فرص جديدة مناسبة لمصنعك (‹n›) / New opportunities for your factory", sample_en: "فرص جديدة مناسبة لمصنعك (‹n›) / New opportunities for your factory" }),
   // ---- Bassem & the advisor ----
   T({ key: "bassem_morning_email", group: "bassem", to: "member", list: "bassem", prefixes: ["bm-"], name_ar: "صباح الخير من باسم (إيميل)", name_en: "Bassem's morning e-mail",
-    about_ar: "رسالة باسم اليومية لباقات الشركاء — بالإيميل لحد ما الواتساب يشتغل.", about_en: "Bassem's daily note for partner plans — by e-mail until WhatsApp is live.",
+    about_ar: "رسالة باسم اليومية لباقات الشركاء بالإيميل لما الواتساب مش شغّال. وطول ما التقرير اليومي شغّال بتيجي جوّه «تقرير باسم اليومي» الساعة 10 (إيميل واحد في اليوم)، ولوحدها بس في يوم مفيهوش جديد للتقرير. لو قفلتها هنا، التقرير بيوصل من غيرها.",
+    about_en: "Bassem's daily note for partner plans by e-mail while WhatsApp is not live. While the daily report runs it comes inside «Bassem's daily report» at 10:00 (one e-mail a day), and alone only on a day with nothing to report. Switched off here, the report goes without it.",
     sample_ar: "صباح الخير يا ‹name› ☀️ — باسم من منصة صنع في مصر / Good morning from Bassem", sample_en: "صباح الخير يا ‹name› ☀️ — باسم من منصة صنع في مصر / Good morning from Bassem" }),
   T({ key: "partner_daily_report", group: "bassem", to: "member", list: "daily", prefixes: ["pday-"], name_ar: "تقرير باسم اليومي (PDF)", name_en: "Bassem's daily report (PDF)",
-    about_ar: "لأعضاء باقات الشركاء، الساعة 10 الصبح: التقرير اليومي ومعاه ملف PDF بكل التفاصيل — الفرص، الطلبات المطابقة، الأخبار، ونشاط حسابه.",
-    about_en: "For partner plans, at 10:00: the daily report with a PDF holding every detail — opportunities, matching requests, news and the account's activity.",
+    about_ar: "لأعضاء باقات الشركاء، الساعة 10 الصبح: رسالة باسم الصباحية وبعدها التقرير اليومي ومعاه ملف PDF بكل التفاصيل — الفرص، الطلبات المطابقة، الأخبار، ونشاط حسابه. إيميل واحد في اليوم. لو قفلته هنا، رسالة باسم بتوصل لوحدها.",
+    about_en: "For partner plans, at 10:00: Bassem's morning note, then the daily report with a PDF holding every detail — opportunities, matching requests, news and the account's activity. One e-mail a day. Switched off here, Bassem's note goes alone.",
     sample_ar: "تقرير باسم اليومي — ‹day› / Bassem's daily report", sample_en: "تقرير باسم اليومي — ‹day› / Bassem's daily report" }),
   T({ key: "bassem_call_email", group: "bassem", to: "member", list: "bassem", prefixes: ["bc-"], name_ar: "باسم جاهز للمكالمة (إيميل)", name_en: "Bassem call link e-mail",
     about_ar: "رابط مكالمة الفيديو مع باسم في الميعاد اللي العضو اختاره.", about_en: "The video call link with Bassem at the time the member chose.",
@@ -492,6 +494,13 @@ const hasText = o => !!o && TEXT_FIELDS.some(f => o[f]);
 
 /* common.js mail() hook (P-W2): m = the mail() input {id, to, subject, ar, en, lang, list, why, tpl?}. Returns m itself when nothing applies;
    a switched-off optional template → {...m, __skip: "template_off"} (mail() returns {sent:false, skipped}); never throws. */
+/* → false when the owner switched this template off in «البريد» (a template that cannot be switched off is always on). For a message that
+   carries two templates' content (the partner's 10:00 report with Bassem's morning note, daily-mail.js), so each part keeps its own switch */
+export async function templateOn(env, key) {
+  const t = BY_KEY[key];
+  if (!t || !t.overridable || !t.can_off) return true;
+  try { const o = (await overrideMap(env)).get(key); return !(o && o.enabled === 0); } catch (e) { return true; }
+}
 export async function prepareMail(env, m) {
   try {
     if (!m || typeof m !== "object") return m;
