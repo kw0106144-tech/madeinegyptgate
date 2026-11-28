@@ -868,8 +868,6 @@ html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
   /* Tickers */
   /* fallback: latest industry news published on the platform (madeinegyptgate.com, November 2026) until REAL.news is loaded */
   var NEWS = ["تعرف على المنظومة الرقمية الموحدة لدعم المصنعين بوزارة الصناعة", "رئيس الوزراء يستعرض مقترحات اتحاد الصناعات المصرية بشأن توصيات ومخرجات «منتدى مصر 2026»", "رئيس الوزراء يستعرض محاور خطة توطين صناعة السيارات والصناعات المغذية", "مساعد وزير الصناعة ومدير مركز تحديث الصناعة يلتقي أعضاء جمعية مستثمري مدينة السادات", "رئيس الوزراء يلتقي مسؤولي مجموعة «منصور» لاستعراض مستجدات إنشاء مصنع «ماك لتصنيع وسائل النقل» بمدينة السادس من أكتوبر", "وزير الصناعة يشارك في افتتاح قمة الصلب العربي التاسعة عشرة المنعقدة بالقاهرة", "تنفيذاً لمبادرة «دولة الابتكار»: برامج جديدة لدعم الباحثين والمبتكرين وتعزيز التعاون مع القطاع الصناعي"];
-  /* Egyptian Exchange (EGX) indices and industrial names shown without a price until the live market feed (REAL.market) is loaded */
-  var PRICES = [["مؤشر EGX30", null, 0, "EGX30", "EGX"], ["مؤشر EGX70 متساوي الأوزان", null, 0, "EGX70EWI", "EGX"], ["حديد عز (ESRS)", null, 0, "ESRS", "EGX"], ["أبوقير للأسمدة (ABUK)", null, 0, "ABUK", "EGX"], ["مصر لإنتاج الأسمدة – موبكو (MFPC)", null, 0, "MFPC", "EGX"], ["السويدي إليكتريك (SWDY)", null, 0, "SWDY", "EGX"], ["الشرقية – إيسترن كومباني (EAST)", null, 0, "EAST", "EGX"], ["جهينة للصناعات الغذائية (JUFO)", null, 0, "JUFO", "EGX"], ["النساجون الشرقيون (ORWE)", null, 0, "ORWE", "EGX"], ["سيدي كرير للبتروكيماويات (SKPC)", null, 0, "SKPC", "EGX"]];
   /* news located outside Egypt's governorates (stale data) are skipped */
   /* procurement news («أخبار المشتريات») only for the plans that have it (Premium and up — data/plan.js newsOK) */
   var RNEWS = window.REAL && REAL.news ? REAL.news.filter(function (n) { return n && inEG(n.region_code) && (!window.MIGPLAN || !MIGPLAN.newsOK || MIGPLAN.newsOK(n)); }) : [];
@@ -879,17 +877,22 @@ html.mig-iosw .stag.pre > .ios-done { opacity: 1; transform: none; }
   if (RMK && !RMK.some(function (m) { return /EGX|egx\.com\.eg/i.test((m.exchange || "") + " " + (m.source_url || "")); })) RMK = null;
   if (RMK && !RMK.length) RMK = null;
   function isIdx(m) { return /^EGX\d+/i.test(m.symbol) || m.type === "index" || /^مؤشر/.test(m.name_ar || ""); }
-  if (RMK) PRICES = RMK.map(function (m) { var al = /LME/.test(m.symbol), rb = /REBAR/.test(m.symbol), ix = isIdx(m), nm = ix ? (m.name_ar || m.symbol).replace(/ \(.*\)$/, "") : rb ? "حديد التسليح (طن)" : al ? "الألومنيوم LME ($/طن)" : (m.name_ar || m.symbol).replace(/ \(.*\)$/, "").replace(/ «.*$/, "") + " (" + m.symbol + ")"; return [nm, m.close, typeof m.change_pct === "number" && isFinite(m.change_pct) ? m.change_pct : null, m.symbol, m.exchange || "", ix]; });
+  /* Market ticker: only the real last closes of data/real.js REAL.market (updated every day by tools/daily_media/merge.py from each
+     row's source page), with their date. Never a typed or simulated price: without real closes the ticker is hidden. */
+  if (RMK) RMK = RMK.filter(function (m) { return typeof m.close === "number" && isFinite(m.close) && m.close > 0 && /^\d{4}-\d{2}-\d{2}$/.test(m.as_of_date || ""); });
+  var MDAY = ""; (RMK || []).forEach(function (m) { if (!/LME|REBAR/.test(m.symbol) && m.type !== "commodity" && m.as_of_date > MDAY) MDAY = m.as_of_date; });
+  var PRICES = !RMK ? [] : RMK.map(function (m) { var al = /LME/.test(m.symbol), rb = /REBAR/.test(m.symbol), ix = isIdx(m), nm = ix ? (m.name_ar || m.symbol).replace(/ \(.*\)$/, "") : rb ? "حديد التسليح (طن)" : al ? "الألومنيوم LME ($/طن)" : (m.name_ar || m.symbol).replace(/ \(.*\)$/, "").replace(/ «.*$/, "") + " (" + m.symbol + ")"; return [nm, m.close, typeof m.change_pct === "number" && isFinite(m.change_pct) ? m.change_pct : null, m.symbol, m.exchange || "", ix, m.as_of_date]; });
   runFill($("#newsRun"), NEWS.map(function (x) { return '<a class="nw" href="' + (Array.isArray(x) ? "article.html#" + x[1] : "/news/") + '">' + (Array.isArray(x) ? x[0] : x) + '</a><span class="sep">● صنع في مصر ●</span>'; }).join(""), 9000);
   setTimeout(function () { ["#newsRun", "#priceRun"].forEach(function (id) { var r = $(id); if (r && r.scrollWidth) r.style.animationDuration = Math.max(30, Math.round(r.scrollWidth / 2 / 55)) + "s"; }); }, 400);
-  /* a change in % with the fewest decimals (1–4) that still shows it: +0.02 stays «+0.02», never «+0.0» */
-  function pct(v) { var d = 1; while (d < 4 && +Math.abs(v).toFixed(d) === 0) d++; return v.toFixed(d); }
+  /* a change in % with 2 decimals, more (up to 4) when needed to show it: -0.003 stays «-0.003», never «-0.00» */
+  function pct(v) { var d = 2; while (d < 4 && +Math.abs(v).toFixed(d) === 0) d++; return v.toFixed(d); }
   function renderPrices() {
+    var run = $("#priceRun"), box = run && run.closest(".ticker"), EN_ = window.MIGLANG === "en";
+    if (!PRICES.length) { if (box) box.style.display = "none"; return; }
     var PID = PRICES.map(function (p) { return /REBAR/.test(p[3]) ? "rebar" : /LME/.test(p[3]) ? "aluminum" : "s-" + p[3]; });
-    var h = PRICES.map(function (x, pi) { if (x[1] == null) return '<a class="pr" href="/bourse/#' + PID[pi] + '">' + x[0] + ' <span class="pill st">' + x[4] + '</span></a>'; var c = x[2] > 0 ? "up" : x[2] < 0 ? "dn" : "st", unit = x[5] ? " نقطة" : /\$/.test(x[0]) ? " $" : " ج.م", v = x[1] > 1000 ? fmt.format(Math.round(x[1])) : x[1].toFixed(2); return '<a class="pr" href="/bourse/#' + PID[pi] + '">' + x[0].replace(/ \(\$\/طن\)/, " ($/طن)") + ': <b class="num">' + v + unit + '</b>' + (x[2] == null ? '' : '<span class="pill ' + c + '">' + (x[2] > 0 ? "▲ +" + pct(x[2]) + "%" : x[2] < 0 ? "▼ " + pct(x[2]) + "%" : "● مستقر") + '</span>') + '</a>'; }).join("");
-    var asof = ""; (RMK || []).forEach(function (m) { if (m.as_of_date && m.as_of_date > asof) asof = m.as_of_date; });
-    if (h) h = '<span class="pr">📅 ' + (asof ? "آخر إغلاق " + asof + " · " : "") + "المصدر: البورصة المصرية (EGX)" + '</span>' + h;
-    runFill($("#priceRun"), h, 6000);
+    var h = PRICES.map(function (x, pi) { var c = x[2] > 0 ? "up" : x[2] < 0 ? "dn" : "st", unit = x[5] ? " نقطة" : /\$/.test(x[0]) ? " $" : " ج.م", v = x[1] > 1000 ? fmt.format(Math.round(x[1] * 100) / 100) : x[1].toFixed(2); return '<a class="pr" href="/bourse/#' + PID[pi] + '">' + x[0].replace(/ \(\$\/طن\)/, " ($/طن)") + ': <b class="num">' + v + unit + '</b>' + (x[2] == null ? '' : '<span class="pill ' + c + '">' + (x[2] > 0 ? "▲ +" + pct(x[2]) + "%" : x[2] < 0 ? "▼ " + pct(x[2]) + "%" : "● مستقر") + '</span>') + (MDAY && x[6] !== MDAY ? '<small class="muted num" translate="no">' + (EN_ ? "as of " : "بتاريخ ") + x[6] + '</small>' : '') + '</a>'; }).join("");
+    h = '<span class="pr" translate="no">📅 ' + (EN_ ? (MDAY ? "Last close " + MDAY + " · " : "") + "Egyptian Exchange (EGX)" : (MDAY ? "آخر إغلاق " + MDAY + " · " : "") + "البورصة المصرية (EGX)") + '</span>' + h;
+    runFill(run, h, 6000);
   }
   renderPrices();
   /* prices change only when the data file (REAL.market) is refreshed from its source; never simulated in the browser */

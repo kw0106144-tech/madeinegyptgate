@@ -12,6 +12,7 @@ it covers ONLY this daily data update, after the checks below). `deploy-site` pu
 | Project news (new projects with their latest news) | `data/projects.js` → `MIG.PROJECTS_REAL` | `/projects/`, project news |
 | Exhibitions & events in Egypt | `data/real.js` → `REAL.events` | `/events/` |
 | Videos | `data/videos.js` → `MIGVIDS` (+ `img/yt/<id>.jpg`) | `/videos/` |
+| Market closes (EGX), every day | `data/real.js` → `REAL.market` (section «Market prices» below) | home ticker, `/bourse/` |
 
 ## The rules (owner's decisions — never break them)
 1. **Only real, verified items** (CLAUDE.md 2.6). Open every article / page yourself (curl or WebFetch) and take the date and every
@@ -23,7 +24,7 @@ it covers ONLY this daily data update, after the checks below). `deploy-site` pu
    `data/i18n-en.js` (numbers become `{n}`). **When the Arabic says مصر / مصري / المصرية, the English must say Egypt / Egyptian**
    (the generator rejects it otherwise and the `/en/` page disappears); the script drops a pair that breaks this and says so.
 5. Nothing political or unrelated to industry, trade, energy, construction, procurement and the industrial economy of Egypt.
-6. Never touch anything else: no legal text, prices, plans, personas, workflows or code; never production data (CLAUDE.md 0).
+6. Never touch anything else: no legal text, plan prices, plans, personas, workflows or code; never production data (CLAUDE.md 0).
 
 ## Steps
 1. `cd` to the repository root (`kw0106144-tech/madeinegyptgate`), `git checkout main && git pull --ff-only origin main`.
@@ -71,3 +72,28 @@ it covers ONLY this daily data update, after the checks below). `deploy-site` pu
    (`gh api "repos/kw0106144-tech/madeinegyptgate/actions/runs?head_sha=<sha>"`) and open https://madeinegyptgate.com/news/ and
    https://madeinegyptgate.com/en/news/. A failed run → read its log, fix with a new commit (or `git revert`), never deploy by hand.
 9. Final report: the commit, what was added (counts + titles) and what was dropped.
+
+## Market prices (every day): `REAL.market` → home ticker «أسهم الصناعة» and `/bourse/`
+Owner decision 2026-11-28: the prices on the site are REAL closes, refreshed every day; the browser never moves a price and never
+shows a typed fallback (no `REAL.market` closes → the ticker is hidden; `/bourse/` lists the names without a price). Exchange:
+**the Egyptian Exchange (EGX)** — the indices EGX30 and EGX70 EWI and the EGX stocks of `REAL.market`.
+1. List the rows: `symbol`, `as_of_date`, `source_url`, `cross_check_url` of every `REAL.market` row in `data/real.js`.
+2. Open each row's source page TODAY: stocks — the stockanalysis.com history page of the row
+   (`https://stockanalysis.com/quote/egx/<symbol>/history/`: the newest row's date, «Close» and «Change»; «-» = unchanged, when
+   the close equals the row below); indices — the TradingView symbol page (`https://www.tradingview.com/symbols/EGX-EGX30/`,
+   `…/EGX-EGX70EWI/`); or the exchange's official page (egx.com.eg) when it opens (it usually answers with a bot check). Check each
+   stock against a second source opened today (the TradingView quote feed
+   `https://scanner.tradingview.com/symbol?symbol=EGX:<symbol>&fields=close,change,time&no_404=true`; EGX30: Yahoo `^CASE30`).
+3. Write `market.json` in the scratch directory: `[{"symbol", "close", "change_pct", "as_of_date" (YYYY-MM-DD of that close),
+   "source_url" (https, the page you read)}]`, with `cross_check_url` = the second source when it agreed (otherwise the script
+   clears the row's old one).
+4. Rules: only numbers read on a page opened today. A page that does not open, does not show the number, disagrees with its
+   cross-check, or shows a date older than the stored one → leave that symbol out (it stays as it is, with its own date, and the
+   ticker shows that date): never estimate, never copy another day. On Fridays, Saturdays and holidays there is no new close: the
+   date simply stays the last trading day (re-running is harmless).
+5. `python3 -I tools/daily_media/merge.py . <scratch dir>` (with or without `new-*.json`). It updates only `close`, `change_pct`,
+   `as_of_date`, `source_url` (and `cross_check_url`) of rows that exist, never adds or removes a row, keeps the names, and refuses
+   an unknown symbol, a close that is not a positive number, a change outside −30…30 %, a date in the future or older than the
+   stored one, a non-https source. It prints and writes `<scratch dir>/market-report.txt` (OK / DROP / SAME per symbol).
+6. `data/real.js` goes into the daily update commit («Daily update: … N market closes (as of YYYY-MM-DD)»), with the checks of
+   step 6 above. After the deploy, look at the home ticker and `/bourse/` (and `/en/`, `?lang=en`): the date shown is the new one.
