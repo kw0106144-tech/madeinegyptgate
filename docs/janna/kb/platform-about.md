@@ -8,7 +8,6 @@
 الرابط: https://madeinegyptgate.com/about.html#who
 
 - **الاسم:** منصة صنع في مصر (Made in Egypt Gate) – الموقع: madeinegyptgate.com
-- **الشعار الرئيسي (Slogan):** «المنصة الوطنية الموحدة B2B» 🇪🇬
 - **عبارات تعريفية على الصفحة:**
   - «اليد التي تساند المصنع المصري ليستمر وينتشر»
   - «بجانب المصنع المصري… ومستمرون»
@@ -45,7 +44,7 @@
 **س: المنصة تابعة لمين؟**
 ج: «المالك: الجمعية المصرية للتنمية الصناعية»، «جمعية غير هادفة للربح مشهرة برقم 6189 لسنة 2017 (وزارة التضامن الاجتماعي)»، و«المشغّل: الحسيني جروب وشركاءه، استقبال الطلبات وتسجيل الشركاء وخدمة العملاء والتطوير».
 
-المنصة منصة معلومات وأعمال خاصة، ومابتطرحش مناقصات باسمها، ولا بتقيّم العطاءات، ولا بترسّي عقود ولا بتضمن الترسية. التقديم على المناقصات الحكومية بيكون من بواباتها الرسمية زي بوابة التعاقدات العامة المصرية (etenders.gov.eg) وهيئة الشراء الموحد وبوابات الموردين في الشركات العامة وقطاعي البترول والكهرباء.
+المنصة منصة معلومات وأعمال، ومابتطرحش مناقصات باسمها، ولا بتقيّم العطاءات، ولا بترسّي عقود ولا بتضمن الترسية. التقديم على المناقصات الحكومية بيكون من بواباتها الرسمية زي بوابة التعاقدات العامة المصرية (etenders.gov.eg) وهيئة الشراء الموحد وبوابات الموردين في الشركات العامة وقطاعي البترول والكهرباء.
 
 **س: هل المنصة بتقدّم تمويل؟**
 ج: لا. المنصة لا تقدم التمويل ولا تتوسط فيه. دليل التمويل والشحن والتأمين للتعريف بالجهات وبيانات التواصل معها فقط، والتقديم بيكون مباشرة مع الجهة.
@@ -90,7 +89,7 @@
 ## 5. رحلتنا (Our Journey)
 الرابط: https://madeinegyptgate.com/about.html#journey
 
-«قطار المنصة» (بدون تواريخ): الانطلاق كمنصة وطنية موحدة B2B ← دليل المصانع (أكثر من 3,000 مصنع وشركة ومورد) ← قاعدة المنتجات الصناعية ← طلبات الأسعار (RFQ) والمناقصات ← صفحات محافظات مصر الـ27 ← اليوم: تشغيل الجمعية المصرية للتنمية الصناعية، والمنصة الجديدة برادار الفرص القطاعي وخريطة الفرص والمساعدة الذكية «جنة» ← المحطة القادمة: توسيع مسارات التصدير ← نحو رؤية 2030: التكامل مع المنصات والجهات التنظيمية الصناعية وخدمات رقمية جديدة.
+«قطار المنصة» (بدون تواريخ): الانطلاق ← دليل المصانع (أكثر من 3,000 مصنع وشركة ومورد) ← قاعدة المنتجات الصناعية ← طلبات الأسعار (RFQ) والمناقصات ← صفحات محافظات مصر الـ27 ← اليوم: المنصة مملوكة للجمعية المصرية للتنمية الصناعية وتشغّلها الحسيني جروب وشركاءه، والمنصة الجديدة برادار الفرص القطاعي وخريطة الفرص والمساعدة الذكية «جنة» ← المحطة القادمة: توسيع مسارات التصدير ← نحو رؤية 2030: التكامل مع المنصات والجهات التنظيمية الصناعية وخدمات رقمية جديدة.
 
 وفي نفس الصفحة: خريطة تفاعلية للمدن والمناطق الصناعية والحرة والموانئ في مصر (https://madeinegyptgate.com/about.html#map).
 
@@ -158,7 +157,7 @@
 | المشغّل | الحسيني جروب وشركاءه |
 
 **س: إزاي أتواصل معاكم؟**
-ج: أهلاً بيك، تقدر تتواصل معانا على البريد info@madeinegyptgate.com (والدعم support@madeinegyptgate.com)، أو موبايل/واتساب 01279188996، أو الخط الساخن 02 38346757. وعنوانا في الجيزة – مدينة السادس من أكتوبر – الحي 11 – وجه الثقافة والعلوم – عمارة 56، الدور الثالث.
+ج: أهلاً بيك، تقدر تتواصل معانا على البريد info@madeinegyptgate.com (والدعم support@madeinegyptgate.com)، أو موبايل/واتساب 01279188996، أو الخط الساخن 02 38346757. وعنوانا: عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11، السادس من أكتوبر، الجيزة.
 
 **س: عندي مشكلة في التسجيل أو الدفع أو الدخول؟**
 ج: ابعت للدعم على support@madeinegyptgate.com أو واتساب 01279188996، واكتب اسم الشركة ورقم الطلب أو الفاتورة.
@@ -188,9 +187,9 @@
 
 ## English Summary
 
-**Who we are** (https://madeinegyptgate.com/about.html#who): Made in Egypt Gate (madeinegyptgate.com) — slogan "The Unified National B2B Platform". It is the digital reference connecting Egyptian factories and suppliers in all 27 governorates with local and international buyers, distributors, contractors, consultants, government entities and the private sector, supporting the industrial sector's digital transformation and the "Made in Egypt" brand, aligned with Egypt Vision 2030 and the National Industry Strategy. Services: factory profile, directories, products database, RFQs, tenders & projects, catalogues, finance/shipping directory (info only), export routes to five markets (local, Gulf, African, Asian, European). Directory figures (computed from the platform's data): 2,926 member companies (1,380 factories and 1,546 companies & suppliers, after merging duplicate listings) plus 94 public-source factories that are not registered, so more than 3,000 unique companies across 27 governorates; 5 target markets, 5 annual plans; 64 industrial, investment and free zones (13 of them free zones). No member is verified yet.
+**Who we are** (https://madeinegyptgate.com/about.html#who): Made in Egypt Gate (madeinegyptgate.com): Made in Egypt Gate is an integrated digital ecosystem for industry, supply, procurement and export, operating under the umbrella of the Egypt Industrial Development Association. Launched in 2020, it is the first platform that helps Egyptian factories expand locally, across the Gulf and worldwide, and helps Egyptian products reach a growing, more advanced market share. It is the digital reference connecting Egyptian factories and suppliers in all 27 governorates with local and international buyers, distributors, contractors, consultants, government entities and the private sector, supporting the industrial sector's digital transformation and the "Made in Egypt" brand, aligned with Egypt Vision 2030 and the National Industry Strategy. Services: factory profile, directories, products database, RFQs, tenders & projects, catalogues, finance/shipping directory (info only), export routes to five markets (local, Gulf, African, Asian, European). Directory figures (computed from the platform's data): 2,926 member companies (1,380 factories and 1,546 companies & suppliers, after merging duplicate listings) plus 94 public-source factories that are not registered, so more than 3,000 unique companies across 27 governorates; 5 target markets, 5 annual plans; 64 industrial, investment and free zones (13 of them free zones). No member is verified yet.
 
-**Owner and operator** (https://madeinegyptgate.com/legal.html#status): Owner: Egypt Industrial Development Association (الجمعية المصرية للتنمية الصناعية) — A non-profit association registered under No. 6189 of 2017 (Ministry of Social Solidarity), website eafid.org. Operator: ElHouseni Group & Partners — receiving requests, partner registration, customer service and development. Office: Building 56 (third floor), Culture and Science Area, District 11, 6th of October City, Giza; phone 02 38346757; Sunday to Thursday, 8 am to 4 pm. It runs operations, member contracts, tax invoices, electronic-only payments and customer service. The platform does not award tenders or guarantee awards, and does not provide or broker financing. It is not affiliated with the Ministry of Industry, IDA, IMC, the Federation of Egyptian Industries (اتحاد الصناعات المصرية), GAFI or SCZone (referenced for information only).
+**Owner and operator** (https://madeinegyptgate.com/legal.html#status): Owner: Egypt Industrial Development Association (الجمعية المصرية للتنمية الصناعية) — A non-profit association registered under No. 6189 of 2017 (Ministry of Social Solidarity), website eafid.org. Operator: ElHouseni Group & Partners — receiving requests, partner registration, customer service and development. Office: Building 56 (third floor), Culture and Science Area, 11th District, 6th of October City, Giza; phone 02 38346757; Sunday to Thursday, 8 am to 4 pm. It runs operations, member contracts, tax invoices, electronic-only payments and customer service. The platform does not award tenders or guarantee awards, and does not provide or broker financing. It is not affiliated with the Ministry of Industry, IDA, IMC, the Federation of Egyptian Industries (اتحاد الصناعات المصرية), GAFI or SCZone (referenced for information only).
 
 **Vision:** the first digital reference connecting Egyptian factories with buyers, contributing to Egypt Vision 2030. **Mission:** a smart industrial platform uniting factories, products, suppliers and customers in one system. **Values:** reliability, transparency, partnership, factory first, sustainability, innovation. **Goals (6):** stronger Egyptian-product presence; export support; opportunities closer to factories (Law No. 5 of 2015); linking investors and factories; digital transformation; data for decisions.
 
@@ -198,7 +197,7 @@
 
 **International platforms** (https://madeinegyptgate.com/intl.html): sister "Made in" platforms listed for UAE (madeinuaegate.ae), Saudi Arabia (madeinsaudigate.com), GCC (madeingcc.org), Qatar, Kuwait, Bahrain, Oman, Africa, Asia and Europe, each an independent external website.
 
-**Contact** (https://madeinegyptgate.com/contact.html): mobile/WhatsApp 01279188996; hotline 02 38346757; info@madeinegyptgate.com; support@madeinegyptgate.com; address: Giza – 6th of October City – District 11 – Culture & Science Front – Building 56 (3rd floor), Egypt. Channels also include the inquiry and RFQ forms, order tracking and the Janna assistant. Working hours and official social-media accounts are not published. Not offered: training/employment, financing, free registration, cash/bank-transfer payment.
+**Contact** (https://madeinegyptgate.com/contact.html): mobile/WhatsApp 01279188996; hotline 02 38346757; info@madeinegyptgate.com; support@madeinegyptgate.com; address: Building 56 (third floor), Culture and Science Area, 11th District, 6th of October City, Giza, Egypt. Channels also include the inquiry and RFQ forms, order tracking and the Janna assistant. Working hours: Sunday to Thursday, 8 am to 4 pm; Friday and Saturday closed. Not offered: training/employment, financing, free registration, cash/bank-transfer payment.
 
 ---
 

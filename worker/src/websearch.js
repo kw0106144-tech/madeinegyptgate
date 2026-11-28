@@ -53,7 +53,7 @@ import { anonymize } from "./knowledge.js"; // a person's name / self-introducti
 import { classify, personalLink, urlPII, onHost, PORTALS, ENTITIES, AGGREGATORS, DIRECTORIES, MARKETS_B2B, NEWS } from "./web-classify.js";
 import { recordLeads } from "./web-leads.js";
 import { wouldPublish, publishingOn, platformLine } from "./web-public.js"; // the auto-publish gate (owner 2026-11-28)
-import { viewerOf, lockWeb } from "./opp-lock.js"; // members-only: a visitor's call gets the teaser of a tender / RFQ / project
+import { viewerOf, lockWeb, WEB_LOCKED } from "./opp-lock.js"; // members-only: a visitor's call gets the teaser of every opportunity (buyers and news too)
 
 export const WS_TIMEOUT_MS = 6000, WS_CACHE_S = 3600, WS_MAX_RESULTS = 5, WS_PER_SITE = 2, WS_MAX_BODY = 8192, WS_MAX_Q = 200, WS_PER_MIN = 30, WS_PER_MIN_JANNA = 12;
 /* Janna's hourly part of her daily share (review S6): an eighth of it, at least 6 (one hunt) */
@@ -481,12 +481,18 @@ export function sayTitle(title, url, site, o = {}) {
 }
 const TYPE_WORDS = { tender: ["مناقصة", "A tender"], rfq: ["طلب عرض سعر", "An RFQ"], buyer: ["شركة ممكن تبقى عميل", "A company that could become a customer"],
   buyer_list: ["قايمة مصانع ممكن تبقى عملاء", "A list of plants that could become customers"], project: ["مشروع جديد", "A new project"], news: ["خبر", "A news item"], other: ["نتيجة", "A result"] };
+const typeWords = (type, product, en) => { const w = TYPE_WORDS[type] || TYPE_WORDS.other, p = sayable(product, 40); return en ? w[1] + (p && !ARABIC.test(p) ? " — " + p : "") : w[0] + (p ? " — " + p : ""); };
+/* members-only (owner 2026-11-28): a visitor's teaser of one said result (opp-lock.js lockWeb: no entity, no official mark; a buyer without
+   its name) — a result left without a title says its type and the product instead. o: {product, en} */
+export function visitorResult(x, o = {}) {
+  const v = lockWeb(x, null);
+  return v === x || v.title ? v : { ...v, title: typeWords(v.type, o.product, o.en) };
+}
 /* one result as the persona and the call see it — r: a cleanResults() row (its url / source / snippet are read here and never passed on);
    c: its classify() (type, official); o: {market: the market's name in the persona's language, product: the words searched, en} */
 export function sayResult(r, c, o = {}) {
   r = r || {}; const type = (c && c.type) || r.type || "other", st = sayTitle(r.title, r.url, r.source, { type, keep: o.product });
-  const w = TYPE_WORDS[type] || TYPE_WORDS.other, p = sayable(o.product, 40);
-  const x = { type, title: st.title || (o.en ? w[1] + (p && !ARABIC.test(p) ? " — " + p : "") : w[0] + (p ? " — " + p : "")) };
+  const x = { type, title: st.title || typeWords(type, o.product, o.en) };
   if (r.date) x.date = String(r.date);
   if (o.market) x.market = String(o.market);
   if (st.entity) x.entity = st.entity;
@@ -627,16 +633,16 @@ async function serveSearch(req, env, ctx, nowMs, who) {
   const en = isEn(voice);
   /* the auto-publish gate (web-public.js): what of it the platform adds to «فرص السوق» — the same rows recordLeads keeps (no news from a search) */
   const pubOn = results.length ? await publishingOn(env) : false;
-  const onP = results.map((x, i) => pubOn && x.type !== "news" && wouldPublish({ ...x, official: cls[i].official, aggregator: cls[i].aggregator, market: p.market ? p.market.code : "" }, nowMs));
+  const onP = results.map((x, i) => pubOn && x.type !== "news" && wouldPublish({ ...x, official: cls[i].official, aggregator: cls[i].aggregator, query: p.q, market: p.market ? p.market.code : "" }, nowMs));
   let said = results.map((x, i) => ({ ...sayResult(x, cls[i], { market: p.market ? (en ? p.market.en : p.market.ar) : "", product: p.q, en }), ...(onP[i] ? { on_platform: true } : {}) }));
   const added = onP.filter(Boolean).length;
   let text = spokenText(said, p, voice) + (added ? " " + platformLine(added, voice) : "");
-  /* members-only (owner 2026-11-28): Janna with a visitor — a tender / RFQ / project without its entity and official mark */
-  const vis = !!(acc && acc.who === "visitor" && said.some(x => ["tender", "rfq", "project"].includes(x.type)));
-  if (vis) said = said.map(x => lockWeb(x, null));
+  /* members-only (owner 2026-11-28): Janna with a visitor — every opportunity (buyers and news too) without its entity and official mark */
+  const vis = !!(acc && acc.who === "visitor" && said.some(x => WEB_LOCKED.includes(x.type)));
+  if (vis) said = said.map(x => visitorResult(x, { product: p.q, en }));
   return out({ count: said.length, results: said, text, kind: p.kind, market: p.market ? p.market.code : null, cached: r.cached, note: WS_NOTE,
     ...(vis ? { members_only: true, register_url: "https://madeinegyptgate.com/register/" + (en ? "?lang=en" : "") + "#basic",
-      hint: "visitor: say the titles, places and dates only; the issuing body and the details are for subscribed members — invite him to register (janna_navigate page=register plan=basic)" } : {}),
+      hint: "visitor: say the titles, places and dates only; the issuing body or company and the details are for subscribed members — invite him to register (janna_navigate page=register plan=basic)" } : {}),
     ...(!said.length ? { hint: "nothing came back: never answer with «مفيش» / not found alone — say what the platform has on it, that the platform keeps searching every day, and offer the next step" } : {}) });
 }
 /* an exception inside a handler is a soft websearch_failed (nit 10): one log line, never a 500 to the model */

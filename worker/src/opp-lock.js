@@ -179,10 +179,14 @@ export function lockItem(rec, acc, m) {
   o.text = (bits.length ? bits.join("، ") + ". " : "") + lockHint(k, need, m);
   return { ...o, locked: true, members_only: true, need, register_url: registerUrl(need), hint: lockHint(k, need, m) };
 }
-/* «فرص السوق» (web-public.js) and the web extras of a lookup: the opportunity's entity and its official link are for members */
+/* «فرص السوق» (web-public.js) and the web extras of a lookup / the hunt / the search: the opportunity's entity and its official mark are for
+   members — for every kind the platform publishes (owner 2026-11-28: buyers and news too); a buyer's own page is titled with its name, which
+   is who the buyer is: a visitor's buyer / buyer list has no title (the page and the tools say its kind and product instead) */
+export const WEB_LOCKED = Object.freeze(["tender", "rfq", "project", "buyer", "buyer_list", "news"]);
 export function lockWeb(it, acc) {
-  if (!it || typeof it !== "object" || !["tender", "rfq", "project"].includes(it.type) || canSee(acc, "tenders", "local")) return it;
+  if (!it || typeof it !== "object" || !WEB_LOCKED.includes(it.type) || canSee(acc, "tenders", "local")) return it;
   const o = { ...it }; delete o.entity; delete o.official; delete o.product_entity;
+  if (it.type === "buyer" || it.type === "buyer_list") delete o.title;
   return o;
 }
 

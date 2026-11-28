@@ -6,10 +6,10 @@
 https://madeinegyptgate.com/about.html
 
 **س: إيه هي منصة صنع في مصر؟ / إنتو مين؟**
-ج: «المنصة الوطنية الموحدة B2B»، بتربط المصانع والموردين في محافظات مصر الـ27 بالمشترين المحليين والدوليين. فيها دليل المصانع، والسوق الإلكتروني، والمناقصات، وطلبات عروض الأسعار، والمشاريع، ورادار الفرص، وصفحة لكل محافظة.
+ج: منصة صنع في مصر هي منظومة رقمية متكاملة للصناعة والتوريدات والمشتريات والتصدير، تعمل تحت مظلة الجمعية المصرية للتنمية الصناعية، أُطلقت في عام 2020، وتُعد المنصة الأولى التي تساعد المصانع المصرية في التوسع محلياً وخليجياً وعالمياً، ووصول المنتجات المصرية إلى حصة سوقية متطورة. فيها دليل المصانع، والسوق الإلكتروني، والمناقصات، وطلبات عروض الأسعار، والمشاريع، ورادار الفرص، وصفحة لكل محافظة.
 
 **س: المنصة تبع مين؟**
-ج: بتشغّلها «الجمعية المصرية للتنمية الصناعية» (Egypt Industrial Development Association)، جمعية غير هادفة للربح مشهرة برقم 6189 لسنة 2017 تحت إشراف وزارة التضامن الاجتماعي (eafid.org). https://madeinegyptgate.com/legal.html#status
+ج: «المالك: الجمعية المصرية للتنمية الصناعية» (Egypt Industrial Development Association، eafid.org)، «جمعية غير هادفة للربح مشهرة برقم 6189 لسنة 2017 (وزارة التضامن الاجتماعي)»، و«المشغّل: الحسيني جروب وشركاءه، استقبال الطلبات وتسجيل الشركاء وخدمة العملاء والتطوير». https://madeinegyptgate.com/legal.html#status
 
 المنصة منصة معلومات وسوق إلكتروني، ومابترسّيش عقود ولا بتضمن الترسية، ولا بتقدّم تمويل ولا بتتوسط فيه.
 
@@ -233,7 +233,7 @@ https://madeinegyptgate.com/media-center.html
 https://madeinegyptgate.com/contact.html
 
 **س: رقمكم كام؟**
-ج: واتساب 01279188996 · الخط الساخن 02 38346757 · info@madeinegyptgate.com · الدعم support@madeinegyptgate.com · الجيزة – السادس من أكتوبر – الحي 11 – وجه الثقافة والعلوم – عمارة 56 (الدور الثالث).
+ج: واتساب 01279188996 · الخط الساخن 02 38346757 · info@madeinegyptgate.com · الدعم support@madeinegyptgate.com · عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11، السادس من أكتوبر، الجيزة.
 
 **س: عندي مشكلة في الدفع أو الدخول**
 ج: ابعت لـ support@madeinegyptgate.com أو واتساب، بالاسم ورقم الطلب أو الفاتورة.
@@ -285,7 +285,7 @@ https://madeinegyptgate.com/janna.html
 
 
 ## English Summary
-- **About:** Unified national B2B platform for Egypt's 27 governorates, run by the Egypt Industrial Development Association (non-profit, No. 6189/2017, Ministry of Social Solidarity). It gives no financing or award guarantees.
+- **About:** Made in Egypt Gate is an integrated digital ecosystem for industry, supply, procurement and export, operating under the umbrella of the Egypt Industrial Development Association. Launched in 2020, it is the first platform that helps Egyptian factories expand locally, across the Gulf and worldwide, and helps Egyptian products reach a growing, more advanced market share. Owner: Egypt Industrial Development Association (non-profit, No. 6189/2017, Ministry of Social Solidarity). Operator: ElHouseni Group & Partners — receiving requests, partner registration, customer service and development. It gives no financing or award guarantees.
 - **Registration:** Choose a plan, fill in the form, upload documents (CR, tax card, industrial licence if any, VAT cert, logo, stamped form; PDF/image up to 8 MB), pay online. No free registration. Buyers send RFQs for free.
 - **Plans (EGP/yr + 14% VAT):** Profile Only 4,000 · Basic 10,000 (Egypt, 30 products) · Premium 25,000 (+Gulf, 80) · Core Partner 50,000 (+Africa, 200, awards/projects/radar) · Strategic 100,000 (all markets, unlimited). 12 months. Upgrades are prorated. You get a reminder 30 days before expiry, and your data is kept for 90 days after it.
 - **Payment:** Online only (Visa/Mastercard/Meeza, e-wallets). No transfer, cash or bank account. You receive an ETA e-invoice. Full refund if the application is rejected after payment for missing documents, or if you cancel within 2 working days of payment before core services are activated; after activation, generally no refund (statutory rights preserved). Ad campaigns are not refundable once published. Approved refunds go back to the original card/wallet within 14 working days of approval.

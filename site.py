@@ -656,6 +656,11 @@ try:
         print('footer EN pairs skipped: %d Arabic vs %d English strings' % (len(_fa), len(_fe)))
 except Exception as _e:
     print('footer EN pairs skipped:', _e)
+# the identity sentence (seo.part.py, approved English 2026-11-28): en_add's number pattern takes the comma after the year with it
+# («Launched in 2020, it …» → «Launched in {n} it …»); the year alone is the number, the comma stays
+for _k in list(EN_NEW):
+    if 'Launched in {n} it is the first platform' in EN_NEW[_k]:
+        EN_NEW[_k] = EN_NEW[_k].replace('Launched in {n} it is the first platform', 'Launched in {n}, it is the first platform')
 def _meta_en(key, title, app):
     # English mode translates <meta content> (data/i18n.js): give this page's Arabic meta description its English, from the dictionary
     # when it covers the sentence, else an honest generic line with the page's English name (one entry, this page only)

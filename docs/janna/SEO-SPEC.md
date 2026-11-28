@@ -514,7 +514,7 @@ IndexNow key (our own pings):
 
 Google Business Profile (business.google.com):
 1. Add business with the real-world name used on the office signage (e.g. «منصة صنع في مصر – الجمعية المصرية للتنمية الصناعية»). Category «Non-profit organization» or «Association / organization».
-2. Address exactly: الحي 11 – وجه الثقافة والعلوم – عمارة 56 (الدور الثالث)، مدينة السادس من أكتوبر، الجيزة. It must be a staffed office, not a virtual one.
+2. Address exactly (the owner's approved text, docs/IDENTITY-APPROVED.md): عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11، السادس من أكتوبر، الجيزة. It must be a staffed office, not a virtual one.
 3. Phone 02 38346757, website https://madeinegyptgate.com/, hours.
 4. Verify (video or postcard as Google offers).
 5. Add logo, photos and a weekly post (new tenders, events).

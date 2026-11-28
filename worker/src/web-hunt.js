@@ -32,11 +32,11 @@ import { norm, instructionLike, EN as EN_AR } from "./text.js";
 import { webSearchConfig } from "./service-keys.js";
 import { featureOn } from "./flags.js";
 import { WS_HEADER, WS_MAX_BODY, WS_NOTE, WS_MARKETS, voiceOf, isEn, soft, refusal, out, argsOf, queryHygiene, marketOf, runProvider, cleanResults, cacheKey, cacheGet, cachePut,
-  reserveUnits, giveBack, sayable, sayResult } from "./websearch.js";
+  reserveUnits, giveBack, sayable, sayResult, visitorResult } from "./websearch.js";
 import { productNeed, industryNeed, classify, relevant, namedIn, canonUrl, bareHost, SERVICE_RX } from "./web-classify.js";
 import { recordLeads, rejectedOf, leadHash, productKey } from "./web-leads.js";
 import { wouldPublish, publishingOn, platformLine } from "./web-public.js"; // the auto-publish gate (owner 2026-11-28): «اتضافت على المنصة» only for what it publishes
-import { viewerOf, lockWeb } from "./opp-lock.js"; // members-only: a visitor's call gets the teaser (no entity / official mark) of a tender / RFQ / project
+import { viewerOf, WEB_LOCKED } from "./opp-lock.js"; // members-only: a visitor's call gets the teaser (no entity / official mark) of every opportunity
 
 export const HUNT_MS = 4500, HUNT_MAX = 6, HUNT_RESULTS = 6, HUNT_PER_SITE = 2, HUNT_REJECT_WAIT_MS = 400;
 export const INTENTS = Object.freeze(["tenders", "rfq", "buyers", "projects"]);
@@ -273,7 +273,7 @@ export async function runHunt(env, cfg, h, { who = "bassem", voice = "bassem", n
   /* the auto-publish gate (web-public.js): which of them the platform adds to «فرص السوق» (members-only like the rest) — never for the deep
      research job's rows (via research) */
   const pubOn = via !== "research" && picked.length ? await publishingOn(env) : false;
-  const onPlatform = picked.map(x => pubOn && wouldPublish({ ...x.r, type: x.c.type, official: x.c.official, aggregator: x.c.aggregator, product: h.product, market: h.market ? h.market.code : "" }, nowMs));
+  const onPlatform = picked.map(x => pubOn && wouldPublish({ ...x.r, type: x.c.type, official: x.c.official, aggregator: x.c.aggregator, query: x.q.q, product: h.product, market: h.market ? h.market.code : "" }, nowMs));
   if (!picked.length) hints.push("nothing new from this hunt: never answer with «مفيش» / not found alone — say what the platform has for him (customers, matching RFQs after his subscription), that the platform keeps searching every day, and offer the next step");
   const body = answer(picked, h, need, voice, { plan, sent: send.length - skipped, cached: plan.length - misses.length, partial, hints, ambiguous, asked: intents, onPlatform });
   if (!withSources) return { body };
@@ -294,15 +294,16 @@ function answer(picked, h, need, voice, m) {
     note: WS_NOTE, ...(m.hints.length ? { hint: m.hints.join("; ") } : {}), ...(m.ambiguous ? { ambiguous: m.ambiguous } : {}) };
 }
 
-/* members-only (owner 2026-11-28): Janna's call with a visitor gets a tender / RFQ / project as its teaser — title, place, date — without the
-   entity or the official mark (opp-lock.js lockWeb), and the hint to invite the registration; a member's call (or Bassem's) gets it all */
-export function visitorBody(body, voice) {
+/* members-only (owner 2026-11-28): Janna's call with a visitor gets every opportunity (a tender / RFQ / project, a buyer, a news item) as its
+   teaser — title, place, date — without the entity or the official mark, a buyer without its name (websearch.js visitorResult, opp-lock.js
+   lockWeb), and the hint to invite the registration; a member's call (or Bassem's) gets it all. product: the words searched (a buyer's teaser) */
+export function visitorBody(body, voice, product = "") {
   if (!body || !Array.isArray(body.results)) return body;
-  const lock = body.results.some(x => x && ["tender", "rfq", "project"].includes(x.type));
+  const lock = body.results.some(x => x && WEB_LOCKED.includes(x.type));
   if (!lock) return body;
   const en = isEn(voice);
-  return { ...body, results: body.results.map(x => lockWeb(x, null)), members_only: true, register_url: "https://madeinegyptgate.com/register/" + (en ? "?lang=en" : "") + "#basic",
-    hint: [body.hint, "visitor: say the titles, places and dates only; the issuing body and the details are for subscribed members — invite him to register (janna_navigate page=register plan=basic)"].filter(Boolean).join("; ") };
+  return { ...body, results: body.results.map(x => visitorResult(x, { product, en })), members_only: true, register_url: "https://madeinegyptgate.com/register/" + (en ? "?lang=en" : "") + "#basic",
+    hint: [body.hint, "visitor: say the titles, places and dates only; the issuing body or company and the details are for subscribed members — invite him to register (janna_navigate page=register plan=basic)"].filter(Boolean).join("; ") };
 }
 
 /* ---------- HTTP: POST /api/janna/hunt (Janna) · POST /api/advisor/hunt (Bassem) ---------- */
@@ -328,7 +329,7 @@ async function serveHunt(req, env, ctx, nowMs, who) {
   if (r.error === "product_ambiguous") { toolSoftError(W.path, "product_ambiguous"); return out({ error: "product_ambiguous", code: "product_ambiguous", http: 200, ambiguous: r.ambiguous, count: 0, results: [], text: ambiguousText(r.ambiguous, voice), note: WS_NOTE }); }
   const refused = r.error ? refusal(W.path, voice, r, nowMs) : null; if (refused) return refused;
   if (r.error) return soft(W.path, voice, "websearch_failed", 502);
-  return out(acc && acc.who === "visitor" ? visitorBody(r.body, voice) : r.body);
+  return out(acc && acc.who === "visitor" ? visitorBody(r.body, voice, h.product) : r.body);
 }
 async function guarded(req, env, ctx, nowMs, who) {
   try { return await serveHunt(req, env, ctx, nowMs, who); }

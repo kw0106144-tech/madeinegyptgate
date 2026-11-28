@@ -651,7 +651,7 @@ if (TO && location.hash !== "#rfq-form") setTimeout(function () { $("#rfq-form")
 if (location.hash === "#meet") setTimeout(function () { $("#meet").scrollIntoView({ block: "start" }); }, 200);
 if (location.hash === "#rfq-form") setTimeout(function () { $("#rfq-form").scrollIntoView({ block: "start" }); }, 200);
 ''')
-# contact: the official address, its map link and the working hours (owner 2026-11-27, docs/IDENTITY-APPROVED.md; the English is a translation pending his look)
+# contact: the official address, its map link and the working hours (owner 2026-11-27, docs/IDENTITY-APPROVED.md; the English translation approved by the owner on 2026-11-28)
 en_add([("عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11، السادس من أكتوبر، الجيزة", "Building 56 (third floor), Culture and Science Area, 11th District, 6th of October City, Giza, Egypt"), ("من الأحد للخميس، من 8 صباحاً حتى 4 عصراً؛ الجمعة والسبت إجازة.", "Sunday to Thursday, 8 am to 4 pm; Friday and Saturday closed."), ("المقر الرئيسي (العنوان الرسمي) · افتح على الخريطة", "Head office (official address) · open on the map"), ("مواعيد العمل", "Working hours")])
 en_add([("تعرّف على جنة: إيه اللي بتعمله وإزاي تبدأ ←", "Meet Janna: what she does and how to start →")])   # contact: the link to Janna's information page (seo_assist.part.py)
 en_add([("الحسيني جروب وشركاءه", "ElHouseni Group & Partners"), ("استقبال الطلبات وتسجيل الشركاء وخدمة العملاء والتطوير", "Receiving requests, partner registration, customer service and development")])   # contact: owner / operator (owner approval 2026-11-19)

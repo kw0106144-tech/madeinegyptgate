@@ -31,10 +31,18 @@
    the same opportunity (useKnown: the titles of the platform's own tenders / RFQs) or another published lead says it (type + title); never
    with personal contact data (above). A published tender / RFQ whose date passes leaves the lists the same day (liveItem). The reason a
    lead is not published is the desk's public_why: unofficial | no_deadline | closed | duplicate (besides status | type | personal | empty).
-   Buyers, buyer lists and news keep the rules above. What a VISITOR gets of a published tender / RFQ / project is its teaser (opp-lock.js
-   lockWeb: no entity, no official mark): the details are for members. */
+   THE SAME GATE FOR BUYERS AND NEWS (owner 2026-11-28: «النشر التلقائي للمشترين والأخبار بشرط المصدر الرسمي: اه»): a buyer / a buyer list is
+   published only from an OFFICIAL page of that company or body — its own domain (ownSite: no directory, aggregator, B2B marketplace,
+   newspaper, social network, reference or hosted page, and the domain's own name is the name the page gives) or a government / public-body
+   page (officialSource) —, never a person (PERSON above, or a job title: personRole), never a company the directory already has
+   (useKnown: the directory's company names); a news item only from an official source — a government / public body, the company's own
+   site (ownSite) or an official news agency (AGENCIES) —, dated inside the platform's news window (NEWS_DAYS: the last month, the window
+   the platform's own news searches use, websearch.js freshness "month"; its date is the provider's, read by newsDay) and not one the
+   platform has (its news titles) or another published lead says. Their reasons on the desk: unofficial | no_date | old | duplicate |
+   personal. No personal contact in any field (title, snippet, product, query). What a VISITOR gets of every published opportunity is its
+   teaser (opp-lock.js lockWeb: no entity, no official mark; a buyer without its name, which is who it is): the details are for members. */
 import { norm, maskPII, MASK_EMAIL, MASK_PHONE, forLLM, instructionLike, asciiDigits } from "./text.js";
-import { bareHost, onHost, portalOf, PORTALS, AGGREGATORS, NEWS, DIRECTORIES, MARKETS_B2B } from "./web-classify.js";
+import { bareHost, onHost, portalOf, PORTALS, AGGREGATORS, NEWS, DIRECTORIES, MARKETS_B2B, SOCIAL, REFERENCE } from "./web-classify.js";
 import { featureOn, loadFeatures, valueOf, leadsStoreOn } from "./flags.js";
 import { cairoDay, addDays, GOV_CODES } from "./common.js";
 import { viewerOf, lockWeb } from "./opp-lock.js"; // members-only opportunities (owner 2026-11-28): a tender's / RFQ's / project's owner and official mark for members
@@ -47,6 +55,16 @@ const OK_STATUS = ["new", "accepted"];
    body / a government host */
 const GOV_HOST = /(?:^|\.)(?:gov|gouv|gob|govt|go|mil)\.[a-z]{2,3}$|(?:^|\.)(?:gov|mil|int)$/i;
 const OFFICIAL_TYPES = new Set(["tender", "rfq", "project"]);
+const BUYER_TYPES = new Set(["buyer", "buyer_list"]);
+/* the platform's news window: its own news searches ask the provider for the last month (websearch.js freshOf "month") — a web news item
+   older than that is not published, and leaves the lists when it gets older */
+export const NEWS_DAYS = 31;
+/* the official (state) news agencies of the platform's markets: an official source of news */
+export const AGENCIES = Object.freeze(["mena.org.eg", "spa.gov.sa", "wam.ae", "kuna.net.kw", "qna.org.qa", "omannews.gov.om", "bna.bh", "petra.gov.jo", "aps.dz", "mapexpress.ma",
+  "tap.info.tn", "suna-sd.net", "ina.iq", "aa.com.tr", "xinhuanet.com", "news.cn"]);
+/* pages anyone can open on someone else's domain (a blog, a site builder, a profile): never a company's own site */
+const HOSTED = Object.freeze(["blogspot.com", "wordpress.com", "medium.com", "wixsite.com", "weebly.com", "sites.google.com", "github.io", "tumblr.com", "substack.com", "jimdofree.com",
+  "webnode.page", "godaddysites.com", "business.site", "linkedin.com"]);
 export function officialSource(r) {
   if (!r) return false;
   if (Number(r.official)) return true;
@@ -156,6 +174,60 @@ function cutBrands(s, brands) {
     t = t.replace(new RegExp("^\\s*(?:" + rx + ")(?:\\s*[:\\-–—·•]+\\s*|\\s+)", "i"), "").replace(new RegExp("(?:\\s*[:\\-–—·•]+\\s*|\\s+)(?:" + rx + ")\\s*$", "i"), "");
   }
   return t.trim();
+}
+
+/* ---------------- a buyer's / a news item's official source (the gate, header) ---------------- */
+/* the words of a host that may be a company's own name («elsewedyelectric.com» → elsewedyelectric; «acme-mills.example» → acme + mills) */
+function ownNames(host) {
+  const parts = bareHost(host).split(".").filter(Boolean);
+  if (parts.length > 1) parts.pop();
+  const out = [];
+  for (const p of parts) {
+    if (TLD_SLD.has(p) || GENERIC_LABEL.has(p) || p.length < 3 || /^\d+$/.test(p)) continue;
+    const bits = p.split("-").filter(b => b.length >= 3 && !GENERIC_LABEL.has(b));
+    if (bits.length) out.push(bits);
+  }
+  return out;
+}
+/* the company's own site: not a third party's (a directory, an aggregator, a B2B marketplace, a newspaper, a tender site — isThird), not a
+   social network, a reference site or a page hosted on someone else's domain, and the domain's own name is the name the page itself gives
+   (its title, the entity read from it, its snippet): «Acme Paper Mills» on acme-mills.example, never «Acme» on a stranger's domain */
+export function ownSite(r) {
+  const host = bareHost((r && r.site) || "");
+  if (!host || Number(r.aggregator) || isThird(host, false) || onHost(host, SOCIAL) || onHost(host, REFERENCE) || onHost(host, HOSTED)) return false;
+  const named = squash([r.title, r.entity, r.snippet].filter(Boolean).join(" "));
+  return !!named && ownNames(host).some(bits => named.includes(bits.join("")) || (bits.some(b => b.length >= 4) && bits.every(b => named.includes(b))));
+}
+/* a buyer / a buyer list: from the company's or the body's own official page — its own site, or a government / public-body page */
+export const officialBuyer = r => officialSource(r) || ownSite(r);
+/* a news item: a government / public body, the company's own site or an official news agency */
+export const officialNews = r => officialSource(r) || onHost(bareHost((r && r.site) || ""), AGENCIES) || ownSite(r);
+/* a person's page, not a company's: a job title in its title («مدير المشتريات», "Purchasing Manager", a CV) — never a buyer */
+const ROLE_AR = /(?:^| )(?:ال)?(?:مدير|مديره|مسئول|مسؤول|مندوب|محاسب|سيره ذاتيه|السيره الذاتيه)(?= |$)/;
+const ROLE_EN = /\b(?:manager|director|ceo|cfo|coo|cto|founder|co-founder|officer|engineer|purchaser|specialist|executive|freelancer|resume|r[ée]sum[ée]|curriculum vitae|cv|my profile)\b/i;
+export const personRole = s => ROLE_AR.test(norm(s)) || ROLE_EN.test(String(s || ""));
+/* the day a news item was published (YYYY-MM-DD) or "": the provider's date — a date («2026-11-16», «Sun, 16 Nov 2026 …», «Nov 16, 2026»)
+   or an age («3 days ago», «منذ 3 أيام») counted back from the day it was found */
+const AGE = /(\d+)\s*(minute|min|hour|hr|day|week|month|year|دقيق|ساع|يوم|ايام|أيام|اسبوع|أسبوع|اسابيع|أسابيع|شهر|شهور|اشهر|أشهر|سن)/i;
+export function newsDay(date, firstSeen) {
+  const s = asciiDigits(String(date || "")).trim().slice(0, 60);
+  if (!s) return "";
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s); if (m) return valid(+m[1], +m[2], +m[3]);
+  const base = Date.parse(String(firstSeen || ""));
+  if (!/\d{4}/.test(s) && Number.isFinite(base)) {
+    if (/\b(?:yesterday)\b|(?:^| )(?:امس|أمس|امبارح|إمبارح)(?= |$)/i.test(s)) return cairoDay(base - 864e5);
+    if (/\b(?:today|just now)\b|(?:^| )(?:النهارده|اليوم)(?= |$)/i.test(s)) return cairoDay(base);
+    const a = AGE.exec(s);
+    if (a) {
+      const n = +a[1], u = a[2].toLowerCase();
+      const days = /minute|min|hour|hr|دقيق|ساع/.test(u) ? 0 : /day|يوم|ايام|أيام/.test(u) ? n : /week|اسبوع|أسبوع|اسابيع|أسابيع/.test(u) ? n * 7 : /month|شهر|شهور|اشهر|أشهر/.test(u) ? n * 30 : n * 365;
+      return cairoDay(base - days * 864e5);
+    }
+    return "";
+  }
+  const t = Date.parse(s);
+  if (Number.isFinite(t)) return cairoDay(t);
+  return dateIn(s);
 }
 
 /* ---------------- one lead → what may be shown ---------------- */
@@ -272,6 +344,20 @@ function judge(r, nowMs = Date.now()) {
   if (dated && (cancelled || (deadline && deadline < cairoDay(nowMs)))) return { why: "closed", x: null };
   if (dated && !deadline) return { why: "no_deadline", x: null };
   if (OFFICIAL_TYPES.has(type) && knownTo(type, title || t0)) return { why: "duplicate", x: null };
+  /* buyers and buyer lists: the company's or the body's own official page, never a person, never a company the directory has */
+  if (BUYER_TYPES.has(type)) {
+    if (!officialBuyer({ ...r, title: t0, entity })) return { why: "unofficial", x: null };
+    if (personRole(t0)) return { why: "personal", x: null };
+    if ([title, entity, t0].some(t => t && knownTo("buyer", t))) return { why: "duplicate", x: null };
+  }
+  /* news: an official source, inside the news window, not one the platform has */
+  if (type === "news") {
+    if (!officialNews({ ...r, title: t0, entity })) return { why: "unofficial", x: null };
+    const day = newsDay(r.date, r.first_seen), today = cairoDay(nowMs);
+    if (!day || day > addDays(today, 1)) return { why: "no_date", x: null };
+    if (day < addDays(today, -NEWS_DAYS)) return { why: "old", x: null };
+    if (knownTo("news", title || t0)) return { why: "duplicate", x: null };
+  }
   const gov = String(r.governorate || "").slice(0, 40), found = (() => { const t = Date.parse(String(r.first_seen || "")); return Number.isFinite(t) ? cairoDay(t) : String(r.first_seen || "").slice(0, 10); })(); // the Cairo day it was found (a UTC slice is yesterday after 22:00 UTC)
   const pub = { id: Number(r.id) || 0, type, title, ...(entity ? { entity } : {}), ...(product ? { product } : {}), market: String(r.market || "").slice(0, 20),
     ...(gov ? { governorate: gov, ...(GOV_EN.get(norm(gov)) ? { governorate_en: GOV_EN.get(norm(gov)) } : {}) } : {}),
@@ -289,6 +375,8 @@ export function whyNot(r) {
   if (personalIn(titleOf(r), { people })) return "personal";
   if (!official && personalIn(r.snippet, { people: r.type === "rfq" || r.type === "buyer" || r.type === "buyer_list" })) return "personal";
   if (instructionLike(String(r.title || ""), { money: false })) return "personal";
+  /* no personal contact in any field (the gate, header): the product and the words it was found with too */
+  if (personalIn(r.product, { people: false }) || personalIn(r.query, { people: false })) return "personal";
   return "";
 }
 const officialOf = r => !!r && DATED.has(String(r.type || "")) && officialSource(r);
@@ -301,12 +389,12 @@ export function publicState(r, nowMs = Date.now()) {
   return j.why ? { published: false, why: j.why } : { published: true, why: "" };
 }
 /* would a lead found right now be published (the hunt / search say «اتضافت على المنصة» only then): the same gate on the row recordLeads
-   writes — r: {type, title, snippet, url, official, aggregator, product, market} */
+   writes — r: {type, title, snippet, url, date, official, aggregator, product, market, query} */
 export function wouldPublish(r, nowMs = Date.now()) {
   if (!r || !PUBLIC_TYPES.includes(r.type)) return false;
   let site = ""; try { site = bareHost(new URL(String(r.url || "")).hostname); } catch (e) { return false; }
   return !judge({ id: 0, status: "new", type: r.type, title: forLLM(r.title, 160), snippet: forLLM(r.snippet, 300), site, official: r.official ? 1 : 0, aggregator: r.aggregator ? 1 : 0,
-    product: forLLM(r.product || "", 120), market: r.market || "", governorate: "", first_seen: new Date(nowMs).toISOString() }, nowMs).why;
+    product: forLLM(r.product || "", 120), query: forLLM(r.query || "", 200), market: r.market || "", governorate: "", date: forLLM(r.date || "", 40), first_seen: new Date(nowMs).toISOString() }, nowMs).why;
 }
 
 /* is the platform publishing what the assistants find now: the leads store (0012), its owner switch web_leads, and one of the two places
@@ -331,7 +419,7 @@ export function resetPublished() { MEMO = { at: 0, v: 0, off: true, rows: [], lo
 /* after a desk decision (hide / restore / reject …) in this isolate: the next reader reads again */
 export function forgetPublished() { MEMO = { ...MEMO, at: 0 }; }
 /* «بحث وكتابة عميقة» (research.js, via 'research'): kept for the data desk only, never published here — they are steered by a member's own job */
-const SQL = "SELECT id, title, snippet, site, type, official, aggregator, query, product, market, governorate, first_seen, last_seen, status, via FROM web_leads WHERE status = ? ORDER BY last_seen DESC LIMIT " + WL.rows;
+const SQL = "SELECT id, title, snippet, site, type, official, aggregator, query, product, market, governorate, date, first_seen, last_seen, status, via FROM web_leads WHERE status = ? ORDER BY last_seen DESC LIMIT " + WL.rows;
 const noTable = e => /no such table/i.test(String((e && e.message) || e));
 /* ONE round trip: the owner's switches (flags.js memo, 30 s) and the two indexed reads at once; no 0012 table → off (fail-soft) */
 async function load(env, nowMs) {

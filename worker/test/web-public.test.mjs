@@ -14,7 +14,7 @@ import { issueSession } from "../src/auth.js";
 import { recordLeads, rejectedOf, leadHash, productKey } from "../src/web-leads.js";
 import { forgetLeadsStore, featureDef, stateOf, publicFeatures, forgetFeatures } from "../src/flags.js";
 import { publishedLeads, resetPublished, resetRate, publicTitle, entityOf, publicOf, deadlineOf, statusOf, whyNot, personalIn, siteLabels, WL, PUBLIC_TYPES,
-  publicState, officialSource, wouldPublish, liveItem, publicItem, useKnown, publishingOn, platformLine } from "../src/web-public.js";
+  publicState, officialSource, wouldPublish, liveItem, publicItem, useKnown, publishingOn, platformLine, NEWS_DAYS, newsDay, ownSite, officialBuyer } from "../src/web-public.js";
 import DATA from "../src/data.json";
 import { resetMembers } from "../src/lookup-members.js";
 import { cairoDay, addDays } from "../src/common.js";
@@ -63,17 +63,21 @@ async function seed(env) {
     R("rfq", "https://www.eehc.gov.eg/rfq/9", "طلب عروض أسعار لتوريد كابلات نحاسية", "آخر موعد لتلقي العروض " + SOON, { query: "طلب عروض أسعار كابلات" }),
     R("rfq", "https://classifieds.example.com/ad/5", "مطلوب كابلات للتواصل 01012345678", "واتساب 01012345678", { query: "مطلوب توريد كابلات" }),
     R("buyer", "https://www.qenapaper.com/", "Qena Paper Industry Company - Home", "Leading paper mill in Upper Egypt, contact info@qenapaper.com", { query: "مصانع ورق في مصر" }),
-    R("buyer", "https://www.alamal-elec.example/", "شركة الأمل للمقاولات الكهربائية", "مقاولات كهربائية وتوريدات", { query: "مقاولين كهرباء مصر" }),
+    R("buyer", "https://www.alamal-elec.example/", "شركة الأمل للمقاولات الكهربائية", "Al Amal Electric Contracting — مقاولات كهربائية وتوريدات", { query: "مقاولين كهرباء مصر" }),
+    R("buyer", "https://eg.kompass.com/c/elnour-cables/eg0099/", "El Nour Cables Company - Company Profile - Kompass", "El Nour Cables: cables plant in Cairo", { query: "مصانع كابلات مصر" }),
     R("project", "https://www.youm7.com/story/6", "مصنع جديد للكابلات في العين السخنة باستثمارات 50 مليون دولار | اليوم السابع", "خبر عن مصنع كابلات", { query: "مصنع كابلات جديد" }),
     R("project", "https://www.gafi.gov.eg/news/8", "مجمع صناعي جديد للكابلات في العين السخنة", "خبر عن مجمع كابلات", { query: "مصنع كابلات جديد" }),
-    R("news", "https://www.almalnews.com/7", "ارتفاع أسعار النحاس يرفع تكلفة الكابلات - جريدة المال", "النحاس والكابلات", { query: "كابلات" }),
+    R("news", "https://www.almalnews.com/7", "ارتفاع أسعار النحاس يرفع تكلفة الكابلات - جريدة المال", "النحاس والكابلات", { query: "كابلات", date: TODAY }),
   ], { persona: "janna", via: "hunt", product: "كابلات", market: "eg", nowMs: now + 1000 });
+  /* ≤ 12 opportunities an answer (LEADS_LIMITS.per_answer): the official agency's news in a hunt of its own */
+  await recordLeads(env, [R("news", "https://www.mena.org.eg/news/77", "ارتفاع أسعار النحاس يرفع تكلفة الكابلات", "النحاس والكابلات", { query: "كابلات", date: TODAY })],
+    { persona: "janna", via: "hunt", product: "كابلات", market: "eg", nowMs: now + 2000 });
 }
 const all = async (env, sql, ...a) => (await env.DB.prepare(sql).bind(...a).all()).results;
 const idOf = async (env, like) => Number(await env.DB.prepare("SELECT id FROM web_leads WHERE url LIKE ?").bind(like).first("id"));
 /* nothing in an answer may say where an opportunity came from */
-const SOURCE_RX = /https?:|www\.|\b[a-z0-9-]+\.(?:com|net|org|sa|eg|gov|example)\b|etimad|tendersinfo|tradekey|youm7|almalnews|qenapaper|alamal|classifieds|eehc|gafi|اعتماد|اليوم السابع|جريدة المال|TradeKey|TendersInfo/i;
-const SNIPPET_RX = /Leading paper mill|We are looking for supplier|رقم المنافسة|مناقصة عامة لتوريد|خبر عن مصنع|خبر عن مجمع|النحاس والكابلات|buying request|DetailsForVisitor|لتلقي العروض/i;
+const SOURCE_RX = /https?:|www\.|\b[a-z0-9-]+\.(?:com|net|org|sa|eg|gov|example)\b|etimad|tendersinfo|tradekey|youm7|almalnews|qenapaper|alamal|classifieds|eehc|gafi|kompass|mena|اعتماد|اليوم السابع|جريدة المال|TradeKey|TendersInfo/i;
+const SNIPPET_RX = /Leading paper mill|Electric Contracting|We are looking for supplier|رقم المنافسة|مناقصة عامة لتوريد|خبر عن مصنع|خبر عن مجمع|النحاس والكابلات|buying request|DetailsForVisitor|لتلقي العروض/i;
 const GAFI = "project:مجمع صناعي جديد للكابلات في العين السخنة", EEHC = "طلب عروض أسعار لتوريد كابلات نحاسية";
 const PUB_KEYS = new Set(["id", "type", "title", "entity", "product", "market", "governorate", "governorate_en", "deadline", "official", "found", "status"]);
 
@@ -88,7 +92,7 @@ describe("«فرص السوق»: what is published, in the platform's words", ()
     const by = Object.fromEntries(m.rows.map(x => [x.pub.type + ":" + x.pub.title, x.pub]));
     assert.deepEqual(Object.keys(by).sort(), ["buyer:شركة الأمل للمقاولات الكهربائية", "news:ارتفاع أسعار النحاس يرفع تكلفة الكابلات", GAFI,
       "rfq:" + EEHC, "tender:تعلن الشركة المصرية لنقل الكهرباء عن طرح مناقصة توريد كابلات جهد عالي",
-      "tender:منافسة توريد كابلات كهربائية لمستشفى الملك فهد"].sort(), "the site names cut; the classified with a phone number, the buyer with an e-mail, the «other» page, the aggregator's closed tender, the undated tender, the marketplace RFQ and the newspaper's project left out");
+      "tender:منافسة توريد كابلات كهربائية لمستشفى الملك فهد"].sort(), "the site names cut; the classified with a phone number, the buyer with an e-mail, the directory's buyer, the «other» page, the aggregator's closed tender, the undated tender, the marketplace RFQ, the newspaper's project and the newspaper's news left out (the official agency's news is published)");
     const e = by["tender:منافسة توريد كابلات كهربائية لمستشفى الملك فهد"];
     assert.deepEqual([e.official, e.deadline, e.market, e.product, e.found], [true, FUT, "sa", "كابلات", TODAY], "official, its deadline read from its own words (the masked reference number is no contact)");
     assert.equal(by["tender:تعلن الشركة المصرية لنقل الكهرباء عن طرح مناقصة توريد كابلات جهد عالي"].entity, "الشركة المصرية لنقل الكهرباء");
@@ -155,7 +159,7 @@ describe("«فرص السوق»: what is published, in the platform's words", ()
 
 describe("the auto-publish gate (owner 2026-11-28): official source, a closing date ahead, not a duplicate, no personal contact", () => {
   const row = o => ({ id: 1, status: "new", type: "tender", title: "مناقصة توريد محولات كهربائية", snippet: "آخر موعد لتقديم العطاءات " + FUT, site: "etenders.gov.eg", official: 1, aggregator: 0, first_seen: new Date().toISOString(), ...o });
-  test("a tender / RFQ: official source + a closing date that is today or later; a project: an official source; buyers and news as before", () => {
+  test("a tender / RFQ: official source + a closing date that is today or later; a project: an official source", () => {
     assert.deepEqual(publicState(row()), { published: true, why: "" });
     assert.equal(publicState(row({ official: 0, site: "tendersinfo.com", aggregator: 1 })).why, "unofficial");
     assert.equal(publicState(row({ official: 0, site: "some-company.example" })).why, "unofficial", "a company site is no official source page");
@@ -170,9 +174,52 @@ describe("the auto-publish gate (owner 2026-11-28): official source, a closing d
     assert.equal(publicState(row(), later).why, "closed", "the same lead the day after its closing date");
     assert.equal(publicState(row({ type: "project", official: 0, site: "youm7.com", title: "مصنع جديد للمحولات في السادات", snippet: "" })).why, "unofficial");
     assert.equal(publicState(row({ type: "project", official: 0, site: "gafi.gov.eg", title: "مصنع جديد للمحولات في السادات", snippet: "" })).why, "");
-    assert.equal(publicState(row({ type: "buyer", official: 0, site: "acme-mills.example", title: "Acme Paper Mills", snippet: "paper mill" })).why, "", "a buyer: as before");
-    assert.equal(publicState(row({ type: "news", official: 0, site: "almalnews.com", title: "ارتفاع أسعار النحاس", snippet: "" })).why, "", "news: as before");
     assert.equal(publicState(row({ title: "مناقصة توريد محولات للتواصل 01012345678" })).why, "personal", "never with a personal contact");
+  });
+  test("a buyer (owner 2026-11-28): only from the company's own site or a public body's page; never a directory, an aggregator, a marketplace, social media or a person; never a directory company", () => {
+    const b = o => row({ type: "buyer", official: 0, aggregator: 0, site: "acme-mills.example", title: "Acme Paper Mills", snippet: "paper mill in Egypt", ...o });
+    assert.equal(publicState(b()).why, "", "an official buyer: its own site, named like the page");
+    assert.equal(publicState(b({ site: "hcww.com.eg", title: "الشركة القابضة لمياه الشرب والصرف الصحي" })).why, "", "a public body's own page");
+    assert.equal(publicState(b({ site: "moh.gov.eg", title: "مديرية الشؤون الصحية بالجيزة" })).why, "", "a government page");
+    assert.equal(publicState(b({ site: "eg.kompass.com", title: "Acme Paper Mills - Company Profile - Kompass" })).why, "unofficial", "a directory never");
+    assert.equal(publicState(b({ site: "yellowpages.com.eg", title: "Acme Paper Mills" })).why, "unofficial");
+    assert.equal(publicState(b({ site: "tendersinfo.com", aggregator: 1 })).why, "unofficial", "an aggregator never");
+    assert.equal(publicState(b({ site: "alibaba.com", title: "Acme Paper Mills Co. on Alibaba" })).why, "unofficial", "a B2B marketplace never");
+    assert.equal(publicState(b({ site: "facebook.com", title: "Acme Paper Mills | Facebook" })).why, "unofficial", "social media never");
+    assert.equal(publicState(b({ site: "linkedin.com", title: "Acme Paper Mills | LinkedIn" })).why, "unofficial", "not a LinkedIn company page either");
+    assert.equal(publicState(b({ site: "youm7.com", title: "Acme Paper Mills" })).why, "unofficial", "a newspaper is no company's own site");
+    assert.equal(publicState(b({ site: "stranger-site.example" })).why, "unofficial", "a domain that is not the company's own name");
+    assert.equal(publicState(b({ site: "acmemills.blogspot.com" })).why, "unofficial", "a hosted page");
+    assert.equal(publicState(b({ type: "buyer_list", site: "eg.kompass.com", title: "Paper mills in Egypt - Kompass" })).why, "unofficial", "a directory's list never");
+    assert.equal(publicState(b({ type: "buyer_list", site: "ida.gov.eg", title: "المصانع المسجلة في المنطقة الصناعية بالسادات" })).why, "", "a public body's list");
+    assert.equal(publicState(b({ title: "Ahmed Hassan - Purchasing Manager at Acme Paper Mills" })).why, "personal", "a person, never");
+    assert.equal(publicState(b({ title: "المهندس أحمد حسن — Acme Paper Mills" })).why, "personal");
+    assert.equal(publicState(b({ snippet: forLLM("Acme Paper Mills, call 01012345678", 300) })).why, "personal", "a contact in the text, never");
+    assert.equal(publicState(b({ snippet: forLLM("Acme Paper Mills — sales@acme-mills.example", 300) })).why, "personal");
+    assert.equal(publicState(b({ product: forLLM("ورق sales@acme-mills.example", 120) })).why, "personal", "in any field");
+    const co = (DATA.f || []).map(x => x[0]).find(x => x && x.length >= 18);
+    assert.equal(publicState(b({ site: "moh.gov.eg", title: co })).why, "duplicate", "a company the directory already has");
+    assert.ok(ownSite({ site: "elsewedyelectric.com", title: "Elsewedy Electric | Home" }) && !ownSite({ site: "elsewedyelectric.com", title: "Home" }) && officialBuyer({ site: "nat.gov.eg" }));
+  });
+  test("a news item (owner 2026-11-28): only from an official source, inside the news window, not one the platform has", () => {
+    const n = o => row({ type: "news", official: 0, aggregator: 0, site: "mena.org.eg", title: "ارتفاع صادرات الكابلات المصرية إلى أفريقيا", snippet: "صادرات الكابلات", date: TODAY, ...o });
+    assert.equal(publicState(n()).why, "", "an official news agency");
+    assert.equal(publicState(n({ site: "cabinet.gov.eg" })).why, "", "a government body");
+    assert.equal(publicState(n({ site: "elsewedyelectric.com", title: "Elsewedy Electric opens a new cables plant" })).why, "", "the company's own site");
+    assert.equal(publicState(n({ site: "almalnews.com" })).why, "unofficial", "a newspaper is no official source");
+    assert.equal(publicState(n({ site: "zawya.com" })).why, "unofficial", "an aggregator of news");
+    assert.equal(publicState(n({ site: "facebook.com" })).why, "unofficial");
+    assert.equal(publicState(n({ site: "random-blog.example" })).why, "unofficial", "a site that is not the company's own");
+    assert.equal(publicState(n({ date: "" })).why, "no_date", "no publication date: never");
+    assert.equal(publicState(n({ date: addDays(TODAY, -(NEWS_DAYS + 5)) })).why, "old", "older than the news window");
+    assert.equal(publicState(n({ date: addDays(TODAY, -(NEWS_DAYS - 2)) })).why, "", "inside it");
+    assert.equal(publicState(n({ date: "3 days ago" })).why, "", "an age counted from the day it was found");
+    assert.equal(publicState(n(), Date.parse(addDays(TODAY, NEWS_DAYS + 3) + "T12:00:00Z")).why, "old", "the same item, once it is older than the window");
+    assert.equal(publicState(n({ snippet: forLLM("للتواصل 01012345678", 300) })).why, "personal", "a contact in the text, never");
+    const t = (DATA.i || []).filter(x => x && x[0] === "news").map(x => x[5]).find(x => x && x.length >= 20);
+    assert.equal(publicState(n({ title: t })).why, "duplicate", "a news item the platform has");
+    assert.deepEqual(["2026-11-16", "Sun, 16 Nov 2026 10:00:00 GMT", "Nov 16, 2026", "3 days ago", "منذ 3 أيام", "yesterday", ""].map(d => newsDay(d, "2026-11-19T10:00:00.000Z")),
+      ["2026-11-16", "2026-11-16", "2026-11-16", "2026-11-16", "2026-11-16", "2026-11-18", ""]);
   });
   test("not a duplicate: a tender / RFQ the platform already has is not published again (the bundled tenders, RFQs and intel items)", () => {
     const t = (DATA.t || []).map(x => x[3]).find(x => x && x.length >= 20);
@@ -221,8 +268,9 @@ describe("GET /api/janna/opportunities (the public page)", () => {
     assert.equal(d.open, 3);
     assert.deepEqual(d.counts, { tender: 2, rfq: 1, buyer: 1, project: 1, news: 1 });
     assert.deepEqual(d.markets, [{ code: "eg", n: 5 }, { code: "sa", n: 1 }]);
-    assert.ok(d.items.filter(x => ["tender", "rfq", "project"].includes(x.type)).every(x => !("entity" in x) && !("official" in x)), "a visitor: the teaser (members-only)");
+    assert.ok(d.items.every(x => !("entity" in x) && !("official" in x)), "a visitor: the teaser (members-only) — buyers and news too");
     assert.equal(d.items.find(x => x.type === "buyer").governorate, undefined);
+    assert.equal(d.items.find(x => x.type === "buyer").title, undefined, "a visitor's buyer: no name (the page says its kind and product)");
     /* filters */
     let f = await api(env, "GET", O + "?type=tender"); assert.deepEqual([f.data.total, f.data.counts.news], [2, 1], "counts keep the other types for the chips");
     f = await api(env, "GET", O + "?market=sa"); assert.deepEqual(f.data.items.map(x => x.title), ["منافسة توريد كابلات كهربائية لمستشفى الملك فهد"]);
@@ -319,7 +367,7 @@ describe("janna_lookup: the published opportunities after the platform's own res
     resetPublished();
     const v = (await api(env, "POST", "/api/janna/lookup", { body: { section: "tenders", query: "كابلات" } })).data;
     assert.equal(v.extra_count, 2); assert.ok(v.extra.every(x => !("entity" in x) && !("official" in x)), JSON.stringify(v.extra));
-    assert.match(v.text, /الجهة صاحبة الفرصة وتفاصيلها للأعضاء المشتركين: قولي العنوان والمكان والميعاد بس، وادعيه يسجّل/);
+    assert.match(v.text, /الجهة أو الشركة صاحبة الفرصة وتفاصيلها للأعضاء المشتركين: قولي العنوان والمكان والميعاد بس، وادعيه يسجّل/);
     /* Bassem (his tool pages / picks markets): masculine; a market keeps only that market's */
     const b = (await lookup(env, { section: "tenders", query: "كابلات", page: 1, market: "gulf" })).data;
     assert.equal(b.extra_count, 1); assert.match(b.text, /دول منشورين على المنصة في «فرص السوق»: قولهم كمعلومة وخلاص، من غير ما تقول/); assert.equal(b.extra[0].place, "السعودية");

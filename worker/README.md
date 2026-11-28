@@ -466,6 +466,26 @@ missing `X-MIG-Tool` (401) and a wrong method (405) keep their status.
   (roles data / admin / owner, one `cc_audit` row per decision: `leads.accept` / `leads.reject` / `leads.reopen` / `leads.convert`),
   `POST /api/team/desk/content {…, lead_id}` (ACC-CONTRACT §12.5). A rejection with reason `old` / `duplicate` / `not_credible` / `advert`
   hides the link from every later hunt; `off_topic` (or no reason) only for that product.
+- **Published on the platform** («فرص السوق» `/market-opportunities/` via `GET /api/janna/opportunities`, and `janna_lookup`'s web extras;
+  `web-public.js`, owner switches `web_leads_public` / `web_leads_lookup`): a new / accepted lead is published at once ONLY when it passes the
+  auto-publish gate (owner 2026-11-28), the same official-source rule for every kind:
+  - **tender / RFQ**: an official source page (a procurement portal, a public body's site, a government host — `officialSource`), a closing
+    date in the notice's own words that is today or later, not cancelled; it leaves the lists the day that date passes;
+  - **project**: an official source page;
+  - **buyer / buyer list** («النشر التلقائي للمشترين … بشرط المصدر الرسمي»): an official page of that company or body — its own domain
+    (`ownSite`: not a directory, aggregator, B2B marketplace, newspaper, social network, reference or hosted page, and the domain's own name
+    is the name the page gives) or a government / public-body page —; never a person (a title + a name, or a job title / CV:
+    `personRole`); never a company the directory already has (`knownTitle`: the directory's names without «شركة / مصنع / company …»);
+  - **news**: an official source — a government / public body, the company's own site (`ownSite`) or an official news agency (`AGENCIES`) —;
+    published inside the platform's news window (`NEWS_DAYS` = 31: the last month, the window of the platform's own news searches; the
+    provider's date or age, `newsDay`; no date → not published) and it leaves the lists when it gets older; not one of the platform's news;
+  - every kind: no personal contact in any field (title, snippet, product, query), not a duplicate (the platform's own tenders / RFQs / news,
+    or another published lead with the same type and title). What fails stays on the desk with its reason (`public_why`: `unofficial`,
+    `no_deadline`, `closed`, `no_date`, `old`, `duplicate`, `personal`, besides `status`, `type`, `empty`).
+  Members-only like the rest: a visitor gets every kind as its teaser (`opp-lock.js` `lockWeb`: no entity, no official mark; a buyer
+  without its name — its kind and product instead), on the page, in `janna_lookup` (`members_only`, `register_url`) and in Janna's hunt /
+  search answers; members get the details. A hunt / search result the gate publishes carries `on_platform: true` and the text adds
+  «… اتضافت على المنصة في «فرص السوق»» (a search's news are never recorded, so never `on_platform`). Never a link, a site or a source.
 - **Memory and knowledge**: the four tools are web rows in Bassem's / Janna's memory (the words, the market and the count: never a site, a
   link or a page title; «بحث» / «بحث عن فرص»), they close the task they did (`tasks.js`), and the knowledge bank never keeps a web answer as
   its answer (review S16: «محتاجة إجابة», empty answer; the team sees which tool it was).
