@@ -14,7 +14,8 @@
                                     an advert, for THIS product only when it was «مش عن المنتج» or had no reason (review S5)
      listLeads / reviewLead / linkLead   the desk (acc-team.js): GET /api/team/desk/leads, PUT /api/team/desk/leads/:id, POST
                                     /api/team/desk/content {lead_id} — roles data / admin / owner, one cc_audit row per decision; every
-                                    item says whether it is on the platform now (published, public_why: status | type | personal | empty)
+                                    item says whether it is on the platform now (published, public_why: status | type | personal | empty |
+                                    unofficial | no_deadline | closed | duplicate | no_date | old — web-public.js, the auto-publish gate)
    Without the table nothing is written (the answers do not change), GET says off, PUT 503 leads_off. */
 import { sha256, line, iso, now } from "./common.js";
 import { forLLM, clean } from "./text.js";
@@ -35,9 +36,11 @@ export const REASONS = Object.freeze({ off_topic: ["مش عن المنتج", "No
 const GLOBAL_REASONS = ["old", "duplicate", "not_credible", "advert", "hidden"];
 const WHY_NAMES = Object.freeze({ status: ["مرفوضة أو مخفية", "Rejected or hidden"], type: ["مش فرصة واضحة", "Not a clear opportunity"], personal: ["فيها بيانات شخصية", "Holds personal data"],
   empty: ["مفيش عنوان ينفع يتعرض من غير المصدر", "No title that can be shown without its source"],
-  /* the auto-publish gate (owner 2026-11-28, web-public.js): official source, a closing date ahead, not one the platform has */
+  /* the auto-publish gate (owner 2026-11-28, web-public.js): official source, a closing date ahead, not one the platform has; for news also
+     a publication date inside the news window (buyers: «مش صفحة رسمية» = not the company's own site or a public body's page) */
   unofficial: ["مصدرها مش صفحة رسمية", "Its source is not an official page"], no_deadline: ["مفيش آخر ميعاد مكتوب فيها", "No closing date in it"],
-  closed: ["ميعادها خلص أو اتلغت", "Closed or cancelled"], duplicate: ["موجودة على المنصة بالفعل", "Already on the platform"] });
+  closed: ["ميعادها خلص أو اتلغت", "Closed or cancelled"], duplicate: ["موجودة على المنصة بالفعل", "Already on the platform"],
+  no_date: ["مفيش تاريخ نشر للخبر", "The news item has no publication date"], old: ["الخبر أقدم من شهر", "The news item is older than a month"] });
 /* rejected_in: the links one rejectedOf() read covers — a hunt has ≤ 60 candidates; D1 binds ≤ 100 values a statement (90 + 4 + 1) */
 export const LEADS_LIMITS = Object.freeze({ per_answer: 12, rejected_in: 90, note: 300 });
 const RANK = t => `CASE ${t} WHEN 'tender' THEN 6 WHEN 'rfq' THEN 5 WHEN 'project' THEN 4 WHEN 'buyer' THEN 3 WHEN 'buyer_list' THEN 2 WHEN 'news' THEN 1 ELSE 0 END`;

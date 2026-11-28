@@ -67,7 +67,7 @@ The prompts were built from the previous copies here (their `updatedAt` had not 
 - **What changed in the prompts.** (1) The old platform definition («عمرها ٨ سنين، أول منصة وطنية…» / "8 years old…", and «تشغّلها الجمعية…» in
   «إزاي تقنعي» / HOW TO PERSUADE / Bassem's «# حقائق») is replaced by the owner's approved identity sentence (2026-11-27), the owner / operator lines of
   2026-11-19 word for word (Arabic; English as in the site's footer), the office address, the phone 02 38346757 and the working hours (Sunday to
-  Thursday, 8 to 4). Janna EN says the English translation the site uses (pending the owner's look) and the Arabic sentence. (2) Janna: titles only
+  Thursday, 8 to 4). Janna EN says the English translation the site uses (approved by the owner on 2026-11-28) and the Arabic sentence. (2) Janna: titles only
   for a visitor (title, sector, place, closing date); `members_only` / `locked` results: the details are for members, the plan of `need`, the
   registration offered with `janna_navigate`, never `register_url` read aloud. Bassem: members get the full details; `members_only` = a market
   outside his plan; the daily 10:00 report with its PDF when he asks. (3) Never «مفيش» / «مش لاقية» / "not found": when the platform returns nothing,

@@ -226,14 +226,16 @@ describe("the hunt: running it (parallel, deadline, cap units, cache)", () => {
     assert.ok(!("origin" in d), "no «origin: web» mark");
     assert.deepEqual(sentQ().sort(), planOf(ATLAL).map(q => q.q).sort());
     /* one of each type first (round robin), then the next best: 2 tenders, the buy lead, a buyer, a list of buyers, the new paper mill —
-       the persona gets each one's type, the platform's short title (no site name: «… - Kompass» cut) and the place, never its link */
+       the persona gets each one's type, the platform's short title (no site name: «… - Kompass» cut) and the place, never its link; a
+       visitor's buyer / buyer list without its name (members-only, owner 2026-11-28: who the buyer is, is the detail) */
     assert.deepEqual(d.results.map(x => [x.type, x.title]), [["tender", "منافسة توريد سلندرات للمطابع"], ["tender", "Supply of rubber rollers for printing machines - closing date 2026-12-10"],
-      ["rfq", "Buy rubber rollers - buying request"], ["buyer", "Qena Paper Industry Company"], ["buyer_list", "Paper manufacturers in Egypt"], ["project", "افتتاح مصنع ورق جديد بتكلفة 2 مليار"]]);
+      ["rfq", "Buy rubber rollers - buying request"], ["buyer", "شركة ممكن تبقى عميل — سلندرات درافيل"], ["buyer_list", "قايمة مصانع ممكن تبقى عملاء — سلندرات درافيل"], ["project", "افتتاح مصنع ورق جديد بتكلفة 2 مليار"]]);
+    assert.ok(!/Qena|Paper manufacturers/.test(JSON.stringify(d.results)), "a visitor never gets the buyer's name");
     assert.ok(d.results.every(x => x.market === "الجيزة" && !("url" in x) && !("source" in x) && !("snippet" in x) && !("aggregator" in x)), JSON.stringify(d.results));
     assert.deepEqual(d.counts, { tender: 2, rfq: 1, buyer: 1, buyer_list: 1, project: 1 });
     /* members-only (owner 2026-11-28): Janna's call without a member's sign-in is a visitor's — a tender / RFQ / project as its teaser (no
        entity, no official mark) + the hint to invite the registration */
-    assert.ok(d.results.filter(x => ["tender", "rfq", "project"].includes(x.type)).every(x => !("official" in x) && !("entity" in x)), JSON.stringify(d.results));
+    assert.ok(d.results.every(x => !("official" in x) && !("entity" in x)), JSON.stringify(d.results));
     assert.deepEqual([d.members_only, d.register_url], [true, "https://madeinegyptgate.com/register/#basic"]); assert.match(d.hint, /details are for subscribed members/);
     /* the auto-publish gate: the two official tenders with a closing date ahead are added to «فرص السوق»; the RFQ of a marketplace and the
        project of a newspaper are not (no official source page) */
@@ -432,6 +434,50 @@ describe("the hunt and Janna's search: endpoints, voices, switches", () => {
     assert.deepEqual(r.data.results.map(x => x.title), ["Rubber roller importers Kenya", "Tender for rubber rollers — closing date 2026-12-01"]);
     assert.equal(pcalls()[0].body.query, "rubber rollers importers Kenya");
     assert.equal(await rl(env, capKeyJanna(Date.now())), 1, "her share counts her searches too");
+  });
+});
+
+/* the auto-publish gate for buyers and news (owner 2026-11-28: «النشر التلقائي للمشترين والأخبار بشرط المصدر الرسمي: اه»): what the hunt finds
+   is added to «فرص السوق» only from an official source — the provider is mocked, nothing leaves the test */
+const daysAgo = n => new Date(Date.now() - n * 864e5).toISOString();
+const GATE_WEB = q => {
+  if (/^مصانع ورق/.test(q)) return [R("Qena Paper Industry Company", "https://www.qenapaper.com/", "Qena Paper: paper mill in Upper Egypt"),
+    R("Delta Paper Mill - Company Profile - Kompass", "https://eg.kompass.com/c/delta-paper-mill/eg0001/", "paper mill in Egypt"),
+    R("Nile Paper Company", "https://www.nile-paper.example-eg.com/", "Nile Paper paper mill, sales office 01012345678")];
+  if (/^مصنع ورق جديد/.test(q)) return [{ ...R("ارتفاع الطلب على السلندرات والدرافيل في مصانع الورق المصرية", "https://www.mena.org.eg/news/55", "السلندرات والدرافيل في مصانع الورق"), published_date: daysAgo(3) },
+    { ...R("طلب متزايد على الدرافيل والسلندرات لمصانع الكرتون", "https://www.zawya.com/ar/news/66", "الدرافيل والسلندرات لمصانع الكرتون"), published_date: daysAgo(2) }];
+  return [];
+};
+describe("the auto-publish gate for buyers and news (owner 2026-11-28)", () => {
+  test("an official buyer and official news are added; a directory buyer, a buyer with a contact and an aggregator's news are not; the desk says why", async () => {
+    const env = hEnv(); reply.by = GATE_WEB;
+    const r = await bHunt(env, { ...ATLAL, intents: "buyers,projects" });
+    assert.equal(r.status, 200, r.text);
+    const by = Object.fromEntries(r.data.results.map(x => [x.title, x]));
+    assert.equal(!!(by["Qena Paper Industry Company"] || {}).on_platform, true, "an official buyer (the company's own site): published — " + JSON.stringify(r.data.results));
+    assert.ok(r.data.results.some(x => x.type === "buyer" && /^Delta Paper Mill/.test(x.title) && !x.on_platform), "a directory's buyer: not published — " + JSON.stringify(r.data.results));
+    const news = r.data.results.filter(x => x.type === "news");
+    assert.deepEqual(news.map(x => !!x.on_platform), [true, false], "the official agency's news yes, the aggregator's no — " + JSON.stringify(news));
+    /* the desk's view: published / public_why per lead */
+    const { listLeads } = await import("../src/web-leads.js");
+    const desk = Object.fromEntries((await listLeads(env, new URL(SITE + "/api/team/desk/leads?status=all"))).items.map(x => [x.site, [x.type, x.published, x.public_why]]));
+    assert.deepEqual(desk["qenapaper.com"], ["buyer", true, ""]);
+    assert.deepEqual(desk["eg.kompass.com"], ["buyer", false, "unofficial"]);
+    assert.deepEqual(desk["mena.org.eg"], ["news", true, ""]);
+    assert.deepEqual(desk["zawya.com"], ["news", false, "unofficial"]);
+    assert.deepEqual(desk["nile-paper.example-eg.com"], ["buyer", false, "personal"], "a contact in the text: never published");
+    assert.ok(!r.data.results.some(x => x.on_platform && /Nile Paper/.test(x.title)), "a buyer with a contact: never on the platform");
+    /* the public page: the two published, a visitor's teaser (the buyer without its name, nothing of the source) */
+    const ctx = mkCtx(), res = await worker.fetch(new Request(SITE + "/api/janna/opportunities", { headers: { "CF-Connecting-IP": "10.9.9.9" } }), env, ctx); await ctx.done();
+    const page = await res.json();
+    assert.deepEqual(page.items.map(x => x.type).sort(), ["buyer", "news"]);
+    assert.ok(!/qenapaper|Qena|kompass|Delta|zawya|mena|Nile|https?:/i.test(JSON.stringify(page)), JSON.stringify(page));
+    assert.equal(page.items.find(x => x.type === "buyer").title, undefined);
+    /* Janna's call of a visitor: every kind as its teaser — the buyer without its name, no entity / official mark */
+    const j = await jHunt(env, { ...ATLAL, intents: "buyers,projects" });
+    assert.equal(j.data.members_only, true);
+    assert.ok(!/Qena|Delta|Nile/.test(JSON.stringify(j.data.results)), JSON.stringify(j.data.results));
+    assert.ok(j.data.results.every(x => x.title && !("entity" in x) && !("official" in x)));
   });
 });
 

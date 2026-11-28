@@ -3,11 +3,14 @@ import json as _json
 SITE = 'https://madeinegyptgate.com/'
 OG_IMG = SITE + 'img/og-cover.jpg'
 # The platform's identity (owner 2026-11-27, docs/IDENTITY-APPROVED.md): the approved identity sentence, the official address, phone and
-# working hours — word for word in Arabic; the English is a faithful translation pending the owner's look. The owner / operator lines
+# working hours — word for word in Arabic; the English is a faithful translation, approved by the owner on 2026-11-28. The owner / operator lines
 # (CLAUDE.md 2.7) are not here and stay exactly where they are. Used by the JSON-LD below (home, /en/, about, contact: seo_build.part.py
 # org_nodes), the about and contact pages, the footer and /llms.txt.
 IDENTITY_AR = 'منصة صنع في مصر هي منظومة رقمية متكاملة للصناعة والتوريدات والمشتريات والتصدير، تعمل تحت مظلة الجمعية المصرية للتنمية الصناعية، أُطلقت في عام 2020، وتُعد المنصة الأولى التي تساعد المصانع المصرية في التوسع محلياً وخليجياً وعالمياً، ووصول المنتجات المصرية إلى حصة سوقية متطورة.'
 IDENTITY_EN = 'Made in Egypt Gate is an integrated digital ecosystem for industry, supply, procurement and export, operating under the umbrella of the Egypt Industrial Development Association. Launched in 2020, it is the first platform that helps Egyptian factories expand locally, across the Gulf and worldwide, and helps Egyptian products reach a growing, more advanced market share.'
+# the identity sentence where an app page shows it as a text node (the home hero, the about page's platform card, the meta descriptions of
+# home / about): its approved English (owner 2026-11-28) for the English mode (the comma after the year: site.py, after the footer pairs)
+if 'en_add' in globals(): en_add([(IDENTITY_AR, IDENTITY_EN), ('من نحن: ' + IDENTITY_AR, 'About us: ' + IDENTITY_EN)])
 ADDRESS_AR = 'عمارة 56 (الدور الثالث)، وجه الثقافة والعلوم، الحي 11، السادس من أكتوبر، الجيزة'
 ADDRESS_EN = 'Building 56 (third floor), Culture and Science Area, 11th District, 6th of October City, Giza, Egypt'
 HOURS_AR = 'من الأحد للخميس، من 8 صباحاً حتى 4 عصراً؛ الجمعة والسبت إجازة.'
@@ -42,8 +45,8 @@ WEBSITE = {"@type": "WebSite", "@id": SITE + "#web", "url": SITE, "name": "من�
 BASE_KW = 'صنع في مصر, منصة صناعية, المصانع المصرية, المنتجات المصرية, B2B مصر'
 # key: (description, keywords, schema type, breadcrumb parent [(name, url)], change frequency, priority)
 SEO = {
- 'home': ('منصة صنع في مصر: المنصة الوطنية الموحدة B2B لربط المصانع والموردين المصريين بالمشترين المحليين والدوليين. سوق إلكتروني للمنتجات المصرية، ومناقصات وطلبات أسعار، ومشاريع وفرص في محافظات مصر الـ27 وخمسة أسواق تصدير.', 'مناقصات مصر, طلبات عروض أسعار, سوق المنتجات المصرية, دليل المصانع المصرية, المنتج المصري, تصدير', 'WebPage', [], 'daily', '1.0'),
- 'about': ('من نحن: منصة صنع في مصر، المنصة الوطنية الموحدة B2B المملوكة للجمعية المصرية للتنمية الصناعية وتشغّلها الحسيني جروب وشركاءه لربط المصانع والموردين بالمشترين المحليين والدوليين ودعم التحول الرقمي للقطاع الصناعي.', 'عن المنصة, الجمعية المصرية للتنمية الصناعية, رؤية ورسالة, المنصة الوطنية الموحدة B2B', 'AboutPage', [], 'monthly', '0.7'),
+ 'home': (IDENTITY_AR, 'مناقصات مصر, طلبات عروض أسعار, سوق المنتجات المصرية, دليل المصانع المصرية, المنتج المصري, تصدير', 'WebPage', [], 'daily', '1.0'),
+ 'about': ('من نحن: ' + IDENTITY_AR, 'عن المنصة, الجمعية المصرية للتنمية الصناعية, رؤية ورسالة', 'AboutPage', [], 'monthly', '0.7'),
  'market': ('السوق الإلكتروني للمنتجات المصرية: اشترِ بالجملة من مصانع وموردين ومنافذ بيع في محافظات مصر، أو اطلب عرض سعر لكميتك، مع التصدير إلى خمسة أسواق.', 'سوق إلكتروني, منتجات مصرية, المنتج المصري, جملة, موردين, منافذ بيع', 'CollectionPage', [], 'daily', '0.9'),
  'offers': ('آخر عروض منافذ البيع في مدن مصر، مع إبراز المنتجات المصنوعة في مصر: السعر بالجنيه، والمتجر، والفرع، والمدينة، ومدة العرض، ورابط المصدر.', 'عروض مصر, تخفيضات, هايبر ماركت, سلاسل التجزئة, منتجات مصرية', 'CollectionPage', [('السوق', 'market.html')], 'daily', '0.8'),
  'offer': ('تفاصيل العرض: السعر قبل وبعد الخصم بالجنيه المصري، والمتجر والفرع، والمدن التي يتوفر فيها، ومدة العرض ورابط النشرة الرسمية.', 'عرض, سعر, فرع, منتج مصري', 'WebPage', [('آخر العروض', 'offers.html')], 'daily', '0.5'),

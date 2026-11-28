@@ -19,9 +19,8 @@ Default language: Arabic (Play: `ar`; App Store: Arabic, with English (U.S.) add
 
 ## Where every statement comes from (only what the site already says)
 
-- "the unified national B2B platform … connects factories and suppliers across Egypt's 27 governorates with local and international
-  buyers … digital transformation … trusted, transparent environment": the footer of every page (`seo_build.part.py` `site_footer`)
-  and the legal center (`legal.part.py`, status).
+- The opening paragraph of the descriptions: the owner's approved identity sentence, word for word (Arabic 2026-11-27, English
+  2026-11-28: `seo.part.py` `IDENTITY_AR` / `IDENTITY_EN`, `docs/IDENTITY-APPROVED.md`), as on the about page and in every page's footer.
 - Marketplace, wholesale, request a quote, five export markets: `seo.part.py` (`home`, `market`).
 - Factory directory by sector / governorate / product with a profile and a quote request: `seo.part.py` (`factories`, `factory`).
 - Tenders and RFQs with the issuing body, governorate, sector, dates and the official announcement link: `seo.part.py` (`opportunity`).
