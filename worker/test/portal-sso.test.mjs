@@ -75,7 +75,10 @@ test("tokens: signature, site, lifetime", async () => {
   assert.equal(await verifyPortalToken(env, await tok({ iat: now - 200, exp: now - 10 })), null);
   assert.equal(await verifyPortalToken(env, await tok({ exp: now + 3600 })), null);
   assert.equal(await verifyPortalToken(env, await tok({ jti: "x" })), null);
-  const t = await tok({}); assert.equal(await verifyPortalToken(env, t.slice(0, -2) + (t.endsWith("A") ? "BB" : "AA")), null);
+  // Flip a character well inside the signature: the last base64url character of a 64-byte signature carries padding
+  // bits a decoder may ignore, so changing only the tail made this assertion fail now and then.
+  const t = await tok({}), at = t.length - 10, ch = t[at] === "A" ? "B" : "A";
+  assert.equal(await verifyPortalToken(env, t.slice(0, at) + ch + t.slice(at + 1)), null);
 });
 
 test("staff: one-click session limited to its sections; replay refused; KV gone → no access", async () => {
