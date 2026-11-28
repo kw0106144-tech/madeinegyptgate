@@ -549,7 +549,7 @@ only, the clear answers `503 member_web_off`. Tests: `test/member-web.test.mjs`.
 ## «فرص مناسبة لمصنعك» — proactive opportunity matching — src/matching-opps.js (owner 2026-11-26; migration 0016)
 
 Every new opportunity is matched to each Bassem member's company profile automatically, with a 0-100 score, so the member finds it ready.
-Switch «🛠️ المطوّر» → `opp_matching` (**OFF by default**, locked until `0016_opp_matches.sql` is applied).
+Switch «🛠️ المطوّر» → `opp_matching` (**ON by default** since 2026-11-28 at the owner's request; locked until `0016_opp_matches.sql` is applied, which it is).
 
 - **Sources** (never an invented item): the Information Center through the `INTEL` binding (`GET /api/intel/feed?sort=seen&since=…&since_id=…`,
   tenders / RFQs / projects, never news), the platform's own tenders / RFQs of `data.json` new in `seen_items` (never the baseline), and the
