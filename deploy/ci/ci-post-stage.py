@@ -329,6 +329,18 @@ def patch_bundles(site, live, samples, timeout, strict, max_files, staged_files,
             if st == 403 and ("cf-mitigated" in hd or "challenge" in hd.get("cf-mitigated", "")):
                 reason = "403 Cloudflare challenge"
             info["pages_failed"].append("%s (%s)" % (p, reason))
+    # the intel Worker's baked fallback shell (worker-intel/src/shell.js, used only when it cannot read the live shell) names the
+    # bundles of the build it was made from: keep those too, so the fallback never points at a file this deploy dropped.
+    # Best effort: a name the live site no longer has is a warning, never a stop.
+    shell_only = set()
+    try:
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                               "worker-intel", "src", "shell.js"), encoding="utf-8") as fh:
+            shell_only = set(BUNDLE_RX.findall(fh.read().replace('\\"', '"'))) - names
+    except OSError:
+        pass
+    names |= shell_only
+    info["intel_fallback"] = sorted(shell_only)
     names = sorted(n for n in names if BUNDLE_NAME_RX.match(n))
     info["referenced"] = names
     if not info["pages_read"]:
@@ -368,7 +380,7 @@ def patch_bundles(site, live, samples, timeout, strict, max_files, staged_files,
             if tmp and os.path.exists(tmp):
                 os.unlink(tmp)
             info["failed"].append("%s (%s)" % (n, why))
-            problem("live bundle /assets/%s NOT kept: %s" % (n, why))
+            (rep.warn if n in shell_only else problem)("live bundle /assets/%s NOT kept: %s" % (n, why))
             continue
         os.chmod(tmp, 0o644)
         os.replace(tmp, os.path.join(adir, n))
