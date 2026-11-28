@@ -2,28 +2,28 @@
 "_about": "Persisted lastmod per path (seo_build.part.py): the date is kept while the content hash is unchanged; \"en\": an English twin was published; \"gone\": first build without the page (kept 400 days for redirects).",
 "pages": {
 "/": {
-"hash": "bb27cf10dd34",
-"lastmod": "2026-11-20"
+"hash": "fee86ec9c557",
+"lastmod": "2026-11-28"
 },
 "/about/": {
-"hash": "7ee0c2004dd3",
-"lastmod": "2026-11-20"
+"hash": "9a6498bd0d49",
+"lastmod": "2026-11-28"
 },
 "/admin/": {
 "hash": "53d604a9ad91",
 "lastmod": "2026-11-18"
 },
 "/advisor/": {
-"hash": "ea7878891c08",
-"lastmod": "2026-11-20"
+"hash": "f019f6e888cd",
+"lastmod": "2026-11-28"
 },
 "/agencies/": {
-"hash": "b7add147a6c5",
-"lastmod": "2026-11-20"
+"hash": "424ccebd5e37",
+"lastmod": "2026-11-28"
 },
 "/app/": {
-"hash": "bd6d293171bb",
-"lastmod": "2026-11-20",
+"hash": "6cd5dbebea1e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/awards/": {
@@ -127,8 +127,8 @@
 "en": 1
 },
 "/awards/search/": {
-"hash": "e00ec4738526",
-"lastmod": "2026-11-20"
+"hash": "82d38b357371",
+"lastmod": "2026-11-28"
 },
 "/awards/uaes-modon-awards-316mln-contract-for-project-in-egypts-ras-el-hekma-r/": {
 "hash": "a5dfb99edab7",
@@ -136,44 +136,48 @@
 "en": 1
 },
 "/bourse/": {
-"hash": "ea7878891c08",
-"lastmod": "2026-11-20"
+"hash": "f019f6e888cd",
+"lastmod": "2026-11-28"
 },
 "/consultant-leads/": {
-"hash": "91312dc5fb6d",
-"lastmod": "2026-11-20"
+"hash": "a96f3d213f4b",
+"lastmod": "2026-11-28"
 },
 "/contact/": {
-"hash": "c105e6cd09cd",
-"lastmod": "2026-11-20"
+"hash": "3cf2893b8022",
+"lastmod": "2026-11-28"
 },
 "/contractor-leads/": {
-"hash": "3240cca98d1a",
-"lastmod": "2026-11-20"
+"hash": "9060257b492e",
+"lastmod": "2026-11-28"
 },
 "/contractors/": {
-"hash": "db0c685eafa4",
-"lastmod": "2026-11-20"
+"hash": "7a744edf57ed",
+"lastmod": "2026-11-28"
 },
 "/dashboard/": {
-"hash": "6e36f1e0edad",
-"lastmod": "2026-11-20"
+"hash": "c3a34ce3de08",
+"lastmod": "2026-11-28"
 },
 "/data-desk/": {
-"hash": "d39352852870",
-"lastmod": "2026-11-20"
+"hash": "8a92cd86bfdc",
+"lastmod": "2026-11-28"
 },
 "/deal/": {
-"hash": "ea7878891c08",
-"lastmod": "2026-11-20"
+"hash": "f019f6e888cd",
+"lastmod": "2026-11-28"
+},
+"/delete-account/": {
+"hash": "f827746d2abb",
+"lastmod": "2026-11-28"
 },
 "/en/": {
-"hash": "31c3b85342ee",
-"lastmod": "2026-11-20"
+"hash": "389294a7a148",
+"lastmod": "2026-11-28"
 },
 "/events/": {
-"hash": "2b04018df04a",
-"lastmod": "2026-11-20",
+"hash": "ade737ec77df",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/events/africa-health-excon-2027/": {
@@ -202,8 +206,8 @@
 "en": 1
 },
 "/events/calendar/": {
-"hash": "c8365d7e96c2",
-"lastmod": "2026-11-20"
+"hash": "8026929b7957",
+"lastmod": "2026-11-28"
 },
 "/events/edex-2027/": {
 "hash": "60b7dcdafd7d",
@@ -287,7 +291,8 @@
 },
 "/export/europe/": {
 "hash": "f8462adfd7b6",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/export/gulf/": {
 "hash": "098eba90cbaf",
@@ -305,8 +310,13 @@
 "en": 1
 },
 "/factories/": {
-"hash": "4ceb5fc86839",
-"lastmod": "2026-11-18",
+"hash": "d9e0af31fce0",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/2m-electric/": {
+"hash": "2ea3a5d99fab",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/3m-chemicals-group/": {
@@ -322,20 +332,59 @@
 "hash": "4761548cb887",
 "lastmod": "2026-11-18"
 },
+"/factories/abco-united-for-plastic-packaging/": {
+"hash": "579016aa0a4d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/aber-egypt-for-marble-and-granite/": {
+"hash": "bb2329d43604",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/abou-el-kheir/": {
+"hash": "10470f7f0f0c",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/abu-qir-fertilizers-and-chemical-industries/": {
 "hash": "4463e06b3746",
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/abu-zaabal-fertilizers-and-chemicals-company/": {
+"hash": "ae21dc831a2b",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/ado-group-egypt/": {
+"hash": "deda78166af0",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/advanced-chemical-industries/": {
+"hash": "d88c4deda939",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/adwia-pharmaceuticals/": {
+"hash": "06bdd43fa778",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/agriculture/": {
-"hash": "236a71f92571",
-"lastmod": "2026-11-18",
+"hash": "8b3a7a90d3bb",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/agriculture/alexandria/": {
 "hash": "d4c125a789e9",
 "lastmod": "2026-11-18",
 "en": 1
+},
+"/factories/agriculture/beheira/": {
+"hash": "12fb0e24ff44",
+"lastmod": "2026-11-28"
 },
 "/factories/agriculture/beni-suef/": {
 "hash": "468a37cd95eb",
@@ -361,13 +410,68 @@
 "lastmod": "2026-11-18"
 },
 "/factories/agriculture/page/2/": {
-"hash": "651ad60aa9eb",
-"lastmod": "2026-11-18",
+"hash": "299dab03a7e0",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/agro-green-for-agricultural-crops-export/": {
+"hash": "d613a93b71c5",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/agro-nile-food/": {
+"hash": "a94369cea32b",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/agrocorp-for-agricultural-investment/": {
+"hash": "96b2abe48b1f",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/air-liquide-egypt-sokhna-plant/": {
+"hash": "66da6f3fbbdc",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/akai-ready-made-garments-factory/": {
+"hash": "d858a58044f2",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-ahmady-chocolate-company/": {
+"hash": "ff1d3fa2d578",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/al-ahram-beverages-company/": {
 "hash": "092c2391629f",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/al-ahram-plastic-manufacturing/": {
+"hash": "57e5ab0e8b96",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-amer-for-electrical-industries/": {
+"hash": "1a8298ee515b",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-amin-for-gelatin/": {
+"hash": "ff8fba486e92",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-andalus-for-urine-bag-manufacturing/": {
+"hash": "64feb671773e",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-anwar-food-products/": {
+"hash": "259e16b3d30f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/al-ezz-ceramics-porcelain-gemma/": {
@@ -380,13 +484,158 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/al-fanar-detergents-company-for-construction-chemicals/": {
+"hash": "78cad29226be",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-faston-for-calcium-carbonate-grinding-and-packing/": {
+"hash": "18230ed2a9ca",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-gioshy-steel/": {
+"hash": "cf88078d37a6",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-magd-for-flax-manufacturing-and-spinning/": {
+"hash": "eff05e5e5602",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-mansour-automotive-filters-plant/": {
+"hash": "c367b5789ddb",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-masa-for-paper-recycling-and-manufacturing/": {
+"hash": "ea7cfb05e7de",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-masa-plastic-factory/": {
+"hash": "42fc40eacb4e",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-nahda-cement-company/": {
+"hash": "dcc55ad006c2",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-nasr-for-carton-industry/": {
+"hash": "c0c06e97b814",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-negma-for-poly-fiber-foam/": {
+"hash": "1eb079a903fe",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-nouran-international/": {
+"hash": "73c17439edd6",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-olaa-plastic-industries/": {
+"hash": "77c6208438c5",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-radwan-international-engineering-industries/": {
+"hash": "6b6880902ff5",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-rehab-for-aluminium-household-utensils/": {
+"hash": "c06bff13637d",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/al-rowad-constructions-pool-services/": {
 "hash": "334ce0ef33c6",
 "lastmod": "2026-11-18"
 },
+"/factories/al-safy-group/": {
+"hash": "33d70beddb31",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-salah-food-industries/": {
+"hash": "b2e3163d0755",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-tarakom-for-detergents-and-disinfectants/": {
+"hash": "b30d5389ae8a",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-tayebeen-for-olive-pickling/": {
+"hash": "27bfaf6d9370",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-wadi-cables/": {
+"hash": "06e35e2103aa",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-watania-poultry-egypt/": {
+"hash": "71435183187d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-wataniya-for-cookware-and-metal-forming/": {
+"hash": "8512a7a3f2dc",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-wataniya-for-metal-and-household-industries/": {
+"hash": "94e2b1af5485",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/al-yusr-for-biscuits-and-cake-manufacturing/": {
+"hash": "cf372666f1a0",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/alex-snacks/": {
+"hash": "d2a9e0f2740d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/alex-star-for-cleaning-tools-developed-industries/": {
+"hash": "2a7779314a24",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/alexandria-co-for-chemical-industries-arex/": {
+"hash": "c7ea6e962bfa",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/alexandria-company-for-pharmaceuticals-and-chemical-industries/": {
+"hash": "c3a2ce2d2cc6",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/alexandria-detergents-and-chemicals-company-adco/": {
+"hash": "5f7fd80d75db",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/alexandria-fertilizers-alexfert/": {
 "hash": "1d0cd0b956c0",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/alexandria-for-foam-furniture-company-acorayam/": {
+"hash": "984a7496d6a5",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/alexandria-portland-cement-co-titan-cement-egypt/": {
@@ -394,9 +643,39 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/alexandria-spinning-weaving-co-spinalex/": {
+"hash": "9454771a5dd9",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/alfa-elctronics-ألفا-للالكترونيات/": {
 "hash": "4c30a3db6add",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/alimex-group/": {
+"hash": "95311c3d3f7f",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/alpha-electric-for-contracting-and-trading/": {
+"hash": "867aace91fee",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/alsara-textile-group/": {
+"hash": "73b81a780b29",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/amiriyha-for-printing-and-paper-company/": {
+"hash": "5c52b5d463e7",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/amity-armored-doors/": {
+"hash": "838a31ed73e4",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/amoun-pharmaceutical/": {
@@ -404,9 +683,44 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/amreyah-pharmaceutical-industries/": {
+"hash": "447a26547faa",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/anab-for-calcium-carbonate-and-omyalene-manufacturing/": {
+"hash": "109136bde0af",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/andalus-for-cosmetics-disinfectants-and-detergents/": {
+"hash": "ee807ffb0d4f",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/aqtan-misr-for-textiles-and-dyeing/": {
+"hash": "5390c937981b",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/arab-american-vehicles-aav/": {
 "hash": "3360c430c59e",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/arab-ceramic-products-company-kebco/": {
+"hash": "62ad187acf0e",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/arab-company-for-textiles-and-novelty/": {
+"hash": "4504a8a10b72",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/arab-special-steel-company-el-ashry-steel-group/": {
+"hash": "5b82c794657d",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/arabian-cement-company/": {
@@ -419,6 +733,16 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/arabian-milling-food-industries/": {
+"hash": "9ce0f41ebc19",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/aria-technologies/": {
+"hash": "50555eab8757",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/arma-food-industries/": {
 "hash": "ab8f6d4f08ea",
 "lastmod": "2026-11-18",
@@ -429,19 +753,34 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/ascom-carbonate-and-chemicals-manufacturing-accm/": {
+"hash": "ae8fd8dabdb6",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/asec-company-for-mining-ascom/": {
+"hash": "f67b8b8165fc",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/assiut-cement-company-cemex-egypt/": {
 "hash": "4c755ed657e4",
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/astron-for-manufacturing-and-engineering/": {
+"hash": "a46e002816a8",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/automotive/": {
-"hash": "943fd74a5e23",
-"lastmod": "2026-11-18",
+"hash": "34ddf72e6d37",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/automotive/alexandria/": {
-"hash": "019f08c5a940",
-"lastmod": "2026-11-18"
+"hash": "dac9081dd2ae",
+"lastmod": "2026-11-28"
 },
 "/factories/automotive/asyut/": {
 "hash": "efeac39cd0cc",
@@ -452,8 +791,8 @@
 "lastmod": "2026-11-18"
 },
 "/factories/automotive/cairo/": {
-"hash": "e31ca7ca1cfe",
-"lastmod": "2026-11-18",
+"hash": "88bcf11742fc",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/automotive/giza/": {
@@ -466,13 +805,13 @@
 "lastmod": "2026-11-18"
 },
 "/factories/automotive/page/2/": {
-"hash": "99659192ce5d",
-"lastmod": "2026-11-18",
+"hash": "3555cbe5b740",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/automotive/port-said/": {
-"hash": "bf54e0f5014c",
-"lastmod": "2026-11-18"
+"hash": "b9a9cd3864e1",
+"lastmod": "2026-11-28"
 },
 "/factories/automotive/qalyubia/": {
 "hash": "62b8143ab129",
@@ -480,13 +819,18 @@
 "en": 1
 },
 "/factories/automotive/sharqia/": {
-"hash": "743f5ece85bc",
-"lastmod": "2026-11-18",
+"hash": "df892b5e489f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/automotive/suez/": {
 "hash": "a76e4867812b",
 "lastmod": "2026-11-18"
+},
+"/factories/avional-for-food-industries/": {
+"hash": "2f4749799741",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/awa-food-additives-egypt/": {
 "hash": "1a18d4f82242",
@@ -503,9 +847,29 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/beixin-taishan-egypt/": {
+"hash": "61f4991a5a36",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/beko-egypt/": {
+"hash": "78117b28b12c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/bel-egypt-bel-group/": {
+"hash": "02e03e4453b2",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/beshay-steel/": {
 "hash": "5c9af0a3909a",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/beta-pharma-for-pharmaceutical-chemical-industries/": {
+"hash": "4773176e64b6",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/beyti/": {
@@ -513,9 +877,24 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/biogeneric-pharma-s-a-e/": {
+"hash": "a819ec0717ed",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/birla-carbon-egypt-alexandria-carbon-black/": {
+"hash": "e77463c47981",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/bisco-misr/": {
 "hash": "a43521978a9d",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/bm-for-industry-and-investment/": {
+"hash": "a8afcff36654",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/boom-plus-for-manufacturing-and-commerce/": {
@@ -523,14 +902,59 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/borex-glass-co/": {
+"hash": "dea0c299b9b4",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/borg-al-arab-for-industry/": {
+"hash": "87019d000061",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/borg-el-arab-co-for-paper-leather-products/": {
+"hash": "5ff691c1b13c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/borg-el-arab-for-glass/": {
+"hash": "46cab8d1125c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/borg-el-arab-for-steel-fabrication-bsf/": {
+"hash": "0b6036b5efb2",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/borg-el-arab-group-for-manufacturing-printing-supplies/": {
+"hash": "edf8a21e9af8",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/borg-pharmaceutical-industries/": {
+"hash": "d25304a4fa33",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/brand-pharma-semak-pharmaceutical-group/": {
+"hash": "513174e927be",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/bsh-home-appliances-bosch-10th-of-ramadan-plant/": {
+"hash": "f9d40bebaf18",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/building-materials/": {
-"hash": "dab49a3c906c",
-"lastmod": "2026-11-18",
+"hash": "1ba0e2e57d1e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/building-materials/alexandria/": {
-"hash": "4634d1cfb68e",
-"lastmod": "2026-11-18",
+"hash": "cf1e14d39188",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/building-materials/asyut/": {
@@ -538,17 +962,22 @@
 "lastmod": "2026-11-18"
 },
 "/factories/building-materials/beni-suef/": {
-"hash": "56c56ea35f61",
-"lastmod": "2026-11-18"
+"hash": "9ac332612cda",
+"lastmod": "2026-11-28"
 },
 "/factories/building-materials/cairo/": {
-"hash": "603ee9d66df9",
-"lastmod": "2026-11-18",
+"hash": "19a4731c9b5b",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/building-materials/cairo/page/2/": {
+"hash": "94377a8278ac",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/building-materials/dakahlia/": {
-"hash": "9f858f545a44",
-"lastmod": "2026-11-18"
+"hash": "1cb8a5871042",
+"lastmod": "2026-11-28"
 },
 "/factories/building-materials/damietta/": {
 "hash": "47558e326412",
@@ -564,43 +993,49 @@
 "en": 1
 },
 "/factories/building-materials/minya/": {
-"hash": "cb8f7a1baa75",
-"lastmod": "2026-11-18"
+"hash": "52be75949384",
+"lastmod": "2026-11-28"
 },
 "/factories/building-materials/monufia/": {
-"hash": "bd233096c917",
-"lastmod": "2026-11-18"
+"hash": "a6c3c6346f33",
+"lastmod": "2026-11-28"
 },
 "/factories/building-materials/north-sinai/": {
-"hash": "c2801f1a058f",
-"lastmod": "2026-11-18"
+"hash": "11651cabdaa6",
+"lastmod": "2026-11-28"
 },
 "/factories/building-materials/page/2/": {
-"hash": "42b4b66aa8dd",
-"lastmod": "2026-11-18",
+"hash": "4309ee15fd70",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/building-materials/page/3/": {
-"hash": "e9c541818e2b",
-"lastmod": "2026-11-18",
+"hash": "018148c64f66",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/building-materials/qalyubia/": {
-"hash": "1b3603d88c80",
-"lastmod": "2026-11-18"
+"hash": "a81a9dbacd46",
+"lastmod": "2026-11-28"
 },
 "/factories/building-materials/qena/": {
-"hash": "16246fe195ae",
-"lastmod": "2026-11-18"
+"hash": "808cd880df4c",
+"lastmod": "2026-11-28"
 },
 "/factories/building-materials/sharqia/": {
-"hash": "b531f4c4071c",
-"lastmod": "2026-11-18",
+"hash": "31525034e100",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/building-materials/suez/": {
-"hash": "ec1849c40940",
-"lastmod": "2026-11-18"
+"hash": "0e9fe0e821bc",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/cairo-food-industries-heinz/": {
+"hash": "370daf2b0b05",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/cairo-poultry-processing-co-koki/": {
 "hash": "c18aa212cbf1",
@@ -617,6 +1052,26 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/canon-global-industries-mb-vb-group/": {
+"hash": "ff8375ea757b",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/carden-food-industries/": {
+"hash": "d4d3fd376eda",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/carta-misr-for-paper-industry/": {
+"hash": "e199a3a979ea",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/cboard-beam-group/": {
+"hash": "c3fa95451858",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/cequens/": {
 "hash": "9510a166e585",
 "lastmod": "2026-11-18"
@@ -627,13 +1082,13 @@
 "en": 1
 },
 "/factories/chemicals/": {
-"hash": "1f655e1480e9",
-"lastmod": "2026-11-18",
+"hash": "2fe11d10a490",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/chemicals/alexandria/": {
-"hash": "df7569deca60",
-"lastmod": "2026-11-18",
+"hash": "35e6e7adfc40",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/chemicals/aswan/": {
@@ -660,8 +1115,8 @@
 "en": 1
 },
 "/factories/chemicals/damietta/": {
-"hash": "7a817d621674",
-"lastmod": "2026-11-18"
+"hash": "e0111a763949",
+"lastmod": "2026-11-28"
 },
 "/factories/chemicals/faiyum/": {
 "hash": "2a269622dbc9",
@@ -682,38 +1137,47 @@
 "lastmod": "2026-11-18"
 },
 "/factories/chemicals/monufia/": {
-"hash": "7a9655c6f29a",
-"lastmod": "2026-11-18"
+"hash": "32246dccdd24",
+"lastmod": "2026-11-28"
 },
 "/factories/chemicals/page/2/": {
-"hash": "76d7b5b43785",
-"lastmod": "2026-11-18",
+"hash": "7e3a8f2d31cb",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/chemicals/page/3/": {
-"hash": "7a1192edd208",
-"lastmod": "2026-11-18",
+"hash": "9fd51713de7c",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/chemicals/page/4/": {
-"hash": "b48aafa7ea71",
-"lastmod": "2026-11-18",
+"hash": "891c5f03c697",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/chemicals/page/5/": {
-"hash": "0b733a4ebf71",
-"lastmod": "2026-11-18",
+"hash": "168c3536a752",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/chemicals/page/6/": {
-"hash": "25cfecda7342",
-"lastmod": "2026-11-18",
+"hash": "811a50c30a7d",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/chemicals/page/7/": {
-"hash": "e7151a98ce50",
-"lastmod": "2026-11-18",
+"hash": "e9ca6e2f63ba",
+"lastmod": "2026-11-28",
 "en": 1
+},
+"/factories/chemicals/page/8/": {
+"hash": "0e780a6aad7d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/chemicals/port-said/": {
+"hash": "46f1f8d2d3aa",
+"lastmod": "2026-11-28"
 },
 "/factories/chemicals/qalyubia/": {
 "hash": "5d788ef7af7d",
@@ -730,8 +1194,9 @@
 "lastmod": "2026-11-18"
 },
 "/factories/chemicals/suez/": {
-"hash": "9b58d23a2aa0",
-"lastmod": "2026-11-18"
+"hash": "d408a3caba55",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/chloride-egypt/": {
 "hash": "d15037cc14d9",
@@ -742,6 +1207,11 @@
 "hash": "2a7ad30e148a",
 "lastmod": "2026-11-18"
 },
+"/factories/city-foods/": {
+"hash": "8e8af1b36a97",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/click-its/": {
 "hash": "dacbbf0b1f2c",
 "lastmod": "2026-11-18"
@@ -749,6 +1219,21 @@
 "/factories/cnc-metal-plastics-machining/": {
 "hash": "901a5428e0da",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/coca-cola-hbc-egypt-sadat-city-plant/": {
+"hash": "fa34418ece06",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/cold-alex-food-processing/": {
+"hash": "744579ff2efd",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/colorama-coatings-anglo-egyptian-paints/": {
+"hash": "61f69cce6402",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/compuroots/": {
@@ -805,33 +1290,106 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/couptan-for-pvc-products-company/": {
+"hash": "d9dc67a358db",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/dairy-international-food-group/": {
+"hash": "0c3d21e79894",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/dakahlia-spinning-and-weaving-company-ditex/": {
+"hash": "7294d00b17b3",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/dam-cables/": {
+"hash": "aff519191e39",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/dar-el-sinaa-for-electrical-supplies-and-engineering-consultancy/": {
+"hash": "21cf902290ac",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/dawood-for-refrigeration-components/": {
+"hash": "5c5a4c71d81b",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/dbk-for-pharmaceutical-industries-dbk-pharma/": {
+"hash": "d992525da275",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/dehydro-foods/": {
+"hash": "9fb7160dd8ce",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/delight-foods/": {
+"hash": "2431e8cdb6c1",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/delta-castello-modern-paints/": {
+"hash": "1b4fab0f58bd",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/delta-pharma/": {
+"hash": "82a21e752fbe",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/delta-steel-mill-company/": {
+"hash": "891ae4ef0e5d",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/delta-sugar-company/": {
 "hash": "398a9563f725",
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/designy-doors/": {
+"hash": "b71ab3112371",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/detergents/": {
-"hash": "f6ae06ed3891",
-"lastmod": "2026-11-18",
+"hash": "c35a979c89f5",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/detergents/alexandria/": {
-"hash": "58888d621080",
-"lastmod": "2026-11-18",
+"hash": "24c32a119970",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/detergents/asyut/": {
 "hash": "451e6c95ae6c",
 "lastmod": "2026-11-18"
 },
+"/factories/detergents/beheira/": {
+"hash": "69b91776fc75",
+"lastmod": "2026-11-28"
+},
 "/factories/detergents/cairo/": {
 "hash": "f6444247b28b",
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/detergents/dakahlia/": {
+"hash": "676b7bf34815",
+"lastmod": "2026-11-28"
+},
 "/factories/detergents/faiyum/": {
-"hash": "113c2dbbb62a",
-"lastmod": "2026-11-18"
+"hash": "ee29bb8a4126",
+"lastmod": "2026-11-28"
 },
 "/factories/detergents/gharbia/": {
 "hash": "5e0c3f2c18c3",
@@ -842,35 +1400,89 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/detergents/page/2/": {
+"hash": "cd280aa1191d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/detergents/port-said/": {
+"hash": "af6a2fc83c61",
+"lastmod": "2026-11-28"
+},
 "/factories/detergents/qalyubia/": {
 "hash": "bf00b8494c01",
 "lastmod": "2026-11-18"
 },
 "/factories/detergents/sharqia/": {
-"hash": "0d9e4bada793",
-"lastmod": "2026-11-18",
+"hash": "61883a89a19c",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/detergents/suez/": {
-"hash": "7c6c3ae2b934",
-"lastmod": "2026-11-18"
+"hash": "9e5a31c032a3",
+"lastmod": "2026-11-28"
 },
 "/factories/developers-for-training-and-consultancy/": {
 "hash": "7f146fd1bbbc",
 "lastmod": "2026-11-18"
+},
+"/factories/diamond-foam-and-plastic-industries/": {
+"hash": "4b865ab5054c",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/dice-sport-casual-wear/": {
 "hash": "ee542b0a7048",
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/dina-for-agricultural-investments-dried-herbs-plant/": {
+"hash": "b97abfd74a94",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/dohler-egypt-for-natural-food-and-beverage-ingredients/": {
+"hash": "743df8e4aee4",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/dreem/": {
+"hash": "95878804663b",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/duravit-egypt-for-sanitary-ware/": {
+"hash": "cc8e138dbb30",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/e-motion-agency/": {
 "hash": "5b341ab9a0c4",
 "lastmod": "2026-11-18"
 },
+"/factories/east-delta-flour-mills/": {
+"hash": "fca1bb3e48fd",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/east-engineering-and-services-technology/": {
 "hash": "735d79eb1f2a",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/east-palm/": {
+"hash": "e0f235b550d6",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/ebm-textile/": {
+"hash": "3a8000d36c6d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/ecophac-for-pharmaceutical-and-chemical-industries/": {
+"hash": "ee0343005a30",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/edge-pro/": {
@@ -891,13 +1503,68 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/egexo-for-export-natural-loofah/": {
+"hash": "8f6921468643",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/egy-future/": {
 "hash": "7275d671bb61",
 "lastmod": "2026-11-18"
 },
+"/factories/egy-lime-for-mining-industries/": {
+"hash": "e23064db2de4",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egy-wire-aslak-misr/": {
+"hash": "b4ee90b51b69",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyphar/": {
+"hash": "cbfef74f4156",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egypt-international-for-manufacturing-and-exporting-peanuts-and-grains-misr-inte/": {
+"hash": "8df5a3574d62",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egypt-stone-for-mining-and-supplies/": {
+"hash": "4146004c4388",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/egyptian-aluminum-tubes-co-tubal-egypt/": {
 "hash": "31aed7ed1713",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/egyptian-anode-blocks-company-egypt-anode/": {
+"hash": "eb2003ea3d9a",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-basic-industries-corporation-ebic/": {
+"hash": "44339e0616eb",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-black-sands-company/": {
+"hash": "458a00693266",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-canning-company-americana/": {
+"hash": "bc743761b14d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-carbonates-mining/": {
+"hash": "7dd77f60f4eb",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/egyptian-chemical-industries-kima/": {
@@ -905,9 +1572,54 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/egyptian-company-for-cosmetics-gamasa-plant/": {
+"hash": "f4376b27b08d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-company-for-production-of-vaccines-sera-drugs-egyvac/": {
+"hash": "bbd05829b2c1",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-company-for-silicon-industries/": {
+"hash": "9f5f2790b548",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/egyptian-ethylene-derivatives-co-ethydco/": {
 "hash": "37f78b544e48",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/egyptian-european-energy-technology-company-atos/": {
+"hash": "71259d8cd1d3",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-ferroalloys-company-efaco/": {
+"hash": "83074cf758ca",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-fertilizers-company-efc/": {
+"hash": "46fb133bb965",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-financial-industrial-company-efic/": {
+"hash": "910253f04174",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-german-co-for-dyes-and-resins-clariant-egypt-egcodar/": {
+"hash": "478e6b1fe232",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-high-industries-vog-misr/": {
+"hash": "1bb85827861c",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/egyptian-international-pharmaceutical-industries-co-eipico/": {
@@ -915,9 +1627,34 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/egyptian-linen/": {
+"hash": "2b61958ef7e5",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-methanex-methanol-company-methanex-egypt/": {
+"hash": "a4afdd13eb28",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-prestressed-concrete-company-sigurt-consolis-jv/": {
+"hash": "9ff11182cd96",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/egyptian-propylene-polypropylene-company-epp/": {
+"hash": "9c464349a1c6",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/egyptian-salts-and-minerals-co-emisal/": {
 "hash": "6780f7e0fbbb",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/egyptian-starch-glucose-company/": {
+"hash": "cbcaec4e5348",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/egyptian-steel-beni-suef-plant/": {
@@ -925,14 +1662,29 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/egyptian-swedish-welding-co-aswico/": {
+"hash": "f02d0c91fc11",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/egytech-cables/": {
 "hash": "8960c41a4560",
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/el-ahram-printing-packaging-eppk/": {
+"hash": "8f382139d6ca",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/el-araby-group/": {
 "hash": "f08141ca43eb",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/el-arish-cement-company/": {
+"hash": "55a66af395ec",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/el-delta-company-for-fertilizers-and-chemical-industries/": {
@@ -945,9 +1697,29 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/el-gharabawy-international-food-industries/": {
+"hash": "9012797e685e",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/el-helal-silver-star-شركة-الهلال-والنجمة-الفضية/": {
 "hash": "6acb0a2bbb4f",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/el-iqtisadiya-for-food-industries-kamara/": {
+"hash": "4a2be27c2fbb",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/el-karnak-for-plastic-industries/": {
+"hash": "a5363d8deba1",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/el-khashab-factory-for-furniture-and-decoration/": {
+"hash": "274479dcac78",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/el-nasr-automotive-manufacturing-company/": {
@@ -965,9 +1737,29 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/el-nasr-mill-united-co-for-flour-mills-and-complementary-industries/": {
+"hash": "1eb25d008f28",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/el-nasr-mining-company/": {
 "hash": "dd16c0a86257",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/el-nasr-pharmaceutical-chemicals-company/": {
+"hash": "ca760485bbaf",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/el-nile-co-for-pharmaceuticals-chemical-industries/": {
+"hash": "12d894124d71",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/el-noor-for-chemicals-fertilizers-noor-chem/": {
+"hash": "69461730fb5e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/el-rashidi-el-mizan/": {
@@ -975,9 +1767,54 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/el-riadah-company-for-rice-milling/": {
+"hash": "36590c91b171",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/el-sabah-for-food-industries/": {
+"hash": "cc4b4c1faa15",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/el-saeed-for-concentrates-and-juices/": {
+"hash": "5cddaeeeb74d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/el-sanhoury-factory-for-chemicals-detergent/": {
+"hash": "3b76c074831c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/el-sewedy-for-food-industries/": {
+"hash": "48121fbe024d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/el-sharq-for-ceramics-and-porcelain-gloria-ceramics/": {
+"hash": "7dfe02e145fb",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/el-tahan-golden-dates/": {
+"hash": "3d7781deba0d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/el-tayeby-for-fiberglass-tay-plast/": {
+"hash": "71ae79a415e3",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/el-zenouki-group/": {
 "hash": "0975fe733a60",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/elc-television-sets-factory/": {
+"hash": "60bc8da3e0cf",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/elcosteel/": {
@@ -985,8 +1822,8 @@
 "lastmod": "2026-11-18"
 },
 "/factories/electrical/": {
-"hash": "f2857e116e68",
-"lastmod": "2026-11-18",
+"hash": "64ee280a929c",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/electrical/alexandria/": {
@@ -994,48 +1831,78 @@
 "lastmod": "2026-11-18"
 },
 "/factories/electrical/asyut/": {
-"hash": "362b5aee7ef0",
-"lastmod": "2026-11-18"
+"hash": "22235a29d5ce",
+"lastmod": "2026-11-28"
 },
 "/factories/electrical/beni-suef/": {
 "hash": "54f622660fea",
 "lastmod": "2026-11-18"
 },
 "/factories/electrical/cairo/": {
-"hash": "5b5382ef4b59",
-"lastmod": "2026-11-18",
+"hash": "ae6add5b5f51",
+"lastmod": "2026-11-28",
 "en": 1
+},
+"/factories/electrical/dakahlia/": {
+"hash": "227be4444398",
+"lastmod": "2026-11-28"
 },
 "/factories/electrical/damietta/": {
 "hash": "d8743bfbcf98",
 "lastmod": "2026-11-18"
+},
+"/factories/electrical/faiyum/": {
+"hash": "0792100d0000",
+"lastmod": "2026-11-28"
 },
 "/factories/electrical/giza/": {
 "hash": "054f0f7c77c6",
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/electrical/ismailia/": {
+"hash": "f3aaeb6043c4",
+"lastmod": "2026-11-28"
+},
 "/factories/electrical/monufia/": {
-"hash": "0427f4628311",
-"lastmod": "2026-11-18"
+"hash": "311b64eade0c",
+"lastmod": "2026-11-28"
 },
 "/factories/electrical/page/2/": {
-"hash": "514975d951da",
-"lastmod": "2026-11-18",
+"hash": "a6f3c2a83ae3",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/electrical/page/3/": {
-"hash": "99907629a8d0",
-"lastmod": "2026-11-18",
+"hash": "77633201e215",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/electrical/qalyubia/": {
-"hash": "c855f016137c",
-"lastmod": "2026-11-18"
+"hash": "1a7be83bf593",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/electrical/red-sea/": {
+"hash": "01aa56c41623",
+"lastmod": "2026-11-28"
 },
 "/factories/electrical/sharqia/": {
-"hash": "20b7fdf11fcb",
-"lastmod": "2026-11-18",
+"hash": "54e350614c6c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/electrical/sohag/": {
+"hash": "2790f2ff89da",
+"lastmod": "2026-11-28"
+},
+"/factories/electrical/suez/": {
+"hash": "b0d473cda82e",
+"lastmod": "2026-11-28"
+},
+"/factories/elite-for-home-appliances-manufacturing/": {
+"hash": "8c0b45147881",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/elsewedy-electric-elsewedy-cables-egypt/": {
@@ -1048,6 +1915,11 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/emisa-denim/": {
+"hash": "4e1a299b1000",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/engaz-integrated-solutions/": {
 "hash": "dd36e3b82122",
 "lastmod": "2026-11-18"
@@ -1055,6 +1927,11 @@
 "/factories/enkana-printing-inks/": {
 "hash": "ae536c84567f",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/eroglu-garment/": {
+"hash": "313d90812b77",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/espace/": {
@@ -1065,9 +1942,44 @@
 "hash": "e8ad7206706e",
 "lastmod": "2026-11-18"
 },
+"/factories/etap-co-for-paper-board/": {
+"hash": "7cf325f01e4c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/euromed-for-medical-industries/": {
+"hash": "30b608214285",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/european-egyptian-pharmaceutical-industries-eepi/": {
+"hash": "2cafee7409d6",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/eva-pharma/": {
 "hash": "25782cf3025e",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/everest-misr-for-industry/": {
+"hash": "378e98e79995",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/evergrow-for-specialty-fertilizers/": {
+"hash": "6f39f976e52a",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/evyap-egypt-for-soap-personal-care-products-and-detergents/": {
+"hash": "f957eced3736",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/express-food-industries-orfi-group/": {
+"hash": "bd26da2a4f1c",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/ezz-steel-sadat-city-plant/": {
@@ -1080,29 +1992,69 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/f-tex-international/": {
+"hash": "4169554c5622",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/faragalla-food-industries-faragello/": {
 "hash": "de5fe352c78d",
 "lastmod": "2026-11-18",
 "en": 1
 },
-"/factories/feed-fertilizers/": {
-"hash": "3f8a1d1c0a8b",
-"lastmod": "2026-11-18",
+"/factories/farm-frites-egypt-the-international-co-for-agricultural-development/": {
+"hash": "f0234ca61f1f",
+"lastmod": "2026-11-28",
 "en": 1
+},
+"/factories/fayoum-food-industries-company/": {
+"hash": "dfd4199c2944",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/feed-fertilizers/": {
+"hash": "14423ab6d4f6",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/feed-fertilizers/beheira/": {
+"hash": "c6bd66e909de",
+"lastmod": "2026-11-28"
 },
 "/factories/feed-fertilizers/cairo/": {
 "hash": "d9017cade606",
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/feed-fertilizers/gharbia/": {
+"hash": "72dd5dcca9c0",
+"lastmod": "2026-11-28"
+},
 "/factories/feed-fertilizers/giza/": {
-"hash": "7dcbdf3e4aa2",
-"lastmod": "2026-11-18",
+"hash": "33a8dfd50800",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/feed-fertilizers/monufia/": {
 "hash": "8a925e210dba",
 "lastmod": "2026-11-18"
+},
+"/factories/feed-fertilizers/qalyubia/": {
+"hash": "c45ed79ea1bf",
+"lastmod": "2026-11-28"
+},
+"/factories/feed-fertilizers/sharqia/": {
+"hash": "b939a34675e7",
+"lastmod": "2026-11-28"
+},
+"/factories/feed-fertilizers/suez/": {
+"hash": "bc7640e1c1c0",
+"lastmod": "2026-11-28"
+},
+"/factories/ferks-furniture/": {
+"hash": "4a4d49003ba9",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/food-trip-egypt/": {
 "hash": "d7045b4fa2ab",
@@ -1110,17 +2062,24 @@
 "en": 1
 },
 "/factories/food/": {
-"hash": "0b2a1a3c244e",
-"lastmod": "2026-11-18",
+"hash": "285b6c56cb64",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/food/alexandria/": {
-"hash": "d302daefd426",
-"lastmod": "2026-11-18"
+"hash": "e8f0a6edb5b7",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/food/beheira/": {
-"hash": "c71b8c4405bd",
-"lastmod": "2026-11-18"
+"hash": "df289e4790fd",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/food/beni-suef/": {
+"hash": "4bb500850688",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/food/cairo/": {
 "hash": "264e60b3a3c9",
@@ -1128,60 +2087,111 @@
 "en": 1
 },
 "/factories/food/dakahlia/": {
-"hash": "62fa948a25c2",
-"lastmod": "2026-11-18"
+"hash": "699d5402cca8",
+"lastmod": "2026-11-28"
+},
+"/factories/food/damietta/": {
+"hash": "2d1025c65ecd",
+"lastmod": "2026-11-28"
 },
 "/factories/food/faiyum/": {
-"hash": "91e669d36a15",
-"lastmod": "2026-11-18"
+"hash": "6d500dfda726",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/food/gharbia/": {
+"hash": "2775b562d698",
+"lastmod": "2026-11-28"
 },
 "/factories/food/giza/": {
-"hash": "ad7652ae6a78",
-"lastmod": "2026-11-18",
+"hash": "83f313b12e53",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/food/ismailia/": {
-"hash": "9aaa8e20fa2a",
-"lastmod": "2026-11-18"
+"hash": "5350d590ae9c",
+"lastmod": "2026-11-28"
 },
 "/factories/food/kafr-el-sheikh/": {
-"hash": "55d5944d54ff",
-"lastmod": "2026-11-18"
+"hash": "b538c67a853f",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/food/luxor/": {
 "hash": "79a0eef8d170",
 "lastmod": "2026-11-18"
 },
+"/factories/food/matrouh/": {
+"hash": "cad8e490ba1b",
+"lastmod": "2026-11-28"
+},
 "/factories/food/minya/": {
-"hash": "af26ae0934ef",
-"lastmod": "2026-11-18"
+"hash": "96123478240f",
+"lastmod": "2026-11-28"
 },
 "/factories/food/monufia/": {
-"hash": "dcc31041efdb",
-"lastmod": "2026-11-18"
+"hash": "1f19e44ce0be",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/food/new-valley/": {
+"hash": "0e1300e7f0c5",
+"lastmod": "2026-11-28"
 },
 "/factories/food/north-sinai/": {
 "hash": "f6e114008db1",
 "lastmod": "2026-11-18"
 },
 "/factories/food/page/2/": {
-"hash": "814459dfb013",
-"lastmod": "2026-11-18",
+"hash": "f3f7071f1d94",
+"lastmod": "2026-11-28",
 "en": 1
+},
+"/factories/food/page/3/": {
+"hash": "34d43c9417ef",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/food/page/4/": {
+"hash": "b87cc89a3ac3",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/food/port-said/": {
+"hash": "0d4aa52f9f9a",
+"lastmod": "2026-11-28"
 },
 "/factories/food/qalyubia/": {
-"hash": "3f29c1db5273",
-"lastmod": "2026-11-18",
+"hash": "fc77dc0d5449",
+"lastmod": "2026-11-28",
 "en": 1
 },
+"/factories/food/qena/": {
+"hash": "6a4a6b5f18e3",
+"lastmod": "2026-11-28"
+},
 "/factories/food/sharqia/": {
-"hash": "5abfaf6483e9",
-"lastmod": "2026-11-18",
+"hash": "11cf8274694b",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/food/sohag/": {
+"hash": "a1cfe46dd282",
+"lastmod": "2026-11-28"
+},
+"/factories/fort-capital-group/": {
+"hash": "e74171ca3d3b",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/fresh-electric-appliances/": {
 "hash": "8f712ef06d4c",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/fridal-aromatic-industries/": {
+"hash": "12f58aea5bec",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/frozena-company/": {
@@ -1190,17 +2200,23 @@
 "en": 1
 },
 "/factories/furniture/": {
-"hash": "61af8e05afd6",
-"lastmod": "2026-11-18",
+"hash": "2547f991d5f0",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/furniture/alexandria/": {
-"hash": "ea1d21e5025d",
-"lastmod": "2026-11-18"
+"hash": "635ed5e91047",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/furniture/cairo/": {
 "hash": "b186157a1af9",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/furniture/damietta/": {
+"hash": "cf52916751e4",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/furniture/gharbia/": {
@@ -1208,8 +2224,13 @@
 "lastmod": "2026-11-18"
 },
 "/factories/furniture/giza/": {
-"hash": "e6fa88dc4fe6",
-"lastmod": "2026-11-18",
+"hash": "9f7f2abcba65",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/furniture/page/2/": {
+"hash": "487adfd1c7a8",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/furniture/qalyubia/": {
@@ -1217,13 +2238,46 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/furniture/qena/": {
+"hash": "ffab22b04831",
+"lastmod": "2026-11-28"
+},
 "/factories/furniture/sharqia/": {
 "hash": "85c23da72a6d",
 "lastmod": "2026-11-18"
 },
+"/factories/furniture/suez/": {
+"hash": "008bb34e74b8",
+"lastmod": "2026-11-28"
+},
+"/factories/future-pharmaceutical-industries/": {
+"hash": "b2fd153670ff",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/future-united-group-for-plastic/": {
+"hash": "04ff1a097aec",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/g4s/": {
 "hash": "8eed34cbf854",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/galaxy-chemicals-egypt-s-a-e/": {
+"hash": "7607e80341f9",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/galina-british-egyptian-general-development/": {
+"hash": "64afdcdb1f0c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/gas-metro-industries/": {
+"hash": "82f88aa5e08c",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/gb-auto-ghabbour-prima-plant/": {
@@ -1255,19 +2309,28 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/giza-company-for-upper-egypt-development/": {
+"hash": "8b946bed9862",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/giza-power-industry-gpi/": {
 "hash": "6a726b10d970",
 "lastmod": "2026-11-18",
 "en": 1
 },
 "/factories/glass-ceramics/": {
-"hash": "b84c3810b93b",
-"lastmod": "2026-11-18",
+"hash": "c9dc439ec86f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/glass-ceramics/alexandria/": {
-"hash": "0532292f9222",
-"lastmod": "2026-11-18"
+"hash": "2dbb4a1a6543",
+"lastmod": "2026-11-28"
+},
+"/factories/glass-ceramics/beni-suef/": {
+"hash": "e9f3ee8b2bf2",
+"lastmod": "2026-11-28"
 },
 "/factories/glass-ceramics/cairo/": {
 "hash": "6247381167ac",
@@ -1275,8 +2338,8 @@
 "en": 1
 },
 "/factories/glass-ceramics/giza/": {
-"hash": "641a8dd0cc21",
-"lastmod": "2026-11-18",
+"hash": "cf7d9486c5c2",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/glass-ceramics/monufia/": {
@@ -1284,8 +2347,8 @@
 "lastmod": "2026-11-18"
 },
 "/factories/glass-ceramics/page/2/": {
-"hash": "c987c8291fb7",
-"lastmod": "2026-11-18",
+"hash": "df34ed690f1e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/glass-ceramics/qalyubia/": {
@@ -1297,18 +2360,67 @@
 "hash": "4a16e4fb3b89",
 "lastmod": "2026-11-18"
 },
+"/factories/glass-ceramics/suez/": {
+"hash": "48d99a53cd21",
+"lastmod": "2026-11-28"
+},
+"/factories/glassrock-insulation-company/": {
+"hash": "7b784746d11a",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/gnse-group/": {
 "hash": "11f3d927704b",
 "lastmod": "2026-11-18"
+},
+"/factories/go-steel/": {
+"hash": "864f77c1402e",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/golden-avenue/": {
+"hash": "81653b90bbe2",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/goldentex-wool-golden-textiles-clothes-wool/": {
 "hash": "7f40680cb0ce",
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/gouda-for-agricultural-crops/": {
+"hash": "bb70ebc9dcf5",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/green-bright-engineering-industries/": {
+"hash": "6d3407f2ae40",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/green-land-industries/": {
+"hash": "a15703b7700b",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/green-light-trading-herbs-spices-egypt/": {
 "hash": "8c2ddaf6e517",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/haier-egypt/": {
+"hash": "cac3554f3e21",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/halomy-cement-bricks-and-tiles/": {
+"hash": "3f427b3f86e7",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/halomy-furniture/": {
+"hash": "cab1b527dc60",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/halwani-bros-egypt/": {
@@ -1319,6 +2431,26 @@
 "/factories/hammam-industries-co/": {
 "hash": "ba89e2ff6c72",
 "lastmod": "2026-11-18"
+},
+"/factories/hayat-egypt-for-hygienic-products/": {
+"hash": "9077648a09f6",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/hayat-kimya-egypt/": {
+"hash": "ff4291b555da",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/hb-industrial-group-ceramica-art/": {
+"hash": "1651d67b4d97",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/healthy-foods-egypt/": {
+"hash": "944dc7e835ef",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/heavy-equipment/": {
 "hash": "b146d41ba274",
@@ -1353,6 +2485,16 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/hengsheng-textile/": {
+"hash": "18d189e446f2",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/hero-for-food-industries/": {
+"hash": "2ee5c85f939b",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/hesco-for-water-integrated-systems/": {
 "hash": "16165efd2812",
 "lastmod": "2026-11-18"
@@ -1361,9 +2503,14 @@
 "hash": "5e7dd4e3acc1",
 "lastmod": "2026-11-18"
 },
+"/factories/hitachi-energy-10th-of-ramadan-plant/": {
+"hash": "dd0381f280c2",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/home-appliances/": {
-"hash": "a04dd55f569e",
-"lastmod": "2026-11-18",
+"hash": "7dd8d23ee8bf",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/home-appliances/alexandria/": {
@@ -1371,18 +2518,26 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/home-appliances/asyut/": {
+"hash": "25cbfaa7cb14",
+"lastmod": "2026-11-28"
+},
+"/factories/home-appliances/beni-suef/": {
+"hash": "760304be0e45",
+"lastmod": "2026-11-28"
+},
 "/factories/home-appliances/cairo/": {
-"hash": "1a7689fc2e76",
-"lastmod": "2026-11-18",
+"hash": "864c60942c6c",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/home-appliances/dakahlia/": {
-"hash": "f2df156db70c",
-"lastmod": "2026-11-18"
+"hash": "59d01657e9ca",
+"lastmod": "2026-11-28"
 },
 "/factories/home-appliances/giza/": {
-"hash": "435dc603d103",
-"lastmod": "2026-11-18",
+"hash": "f12f6409bf33",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/home-appliances/ismailia/": {
@@ -1394,8 +2549,8 @@
 "lastmod": "2026-11-18"
 },
 "/factories/home-appliances/page/2/": {
-"hash": "78ff9ae21a16",
-"lastmod": "2026-11-18",
+"hash": "c6ca2b063799",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/home-appliances/port-said/": {
@@ -1408,27 +2563,44 @@
 "en": 1
 },
 "/factories/home-appliances/sharqia/": {
-"hash": "556ade8c0165",
-"lastmod": "2026-11-18",
+"hash": "79c31192e1aa",
+"lastmod": "2026-11-28",
 "en": 1
+},
+"/factories/home-appliances/sohag/": {
+"hash": "41217effeef3",
+"lastmod": "2026-11-28"
 },
 "/factories/home-appliances/suez/": {
 "hash": "d07b89f82a98",
 "lastmod": "2026-11-18"
 },
+"/factories/horus-for-foam-industry/": {
+"hash": "415cf9666eec",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/hotel-equipment/": {
-"hash": "c4bb9be70707",
-"lastmod": "2026-11-18",
+"hash": "16d9ca04f425",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/hotel-equipment/alexandria/": {
 "hash": "bb162d93d27c",
 "lastmod": "2026-11-18"
 },
+"/factories/hotel-equipment/beni-suef/": {
+"hash": "6dae5b8ea2d2",
+"lastmod": "2026-11-28"
+},
 "/factories/hotel-equipment/cairo/": {
 "hash": "123abec09f6b",
 "lastmod": "2026-11-18",
 "en": 1
+},
+"/factories/hotel-equipment/dakahlia/": {
+"hash": "a814776d33c7",
+"lastmod": "2026-11-28"
 },
 "/factories/hotel-equipment/damietta/": {
 "hash": "e445627cf133",
@@ -1439,13 +2611,31 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/hotel-equipment/page/2/": {
+"hash": "a5c4e30bbb2e",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/hotel-equipment/port-said/": {
 "hash": "b6683e24145a",
 "lastmod": "2026-11-18"
 },
+"/factories/hotel-equipment/qalyubia/": {
+"hash": "89eb8a77f7cb",
+"lastmod": "2026-11-28"
+},
+"/factories/hotel-equipment/suez/": {
+"hash": "f4d964b21b52",
+"lastmod": "2026-11-28"
+},
+"/factories/huhtamaki-flexible-packaging-egypt/": {
+"hash": "c1e8e5559b68",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/hvac/": {
-"hash": "4f648dac3fd3",
-"lastmod": "2026-11-18",
+"hash": "dfd46424b90a",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/hvac/alexandria/": {
@@ -1457,9 +2647,13 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/hvac/dakahlia/": {
+"hash": "78ea3c74a9b8",
+"lastmod": "2026-11-28"
+},
 "/factories/hvac/giza/": {
-"hash": "c742d577e81e",
-"lastmod": "2026-11-18"
+"hash": "0352e88a48a4",
+"lastmod": "2026-11-28"
 },
 "/factories/hvac/qalyubia/": {
 "hash": "0f7dac67431f",
@@ -1468,6 +2662,10 @@
 "/factories/hvac/sharqia/": {
 "hash": "57e8624daa8b",
 "lastmod": "2026-11-18"
+},
+"/factories/hvac/sohag/": {
+"hash": "b923c92ed81c",
+"lastmod": "2026-11-28"
 },
 "/factories/hydrohex/": {
 "hash": "347eb537db7d",
@@ -1479,6 +2677,11 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/ideal-medical-solutions-company/": {
+"hash": "3f5ea0db93b3",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/infoglobe/": {
 "hash": "df803c18dc90",
 "lastmod": "2026-11-18"
@@ -1486,6 +2689,11 @@
 "/factories/inspire-for-training-education/": {
 "hash": "90bfaf743a90",
 "lastmod": "2026-11-18"
+},
+"/factories/instalam-melamine-boards/": {
+"hash": "6d7d8061baeb",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/insurance-finance/": {
 "hash": "3331b74b6bbb",
@@ -1504,9 +2712,29 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/international-beverages-company-core/": {
+"hash": "003b89abe777",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/international-medical-supplies/": {
+"hash": "0978a1156e3b",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/international-trading-marketing-company-2/": {
 "hash": "13260689a6a2",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/intra-pharm/": {
+"hash": "6b7224ec458d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/ismailia-misr-poultry-company/": {
+"hash": "edc670dc7e54",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/ismailia-national-co-for-food-industries-foodico/": {
@@ -1547,9 +2775,44 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/jade-textile-alexandria/": {
+"hash": "6b10d2d529b4",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/jade-textile-egypt/": {
+"hash": "d8c87dc73972",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/jamjoom-pharma-egypt/": {
+"hash": "3131acc42489",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/jazeera-paints-egypt/": {
+"hash": "bbf778edb625",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/jeans-car-industry/": {
+"hash": "1a9793be81d0",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/jeha-company-jehaco-olive-oil-machines/": {
+"hash": "0dc798b560e5",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/juhayna-food-industries/": {
 "hash": "f327cd496094",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/jushi-egypt-for-fiberglass-industry-s-a-e/": {
+"hash": "1c9cbfce25de",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/kafr-el-zayat-pesticides-chemicals/": {
@@ -1562,9 +2825,39 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/kahira-pharmaceuticals-and-chemical-industries/": {
+"hash": "88f0e14770f7",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/kandil-steel/": {
 "hash": "fa4bf2c9f16e",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/kapci-coatings-port-said-plant/": {
+"hash": "d06d9f7aabaf",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/katilo/": {
+"hash": "58f0bb6f45f1",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/kcg-textile-egypt/": {
+"hash": "863b2942d64e",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/kemal-medical-technologies/": {
+"hash": "ea0462aae9ee",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/khufu-pharma-for-pharmaceutical-industries/": {
+"hash": "5dc47ca3a717",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/kiriazi/": {
@@ -1577,9 +2870,15 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/l-oreal-egypt-cosmetics-plant/": {
+"hash": "eb2391362072",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/lacto-misr/": {
 "hash": "6d6212ae8651",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/leaders-travel/": {
 "hash": "5a8650ee0ea1",
@@ -1595,9 +2894,49 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/leoni-egypt/": {
+"hash": "67cb66dedac5",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/lg-electronics-egypt/": {
+"hash": "47dbb954d763",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/life-care-for-surgical-instruments/": {
+"hash": "1b6e454d62dd",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/lijialong-brush/": {
+"hash": "d17b5ae8999d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/lipton-teas-and-infusions-egypt/": {
+"hash": "7192e520e5ca",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/lojine/": {
 "hash": "668591063ea7",
 "lastmod": "2026-11-18"
+},
+"/factories/loloat-borg-el-arab-factory-for-plastics/": {
+"hash": "f4066a2c9f8c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/loulouat-el-gezira-paints-factory/": {
+"hash": "4905766da3c3",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/luxor-mattress/": {
+"hash": "00ea74cd1dc0",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/mac-carpet-misr-america-carpets/": {
 "hash": "d0d01e59da2f",
@@ -1605,13 +2944,13 @@
 "en": 1
 },
 "/factories/machinery/": {
-"hash": "291f61eeda7b",
-"lastmod": "2026-11-18",
+"hash": "b8f6bf94e6ea",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/machinery/alexandria/": {
-"hash": "22f865eb5d09",
-"lastmod": "2026-11-18",
+"hash": "aee781f61889",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/machinery/beheira/": {
@@ -1629,8 +2968,8 @@
 "en": 1
 },
 "/factories/machinery/cairo/page/3/": {
-"hash": "7a6673025e09",
-"lastmod": "2026-11-18",
+"hash": "c215b4f215bc",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/machinery/damietta/": {
@@ -1647,6 +2986,10 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/machinery/ismailia/": {
+"hash": "e6912326dc5c",
+"lastmod": "2026-11-28"
+},
 "/factories/machinery/kafr-el-sheikh/": {
 "hash": "de58beaa9b9f",
 "lastmod": "2026-11-18"
@@ -1656,23 +2999,23 @@
 "lastmod": "2026-11-18"
 },
 "/factories/machinery/page/2/": {
-"hash": "1c30500d2d3d",
-"lastmod": "2026-11-18",
+"hash": "2c1bfa9c0601",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/machinery/page/3/": {
-"hash": "bc79bda8f073",
-"lastmod": "2026-11-18",
+"hash": "57fcd0f13135",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/machinery/page/4/": {
-"hash": "6f90583d4a37",
-"lastmod": "2026-11-18",
+"hash": "c0e113c1d04b",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/machinery/page/5/": {
-"hash": "c65192f42e83",
-"lastmod": "2026-11-18",
+"hash": "0138545fb404",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/machinery/qalyubia/": {
@@ -1689,19 +3032,48 @@
 "hash": "7b215aac49c2",
 "lastmod": "2026-11-18"
 },
+"/factories/macray-industries-for-manufacturing-export/": {
+"hash": "fb72e8fe9452",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/macris-silicates-factory/": {
+"hash": "316e9372bb0a",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/mansoura-poultry-company/": {
+"hash": "67e392301ae0",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/manufacturing-commercial-vehicles-mcv/": {
 "hash": "3e8574f48bbd",
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/mapei-egypt/": {
+"hash": "380a772aa0be",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/marbella-group-for-food-industries/": {
+"hash": "8dd9ff9420ff",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/marble-granite/": {
-"hash": "4788e0f686ce",
-"lastmod": "2026-11-18",
+"hash": "fa284c86efe8",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/marble-granite/alexandria/": {
 "hash": "cf8aa97a91ce",
 "lastmod": "2026-11-18"
+},
+"/factories/marble-granite/asyut/": {
+"hash": "155762cc74e7",
+"lastmod": "2026-11-28"
 },
 "/factories/marble-granite/beheira/": {
 "hash": "772f6dd753cb",
@@ -1737,13 +3109,18 @@
 "hash": "244fc23b9245",
 "lastmod": "2026-11-18"
 },
+"/factories/masria-digital-payments-mdp/": {
+"hash": "a2fcd38ba1e7",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/mcs/": {
 "hash": "dcb9531bed3a",
 "lastmod": "2026-11-18"
 },
 "/factories/medical-equipment/": {
-"hash": "1a4e294c5d1d",
-"lastmod": "2026-11-18",
+"hash": "2fbc44af2ff7",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/medical-equipment/alexandria/": {
@@ -1756,12 +3133,25 @@
 "en": 1
 },
 "/factories/medical-equipment/giza/": {
-"hash": "32d5d5119036",
-"lastmod": "2026-11-18"
+"hash": "0af829e05d22",
+"lastmod": "2026-11-28"
+},
+"/factories/medical-equipment/ismailia/": {
+"hash": "afaf8acd8ddd",
+"lastmod": "2026-11-28"
+},
+"/factories/medical-equipment/suez/": {
+"hash": "bcfb0d1b5527",
+"lastmod": "2026-11-28"
 },
 "/factories/medical-union-pharmaceuticals-mup/": {
 "hash": "d1af03eefdc0",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/mediterranean-tissue-mill/": {
+"hash": "a64a8af479f2",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/mediterranean/": {
@@ -1772,22 +3162,67 @@
 "hash": "1f50c5507b2f",
 "lastmod": "2026-11-18"
 },
+"/factories/metgar-engineering-and-trading/": {
+"hash": "8661132292f9",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/middle-west-delta-flour-mills/": {
+"hash": "3f9db5098c96",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/mido-international-group-for-modern-coatings/": {
+"hash": "43541eceefcd",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/mima-foods-diversified-foods-group-for-trade/": {
+"hash": "0718c3db06d5",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/minapharm-pharmaceuticals/": {
 "hash": "5a7d68adeae0",
 "lastmod": "2026-11-18",
 "en": 1
 },
 "/factories/mining/": {
-"hash": "416cfd6b5aed",
-"lastmod": "2026-11-18"
+"hash": "07b6a4bad188",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/mining/beni-suef/": {
+"hash": "bc12f418e644",
+"lastmod": "2026-11-28"
+},
+"/factories/mining/cairo/": {
+"hash": "44e366924767",
+"lastmod": "2026-11-28"
+},
+"/factories/mining/kafr-el-sheikh/": {
+"hash": "8ced17a37f40",
+"lastmod": "2026-11-28"
+},
+"/factories/mining/minya/": {
+"hash": "06e4cf665d08",
+"lastmod": "2026-11-28"
 },
 "/factories/mining/new-valley/": {
 "hash": "157b7dea059c",
 "lastmod": "2026-11-18"
 },
 "/factories/mining/red-sea/": {
-"hash": "9f00277d72f7",
-"lastmod": "2026-11-18"
+"hash": "7c358d843d18",
+"lastmod": "2026-11-28"
+},
+"/factories/mining/south-sinai/": {
+"hash": "e131a60fcdcd",
+"lastmod": "2026-11-28"
+},
+"/factories/mining/suez/": {
+"hash": "43120aa64995",
+"lastmod": "2026-11-28"
 },
 "/factories/misr-beni-suef-cement/": {
 "hash": "4b89d67df82c",
@@ -1809,6 +3244,16 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/misr-edfu-pulp-writing-and-printing-paper-company/": {
+"hash": "8ceab7bd25f7",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/misr-el-olya-furniture-factory/": {
+"hash": "59555cc78cd0",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/misr-fertilizers-production-co-mopco/": {
 "hash": "e79ea8127712",
 "lastmod": "2026-11-18",
@@ -1822,6 +3267,11 @@
 "/factories/misr-phosphate-company/": {
 "hash": "1a4245240219",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/misr-shebin-el-kom-spinning-and-weaving-company/": {
+"hash": "8fe808c97e21",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/misr-spinning-and-weaving-company/": {
@@ -1838,9 +3288,79 @@
 "hash": "0995374efecf",
 "lastmod": "2026-11-18"
 },
+"/factories/mix-door/": {
+"hash": "43f2523760b4",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/moamen-perfumes/": {
+"hash": "2372ba17bf49",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/modern-gad-plast/": {
+"hash": "d581d130790c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/modern-hygienic-international/": {
+"hash": "0306279b8f7a",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/modern-national-wood-industries/": {
+"hash": "763e0e73c1ea",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/moharam-plast-specialty-polymers-compounds/": {
+"hash": "17934ce2e50f",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/mta-root-canal-materials-factory/": {
+"hash": "1c5bc89352e7",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/multi-care-egypt-for-pharmaceutical-industries/": {
+"hash": "df4fc071f79f",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/mushor/": {
 "hash": "c35937eda059",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/na-trans-for-fertilizers-chemical-industries/": {
+"hash": "ba93e0f7d50f",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/nahas-center-for-electrical-floodlights/": {
+"hash": "b38c3407d772",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/national-oil-grease-co/": {
+"hash": "8a66c010b34b",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/national-paints-factories-national-paints/": {
+"hash": "c5bac5a6af7c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/new-egypt-for-food-industries/": {
+"hash": "4fda47d35363",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/new-sefloon/": {
+"hash": "5c49bcb42270",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/nirvana-travel-tourism/": {
@@ -1851,6 +3371,21 @@
 "/factories/nissan-motor-egypt/": {
 "hash": "b076bcb59277",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/nobaria-sugar-company/": {
+"hash": "e480570d53e4",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/noon-for-printing-packaging/": {
+"hash": "0e8cb402a297",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/nour-for-soap-industry/": {
+"hash": "ede167838136",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/oasis-distrbution/": {
@@ -1868,13 +3403,13 @@
 "en": 1
 },
 "/factories/oil-gas/": {
-"hash": "01892fe10945",
-"lastmod": "2026-11-18",
+"hash": "4d9a73705ea0",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/oil-gas/alexandria/": {
-"hash": "d9a1cc8855c1",
-"lastmod": "2026-11-18",
+"hash": "a1c711182c4a",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/oil-gas/asyut/": {
@@ -1934,23 +3469,23 @@
 "lastmod": "2026-11-18"
 },
 "/factories/oil-gas/page/2/": {
-"hash": "cc007ff3ab6e",
-"lastmod": "2026-11-18",
+"hash": "8e4dfa9573bb",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/oil-gas/page/3/": {
-"hash": "1966410267f6",
-"lastmod": "2026-11-18",
+"hash": "5bb41f798fa3",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/oil-gas/page/4/": {
-"hash": "c4a0cc205f59",
-"lastmod": "2026-11-18",
+"hash": "cab2b7168490",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/oil-gas/page/5/": {
-"hash": "cba215b76397",
-"lastmod": "2026-11-18",
+"hash": "3a3ace89e74e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/oil-gas/port-said/": {
@@ -1986,9 +3521,24 @@
 "hash": "6f32bb4ce13f",
 "lastmod": "2026-11-18"
 },
+"/factories/oleo-misr-for-oleochemicals/": {
+"hash": "2f08fa2dbb41",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/orchidia-pharmaceutical-industries/": {
+"hash": "9ffa684c2d57",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/oriental-weavers/": {
 "hash": "1410477a073a",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/original-factories-for-bakelite-and-plastics/": {
+"hash": "f8efbd237baa",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/osmason-complex/": {
@@ -2001,18 +3551,31 @@
 "lastmod": "2026-11-18"
 },
 "/factories/packaging/": {
-"hash": "d4920c5eb51e",
-"lastmod": "2026-11-18",
+"hash": "4ad3fc55b3c9",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/packaging/alexandria/": {
-"hash": "a07b1984524c",
-"lastmod": "2026-11-18",
+"hash": "c2e01809e710",
+"lastmod": "2026-11-28",
 "en": 1
 },
+"/factories/packaging/alexandria/page/2/": {
+"hash": "c8a89dc3a642",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/packaging/aswan/": {
+"hash": "e6fc02b04599",
+"lastmod": "2026-11-28"
+},
+"/factories/packaging/beheira/": {
+"hash": "ce125fa9b8d8",
+"lastmod": "2026-11-28"
+},
 "/factories/packaging/beni-suef/": {
-"hash": "0f293b7e75d2",
-"lastmod": "2026-11-18"
+"hash": "26960fb138cc",
+"lastmod": "2026-11-28"
 },
 "/factories/packaging/cairo/": {
 "hash": "01c0c8903d36",
@@ -2035,8 +3598,8 @@
 "en": 1
 },
 "/factories/packaging/faiyum/": {
-"hash": "ef8fe3148fa6",
-"lastmod": "2026-11-18"
+"hash": "9509c2818f88",
+"lastmod": "2026-11-28"
 },
 "/factories/packaging/gharbia/": {
 "hash": "63c12de9ec1b",
@@ -2049,8 +3612,8 @@
 "en": 1
 },
 "/factories/packaging/giza/page/2/": {
-"hash": "276e6a43c0c3",
-"lastmod": "2026-11-18",
+"hash": "8fc0da08e971",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/packaging/ismailia/": {
@@ -2067,33 +3630,33 @@
 "en": 1
 },
 "/factories/packaging/page/2/": {
-"hash": "b2be0edfcc07",
-"lastmod": "2026-11-18",
+"hash": "de06eea4e0eb",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/packaging/page/3/": {
-"hash": "7f1071fe8c4f",
-"lastmod": "2026-11-18",
+"hash": "22efb94ea4f7",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/packaging/page/4/": {
-"hash": "d7d071ceff5e",
-"lastmod": "2026-11-18",
+"hash": "a7d68ee1b65a",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/packaging/page/5/": {
-"hash": "af56bff5ecfb",
-"lastmod": "2026-11-18",
+"hash": "2c1ec981afbe",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/packaging/page/6/": {
-"hash": "810829c80703",
-"lastmod": "2026-11-18",
+"hash": "b7adb7decee5",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/packaging/page/7/": {
-"hash": "bb037f1eac93",
-"lastmod": "2026-11-18",
+"hash": "275e7fa97183",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/packaging/port-said/": {
@@ -2123,314 +3686,353 @@
 "hash": "7fbcea87eb6a",
 "lastmod": "2026-11-18"
 },
+"/factories/packaging/suez/": {
+"hash": "b822272c4da5",
+"lastmod": "2026-11-28"
+},
 "/factories/page/10/": {
-"hash": "214732fcd49b",
-"lastmod": "2026-11-18",
+"hash": "a3935952a8ab",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/11/": {
-"hash": "14f963181779",
-"lastmod": "2026-11-18",
+"hash": "ece035019e0b",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/12/": {
-"hash": "9cd2469c35cd",
-"lastmod": "2026-11-18",
+"hash": "d1b5c59c949d",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/13/": {
-"hash": "ed9d2983df2a",
-"lastmod": "2026-11-18",
+"hash": "ee0229e0cff1",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/14/": {
-"hash": "4b2c25a482c2",
-"lastmod": "2026-11-18",
+"hash": "e7abbdc17a5a",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/15/": {
-"hash": "f35fbf0d3639",
-"lastmod": "2026-11-18",
+"hash": "ae210c03b689",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/16/": {
-"hash": "bd5217ef8b58",
-"lastmod": "2026-11-18",
+"hash": "05bdafe7c4aa",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/17/": {
-"hash": "e0829c2b386a",
-"lastmod": "2026-11-18",
+"hash": "2d3c0cb8a941",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/18/": {
-"hash": "895cf8d3d91a",
-"lastmod": "2026-11-18",
+"hash": "eee3a2afc0bd",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/19/": {
-"hash": "42bf08f3e356",
-"lastmod": "2026-11-18",
+"hash": "47f9ddf338a3",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/2/": {
-"hash": "7f1cedd38436",
-"lastmod": "2026-11-18",
+"hash": "829c971b2379",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/20/": {
-"hash": "72889b9c8b6b",
-"lastmod": "2026-11-18",
+"hash": "beca524f8b0b",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/21/": {
-"hash": "9a164369c084",
-"lastmod": "2026-11-18",
+"hash": "9b9d6c58e9e8",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/22/": {
-"hash": "be2aae36c637",
-"lastmod": "2026-11-18",
+"hash": "7239a5765d05",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/23/": {
-"hash": "5e4c31ef738a",
-"lastmod": "2026-11-18",
+"hash": "7b72dea6f399",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/24/": {
-"hash": "64fa9a5f1e09",
-"lastmod": "2026-11-18",
+"hash": "8ccd8b565de3",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/25/": {
-"hash": "c99fe0434ad0",
-"lastmod": "2026-11-18",
+"hash": "d02de7af9012",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/26/": {
-"hash": "e3dd223dbe7b",
-"lastmod": "2026-11-18",
+"hash": "082245539630",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/27/": {
-"hash": "3f08676ce211",
-"lastmod": "2026-11-18",
+"hash": "647771d32b02",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/28/": {
-"hash": "81ddcbbb9b47",
-"lastmod": "2026-11-18",
+"hash": "fb1b902f62b9",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/29/": {
-"hash": "6a0195b3abc0",
-"lastmod": "2026-11-18",
+"hash": "d5d85ff20294",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/3/": {
-"hash": "323838567104",
-"lastmod": "2026-11-18",
+"hash": "bc966f63cf74",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/30/": {
-"hash": "21c8ce61d646",
-"lastmod": "2026-11-18",
+"hash": "80d646042e63",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/31/": {
-"hash": "3fbb8f944525",
-"lastmod": "2026-11-18",
+"hash": "ff5bec41c649",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/32/": {
-"hash": "2154993dc7a4",
-"lastmod": "2026-11-18",
+"hash": "8585cded9c06",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/33/": {
-"hash": "ced3d5dffd4d",
-"lastmod": "2026-11-18",
+"hash": "27bbef3753c2",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/34/": {
-"hash": "705b32ad877d",
-"lastmod": "2026-11-18",
+"hash": "9ecd7a0b3798",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/35/": {
-"hash": "6f8422ae8b0b",
-"lastmod": "2026-11-18",
+"hash": "27409b8b74a0",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/36/": {
-"hash": "fc9a40e40a43",
-"lastmod": "2026-11-18",
+"hash": "cbdac19bdfe6",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/37/": {
-"hash": "7f0ad63dbf35",
-"lastmod": "2026-11-18",
+"hash": "33bb79cba1cd",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/38/": {
-"hash": "5db9497a8b02",
-"lastmod": "2026-11-18",
+"hash": "50bee842ddae",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/39/": {
-"hash": "ec44f7876472",
-"lastmod": "2026-11-18",
+"hash": "cf08fc1508d3",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/4/": {
-"hash": "511fbb2bb6bd",
-"lastmod": "2026-11-18",
+"hash": "17eef803d751",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/40/": {
-"hash": "ec2e0f034fb2",
-"lastmod": "2026-11-18",
+"hash": "54298337198a",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/41/": {
-"hash": "01fc26322cac",
-"lastmod": "2026-11-18",
+"hash": "20e588b11907",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/42/": {
-"hash": "f42185f6f918",
-"lastmod": "2026-11-18",
+"hash": "23f0c4d8fa79",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/43/": {
-"hash": "3768efd9d7bb",
-"lastmod": "2026-11-18",
+"hash": "1d84a1332489",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/44/": {
-"hash": "144070cd1aed",
-"lastmod": "2026-11-18",
+"hash": "ffe3656eb016",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/45/": {
-"hash": "f13ce1ed84cc",
-"lastmod": "2026-11-18",
+"hash": "02a66df1ea08",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/46/": {
-"hash": "f4c896bb2fe3",
-"lastmod": "2026-11-18",
+"hash": "49e24925a6e3",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/47/": {
-"hash": "4cab9a0d75a0",
-"lastmod": "2026-11-18",
+"hash": "947d536e8e5f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/48/": {
-"hash": "a0f4b5a9f436",
-"lastmod": "2026-11-18",
+"hash": "ddfb8579e56f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/49/": {
-"hash": "5f9c6a0b0258",
-"lastmod": "2026-11-18",
+"hash": "c76a0857a739",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/5/": {
-"hash": "688b42378889",
-"lastmod": "2026-11-18",
+"hash": "1c4e46d1eb0f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/50/": {
-"hash": "48eea6da40e4",
-"lastmod": "2026-11-18",
+"hash": "9f69d9d952b9",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/51/": {
-"hash": "1b3cd6fc6acf",
-"lastmod": "2026-11-18",
+"hash": "8cc24c274a97",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/52/": {
-"hash": "2483d6a60199",
-"lastmod": "2026-11-18",
+"hash": "ebffd8b07dc4",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/53/": {
-"hash": "d7a65a660abe",
-"lastmod": "2026-11-18",
+"hash": "202d493a4721",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/54/": {
-"hash": "411c11c90e21",
-"lastmod": "2026-11-18",
+"hash": "1c59871b5a7e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/55/": {
-"hash": "d9ee79ec41d8",
-"lastmod": "2026-11-18",
+"hash": "c2428fda91d2",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/56/": {
-"hash": "7ee96c50a80b",
-"lastmod": "2026-11-18",
+"hash": "aa3907b9595e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/57/": {
-"hash": "e0a30bc3b0eb",
-"lastmod": "2026-11-18",
+"hash": "2d189c23a0d9",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/58/": {
-"hash": "050587e4f661",
-"lastmod": "2026-11-18",
+"hash": "2a1e1c715954",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/59/": {
-"hash": "eed8964b18b9",
-"lastmod": "2026-11-18",
+"hash": "3dde8bcac1ee",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/6/": {
-"hash": "c18b63540754",
-"lastmod": "2026-11-18",
+"hash": "843edc0e17d9",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/60/": {
-"hash": "c438c9c2545b",
-"lastmod": "2026-11-18",
+"hash": "f70ab92bdf0d",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/61/": {
-"hash": "1b8231480861",
-"lastmod": "2026-11-18",
+"hash": "13b02ebadf27",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/page/62/": {
+"hash": "d64591d14603",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/page/63/": {
+"hash": "3c648cad072b",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/page/64/": {
+"hash": "5b773e567ee4",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/page/65/": {
+"hash": "6b29979ece1e",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/page/66/": {
+"hash": "db71e98e1d1d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/page/67/": {
+"hash": "73b09720dea3",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/page/68/": {
+"hash": "f8a8350b5864",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/7/": {
-"hash": "0e661a0b0b1b",
-"lastmod": "2026-11-18",
+"hash": "1096eb56fc55",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/8/": {
-"hash": "db17051019ac",
-"lastmod": "2026-11-18",
+"hash": "398bbdf0c021",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/page/9/": {
-"hash": "7c7f719d3f04",
-"lastmod": "2026-11-18",
+"hash": "f396ce45e372",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/paints-inks/": {
-"hash": "888c0dc7fa3b",
-"lastmod": "2026-11-18",
+"hash": "38b9e6ae5c73",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/paints-inks/alexandria/": {
-"hash": "d76cf84dd1b8",
-"lastmod": "2026-11-18"
+"hash": "698b5ac978f6",
+"lastmod": "2026-11-28"
 },
 "/factories/paints-inks/cairo/": {
 "hash": "0af6e5fea614",
@@ -2452,18 +4054,50 @@
 "hash": "e3fd4c52d5e9",
 "lastmod": "2026-11-18"
 },
+"/factories/paints-inks/port-said/": {
+"hash": "ae10b821eab3",
+"lastmod": "2026-11-28"
+},
 "/factories/paints-inks/qalyubia/": {
-"hash": "785cefedc0c3",
-"lastmod": "2026-11-18"
+"hash": "8305fe0b5df6",
+"lastmod": "2026-11-28"
+},
+"/factories/paints-inks/qena/": {
+"hash": "6a0900f3779e",
+"lastmod": "2026-11-28"
 },
 "/factories/paints-inks/sharqia/": {
-"hash": "18f853005189",
-"lastmod": "2026-11-18",
+"hash": "31f076c270d5",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/paints-inks/sohag/": {
+"hash": "aa0bba3ad0d5",
+"lastmod": "2026-11-28"
+},
+"/factories/palm-siwa-oasis/": {
+"hash": "b8c2693d62e2",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/palma-plast/": {
+"hash": "66e956499aeb",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/paramount-technologies/": {
 "hash": "b850650d178f",
 "lastmod": "2026-11-18"
+},
+"/factories/paris-oasis-natural-water-aqua-paris/": {
+"hash": "9d0352268273",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/pearl-polyurethane-na/": {
+"hash": "3671fec8a234",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/petrotel/": {
 "hash": "7ea7acb21344",
@@ -2475,52 +4109,88 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/pharco-b-international-2-for-chemicals-pbic/": {
+"hash": "b771931c82d9",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/pharco-pharmaceuticals/": {
 "hash": "8f7fa05b28bd",
 "lastmod": "2026-11-18",
 "en": 1
 },
 "/factories/pharma/": {
-"hash": "a5498dff9886",
-"lastmod": "2026-11-18",
+"hash": "6f18dc410039",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/pharma/alexandria/": {
-"hash": "215a7d525c68",
-"lastmod": "2026-11-18",
+"hash": "8085415e3428",
+"lastmod": "2026-11-28",
 "en": 1
+},
+"/factories/pharma/asyut/": {
+"hash": "8479cf733621",
+"lastmod": "2026-11-28"
 },
 "/factories/pharma/cairo/": {
-"hash": "f552dce154df",
-"lastmod": "2026-11-18",
+"hash": "86470e14d5e2",
+"lastmod": "2026-11-28",
 "en": 1
 },
+"/factories/pharma/dakahlia/": {
+"hash": "c292518535d8",
+"lastmod": "2026-11-28"
+},
 "/factories/pharma/giza/": {
-"hash": "2e3a375a2bcf",
-"lastmod": "2026-11-18",
+"hash": "7422b3689955",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/pharma/ismailia/": {
-"hash": "fdcfdbdf58df",
-"lastmod": "2026-11-18"
+"hash": "c8457b51ab3f",
+"lastmod": "2026-11-28"
 },
-"/factories/pharma/qalyubia/": {
-"hash": "fb79c6bb1d0e",
-"lastmod": "2026-11-18",
+"/factories/pharma/page/2/": {
+"hash": "840d668530da",
+"lastmod": "2026-11-28",
 "en": 1
 },
+"/factories/pharma/qalyubia/": {
+"hash": "2a9796f876a3",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/pharma/qena/": {
+"hash": "9a7944b16a9f",
+"lastmod": "2026-11-28"
+},
 "/factories/pharma/sharqia/": {
-"hash": "a718f470218e",
-"lastmod": "2026-11-18"
+"hash": "38d9fc6cfaa0",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/pharma/sohag/": {
+"hash": "61647155dee4",
+"lastmod": "2026-11-28"
+},
+"/factories/pharma/suez/": {
+"hash": "758f3123e485",
+"lastmod": "2026-11-28"
+},
+"/factories/pharonic-el-pharaana-ceramic-group/": {
+"hash": "e964fe47ba95",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/plastics/": {
-"hash": "23491702703a",
-"lastmod": "2026-11-18",
+"hash": "c811ebce3dc4",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/plastics/alexandria/": {
-"hash": "2edc4dd165a6",
-"lastmod": "2026-11-18",
+"hash": "ee68d7e6669f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/plastics/asyut/": {
@@ -2528,12 +4198,12 @@
 "lastmod": "2026-11-18"
 },
 "/factories/plastics/beheira/": {
-"hash": "ced4877bba4d",
-"lastmod": "2026-11-18"
+"hash": "c77a776bf62a",
+"lastmod": "2026-11-28"
 },
 "/factories/plastics/beni-suef/": {
-"hash": "7055121b95d3",
-"lastmod": "2026-11-18"
+"hash": "4a55463db96d",
+"lastmod": "2026-11-28"
 },
 "/factories/plastics/cairo/": {
 "hash": "6ec238af16e9",
@@ -2553,8 +4223,8 @@
 "lastmod": "2026-11-18"
 },
 "/factories/plastics/giza/": {
-"hash": "1a2707cd49a4",
-"lastmod": "2026-11-18",
+"hash": "682acd3b6e42",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/plastics/monufia/": {
@@ -2562,14 +4232,18 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/plastics/north-sinai/": {
+"hash": "d3327e35ff2c",
+"lastmod": "2026-11-28"
+},
 "/factories/plastics/page/2/": {
-"hash": "08cc0682f2c9",
-"lastmod": "2026-11-18",
+"hash": "834d0bfeb0d3",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/plastics/page/3/": {
-"hash": "f8e770d68839",
-"lastmod": "2026-11-18",
+"hash": "9136fddf3052",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/plastics/port-said/": {
@@ -2581,19 +4255,46 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/plastics/qena/": {
+"hash": "ee53d67996ce",
+"lastmod": "2026-11-28"
+},
 "/factories/plastics/sharqia/": {
 "hash": "9fbdff036baa",
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/plastics/sohag/": {
+"hash": "7736414bd06b",
+"lastmod": "2026-11-28"
+},
+"/factories/plastics/suez/": {
+"hash": "9d47392f37e9",
+"lastmod": "2026-11-28"
+},
+"/factories/porcelain-international-pi/": {
+"hash": "14a8160fbce6",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/port-said-star-smoked-fish/": {
+"hash": "6d87eb7bf563",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/prime-verde-for-bags-and-paper-industries/": {
+"hash": "a1de4b6fa77b",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/printing/": {
-"hash": "5036468b7c40",
-"lastmod": "2026-11-18",
+"hash": "f8ee1ffcb49a",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/printing/alexandria/": {
-"hash": "124ed6231b98",
-"lastmod": "2026-11-18"
+"hash": "ad29d38e6afb",
+"lastmod": "2026-11-28"
 },
 "/factories/printing/cairo/": {
 "hash": "f595b3bd46eb",
@@ -2609,6 +4310,10 @@
 "hash": "bbf23e2c8246",
 "lastmod": "2026-11-18"
 },
+"/factories/printing/sharqia/": {
+"hash": "9e23edc8aefc",
+"lastmod": "2026-11-28"
+},
 "/factories/procoor/": {
 "hash": "0b8e9d86e85b",
 "lastmod": "2026-11-18"
@@ -2616,6 +4321,11 @@
 "/factories/promech-for-engineering/": {
 "hash": "66cd8c425d2a",
 "lastmod": "2026-11-18"
+},
+"/factories/prometeon-tyre-egypt-alexandria-tire-company/": {
+"hash": "2c249703f24e",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/pumps-compressors/": {
 "hash": "24a921d2e103",
@@ -2699,6 +4409,26 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/punalu-for-plastic-and-wood-industries/": {
+"hash": "02180f79678f",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/purity-for-spices-and-medicinal-herbs-processing/": {
+"hash": "b56abb0d1574",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/pyramids-tires/": {
+"hash": "d3386ed2800e",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/qader-metal/": {
+"hash": "44a24ad1c88e",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/qemmah/": {
 "hash": "38f084cfc146",
 "lastmod": "2026-11-18"
@@ -2706,6 +4436,21 @@
 "/factories/qeye/": {
 "hash": "4b2cc188cb3f",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/qora-linen/": {
+"hash": "a31dffa4ac07",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/quality-pack-for-inks-chemicals-and-packaging-materials/": {
+"hash": "afec8b324aaf",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/quality-target-bakery-enhancement/": {
+"hash": "8c7476c816ed",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/quena-paper-industry-company/": {
@@ -2718,6 +4463,11 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/rawaat-al-majales-furniture/": {
+"hash": "dc71a989c26d",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/raya-data-center/": {
 "hash": "47b76d4b20cd",
 "lastmod": "2026-11-18"
@@ -2727,9 +4477,19 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/reef-misr-for-cooling-and-freezing/": {
+"hash": "3ae7711bd90c",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/right-group/": {
 "hash": "911e0931be19",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/rio-foods-for-food-industries/": {
+"hash": "f85c3815f001",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/royal-ceramica/": {
@@ -2737,9 +4497,19 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/royal-el-minya-cement/": {
+"hash": "ba94d35f40e0",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/saad-moustafa-wire/": {
+"hash": "bcab7d4d42f0",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/safety-fire/": {
-"hash": "62a082959c5f",
-"lastmod": "2026-11-18",
+"hash": "81cfcf977ee0",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/safety-fire/alexandria/": {
@@ -2769,6 +4539,10 @@
 "hash": "3af6e0c0e2e8",
 "lastmod": "2026-11-18"
 },
+"/factories/safety-fire/damietta/": {
+"hash": "89f0414b9ea3",
+"lastmod": "2026-11-28"
+},
 "/factories/safety-fire/faiyum/": {
 "hash": "870f9ea44dfd",
 "lastmod": "2026-11-18"
@@ -2795,8 +4569,8 @@
 "lastmod": "2026-11-18"
 },
 "/factories/safety-fire/page/2/": {
-"hash": "679ee7029280",
-"lastmod": "2026-11-18",
+"hash": "d5b0fef3195f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/safety-fire/port-said/": {
@@ -2827,9 +4601,64 @@
 "hash": "28cc7d99c917",
 "lastmod": "2026-11-18"
 },
+"/factories/saint-george-factory-food/": {
+"hash": "ab8b93dd6e96",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/sakr-group-for-food-industries/": {
+"hash": "c96212e30504",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/salam-international-for-ready-made-garments/": {
+"hash": "2a8794cd1f4c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/salman-international-for-construction/": {
+"hash": "d61c241cf840",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/samsung-electronics-egypt/": {
+"hash": "bda441597f20",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/schneider-electric-egypt/": {
+"hash": "d78ca26022ea",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/search/": {
-"hash": "2dc04f1e5fb1",
-"lastmod": "2026-11-20"
+"hash": "fb57a4641513",
+"lastmod": "2026-11-28"
+},
+"/factories/seifeldin-for-industry-commerce-seifeldin-fashion/": {
+"hash": "7d2a0130282b",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/serio-plast-egypt/": {
+"hash": "ecca134984a3",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/shahinler-egypt/": {
+"hash": "f0a45d3f49fe",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/sharkia-national-company-for-food-security/": {
+"hash": "d5bc13485b7a",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/shenco-for-chemicals/": {
+"hash": "bd0a5dd372b6",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/shotmed-paper-industries/": {
 "hash": "dde1f59871c9",
@@ -2851,9 +4680,24 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/sinai-medical-supply/": {
+"hash": "47da84aa3e54",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/sinai-national-plastic-industries-company/": {
+"hash": "36c906a1c81b",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/sinai-white-portland-cement/": {
 "hash": "3d73edadd4b5",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/siraj-lighting-flare/": {
+"hash": "9d7ba7a65183",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/sistrum-group/": {
@@ -2863,6 +4707,21 @@
 "/factories/smart-integrated-solutions/": {
 "hash": "b864bb8766c4",
 "lastmod": "2026-11-18"
+},
+"/factories/somet-bmc-for-grp-products/": {
+"hash": "1a388cb5c1d9",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/soudanco/": {
+"hash": "8c866ba7fde4",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/south-valley-cement-company/": {
+"hash": "9d71e58fa375",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/spare-parts/": {
 "hash": "91e263a738da",
@@ -2890,14 +4749,24 @@
 "hash": "531417b1fb5a",
 "lastmod": "2026-11-18"
 },
+"/factories/specialized-contracting-and-industries-company/": {
+"hash": "e73921c085d4",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/spectrum-for-diagnostic-industries/": {
+"hash": "03ad309d772f",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/sphinx-glass/": {
 "hash": "cc57786d156f",
 "lastmod": "2026-11-18",
 "en": 1
 },
 "/factories/sports-goods/": {
-"hash": "e01be4a5c956",
-"lastmod": "2026-11-18",
+"hash": "af5b0ca003a2",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/sports-goods/cairo/": {
@@ -2908,20 +4777,28 @@
 "hash": "ed4324259feb",
 "lastmod": "2026-11-18"
 },
+"/factories/sports-goods/suez/": {
+"hash": "01c1def23d4b",
+"lastmod": "2026-11-28"
+},
 "/factories/stc/": {
 "hash": "aac3e2934632",
 "lastmod": "2026-11-18",
 "en": 1
 },
 "/factories/steel-metals/": {
-"hash": "a8001b174a2f",
-"lastmod": "2026-11-18",
+"hash": "7ba6c1aa18c6",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/steel-metals/alexandria/": {
-"hash": "4f29cd0185df",
-"lastmod": "2026-11-18",
+"hash": "7b394b7ecb1a",
+"lastmod": "2026-11-28",
 "en": 1
+},
+"/factories/steel-metals/aswan/": {
+"hash": "a816d81de25f",
+"lastmod": "2026-11-28"
 },
 "/factories/steel-metals/beheira/": {
 "hash": "be26dcdb5774",
@@ -2946,16 +4823,16 @@
 "lastmod": "2026-11-18"
 },
 "/factories/steel-metals/faiyum/": {
-"hash": "694c030e7441",
-"lastmod": "2026-11-18"
+"hash": "9a68430d90c8",
+"lastmod": "2026-11-28"
 },
 "/factories/steel-metals/gharbia/": {
 "hash": "d0841a2bb07d",
 "lastmod": "2026-11-18"
 },
 "/factories/steel-metals/giza/": {
-"hash": "1bb25d37729c",
-"lastmod": "2026-11-18",
+"hash": "57ec0d5a9bc0",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/steel-metals/ismailia/": {
@@ -2967,28 +4844,33 @@
 "lastmod": "2026-11-18"
 },
 "/factories/steel-metals/monufia/": {
-"hash": "b2d32ea62632",
-"lastmod": "2026-11-18",
+"hash": "9d4e7e5d1cd0",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/steel-metals/page/2/": {
-"hash": "67e8460e304e",
-"lastmod": "2026-11-18",
+"hash": "f1cbcaee758e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/steel-metals/page/3/": {
-"hash": "d3d094023ed2",
-"lastmod": "2026-11-18",
+"hash": "3cbd0be9919e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/steel-metals/page/4/": {
-"hash": "cca392f189f0",
-"lastmod": "2026-11-18",
+"hash": "855d6cbb30a6",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/steel-metals/page/5/": {
+"hash": "4e6a324ee014",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/steel-metals/qalyubia/": {
-"hash": "7726cf8d8853",
-"lastmod": "2026-11-18",
+"hash": "81a1ec27cadd",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/steel-metals/qena/": {
@@ -3001,21 +4883,31 @@
 "en": 1
 },
 "/factories/steel-metals/sohag/": {
-"hash": "ba8390e6ddaa",
-"lastmod": "2026-11-18"
+"hash": "810c2e4bb65a",
+"lastmod": "2026-11-28"
 },
 "/factories/steel-metals/south-sinai/": {
 "hash": "f2a7553a68b6",
 "lastmod": "2026-11-18"
 },
 "/factories/steel-metals/suez/": {
-"hash": "e74332086980",
-"lastmod": "2026-11-18",
+"hash": "02ef8b0ac366",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/styler-aslan-blankets-and-carpets/": {
+"hash": "3efe6ba20957",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/suez-steel-company/": {
 "hash": "e35b7485aeb5",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/sukari-gold-mines-company/": {
+"hash": "524f831da6e1",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/sumitomo-electric-wiring-systems-egypt/": {
@@ -3028,23 +4920,67 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/taiba-for-food-industries-taiba-food/": {
+"hash": "c769e67e77d3",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/target-plast-behaira-pack-plast-company/": {
+"hash": "39826873f012",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/tawasol-it/": {
 "hash": "301c453dd8c0",
 "lastmod": "2026-11-18"
 },
+"/factories/tci-sanmar-chemicals-s-a-e/": {
+"hash": "d07a59de20ec",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/technological-manufacturing-of-insulated-doors/": {
+"hash": "8064f3bb1aea",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/technometer-group/": {
+"hash": "2be04bfdf360",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/technovision/": {
+"hash": "b7ef0d7aee46",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/tecnoplast/": {
+"hash": "c02f512304fd",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/teratek-composite-rebar-factory/": {
+"hash": "76f64cda8a2f",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/textiles/": {
-"hash": "be386c3bea72",
-"lastmod": "2026-11-18",
+"hash": "5ee8153a9c37",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/textiles/alexandria/": {
-"hash": "e14247d96716",
-"lastmod": "2026-11-18",
+"hash": "4dc32f9717d4",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/textiles/beheira/": {
 "hash": "be5dc57e3707",
 "lastmod": "2026-11-18"
+},
+"/factories/textiles/beni-suef/": {
+"hash": "ce39965e7a54",
+"lastmod": "2026-11-28"
 },
 "/factories/textiles/cairo/": {
 "hash": "b93942b4655c",
@@ -3052,32 +4988,51 @@
 "en": 1
 },
 "/factories/textiles/dakahlia/": {
-"hash": "9b70905dac2e",
-"lastmod": "2026-11-18"
+"hash": "837b1c272758",
+"lastmod": "2026-11-28"
 },
 "/factories/textiles/gharbia/": {
-"hash": "1ec788d52b4b",
-"lastmod": "2026-11-18"
+"hash": "aac1252a6ead",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/textiles/giza/": {
-"hash": "744c03053c4f",
-"lastmod": "2026-11-18"
+"hash": "3949da5f5de4",
+"lastmod": "2026-11-28"
+},
+"/factories/textiles/ismailia/": {
+"hash": "299436ed81a5",
+"lastmod": "2026-11-28"
+},
+"/factories/textiles/minya/": {
+"hash": "55096f1d25ad",
+"lastmod": "2026-11-28"
 },
 "/factories/textiles/monufia/": {
-"hash": "e80ab4846b1e",
-"lastmod": "2026-11-18"
+"hash": "f08776a022c3",
+"lastmod": "2026-11-28"
+},
+"/factories/textiles/page/2/": {
+"hash": "10397edb3a6c",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/textiles/port-said/": {
-"hash": "041a82c57141",
-"lastmod": "2026-11-18"
+"hash": "34f826ff0176",
+"lastmod": "2026-11-28"
 },
 "/factories/textiles/qalyubia/": {
 "hash": "74c62ff45743",
 "lastmod": "2026-11-18"
 },
 "/factories/textiles/sharqia/": {
-"hash": "e0d0c328094d",
-"lastmod": "2026-11-18"
+"hash": "b61b17b37436",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/textiles/suez/": {
+"hash": "f4ba30f3d70e",
+"lastmod": "2026-11-28"
 },
 "/factories/the-egyptian-company-for-grain-milling-ecgm/": {
 "hash": "5c242233fe24",
@@ -3086,30 +5041,57 @@
 },
 "/factories/the-nile-company-for-oil-detergents-nod/": {
 "hash": "a28e00d053e5",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/three-stars-group/": {
+"hash": "aa2adfbbd29c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/tiba-el-aidy-household-utensils-factory/": {
+"hash": "4109953d3b3a",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/timeline-egypt-free-zone/": {
+"hash": "15bbaa9f4f2a",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/tools-instruments/": {
-"hash": "a1ececd6b7a9",
-"lastmod": "2026-11-18",
+"hash": "81f37455abea",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/tools-instruments/alexandria/": {
-"hash": "eea675353f86",
-"lastmod": "2026-11-18"
+"hash": "89a26a51ee81",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/tools-instruments/cairo/": {
-"hash": "a086fc637cff",
-"lastmod": "2026-11-18",
+"hash": "97a94034930f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/tools-instruments/giza/": {
-"hash": "624ae7202d53",
-"lastmod": "2026-11-18",
+"hash": "212cc974e07a",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/tools-instruments/qalyubia/": {
 "hash": "dd600bbd30b2",
 "lastmod": "2026-11-18"
+},
+"/factories/top-for-electrical-industries/": {
+"hash": "fe661f1db6cf",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/toshka-misr-for-seafood/": {
+"hash": "60bffe12761e",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/transport-shipping/": {
 "hash": "88a9ad376fc9",
@@ -3128,9 +5110,19 @@
 "hash": "8c16304c905b",
 "lastmod": "2026-11-18"
 },
+"/factories/troval-for-cookware-manufacturing/": {
+"hash": "c462d48cbfb3",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/trust-office-and-hotel/": {
 "hash": "80bb5cf002ae",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/ultra-for-medical-products-ultra-med/": {
+"hash": "5dacccb301c1",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/union-group-egypt/": {
@@ -3143,9 +5135,29 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/unirab-polvara-spinning-weaving-co-arab-polvara/": {
+"hash": "c1ced131dea9",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/united-for-industry-and-trade-beta-therm-beta-white/": {
+"hash": "acff3fc297d7",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/united-metal-products/": {
+"hash": "53027fbd1044",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/universal-group/": {
 "hash": "b761b051204a",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/upper-egypt-flour-mills/": {
+"hash": "c444f5cbf46d",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/vas-integrated-solutions/": {
@@ -3158,9 +5170,34 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/virginia-olive-press/": {
+"hash": "8f7d460b24ba",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/vision-consulting-group/": {
 "hash": "e913fce6322e",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/vitality-for-industry-and-trade-vitality-refreshment/": {
+"hash": "1267dc3f5cea",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/vivaturf-artificial-grass/": {
+"hash": "eb2d7aa3b3b0",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/wadi-group-feed-mill/": {
+"hash": "f356733fb9ed",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/wassilatex-spinning-mill/": {
+"hash": "619a37a569c8",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/water-treatment/": {
@@ -3186,9 +5223,29 @@
 "hash": "65e35fdd8119",
 "lastmod": "2026-11-18"
 },
+"/factories/waziri-factory-for-electrical-and-home-appliances/": {
+"hash": "215c3168b7c3",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/white-hygiene/": {
 "hash": "77178d95d7b9",
 "lastmod": "2026-11-18",
+"en": 1
+},
+"/factories/white-stone-egypt-for-mining/": {
+"hash": "d1b431e195b7",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/wild-eagle-industries/": {
+"hash": "70fb989b2637",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/willex-limited-medical-supplies/": {
+"hash": "67b54487e2c6",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/factories/woodek-wood-equipment-company/": {
@@ -3196,9 +5253,34 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/factories/xinxing-ductile-iron-pipes-egypt/": {
+"hash": "540d95ac985c",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/factories/xlap-group/": {
 "hash": "da72d41f598f",
 "lastmod": "2026-11-18"
+},
+"/factories/zaghloul-food-industries/": {
+"hash": "ab6cbc6405ef",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/zahret-el-mahalla-for-textiles/": {
+"hash": "11ba2dedf823",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/zahret-el-nil-food-products/": {
+"hash": "987fe1a6a534",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/factories/zamzam-furniture/": {
+"hash": "c73389dc677c",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/factories/آل-فريد-للمضخات/": {
 "hash": "7494658cfe89",
@@ -3536,7 +5618,8 @@
 },
 "/factories/إيمدج-تي-أر-في-جروب/": {
 "hash": "0ab85f0fdff8",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/إيمدج-تي-أر-في-للطلمبات/": {
 "hash": "59066f4a3c78",
@@ -3871,11 +5954,13 @@
 },
 "/factories/التصنيع-الغذائي-والزراعي-الشركة-العر/": {
 "hash": "894b967c1527",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/التصنيع-الغذائي/": {
 "hash": "dcfb0005bd51",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/التقدم-للصناعات-الغذائية-3/": {
 "hash": "ef9a18f07993",
@@ -4103,7 +6188,8 @@
 },
 "/factories/الشركة-التجارية-للهندسة-الصناعية-2/": {
 "hash": "3e40180cda4a",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/الشركة-الحديثة-للصناعات-الهندسية/": {
 "hash": "96d82060b781",
@@ -4947,7 +7033,8 @@
 },
 "/factories/الشركة-المصرية-للعدد-والآلات-الميكان/": {
 "hash": "5a295f32fa1b",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/الشركة-المصرية-للعوازل-ومهمات-المصان/": {
 "hash": "0ba9913a63c9",
@@ -5145,11 +7232,13 @@
 },
 "/factories/الصناعات-الهندسية-والمعدنية-الوطنية/": {
 "hash": "fedc0253305d",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/الصناعات-الهندسية-والمعدنية/": {
 "hash": "fb160a4c26e5",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/الطنطاوي-للآلات-والمعدات/": {
 "hash": "76e3fbda2565",
@@ -5318,7 +7407,8 @@
 },
 "/factories/الكيماويات-المتطورة-برج-العرب/": {
 "hash": "599a69b70ecf",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/اللؤلؤة-الاستثمارية-للزجاج/": {
 "hash": "63d7472b3613",
@@ -5395,7 +7485,8 @@
 },
 "/factories/المتحدة-للتوريدات-الصناعية/": {
 "hash": "207704ed38fc",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/المتحدة-للكيماويات-والمواد-اللاصقة/": {
 "hash": "1f79883d209d",
@@ -5519,7 +7610,8 @@
 },
 "/factories/المركز-التجاري-العلمي-أس-تي-سي/": {
 "hash": "452ca4593f9d",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/المركز-التجاري-المصري/": {
 "hash": "cf66e09397f5",
@@ -5685,7 +7777,8 @@
 },
 "/factories/المصرية-الأوروبية-للتغليف/": {
 "hash": "e2543f5365ca",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/المصرية-الأوروبية-للصناعة/": {
 "hash": "ba7280b73aee",
@@ -6236,7 +8329,8 @@
 },
 "/factories/تجهيز-المكاتب/": {
 "hash": "b8cb3d99490c",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/تجهيز-وتصنيع-الحاصلات-الزراعية-المهن/": {
 "hash": "78ba9c2eb3a8",
@@ -6323,7 +8417,8 @@
 },
 "/factories/تشغيل-وتوريد-المعادن-الشركة-الفنية/": {
 "hash": "a08263662fdf",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/تشكيل-المعادن-في-السادات/": {
 "hash": "3f03aa6eca1f",
@@ -6457,7 +8552,8 @@
 },
 "/factories/تصميم-المنشآت-المعدنية/": {
 "hash": "87f2a4032e0c",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/تصنيع-أنابيب-الألومنيوم-للتعبئة/": {
 "hash": "2801ebddf629",
@@ -6526,7 +8622,8 @@
 },
 "/factories/تصنيع-الهياكل-المعدنية-سويجبت-مينا/": {
 "hash": "48dea3a204af",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/تصنيع-خطوط-الإنتاج-الغذائية/": {
 "hash": "a7903bfda9b7",
@@ -6560,7 +8657,8 @@
 },
 "/factories/تصنيع-غذائي-في-مدينة-السادات/": {
 "hash": "082490ccb1ed",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/تصنيع-قطع-الغيار-الصناعية/": {
 "hash": "16b2cc638e71",
@@ -6714,7 +8812,8 @@
 },
 "/factories/تكنو-جروب-لمعدات-المطاحن/": {
 "hash": "6f7cdb7c72ae",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/تكنو-جلاس-للزجاج-المنزلي/": {
 "hash": "af4a12b04421",
@@ -6831,7 +8930,8 @@
 },
 "/factories/توزيع-الغاز-الطبيعي/": {
 "hash": "7b474162ad0f",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/توزيع-المنتجات-البترولية/": {
 "hash": "0312f6d162d6",
@@ -6845,7 +8945,8 @@
 },
 "/factories/توصيل-الغاز-الطبيعي/": {
 "hash": "670a2f67e8e4",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/توصيل-الغاز-للمنازل/": {
 "hash": "950c533c0d6f",
@@ -6859,7 +8960,8 @@
 },
 "/factories/توصيل-وتوزيع-الغاز-الطبيعي/": {
 "hash": "4dbecf8b025c",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/تي-إي-تي-زمزم-للعزل/": {
 "hash": "c17b27fcc998",
@@ -6878,7 +8980,8 @@
 },
 "/factories/ثري-إم-لضواغط-الهواء/": {
 "hash": "88bfb6a50784",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/جاب-تريد-للمعدات-الصناعية/": {
 "hash": "245dfa6bfee4",
@@ -7343,7 +9446,8 @@
 },
 "/factories/سفنكس-لصناعة-الزجاج/": {
 "hash": "a777f89c842c",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/سفير-للصناعات-المعدنية-والبلاستيكية/": {
 "hash": "70cd2f239b8a",
@@ -8662,7 +10766,8 @@
 },
 "/factories/شركة-البدرماني-للكيماويات/": {
 "hash": "485b8c83d7aa",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/شركة-البدور-للتوريدات-العمومية/": {
 "hash": "dde89b2c1eea",
@@ -9591,7 +11696,8 @@
 },
 "/factories/شركة-القاهرة-للمقاولات-والتوريدات-ال-2/": {
 "hash": "557d3ec1f8d0",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/شركة-القدس-للتجارة-والتوكيلات/": {
 "hash": "9c65a9a446f6",
@@ -9965,7 +12071,8 @@
 },
 "/factories/شركة-المنجد-للصناعات-الغذائية/": {
 "hash": "ec45ea53df33",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/شركة-المنى-لكيماويات-البناء/": {
 "hash": "1a281c3ab16f",
@@ -10650,7 +12757,8 @@
 },
 "/factories/شركة-بنها-للصناعات-الإلكترونية/": {
 "hash": "4ec8a72d9428",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/شركة-بني-سويف-للعزل-الحراري/": {
 "hash": "c70a978a7a38",
@@ -10922,7 +13030,8 @@
 },
 "/factories/شركة-تك-إليكتريك-للمقاولات/": {
 "hash": "f909d3dd3ed8",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/شركة-تك-تريد/": {
 "hash": "bff92a35ceaf",
@@ -12992,7 +15101,8 @@
 },
 "/factories/شركة-مستر-سولت-للملح/": {
 "hash": "9e8782ca466c",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/شركة-مسك-للأنظمة-الصناعية-الأوتوماتي/": {
 "hash": "d54dbbc7bfc7",
@@ -13050,7 +15160,8 @@
 },
 "/factories/شركة-مصر-لأنظمة-الضغط-2/": {
 "hash": "0b588a709588",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/شركة-مصر-لتصنيع-مستلزمات-التعبئة-والت/": {
 "hash": "5875751e5b4e",
@@ -13695,7 +15806,8 @@
 },
 "/factories/شكائر-البولي-بروبيلين-المنسوجة/": {
 "hash": "73428a24324a",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/شكائر-يثرب-مصر-البلاستيكية/": {
 "hash": "71289a6c9918",
@@ -13724,7 +15836,8 @@
 },
 "/factories/صناعات-أبي-قير-الهندسية-مصنع-10-الحربي/": {
 "hash": "852748d347d7",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/صناعات-نيوهوفر-المعدنية-والبلاستيكي/": {
 "hash": "38b28971c737",
@@ -13823,7 +15936,8 @@
 },
 "/factories/طرطوسية-للهندسة-والتجارة/": {
 "hash": "4cb81de7d63e",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/طلمبات-أولاد-أنور-قديس/": {
 "hash": "39895cdc348c",
@@ -14550,11 +16664,13 @@
 },
 "/factories/ماكينات-بيلا-باك/": {
 "hash": "b8f1556facb8",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/ماكينات-بيللا-باك/": {
 "hash": "ef02d731bde2",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/ماكينات-تعبئة-أحبار-الطابعات/": {
 "hash": "4002a559258d",
@@ -14732,7 +16848,8 @@
 },
 "/factories/مراتب-الدورا/": {
 "hash": "41c75b400e34",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/مراتب-خرسانية-للمواسي/": {
 "hash": "8924e816936a",
@@ -14974,11 +17091,13 @@
 },
 "/factories/مصنع-أغذية-في-بدر/": {
 "hash": "87b7445b7903",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/مصنع-أغذية-في-قويسنا/": {
 "hash": "53a67d02ad42",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/مصنع-أكيب-للأغطية-البلاستيكية/": {
 "hash": "423831e1097e",
@@ -15125,7 +17244,8 @@
 },
 "/factories/مصنع-البهارات-السبعه/": {
 "hash": "f7dec1878042",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/مصنع-الحمد-لتصنيع-اسطمبات-المعادن-وتش/": {
 "hash": "2ffb8aba6f40",
@@ -15283,7 +17403,8 @@
 },
 "/factories/مصنع-الملكة-لتصنيع-وتشكيل-وتشغيل-المع/": {
 "hash": "b0e7ca8f2928",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/مصنع-المنتجات-البلاستيكية/": {
 "hash": "66ae1a4ddcb0",
@@ -15301,7 +17422,8 @@
 },
 "/factories/مصنع-المينا-لصناعات-البلاستيك-إبراهي/": {
 "hash": "b3884b4de617",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/مصنع-النجمة-للبلاستيك/": {
 "hash": "b6f46fbcdba5",
@@ -15683,11 +17805,13 @@
 },
 "/factories/مصنع-غزل-ونسيج-في-بدر/": {
 "hash": "e97af60b009f",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/مصنع-غزل-ونسيج-في-بني-سويف/": {
 "hash": "2b5212a77b4f",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/مصنع-فايمس-بلاست-علا-بركات-محمد-عراقى/": {
 "hash": "4c0edabf5288",
@@ -15871,7 +17995,8 @@
 },
 "/factories/مصنع-هندسي-في-بدر/": {
 "hash": "c3e599a0451e",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/مصنع-هيدروليك-تكنولوجى-سنتر-h-t-c-كايرو-ه/": {
 "hash": "e357701ddc6c",
@@ -16235,7 +18360,8 @@
 },
 "/factories/نيوتراك-للتجارة/": {
 "hash": "2124b25f6347",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/factories/نيومان-واس-للضواغط/": {
 "hash": "7947be0acca9",
@@ -16406,277 +18532,292 @@
 "en": 1
 },
 "/governorates/": {
-"hash": "785078e3ab4d",
-"lastmod": "2026-11-18",
+"hash": "d72c14d3623a",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/alexandria/": {
-"hash": "bee1a60b94f0",
-"lastmod": "2026-11-18",
+"hash": "01d5cbda54a9",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/alexandria/page/2/": {
-"hash": "2f3854bdac71",
-"lastmod": "2026-11-18",
+"hash": "dcee267a83ad",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/alexandria/page/3/": {
-"hash": "a4b0db6a963e",
-"lastmod": "2026-11-18",
+"hash": "eb7599b69d12",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/alexandria/page/4/": {
-"hash": "2e98cea5b912",
-"lastmod": "2026-11-18",
+"hash": "ca2b8979006e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/alexandria/page/5/": {
-"hash": "43e4fef37005",
-"lastmod": "2026-11-18",
+"hash": "5412c0ec6b2f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/alexandria/page/6/": {
-"hash": "1b56ad135d04",
-"lastmod": "2026-11-18",
+"hash": "74392e69bb3f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/alexandria/page/7/": {
-"hash": "199699833367",
-"lastmod": "2026-11-18",
+"hash": "a0d2152f3944",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/governorates/alexandria/page/8/": {
+"hash": "25dab9480972",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/governorates/alexandria/page/9/": {
+"hash": "dc770b2e8c08",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/aswan/": {
-"hash": "08e2cf6ab902",
-"lastmod": "2026-11-18",
+"hash": "63803db78a73",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/asyut/": {
-"hash": "cfa48fa57768",
-"lastmod": "2026-11-18",
+"hash": "1a80c2ddeecf",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/beheira/": {
-"hash": "58f778130de1",
-"lastmod": "2026-11-18",
+"hash": "51140bfb7eae",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/beni-suef/": {
-"hash": "0a28b27b4194",
-"lastmod": "2026-11-18",
+"hash": "b2afb8841598",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/": {
-"hash": "9ab77ea2aae9",
-"lastmod": "2026-11-18",
+"hash": "2737cf379b12",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/10/": {
-"hash": "5883bb17a893",
-"lastmod": "2026-11-18",
+"hash": "9c0260b50d65",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/11/": {
-"hash": "43116f3196a5",
-"lastmod": "2026-11-18",
+"hash": "a5a9cc345699",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/12/": {
-"hash": "b800c72821f3",
-"lastmod": "2026-11-18",
+"hash": "3f3320f87a42",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/13/": {
-"hash": "6b042ddbb218",
-"lastmod": "2026-11-18",
+"hash": "af279b6d09bd",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/14/": {
-"hash": "295fb11a0ebe",
-"lastmod": "2026-11-18",
+"hash": "6b06a09c2b4d",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/15/": {
-"hash": "598953d85fec",
-"lastmod": "2026-11-18",
+"hash": "57b94f3b0eeb",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/16/": {
-"hash": "1c7fa5327c85",
-"lastmod": "2026-11-18",
+"hash": "fe9435f54856",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/17/": {
-"hash": "f6396d8bc2cc",
-"lastmod": "2026-11-18",
+"hash": "f4232f1850a3",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/18/": {
-"hash": "9ad9df29073e",
-"lastmod": "2026-11-18",
+"hash": "cb5099268194",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/19/": {
-"hash": "b927dc109ba7",
-"lastmod": "2026-11-18",
+"hash": "206be8e049a0",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/2/": {
-"hash": "21845e4a81a3",
-"lastmod": "2026-11-18",
+"hash": "5d63fb83a4d2",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/20/": {
-"hash": "4c942e67c78f",
-"lastmod": "2026-11-18",
+"hash": "9ed8ee8f5a79",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/21/": {
-"hash": "339369a7784f",
-"lastmod": "2026-11-18",
+"hash": "6be0f467fc03",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/22/": {
-"hash": "062271d398ff",
-"lastmod": "2026-11-18",
+"hash": "c87164106692",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/23/": {
-"hash": "2b12a1f8940d",
-"lastmod": "2026-11-18",
+"hash": "25c2ce95aafc",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/24/": {
-"hash": "ac0304aebfa5",
-"lastmod": "2026-11-18",
+"hash": "76df4019b736",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/25/": {
-"hash": "a5b9cf394b52",
-"lastmod": "2026-11-18",
+"hash": "aaf175b4dddd",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/26/": {
-"hash": "e9554175827b",
-"lastmod": "2026-11-18",
+"hash": "6f701752c27b",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/3/": {
-"hash": "80418669530d",
-"lastmod": "2026-11-18",
+"hash": "da4b1eb516a6",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/4/": {
-"hash": "99374bc7e792",
-"lastmod": "2026-11-18",
+"hash": "8a9eec583f30",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/5/": {
-"hash": "f889f73766ab",
-"lastmod": "2026-11-18",
+"hash": "65d88bcca6e6",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/6/": {
-"hash": "1077230dbc25",
-"lastmod": "2026-11-18",
+"hash": "7cb36234d1ac",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/7/": {
-"hash": "1ba74f1a2166",
-"lastmod": "2026-11-18",
+"hash": "659a61d21619",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/8/": {
-"hash": "779667d5592b",
-"lastmod": "2026-11-18",
+"hash": "524edd7b08b4",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/cairo/page/9/": {
-"hash": "73a1b580441b",
-"lastmod": "2026-11-18",
+"hash": "92c3d1447584",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/dakahlia/": {
-"hash": "a811b47737ba",
-"lastmod": "2026-11-18",
+"hash": "0341ed144b4e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/damietta/": {
-"hash": "8f8b2e9b7f61",
-"lastmod": "2026-11-18",
+"hash": "a09bdf016219",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/explore/": {
-"hash": "426bc4e61846",
-"lastmod": "2026-11-20"
+"hash": "21a33dbcdb54",
+"lastmod": "2026-11-28"
 },
 "/governorates/faiyum/": {
-"hash": "fcd6ded5aaab",
-"lastmod": "2026-11-18",
+"hash": "7576592fb852",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/gharbia/": {
-"hash": "b56ace3b5bfa",
-"lastmod": "2026-11-18",
+"hash": "4a77df1af8ce",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/giza/": {
-"hash": "1608e0015cbf",
-"lastmod": "2026-11-18",
+"hash": "9e83884be0cb",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/giza/page/10/": {
-"hash": "6a7851ff2400",
-"lastmod": "2026-11-18",
+"hash": "ffc6de665597",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/governorates/giza/page/11/": {
+"hash": "060cef18ea09",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/giza/page/2/": {
-"hash": "162dca6b6872",
-"lastmod": "2026-11-18",
+"hash": "3b687b1e6729",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/giza/page/3/": {
-"hash": "9bd41437b30c",
-"lastmod": "2026-11-18",
+"hash": "c70cd3561ede",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/giza/page/4/": {
-"hash": "bb97de6f259a",
-"lastmod": "2026-11-18",
+"hash": "4bdfe88137d6",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/giza/page/5/": {
-"hash": "223759fb91b7",
-"lastmod": "2026-11-18",
+"hash": "867e2c5b41cd",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/giza/page/6/": {
-"hash": "5116c4f82a33",
-"lastmod": "2026-11-18",
+"hash": "e6d7be3f316a",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/giza/page/7/": {
-"hash": "09ba37565d74",
-"lastmod": "2026-11-18",
+"hash": "5fea6139fa5b",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/giza/page/8/": {
-"hash": "2227ed017e05",
-"lastmod": "2026-11-18",
+"hash": "5ce381d547f9",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/giza/page/9/": {
-"hash": "3b4b2d75b9bb",
-"lastmod": "2026-11-18",
+"hash": "234b0ade51c8",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/ismailia/": {
-"hash": "9c2618e50d65",
-"lastmod": "2026-11-18",
+"hash": "b31187327d80",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/kafr-el-sheikh/": {
-"hash": "2553b7902649",
-"lastmod": "2026-11-18",
+"hash": "8de510dbe030",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/luxor/": {
@@ -16685,121 +18826,132 @@
 "en": 1
 },
 "/governorates/matrouh/": {
-"hash": "f6df9a6a3aa7",
-"lastmod": "2026-11-18",
+"hash": "760b7c4cdc32",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/minya/": {
-"hash": "91625e523cf3",
-"lastmod": "2026-11-18",
+"hash": "2a93f52f1693",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/monufia/": {
-"hash": "a3a80faaa4ff",
-"lastmod": "2026-11-18",
+"hash": "5ab1805c3cc4",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/monufia/page/2/": {
-"hash": "ed59863cac83",
-"lastmod": "2026-11-18",
+"hash": "897f183d731d",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/new-valley/": {
-"hash": "b03d08f93d2b",
-"lastmod": "2026-11-18"
+"hash": "85d6f0356780",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/governorates/north-sinai/": {
-"hash": "ef0ee9107c76",
-"lastmod": "2026-11-18",
+"hash": "de9806c186bf",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/port-said/": {
-"hash": "f1733f99cc2f",
-"lastmod": "2026-11-18",
+"hash": "8313b90673ff",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/qalyubia/": {
-"hash": "36c466daaf38",
-"lastmod": "2026-11-18",
+"hash": "5922c0ec6d02",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/qalyubia/page/2/": {
-"hash": "3d7c250fe9d0",
-"lastmod": "2026-11-18",
+"hash": "de5a83e66844",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/qalyubia/page/3/": {
-"hash": "1898a8de2efe",
-"lastmod": "2026-11-18",
+"hash": "a68fbd2bfe18",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/qalyubia/page/4/": {
-"hash": "08f792106f4c",
-"lastmod": "2026-11-18",
+"hash": "15d686ffe868",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/governorates/qalyubia/page/5/": {
+"hash": "9f9cff755a05",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/qena/": {
-"hash": "c4815871b19b",
-"lastmod": "2026-11-18",
+"hash": "c51ed41820ea",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/red-sea/": {
-"hash": "f73b0b799e4a",
-"lastmod": "2026-11-18",
+"hash": "017cb3633f38",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/sharqia/": {
-"hash": "873e3d36fc0a",
-"lastmod": "2026-11-18",
+"hash": "29664a9ac79e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/sharqia/page/2/": {
-"hash": "c9b8226ce0ec",
-"lastmod": "2026-11-18",
+"hash": "9ad222d6e831",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/sharqia/page/3/": {
-"hash": "301e638bf301",
-"lastmod": "2026-11-18",
+"hash": "c2668c19d5ae",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/sharqia/page/4/": {
-"hash": "ab0c61f3c127",
-"lastmod": "2026-11-18",
+"hash": "29a4e9d5ecce",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/sharqia/page/5/": {
-"hash": "a89e26d6f974",
-"lastmod": "2026-11-18",
+"hash": "5190de019fc4",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/governorates/sharqia/page/6/": {
+"hash": "4ff58effcbed",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/sohag/": {
-"hash": "3877095b2c56",
-"lastmod": "2026-11-18",
+"hash": "c5e8c33e813b",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/south-sinai/": {
-"hash": "e24d74c72cdb",
-"lastmod": "2026-11-18",
+"hash": "c6c03e809467",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/governorates/suez/": {
-"hash": "6751517d7ef0",
-"lastmod": "2026-11-18",
+"hash": "5fd01140c09b",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/inbox/": {
-"hash": "39d40e3b2183",
-"lastmod": "2026-11-20"
+"hash": "d35084081972",
+"lastmod": "2026-11-28"
 },
 "/industrial-zones/": {
-"hash": "bcd82bd0b11e",
-"lastmod": "2026-11-18",
+"hash": "2579e4b2d7be",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/explore/": {
-"hash": "9a2fe24032b3",
-"lastmod": "2026-11-20"
+"hash": "50952c3117f1",
+"lastmod": "2026-11-28"
 },
 "/industrial-zones/fz-alexandria/": {
 "hash": "f09126732990",
@@ -16867,8 +19019,8 @@
 "en": 1
 },
 "/industrial-zones/ia-abu-rawash/": {
-"hash": "33d68260a43b",
-"lastmod": "2026-11-18",
+"hash": "319cf3c7aa5d",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ia-akrasha/": {
@@ -16902,8 +19054,8 @@
 "en": 1
 },
 "/industrial-zones/ia-gamasa/": {
-"hash": "31c0d7062005",
-"lastmod": "2026-11-18",
+"hash": "789d4757a48e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ia-hiw-nag-hammadi/": {
@@ -16917,23 +19069,23 @@
 "en": 1
 },
 "/industrial-zones/ia-kom-abu-radi/": {
-"hash": "ba2c8da1935e",
-"lastmod": "2026-11-18",
+"hash": "5dd4a43ebf08",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ia-matahra/": {
-"hash": "4e3eb84bf70b",
-"lastmod": "2026-11-18",
+"hash": "56557663aaa5",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ia-merghem-alexandria/": {
-"hash": "05a66f85b538",
-"lastmod": "2026-11-18",
+"hash": "a0383e1d75ff",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ia-north-fayoum-kom-oshim/": {
-"hash": "99b093e16e13",
-"lastmod": "2026-11-18",
+"hash": "79502a62e9b2",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ia-quesna-mubarak/": {
@@ -16952,8 +19104,8 @@
 "en": 1
 },
 "/industrial-zones/ic-10th-of-ramadan/": {
-"hash": "2cc3547aa3b3",
-"lastmod": "2026-11-18",
+"hash": "80acd65f4733",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ic-15th-of-may/": {
@@ -16962,13 +19114,13 @@
 "en": 1
 },
 "/industrial-zones/ic-6th-of-october/": {
-"hash": "2e1bd1701ec5",
-"lastmod": "2026-11-18",
+"hash": "a738b494f853",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ic-badr/": {
-"hash": "860f54c34e91",
-"lastmod": "2026-11-18",
+"hash": "6499f6ec890f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ic-new-alamein/": {
@@ -16987,23 +19139,23 @@
 "en": 1
 },
 "/industrial-zones/ic-new-beni-suef/": {
-"hash": "ee098f2a023f",
-"lastmod": "2026-11-18",
+"hash": "a16b80d27778",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ic-new-borg-el-arab/": {
-"hash": "149f6c12898b",
-"lastmod": "2026-11-18",
+"hash": "023ed86fb544",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ic-new-cairo/": {
-"hash": "1ecd13dc665c",
-"lastmod": "2026-11-18",
+"hash": "44eb6435d796",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ic-new-damietta/": {
-"hash": "f8a584d374d2",
-"lastmod": "2026-11-18",
+"hash": "e19cd1df0711",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ic-new-salhia/": {
@@ -17017,13 +19169,13 @@
 "en": 1
 },
 "/industrial-zones/ic-obour/": {
-"hash": "e21d3d39ec37",
-"lastmod": "2026-11-18",
+"hash": "bfba7c01a830",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/ic-sadat-city/": {
-"hash": "b65c11fc89f4",
-"lastmod": "2026-11-18",
+"hash": "db7b3c51c445",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/iz-banha-farouqia/": {
@@ -17037,8 +19189,8 @@
 "en": 1
 },
 "/industrial-zones/iz-mit-ghamr/": {
-"hash": "fcd026c81103",
-"lastmod": "2026-11-18",
+"hash": "81c357c1b70b",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/sczone-adabiya-port/": {
@@ -17077,8 +19229,8 @@
 "en": 1
 },
 "/industrial-zones/sczone-sokhna-iz/": {
-"hash": "cb4d0c996e92",
-"lastmod": "2026-11-18",
+"hash": "01d77ab879aa",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/industrial-zones/sczone-west-port-said-port/": {
@@ -17998,40 +20150,44 @@
 "lastmod": "2026-11-18"
 },
 "/intl/": {
-"hash": "b5ec5e2a47a6",
-"lastmod": "2026-11-20"
+"hash": "dce119f0e4fc",
+"lastmod": "2026-11-28"
 },
 "/leads/": {
-"hash": "e1e43b12976d",
-"lastmod": "2026-11-20"
+"hash": "8de9ee7c9814",
+"lastmod": "2026-11-28"
 },
 "/legal/": {
-"hash": "e3b249606c74",
-"lastmod": "2026-11-20"
+"hash": "0ad6268c8296",
+"lastmod": "2026-11-28"
 },
 "/login/": {
-"hash": "0587de74be50",
-"lastmod": "2026-11-18"
+"hash": "8327b499037a",
+"lastmod": "2026-11-28"
 },
 "/map/": {
-"hash": "b52a1397396b",
-"lastmod": "2026-11-20"
+"hash": "351830a76b79",
+"lastmod": "2026-11-28"
+},
+"/market-opportunities/": {
+"hash": "b2b8f16f152c",
+"lastmod": "2026-11-28"
 },
 "/market/": {
-"hash": "128c2ebf891a",
-"lastmod": "2026-11-20"
+"hash": "93159e95fcca",
+"lastmod": "2026-11-28"
 },
 "/media-center/": {
-"hash": "33b132f26447",
-"lastmod": "2026-11-20"
+"hash": "155219964843",
+"lastmod": "2026-11-28"
 },
 "/meeting/": {
-"hash": "ea7878891c08",
-"lastmod": "2026-11-20"
+"hash": "f019f6e888cd",
+"lastmod": "2026-11-28"
 },
 "/news/": {
-"hash": "5580df5207a0",
-"lastmod": "2026-11-18",
+"hash": "871bee596cad",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/news/2026-07-25-9792c4/": {
@@ -18522,40 +20678,245 @@
 "hash": "ae18421fccee",
 "lastmod": "2026-11-16"
 },
+"/news/2026-11-19-47b4ad/": {
+"hash": "738fb219bc9c",
+"lastmod": "2026-11-19"
+},
+"/news/2026-11-19-d93ba3/": {
+"hash": "28018bae1565",
+"lastmod": "2026-11-19"
+},
+"/news/2026-11-21-321d3c/": {
+"hash": "15103f6e0f86",
+"lastmod": "2026-11-21"
+},
+"/news/2026-11-21-4e3b81/": {
+"hash": "b9827a8db33c",
+"lastmod": "2026-11-21"
+},
+"/news/2026-11-21-7df612/": {
+"hash": "ee7defb8f77b",
+"lastmod": "2026-11-21"
+},
+"/news/2026-11-21-87b2c4/": {
+"hash": "d08d4cbabd6f",
+"lastmod": "2026-11-21"
+},
+"/news/2026-11-21-e6a76f/": {
+"hash": "440b8a54ad18",
+"lastmod": "2026-11-21"
+},
+"/news/2026-11-21-ee4f51/": {
+"hash": "cb458097d622",
+"lastmod": "2026-11-21"
+},
+"/news/2026-11-22-15be66/": {
+"hash": "1e57b3358f79",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-416c6e/": {
+"hash": "f53b1451c437",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-543e37/": {
+"hash": "c2e787476a70",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-56f352/": {
+"hash": "1765a2b1fb41",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-6656a5/": {
+"hash": "5c82c12a96c5",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-8a48c7/": {
+"hash": "3749790ae6ee",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-975b29/": {
+"hash": "6c423e98e289",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-9c9670/": {
+"hash": "46d663b9bcd1",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-ab431e/": {
+"hash": "e45b1dc8bf94",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-ad81e2/": {
+"hash": "b43ad9b29d52",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-da59d5/": {
+"hash": "066d89962fae",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-e55cf0/": {
+"hash": "46a009f1fb93",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-22-f8ccdc/": {
+"hash": "d38730696e43",
+"lastmod": "2026-11-22"
+},
+"/news/2026-11-23-20a419/": {
+"hash": "7b6148164f24",
+"lastmod": "2026-11-23"
+},
+"/news/2026-11-23-2c8c59/": {
+"hash": "f7fa7b145a5d",
+"lastmod": "2026-11-23"
+},
+"/news/2026-11-23-50b77a/": {
+"hash": "8fc29223ee01",
+"lastmod": "2026-11-23"
+},
+"/news/2026-11-23-7e4c4d/": {
+"hash": "385a97267f31",
+"lastmod": "2026-11-23"
+},
+"/news/2026-11-23-89e8f5/": {
+"hash": "4053f38b8ad1",
+"lastmod": "2026-11-23"
+},
+"/news/2026-11-23-beede4/": {
+"hash": "c3f74e6bd509",
+"lastmod": "2026-11-23"
+},
+"/news/2026-11-24-12ccd2/": {
+"hash": "973477277c38",
+"lastmod": "2026-11-24"
+},
+"/news/2026-11-24-39d1ef/": {
+"hash": "7cf9d137a71f",
+"lastmod": "2026-11-24"
+},
+"/news/2026-11-24-466227/": {
+"hash": "a519d9ba6e60",
+"lastmod": "2026-11-24"
+},
+"/news/2026-11-24-533721/": {
+"hash": "88d241b91320",
+"lastmod": "2026-11-24"
+},
+"/news/2026-11-24-bc6273/": {
+"hash": "3ff2936a1e9e",
+"lastmod": "2026-11-24"
+},
+"/news/2026-11-25-053c02/": {
+"hash": "cd566a148bdc",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-20c738/": {
+"hash": "13006dff186a",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-21d31c/": {
+"hash": "501fff2c1470",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-365adf/": {
+"hash": "2ba424569a9f",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-3b8215/": {
+"hash": "7fdfbd577ed3",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-5424fc/": {
+"hash": "ea93c36a6b55",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-5bd26c/": {
+"hash": "67a72c40265e",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-7cb830/": {
+"hash": "f91f5ae414fe",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-868f47/": {
+"hash": "a6fc0a4b7b94",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-8c77c7/": {
+"hash": "12101c88f75d",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-92e9e0/": {
+"hash": "62c758ade60c",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-a40daf/": {
+"hash": "dcbe0dfd874e",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-b241dd/": {
+"hash": "9d9621cb4623",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-df1059/": {
+"hash": "78be22bafa79",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-e2e6aa/": {
+"hash": "bd7e63dd8b2a",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-eb57aa/": {
+"hash": "09fc0784c520",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-ec6a6f/": {
+"hash": "b44fab47f230",
+"lastmod": "2026-11-25"
+},
+"/news/2026-11-25-f69952/": {
+"hash": "cedb3ac4db15",
+"lastmod": "2026-11-25"
+},
 "/news/page/2/": {
-"hash": "ded4e2b2396d",
-"lastmod": "2026-11-18",
+"hash": "e5e7eb49d5fe",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/news/page/3/": {
-"hash": "b7836e38eafd",
-"lastmod": "2026-11-18",
+"hash": "b982cd7984b0",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/news/page/4/": {
+"hash": "a53d7316741b",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/news/search/": {
-"hash": "c582fe60380f",
-"lastmod": "2026-11-20"
+"hash": "29593236d234",
+"lastmod": "2026-11-28"
 },
 "/offers/": {
-"hash": "18d7a9650e0e",
-"lastmod": "2026-11-20",
+"hash": "a19b81702fc3",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/offers/ariika-fringe-honeycomb-throw-blanket/": {
-"hash": "d5d18852abaf",
-"lastmod": "2026-11-18"
+"hash": "97838c2fd52c",
+"lastmod": "2026-11-28"
 },
 "/offers/ariika-kids-bathrobe/": {
-"hash": "2a3fb2393c60",
-"lastmod": "2026-11-18"
+"hash": "2c58fa34916c",
+"lastmod": "2026-11-28"
 },
 "/offers/ariika-king-percale-essentials-set/": {
-"hash": "a3ed2fc52aae",
-"lastmod": "2026-11-18"
+"hash": "224fcf4150dc",
+"lastmod": "2026-11-28"
 },
 "/offers/ariika-pinstripe-percale-fitted-sheet-set/": {
-"hash": "99ca590a1ea9",
-"lastmod": "2026-11-18"
+"hash": "ae9ec2293087",
+"lastmod": "2026-11-28"
 },
 "/offers/btech-alaska-chest-freezer-ch200/": {
 "hash": "73424624c65c",
@@ -18830,24 +21191,24 @@
 "lastmod": "2026-11-18"
 },
 "/offers/search/": {
-"hash": "cc4bb7bfd334",
-"lastmod": "2026-11-20"
+"hash": "438eaeed1204",
+"lastmod": "2026-11-28"
 },
 "/offers/seoudi-abu-auf-classic-instant-coffee-100-g/": {
-"hash": "c3b774e59053",
-"lastmod": "2026-11-18"
+"hash": "f12f1c0f9aec",
+"lastmod": "2026-11-28"
 },
 "/offers/seoudi-bisco-misr-datto-king-size-pack-of-12/": {
-"hash": "9a1440e9131d",
-"lastmod": "2026-11-18"
+"hash": "8b99181675b4",
+"lastmod": "2026-11-28"
 },
 "/offers/seoudi-bisco-misr-tea-biscuits-pack-of-12/": {
-"hash": "0d0aaff24816",
-"lastmod": "2026-11-18"
+"hash": "48f05e4e2de2",
+"lastmod": "2026-11-28"
 },
 "/offers/seoudi-california-garden-fava-beans-with-egyptian-recipe-400/": {
-"hash": "58ce0b5bd7fa",
-"lastmod": "2026-11-18"
+"hash": "fcc99ebbe74d",
+"lastmod": "2026-11-28"
 },
 "/offers/seoudi-corona-munchi-wafer-back-to-school-pack-of-12/": {
 "hash": "2b94f8319e68",
@@ -18866,8 +21227,8 @@
 "lastmod": "2026-11-18"
 },
 "/offers/seoudi-eva-skin-clinic-collagen-deep-lines-filler-moisturisi/": {
-"hash": "1e8a39d01315",
-"lastmod": "2026-11-18"
+"hash": "8797bca427a6",
+"lastmod": "2026-11-28"
 },
 "/offers/seoudi-halwani-chicken-pane-1-kg/": {
 "hash": "3b6989210a51",
@@ -18890,60 +21251,60 @@
 "lastmod": "2026-11-18"
 },
 "/offers/seoudi-lamar-full-cream-milk-1-liter/": {
-"hash": "d3cd753e675a",
-"lastmod": "2026-11-18"
+"hash": "afbb61bba38c",
+"lastmod": "2026-11-28"
 },
 "/offers/seoudi-persil-automatic-powder-detergent-lavender-5-kg/": {
-"hash": "eb01c47916f7",
-"lastmod": "2026-11-18"
+"hash": "db6fc462c31d",
+"lastmod": "2026-11-28"
 },
 "/offers/seoudi-pringles-texas-bbq-chips-165-g/": {
-"hash": "7e28635a0d28",
-"lastmod": "2026-11-18"
+"hash": "175d2f30cbac",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-abu-auf-peanut-butter-300g/": {
-"hash": "3dc318aee9db",
-"lastmod": "2026-11-18"
+"hash": "46100d95b488",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-abu-auf-turkish-coffee-plain-medium-200g/": {
-"hash": "160780bac7a2",
-"lastmod": "2026-11-18"
+"hash": "60e6e15e9ae2",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-domty-low-salt-cheese-kg/": {
-"hash": "3faf18e841a6",
-"lastmod": "2026-11-18"
+"hash": "6a73e71dee02",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-el-doha-egyptian-white-rice/": {
-"hash": "8519bfc3e74b",
-"lastmod": "2026-11-18"
+"hash": "6ddd7fb55d0c",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-el-rashidi-el-mizan-strawberry-jam-700-gr/": {
-"hash": "c82512c6fb7f",
-"lastmod": "2026-11-18"
+"hash": "d9b178f58b83",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-el-rashidi-el-mizan-sugarcane-molasses-preservative/": {
-"hash": "a3c41c40f47e",
-"lastmod": "2026-11-18"
+"hash": "69ea9cfc7917",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-el-rashidi-el-mizan-tahina-700g/": {
-"hash": "fba5a04b1369",
-"lastmod": "2026-11-18"
+"hash": "857e9bfd77ce",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-halwani-crunchy-chicken-nuggets-50-pcs/": {
-"hash": "f238b3295796",
-"lastmod": "2026-11-18"
+"hash": "05561633b604",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-halwani-halawa-plain-kg/": {
-"hash": "811987a0ba06",
-"lastmod": "2026-11-18"
+"hash": "68ea22ddb84e",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-holw-el-sham-basbousa-hazelnut-410-gr/": {
-"hash": "a55fb7648f62",
-"lastmod": "2026-11-18"
+"hash": "2d7ceeaa4a0d",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-juhayna-full-cream-milk/": {
-"hash": "b5ca3b13380a",
-"lastmod": "2026-11-18"
+"hash": "334c7a00a4f9",
+"lastmod": "2026-11-28"
 },
 "/offers/spinneys-koki-crunchy-chicken-pane-1kg/": {
 "hash": "c1999ed564b8",
@@ -18954,12 +21315,12 @@
 "lastmod": "2026-11-18"
 },
 "/outlets/": {
-"hash": "e7040d877327",
-"lastmod": "2026-11-20"
+"hash": "b8e42f0dfda5",
+"lastmod": "2026-11-28"
 },
 "/pay/": {
-"hash": "aa38e18e680f",
-"lastmod": "2026-11-20"
+"hash": "5442a3ab4279",
+"lastmod": "2026-11-28"
 },
 "/products/": {
 "hash": "1d7fd7fa4637",
@@ -18982,12 +21343,12 @@
 "en": 1
 },
 "/project-news/": {
-"hash": "21e5332a65a8",
-"lastmod": "2026-11-20"
+"hash": "49c95be5ef5f",
+"lastmod": "2026-11-28"
 },
 "/projects/": {
-"hash": "d1ae8c7d0517",
-"lastmod": "2026-11-18",
+"hash": "b50608add440",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/projects/r001/": {
@@ -19056,8 +21417,8 @@
 "en": 1
 },
 "/projects/r014/": {
-"hash": "047a9d811ed6",
-"lastmod": "2025-11-19",
+"hash": "d507c159bb43",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/projects/r015/": {
@@ -19315,17 +21676,131 @@
 "lastmod": "2025-01-17",
 "en": 1
 },
+"/projects/r066/": {
+"hash": "ec501cabba38",
+"lastmod": "2026-11-25",
+"en": 1
+},
+"/projects/r067/": {
+"hash": "1f700041669a",
+"lastmod": "2026-11-25",
+"en": 1
+},
+"/projects/r068/": {
+"hash": "a90a748bd62b",
+"lastmod": "2026-11-22",
+"en": 1
+},
+"/projects/r069/": {
+"hash": "6eba3e163f63",
+"lastmod": "2026-11-22",
+"en": 1
+},
+"/projects/r070/": {
+"hash": "0dff524adacb",
+"lastmod": "2026-11-25",
+"en": 1
+},
+"/projects/r071/": {
+"hash": "545e69c12136",
+"lastmod": "2026-11-24",
+"en": 1
+},
+"/projects/r072/": {
+"hash": "e1d837d8980b",
+"lastmod": "2026-11-22",
+"en": 1
+},
+"/projects/r073/": {
+"hash": "90e7d1d4e1f9",
+"lastmod": "2026-11-22",
+"en": 1
+},
+"/projects/r074/": {
+"hash": "2ff0c2d84dd0",
+"lastmod": "2026-11-22",
+"en": 1
+},
+"/projects/r075/": {
+"hash": "3dc4b6622186",
+"lastmod": "2026-11-23",
+"en": 1
+},
+"/projects/r076/": {
+"hash": "e076a6ee6b9a",
+"lastmod": "2026-11-23",
+"en": 1
+},
+"/projects/r077/": {
+"hash": "88d5baccaa4e",
+"lastmod": "2026-11-23",
+"en": 1
+},
+"/projects/r078/": {
+"hash": "8dab4c2028e2",
+"lastmod": "2026-11-21",
+"en": 1
+},
+"/projects/r079/": {
+"hash": "88567401541e",
+"lastmod": "2026-11-18",
+"en": 1
+},
+"/projects/r080/": {
+"hash": "6dc8bdadab4a",
+"lastmod": "2026-11-12",
+"en": 1
+},
+"/projects/r081/": {
+"hash": "db87ef30aa85",
+"lastmod": "2026-11-12",
+"en": 1
+},
+"/projects/r082/": {
+"hash": "8c68b776dc4e",
+"lastmod": "2026-10-25",
+"en": 1
+},
+"/projects/r083/": {
+"hash": "47a9843af7f0",
+"lastmod": "2026-10-25",
+"en": 1
+},
+"/projects/r084/": {
+"hash": "8837be3038f0",
+"lastmod": "2026-10-25",
+"en": 1
+},
+"/projects/r085/": {
+"hash": "ab56aadf87aa",
+"lastmod": "2026-10-13",
+"en": 1
+},
+"/projects/r086/": {
+"hash": "96da04d53f95",
+"lastmod": "2026-02-25",
+"en": 1
+},
+"/projects/r087/": {
+"hash": "f659b6a5f2de",
+"lastmod": "2026-07-29",
+"en": 1
+},
 "/projects/search/": {
-"hash": "acee762b8879",
-"lastmod": "2026-11-20"
+"hash": "3e4a93d10de2",
+"lastmod": "2026-11-28"
 },
 "/radar/": {
-"hash": "87c4dd6a67af",
-"lastmod": "2026-11-20"
+"hash": "13c8620f636b",
+"lastmod": "2026-11-28"
 },
 "/register/": {
-"hash": "c6f3b249aaab",
-"lastmod": "2026-11-20"
+"hash": "6e26cd1b5cd8",
+"lastmod": "2026-11-28"
+},
+"/research/": {
+"hash": "f8f7dfd5d14d",
+"lastmod": "2026-11-28"
 },
 "/rfq/": {
 "hash": "590a51566c65",
@@ -19333,8 +21808,8 @@
 "en": 1
 },
 "/rfq/search/": {
-"hash": "244b97975357",
-"lastmod": "2026-11-20"
+"hash": "d0aa8e23c80d",
+"lastmod": "2026-11-28"
 },
 "/rfq/تقرير-تحليل-طلب-عرض-سعر-توريد-غلاف-وع/": {
 "hash": "2b838961472e",
@@ -19362,52 +21837,55 @@
 "en": 1
 },
 "/seo-admin/": {
-"hash": "c9095ad59cc4",
-"lastmod": "2026-11-20"
+"hash": "0255705b4dcd",
+"lastmod": "2026-11-28"
 },
 "/seo-team/": {
-"hash": "7077b5b49f80",
-"lastmod": "2026-11-20"
+"hash": "b4ecc8342edc",
+"lastmod": "2026-11-28"
 },
 "/site-map/": {
-"hash": "3cf08379a657",
-"lastmod": "2026-11-19",
+"hash": "39e5381f52a1",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/suppliers/": {
-"hash": "2697536511f2",
-"lastmod": "2026-11-20"
+"hash": "5401dbe361d7",
+"lastmod": "2026-11-28"
 },
 "/tender-item/12-2026-bapco-br2630001687/": {
-"hash": "b0906a1a88cb",
-"lastmod": "2026-10-27",
+"hash": "2b83e93bb3cf",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/13-2026-masen/": {
-"hash": "d2f3177629e2",
-"lastmod": "2026-11-20",
+"hash": "b9bb25e5d1ae",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/15-2026-bapco-br2630002209/": {
-"hash": "6221005d4199",
-"lastmod": "2026-11-09",
+"hash": "cd8913371e2f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/2026-4766-489/": {
-"hash": "95e2bafaf277",
-"lastmod": "2026-11-18"
+"hash": "20022a975cbb",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/tender-item/2026-4770-509/": {
-"hash": "a5ca8dfb2e8d",
-"lastmod": "2026-11-18"
+"hash": "ae37437c880a",
+"lastmod": "2026-11-28",
+"en": 1
 },
 "/tender-item/2026-4778-512/": {
 "hash": "80995dbc2d79",
-"lastmod": "2026-11-18"
+"lastmod": "2026-11-18",
+"en": 1
 },
 "/tender-item/28-2026-gfg-26-gf-78298-btb/": {
-"hash": "433f8aad1235",
-"lastmod": "2026-10-25",
+"hash": "492915e3bda0",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/44/": {
@@ -19416,8 +21894,8 @@
 "en": 1
 },
 "/tender-item/491-2026-btb-26-gf-77260-btb/": {
-"hash": "9f1ea065e70f",
-"lastmod": "2026-10-19",
+"hash": "875b32fce0a0",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/5-2026-bngec-rfq-be2630001259/": {
@@ -19426,13 +21904,13 @@
 "en": 1
 },
 "/tender-item/508-2026-btb-phc-134-2026/": {
-"hash": "d93d3416bdff",
-"lastmod": "2026-10-25",
+"hash": "e9da3a51d0b2",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/532-2026-btb-pt-csd-mm-2026-135/": {
-"hash": "e22be22c8bf3",
-"lastmod": "2026-11-04",
+"hash": "cbdf9304f0a4",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/549-2026-btb-be2630001002/": {
@@ -19441,8 +21919,8 @@
 "en": 1
 },
 "/tender-item/550-2026-btb-pt-csd-mh-2026-148/": {
-"hash": "c73d5c3544d4",
-"lastmod": "2026-11-11",
+"hash": "8f3990b8080c",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/554-2026-btb-moe-2026-31/": {
@@ -19456,13 +21934,13 @@
 "en": 1
 },
 "/tender-item/70-2026-csd-in-csd-ay-2026-133/": {
-"hash": "92b404d5adb9",
-"lastmod": "2026-10-29",
+"hash": "d60e98440003",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/760696-2026/": {
-"hash": "d8c3329848bd",
-"lastmod": "2026-11-03",
+"hash": "a0336e405359",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/785520-2026/": {
@@ -19506,8 +21984,8 @@
 "en": 1
 },
 "/tender-item/795491-2026/": {
-"hash": "ea01c2182f8f",
-"lastmod": "2026-11-16",
+"hash": "56fc1b37f2d2",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/795810-2026/": {
@@ -19546,18 +22024,18 @@
 "en": 1
 },
 "/tender-item/cpwrp-fx-g-02/": {
-"hash": "861406b63ec0",
-"lastmod": "2026-11-09",
+"hash": "5816b041f507",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/cwsip-w1-lot-1-and-lot-2/": {
-"hash": "cdc7f2d1b2a6",
-"lastmod": "2026-11-12",
+"hash": "587cbe769d27",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/eg-tnd-001/": {
-"hash": "cdae29a64521",
-"lastmod": "2026-11-16",
+"hash": "3e2efc4c56ee",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/eg-tnd-002/": {
@@ -19571,8 +22049,8 @@
 "en": 1
 },
 "/tender-item/eg-tnd-004/": {
-"hash": "51549468e1a4",
-"lastmod": "2026-11-16",
+"hash": "68fb4fba1f9d",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/eg-tnd-005/": {
@@ -19581,13 +22059,13 @@
 "en": 1
 },
 "/tender-item/eg-tnd-006/": {
-"hash": "c05f96a6af08",
-"lastmod": "2026-11-16",
+"hash": "dad2525edfe9",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/eg-tnd-007/": {
-"hash": "f558628f0cd0",
-"lastmod": "2026-11-16",
+"hash": "c83c600f6905",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/eg-tnd-008/": {
@@ -19617,8 +22095,7 @@
 },
 "/tender-item/eg-tnd-013/": {
 "hash": "5bc535dcad1b",
-"lastmod": "2026-08-20",
-"en": 1
+"lastmod": "2026-08-20"
 },
 "/tender-item/eg-tnd-014/": {
 "hash": "a4099adb7d8d",
@@ -19827,8 +22304,7 @@
 },
 "/tender-item/eg-tnd-056/": {
 "hash": "6d6307f3413a",
-"lastmod": "2026-08-11",
-"en": 1
+"lastmod": "2026-08-11"
 },
 "/tender-item/eg-tnd-057/": {
 "hash": "5f5dd49a5c16",
@@ -19851,8 +22327,8 @@
 "lastmod": "2026-07-20"
 },
 "/tender-item/et-ce-boa-541070-go-rfq/": {
-"hash": "bca7e33493b5",
-"lastmod": "2026-11-20",
+"hash": "a568a7a56e01",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/et-moh-537673-go-rfb/": {
@@ -19861,28 +22337,28 @@
 "en": 1
 },
 "/tender-item/gc2w2c/": {
-"hash": "3b8ea3b307db",
-"lastmod": "2026-11-12",
+"hash": "eeedcfdb80dc",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/gc3g2c/": {
-"hash": "4c79a4d1d51d",
-"lastmod": "2026-10-22",
+"hash": "dbc2e3ab309d",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/help-gd-10/": {
-"hash": "117c9ed5504e",
-"lastmod": "2026-11-05",
+"hash": "e292e7c92be0",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/id-pmu-sihren-581109-go-rfq/": {
-"hash": "40268f3e9f8a",
-"lastmod": "2026-11-15",
+"hash": "d50364f3d9a8",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/id-pmu-sophi-543381-go-rfb/": {
-"hash": "1dacea859d5d",
-"lastmod": "2026-10-13",
+"hash": "6386d4b5c3de",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/id-pmu-sophi-560086-go-rfb/": {
@@ -19891,13 +22367,13 @@
 "en": 1
 },
 "/tender-item/mg-decim-p178701-562730-go-rfb/": {
-"hash": "5caf85f1ca08",
-"lastmod": "2026-10-23",
+"hash": "59785de3f70e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/mg-upnnc-570916-go-rfb/": {
-"hash": "26399963e21e",
-"lastmod": "2026-10-13",
+"hash": "ac3e4d976890",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/mn-moe-esp4-1-cw-rfp/": {
@@ -19916,23 +22392,23 @@
 "en": 1
 },
 "/tender-item/ne-p-lire-564566-go-rfb/": {
-"hash": "3a1ae16d98bb",
-"lastmod": "2026-11-20",
+"hash": "8603452af250",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/pk-kp-sdu-577974-go-rfb/": {
-"hash": "e33786a95498",
-"lastmod": "2026-10-30",
+"hash": "d21d2ed5f5b4",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/pk-pesco-566514-cw-rfb/": {
-"hash": "54589a3a0560",
-"lastmod": "2026-10-11",
+"hash": "03a2ed180f2e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/pk-pmu-sed-gob-579313-go-rfb/": {
-"hash": "84e54eb59877",
-"lastmod": "2026-11-07",
+"hash": "e51aa8340379",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/rfq-request-for-quotation-طلب-عرض-سعر-مواسير-حديدية-ملح/": {
@@ -19940,13 +22416,13 @@
 "lastmod": "2026-11-18"
 },
 "/tender-item/rw-rbc-566628-go-rfb/": {
-"hash": "56a0af707e3c",
-"lastmod": "2026-10-22",
+"hash": "6f84c2b9def9",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/sc-pdcs-575616-go-rfb/": {
-"hash": "c8fc098438a4",
-"lastmod": "2026-10-21",
+"hash": "f02fc1acf821",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/sss-c3-2-rfb-12/": {
@@ -19964,24 +22440,142 @@
 "lastmod": "2026-10-27",
 "en": 1
 },
+"/tender-item/tender-2026-fnegy-fnegy-136742/": {
+"hash": "2fdffd4de315",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-2026-rnexd-fnegy-138785/": {
+"hash": "d48b7cd0bf54",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-30000033151/": {
+"hash": "22bf7ee862c1",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-30000036614/": {
+"hash": "eb1284f21aea",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-30000037337/": {
+"hash": "5ea40e15791a",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-30000037503/": {
+"hash": "312c86f93ebc",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-9207141/": {
+"hash": "9caafd13b622",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-9207154/": {
+"hash": "0be0a1c21ec1",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-eg-0c02bdcd/": {
+"hash": "80becdb2dea5",
+"lastmod": "2026-11-28"
+},
+"/tender-item/tender-eg-7a470624/": {
+"hash": "c18111a617fe",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-eg-c2dc1952/": {
+"hash": "fc904bb7d5d7",
+"lastmod": "2026-11-28"
+},
+"/tender-item/tender-eg-eeaa-522621-go-rfb/": {
+"hash": "fb2f89cfc75c",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-eg-msmeda-582584-go-rfq/": {
+"hash": "ca4829fb65b6",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-eg-msmeda-582588-go-rfq/": {
+"hash": "77934d1e3057",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-em-aco-egy-p-0009777/": {
+"hash": "f85fb72fbd34",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-em-aco-egy-p-0009810/": {
+"hash": "f4bf309d2c76",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-litb-2026-9207216/": {
+"hash": "fe0d5ab64081",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-rfq-cai-017-2026/": {
+"hash": "d18246442361",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-rfx-14416-roaf/": {
+"hash": "c9716b66495a",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-rfx-14516-roaf/": {
+"hash": "884ae5bdee73",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-rfx-14580-roaf/": {
+"hash": "4b5b8313d541",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-undp-egy-00908/": {
+"hash": "aee471546ef3",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-undp-egy-00912/": {
+"hash": "9afcc74d7576",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tender-item/tender-unhcr-srfp-cai-005-2026/": {
+"hash": "a8397c7cae6a",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/tender-item/ug-moes-535422-go-rfb/": {
 "hash": "f939f95a5281",
 "lastmod": "2026-11-20",
 "en": 1
 },
 "/tender-item/uz-inson-rfb-2-2-7-8/": {
-"hash": "54d5ab3de1df",
-"lastmod": "2026-11-20",
+"hash": "180f38509d51",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/wjir-aoi-32b-f-68c/": {
-"hash": "9bc4b3b0e228",
-"lastmod": "2026-11-20",
+"hash": "6ce4c76825c2",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/zr-pif-574511-go-rfb/": {
-"hash": "74531b77a6a9",
-"lastmod": "2026-10-15",
+"hash": "0db20952896f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tender-item/اجهزة-لزوم-معمل-الفزياء-2-الكهرباية-وال/": {
@@ -21481,8 +24075,8 @@
 "lastmod": "2026-11-18"
 },
 "/tenders/": {
-"hash": "fc5a3f34e549",
-"lastmod": "2026-11-20",
+"hash": "fd9fd75cfa40",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/chemicals-water/": {
@@ -21491,23 +24085,23 @@
 "en": 1
 },
 "/tenders/category/construction/": {
-"hash": "589bd417b665",
-"lastmod": "2026-11-18",
+"hash": "b9bcd46b4754",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/electrical/": {
-"hash": "fe3b386c285f",
-"lastmod": "2026-11-19",
+"hash": "1b6183721d4f",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/electrical/page/2/": {
-"hash": "458407352fd5",
-"lastmod": "2026-11-18",
+"hash": "4d136f947a66",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/food-agri/": {
-"hash": "599963896a5a",
-"lastmod": "2026-11-18",
+"hash": "eb8867471661",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/furniture/": {
@@ -21516,8 +24110,8 @@
 "en": 1
 },
 "/tenders/category/general-supplies/": {
-"hash": "6e048126ddcc",
-"lastmod": "2026-11-18",
+"hash": "a46274825238",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/hvac/": {
@@ -21526,28 +24120,28 @@
 "en": 1
 },
 "/tenders/category/international/": {
-"hash": "10b0e427f7b8",
-"lastmod": "2026-11-20",
+"hash": "4a7bb3b36bfd",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/international/page/2/": {
-"hash": "d47fcd338128",
-"lastmod": "2026-11-20",
+"hash": "6ee1308fff73",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/it-computers/": {
-"hash": "cd0524fa4c55",
-"lastmod": "2026-11-18",
+"hash": "092874057de3",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/machinery-equipment/": {
-"hash": "7d571519b15b",
-"lastmod": "2026-11-18",
+"hash": "77188fdf88a4",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/medical-supplies/": {
-"hash": "5f9920b2f154",
-"lastmod": "2026-11-18",
+"hash": "a32af52faa4e",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/packaging-printing/": {
@@ -21561,8 +24155,13 @@
 "en": 1
 },
 "/tenders/category/safety-fire/": {
-"hash": "11af9a9544c7",
-"lastmod": "2026-11-18",
+"hash": "777de381a805",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tenders/category/services/": {
+"hash": "c7dafbb6af3a",
+"lastmod": "2026-11-28",
 "en": 1
 },
 "/tenders/category/steel-metal/": {
@@ -21580,6 +24179,10 @@
 "lastmod": "2026-11-18",
 "en": 1
 },
+"/tenders/entity/assiut-governorate-stores-department/": {
+"hash": "a9b0825fc3e1",
+"lastmod": "2026-11-28"
+},
 "/tenders/entity/canal-electricity-distribution-company/": {
 "hash": "8310eed3d7dc",
 "lastmod": "2026-11-19"
@@ -21588,9 +24191,27 @@
 "hash": "fce66d0b17aa",
 "lastmod": "2026-11-19"
 },
+"/tenders/entity/food-and-agriculture-organization-of-the-united-nations/": {
+"hash": "22d3b17fcbc3",
+"lastmod": "2026-11-28"
+},
+"/tenders/entity/international-labour-organization/": {
+"hash": "f2d1d4a4bbfb",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tenders/entity/international-organization-for-migration/": {
+"hash": "093956b8c9fb",
+"lastmod": "2026-11-28",
+"en": 1
+},
 "/tenders/entity/medical-centre-for-egypt-railways/": {
-"hash": "f0687984f3f9",
-"lastmod": "2026-11-19"
+"hash": "865844ada4c4",
+"lastmod": "2026-11-28"
+},
+"/tenders/entity/micro-small-and-medium-enterprises-development-agency/": {
+"hash": "aff5f32684fc",
+"lastmod": "2026-11-28"
 },
 "/tenders/entity/misr-petroleum-company/": {
 "hash": "4dfd5ff81575",
@@ -21610,21 +24231,38 @@
 "hash": "a803982f875d",
 "lastmod": "2026-11-19"
 },
+"/tenders/entity/united-nations-children-s-fund/": {
+"hash": "ab36eef29a9d",
+"lastmod": "2026-11-28",
+"en": 1
+},
+"/tenders/entity/united-nations-development-programme/": {
+"hash": "bccc5bad345b",
+"lastmod": "2026-11-28"
+},
+"/tenders/entity/united-nations-high-commissioner-for-refugees/": {
+"hash": "3dcaa7367339",
+"lastmod": "2026-11-28"
+},
+"/tenders/entity/world-health-organization/": {
+"hash": "f872e46b500f",
+"lastmod": "2026-11-28"
+},
 "/tenders/search/": {
-"hash": "8603d4af7899",
-"lastmod": "2026-11-20"
+"hash": "788d51974e23",
+"lastmod": "2026-11-28"
 },
 "/track/": {
-"hash": "bcb8cc4bd1b4",
-"lastmod": "2026-11-20"
+"hash": "53eb4ce3614b",
+"lastmod": "2026-11-28"
 },
 "/useful-links/": {
-"hash": "4b848ca0925b",
-"lastmod": "2026-11-20"
+"hash": "19a683382a66",
+"lastmod": "2026-11-28"
 },
 "/videos/": {
-"hash": "4281945650b2",
-"lastmod": "2026-11-20"
+"hash": "fe39d240dd64",
+"lastmod": "2026-11-28"
 }
 }
 }
