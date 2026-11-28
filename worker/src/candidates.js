@@ -1,4 +1,5 @@
-/* No-match candidate search (owner decision 19 — admin console ONLY, never shown to buyers, never contacted automatically).
+/* No-match candidate search (owner decision 19 — admin console ONLY, never shown to buyers; the request itself never reaches them — the
+   directory ones may get the teaser of teasers.js at an official company e-mail, owner decision 2026-11-28).
    When no REGISTERED member factory matches a routable request, the platform lists factories that could fulfil it so the
    administrators can arrange it themselves:
    1) the platform directory (worker/src/data.json → f: the imported directory listings and the public-source factories — none

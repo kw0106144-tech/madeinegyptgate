@@ -61,6 +61,10 @@ import { publishedLeads, publicItem, handlePublicLeads } from "./web-public.js";
 import * as CHATMEDIA from "./chat-media.js";
 import * as RESEARCH from "./research.js"; // «بحث وكتابة عميقة»: POST|GET /api/advisor/research[/<id>[/doc|/mail]] (Bassem's deep jobs, switch research_bassem)
 import { callsReportCron } from "./calls-report.js"; // «تقرير مكالمات جنة وباسم اليومي»: the morning e-mail (platform cron, its own D1 budget)
+// the owner's 2026-11-28 mail decisions (migration 0015): request teasers, the 10:00 member / partner (PDF) reports, the owner's daily report,
+// and the instant alerts to info@ (a member's e-mail stop: ev.js; «couldn't register»: the tool below, memory.js turns, inquiries.js)
+import { mailCron } from "./daily-mail.js";
+import { handleRegisterHelp } from "./info-alerts.js";
 // Admin Control Center (docs/janna/ACC-CONTRACT.md §0.2): one CC object handed to every new handler (no cross-area imports)
 import * as ACC from "./acc.js"; import * as CONTENT from "./content.js"; import * as PAY from "./payments.js"; import * as MAILC from "./email-center.js";
 import { handlePortalSso } from "./portal-sso.js"; // team portal (panel.gcctendersgate.org) sign-in: POST /api/auth/portal
@@ -691,6 +695,7 @@ const WORKER = {
     if (/^\/api\/advisor\/memory(\/|$)/.test(url.pathname)) return handleMemory(req, env, ctx); // before the advisor family (memory.js)
     if (/^\/api\/advisor\/research(\/|$)/.test(url.pathname)) return RESEARCH.handleBassemResearch(req, env, ctx); // «بحث وكتابة عميقة» (research.js) — before the advisor family
     if (/^\/api\/advisor\/media(\/|$)/.test(url.pathname)) return CHATMEDIA.handleAdvisorMedia(req, env, ctx); // 📎 Bassem's call photos — before the advisor family
+    if (/^\/api\/advisor\/register-help\/?$/.test(url.pathname)) return handleRegisterHelp(req, env, ctx, { agent: "bassem" }); // info-alerts.js — before the advisor family
     if (/^\/api\/advisor(\/|$)/.test(url.pathname)) return handleAdvisor(req, env, ctx);
     if (/^\/api\/meetings(\/|$)/.test(url.pathname)) return handleMeetings(req, env, ctx);
     if (/^\/api\/auth(\/|$)/.test(url.pathname)) return handleAuth(req, env, ctx);
@@ -712,6 +717,7 @@ const WORKER = {
     if (/^\/api\/janna\/web\/?$/.test(url.pathname)) return handleJannaWebSearch(req, env, ctx); // websearch.js (X-MIG-Tool: Janna's secret)
     if (/^\/api\/janna\/hunt\/?$/.test(url.pathname)) return handleJannaHunt(req, env, ctx);      // web-hunt.js
     if (/^\/api\/janna\/opportunities\/?$/.test(url.pathname)) return handlePublicLeads(req, env, ctx); // «فرص السوق» (web-public.js): GET, public, never a source
+    if (/^\/api\/janna\/register-help\/?$/.test(url.pathname)) return handleRegisterHelp(req, env, ctx, { agent: "janna" }); // «wanted to register but couldn't» → info@ (info-alerts.js)
     if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
     if (/^\/api\/janna\/health\/?$/.test(url.pathname)) return json({ ok: true, data: DATA.v, factories: DATA.f.length, products: DATA.p.length, tenders: DATA.t.length, rfqs: DATA.q.length, offers: DATA.o.length, zones: DATA.z.length, items: (DATA.i || []).length });
     if (!/^\/api\/janna\/lookup\/?$/.test(url.pathname)) return json({ error: "not found" }, 404);
@@ -758,7 +764,9 @@ CC.research = RESEARCH;
 /* every 15 min: inquiry retries / 48 h reminders / 30-day auto-close; once a day after 07:00 Cairo: digests + deadline
    reminders; Bassem's WhatsApp at each member's own time; once a Cairo day after midnight: the memory consolidation (memory.js) and then
    the daily memory update (daily.js: day digests, «ملخص العميل», tasks, knowledge merge, caps report); once a Cairo day from the owner's time
-   (default 08:30): the calls report of the day before (calls-report.js). Each part is isolated so one failure does not stop the others. */
+   (default 08:30): the calls report of the day before (calls-report.js); every 15 min the request teasers, from 10:00 Cairo the members'
+   daily reports (in batches) and from 00:30 the owner's report of the day before (daily-mail.js, migration 0015). Each part is isolated so
+   one failure does not stop the others. */
 export async function platformCron(env, nowMs = Date.now()) {
   const out = {};
   if (!env || !env.DB) return out;
@@ -771,6 +779,7 @@ export async function platformCron(env, nowMs = Date.now()) {
     ["memory_day", () => (busy() ? { skipped: "daily digests ran in this tick" } : out.memory && out.memory.rebuilt ? { skipped: "consolidation ran in this tick" } : dailyMemory(menv, nowMs))],
     ["calls_report", () => (busy() ? { skipped: "daily digests ran in this tick" } : callsReportCron(env, nowMs, CC))], // its own budgetEnv(env, 80) inside
     ["research", () => RESEARCH.researchCron(env, nowMs)], // «بحث وكتابة عميقة»: stuck jobs → failed, retention (≤ 70 statements; skipped without 0014)
+    ["mail", () => (busy() ? { skipped: "daily digests ran in this tick" } : mailCron(env, nowMs))], // teasers, the 10:00 member reports, the owner's report (skipped without 0015)
     ["guard", () => guardCron(env, nowMs)]]) { // «حماية الموقع»: ≤ 1 read when nothing happened; at most one e-mail an hour
     try { out[k] = await fn(); } catch (e) { out[k] = { error: String(e && e.message || e) }; console.error("platform cron " + k, e && e.stack || e); }
   }

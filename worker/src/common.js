@@ -281,7 +281,8 @@ export const BRAND = { email: "", name: "منصة صنع في مصر" };
 
 /* unsubscribe links: <site>api/unsub?e=<b64url(email_key)>&l=<list>&s=<hmac> — e-mail lists: digest | updates | incoming | all;
    "whatsapp" = the one-click "stop WhatsApp" link in the consent notice (not an e-mail list) */
-export const EMAIL_LISTS = ["digest", "updates", "incoming", "bassem"]; // bassem = Bassem's daily e-mail (WhatsApp fallback)
+export const EMAIL_LISTS = ["digest", "updates", "incoming", "bassem", "daily", "teaser"]; // bassem = Bassem's daily e-mail (WhatsApp fallback);
+// daily = the 10:00 member / partner report (daily-mail.js); teaser = the new-request invitations to unregistered directory factories (teasers.js)
 export const LISTS = [...EMAIL_LISTS, "all", "whatsapp"];
 export async function unsubUrl(env, email, list) {
   const e = b64url(enc.encode(emailKey(email)));
@@ -296,7 +297,8 @@ function linkify(text, env) {
   const own = [site(env), SITE];
   return esc(text).replace(/(https:\/\/[^\s<]+)/g, u => (own.some(o => u.startsWith(esc(o))) ? `<a href="${u}">${u}</a>` : u)).replace(/\r?\n/g, "<br>");
 }
-/* bilingual mail: {to, subject, ar, en, lang, list?, replyTo?, id?, why?} — Arabic first unless lang=en; list → unsubscribe footer */
+/* bilingual mail: {to, subject, ar, en, lang, list?, replyTo?, id?, why?, attachments?, company?} — Arabic first unless lang=en; list → unsubscribe
+   footer; attachments go to deliver() as they are (Resend / Brevo carry them); company names the recipient in the owner's daily report */
 export async function mail(env, m) {
   if (!m.to || !isEmail(m.to)) return { sent: false, error: "no valid recipient" };
   m = await prepareMail(env, m);                       // e-mail center: per-template on/off + subject/intro/outro overrides
@@ -314,7 +316,8 @@ export async function mail(env, m) {
   foot += "\nبياناتك محمية وفق قانون حماية البيانات الشخصية المصري 151/2020 · Your data is handled under Egypt's PDPL (Law 151/2020).";
   const text = `${first}\n\n—\n\n${second}\n\n${foot}`;
   const html = `<div dir="auto" style="font-family:Arial,Tahoma,sans-serif;font-size:15px;line-height:1.8;color:#222"><div dir="${m.lang === "en" ? "ltr" : "rtl"}">${linkify(first, env)}</div><hr style="border:none;border-top:1px solid #ddd;margin:20px 0"><div dir="${m.lang === "en" ? "rtl" : "ltr"}">${linkify(second, env)}</div><div style="color:#777;font-size:12px;margin-top:24px">${linkify(foot, env)}</div></div>`;
-  return sendEmail(env, { id: m.id, tpl: m.tpl, list: m.list, from: { email: fromAddr(env), name: m.fromName || fromName(env) }, to: [m.to], replyTo: m.replyTo, subject: line(m.subject, 200), text, html, headers });
+  return sendEmail(env, { id: m.id, tpl: m.tpl, list: m.list, from: { email: fromAddr(env), name: m.fromName || fromName(env) }, to: [m.to], replyTo: m.replyTo, subject: line(m.subject, 200), text, html, headers,
+    ...(Array.isArray(m.attachments) && m.attachments.length ? { attachments: m.attachments } : {}), ...(m.company ? { company: line(m.company, 120) } : {}) });
 }
 
 /* ---------- in-app notifications (A6) — bilingual: {title, body} Arabic + {title_en, body_en} English ---------- */

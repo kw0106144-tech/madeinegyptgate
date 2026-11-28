@@ -11,6 +11,8 @@
      Admin overrides (table cc_mail_templates): on/off for optional templates, subject/intro/outro AR/EN, full body for the new templates.
    - Delivery log (cc_mail_log): one row per attempt — hashed + masked recipient, masked subject (sign-in codes ••••••), provider id,
      status, error; never a body. 24 h dedupe by message id. Retention 180 days (emailCron).
+   - Outbox (0015 mail_outbox, owner 2026-11-28): every SENT message with its recipient address, template and masked subject, kept 3 days,
+     read only by the owner's daily report to the platform's own mailbox (daily-mail.js); msg.company (optional) names the recipient.
    Hooks (integrator, §10.3 P-W2/P-W3/P-W4): common.js mail() → prepareMail(); advisor.js sendEmail() → deliver(); meetings.js → attachOk().
    Imports ONLY ./crypto.js: common.js and advisor.js import this module (importing them back would be a load-time cycle), so the few
    helpers below are local copies. Fail open: without the 0006 tables there are no overrides, no log and no Control Center config.
@@ -39,7 +41,7 @@ export const PROVIDERS = Object.freeze([
   Object.freeze({ key: "brevo", label: "Brevo API", key_prefix: "xkeysib-", env: "BREVO_API_KEY", slot: "mail.brevo.api_key" }),
 ]);
 const PROV = Object.fromEntries(PROVIDERS.map(p => [p.key, p]));
-export const EMAIL_LISTS = Object.freeze(["digest", "updates", "incoming", "bassem"]); // = common.js EMAIL_LISTS (asserted by the tests)
+export const EMAIL_LISTS = Object.freeze(["digest", "updates", "incoming", "bassem", "daily", "teaser"]); // = common.js EMAIL_LISTS (asserted by the tests)
 const LIM = { req: 64 * 1024, subject: 200, intro: 2000, body: 6000, name: 80, logSubject: 120, logError: 300, msgId: 200, testPerHour: 10, checkPerHour: 20, logDays: 180, memoMs: 60000, dedupMs: 24 * 3600e3, page: 200 };
 const TEXT_FIELDS = ["subject_ar", "subject_en", "intro_ar", "intro_en", "outro_ar", "outro_en", "body_ar", "body_en"];
 
@@ -174,6 +176,13 @@ export const TEMPLATES = Object.freeze([
   T({ key: "inquiry_to_factory", group: "requests", to: "member", list: "incoming", required: true, prefixes: ["route-"], vars: ["subject", "ref", "about"], name_ar: "طلب جديد للمصنع", name_en: "New request to a factory",
     about_ar: "الطلب اللي بيتبعت تلقائياً للمصنع المسجّل المطابق، ومعاه رابط الرد ولوحة التحكم.", about_en: "The request routed automatically to a matching registered factory, with the answer link and the dashboard link.",
     sample_ar: "طلب جديد من منصة صنع في مصر: ‹about› (‹ref›)", sample_en: "طلب جديد من منصة صنع في مصر: ‹about› (‹ref›)" }),
+  /* teasers.js (owner 2026-11-28): a directory factory that is NOT a member, at its OFFICIAL company address only — the title, sector,
+     region and closing date of the request + the registration link; never the buyer, a contact, a quantity or a value. One per request
+     per address, a daily cap, a stop link (list «teaser»), behind the owner's switch request_teasers */
+  T({ key: "request_teaser", group: "requests", to: "third_party", list: "teaser", prefixes: ["teaser-"], vars: ["subject", "ref"], name_ar: "دعوة مصنع غير مسجّل لطلب جديد", name_en: "New-request invitation to an unregistered factory",
+    about_ar: "عنوان الطلب والقطاع والمنطقة وآخر موعد بس، ورابط التسجيل بالباقة المناسبة — بيروح لإيميل الشركة الرسمي لمصنع في الدليل مش مسجّل (مرة واحدة لكل طلب، بحد يومي، ومعاه رابط إيقاف).",
+    about_en: "Only the request's title, sector, region and closing date, with the registration link for the right plan — to the official company address of a directory factory that is not registered (once per request, daily cap, stop link).",
+    sample_ar: "طلب جديد في مجالكم على منصة صنع في مصر: ‹title› / A new request in your field", sample_en: "طلب جديد في مجالكم على منصة صنع في مصر: ‹title› / A new request in your field" }),
   T({ key: "inquiry_update", group: "requests", to: "buyer", list: "updates", required: true, prefixes: ["upd-"], vars: ["subject", "ref", "what"], name_ar: "تحديثات الطلب للمشتري", name_en: "Request updates to the buyer",
     about_ar: "رد أو عرض سعر أو اعتذار أو تغيير حالة على طلب المشتري.", about_en: "A reply, quote, decline or status change on the buyer's request.",
     sample_ar: "رد جديد على طلبك ‹ref›", sample_en: "New reply: ‹ref›" }),
@@ -210,10 +219,29 @@ export const TEMPLATES = Object.freeze([
     about_ar: "ملخص كل ساعة (لو فيه محاولات بس): حد جرّب يحفظ الصفحة أو يفتح الكود أو أدوات المطوّر، أو فتح صفحات كتير في دقايق، أو استعمل أداة نسخ — العدد والنوع والصفحات وعدد الزوار، من غير IP. لمستلمي تقرير المكالمات.",
     about_en: "An hourly summary (only when there were attempts): someone tried to save a page, open its source or the developer tools, opened very many pages in minutes or used a copying tool — counts, types, pages and visitors, no IP. To the calls report's recipients.",
     sample_ar: "تنبيه حماية الموقع: ‹n› محاولة نسخ — ‹day› ‹time›", sample_en: "Site guard: ‹n› copy attempts" }),
+  /* daily-mail.js + info-alerts.js (owner 2026-11-28): the platform's own mailbox (TEAM_EMAIL) — the only place recipient addresses appear */
+  T({ key: "owner_daily_report", group: "team", to: "team", prefixes: ["ownrep-"], name_ar: "تقرير المالك اليومي", name_en: "Owner's daily report",
+    about_ar: "كل يوم بعد نص الليل: اللي اتنشر على المنصة في اليوم اللي فات (عدد وعناوين لكل قسم) وكل إيميل المنصة بعته (الشركة والإيميل واتبعتله إيه) — لإيميل المنصة بس.",
+    about_en: "Every night after midnight: what was published on the platform the day before (counts and titles per section) and every e-mail the platform sent (company, address, what) — to the platform's own mailbox only.",
+    sample_ar: "تقرير المنصة اليومي — ‹day›", sample_en: "تقرير المنصة اليومي — ‹day› / Daily platform report" }),
+  T({ key: "team_unsub_alert", group: "team", to: "team", prefixes: ["unsubalert-"], name_ar: "تنبيه: عضو وقّف الإيميلات", name_en: "Alert: a member stopped e-mails",
+    about_ar: "فوراً لما عضو يدوس رابط الإيقاف (التقرير اليومي أو أي نوع تاني): الشركة والإيميل والنوع والوقت. الإيقاف بيوقف الإيميلات بس — مفيش حذف حساب ولا بيانات.",
+    about_en: "At once when a member uses a stop link (the daily report or another kind): company, address, kind and time. Stopping only stops the e-mails — no account or data is deleted.",
+    sample_ar: "[تنبيه] ‹company› وقّف ‹list›", sample_en: "[تنبيه] ‹company› وقّف ‹list› / stopped e-mails" }),
+  T({ key: "team_register_help", group: "team", to: "team", required: true, prefixes: ["reghelp-"], name_ar: "تنبيه: حد عايز يسجّل ومعرفش", name_en: "Alert: someone could not register",
+    about_ar: "فوراً لما حد يقول لجنة أو باسم إنه كان عايز يسجّل ومقدرش: قال إيه، بيانات التواصل اللي ادّاها، والوقت.",
+    about_en: "At once when someone tells Janna or Bassem they wanted to register but could not: what they said, the contact they gave, and the time.",
+    sample_ar: "[تنبيه] حد عايز يسجّل ومعرفش — ‹agent›", sample_en: "[تنبيه] حد عايز يسجّل ومعرفش — ‹agent› / could not register" }),
   // ---- follows & reminders ----
   T({ key: "follow_digest", group: "digest", to: "member", list: "digest", prefixes: ["digest-"], name_ar: "ملخص المتابعات اليومي", name_en: "Daily follows digest",
     about_ar: "العناصر الجديدة اللي تطابق متابعات العضو (مرة في اليوم).", about_en: "New items matching the member's follows (once a day).",
     sample_ar: "جديد متابعاتك اليوم (‹n›) / Your follows today", sample_en: "جديد متابعاتك اليوم (‹n›) / Your follows today" }),
+  /* daily-mail.js (owner 2026-11-28): 10:00 Cairo, every registered member — the new opportunities / news matching him (within his plan) and
+     his own activity; nothing to report → no e-mail. Partner plans get it as Bassem's report with the PDF (partner_daily_report) */
+  T({ key: "member_daily_report", group: "digest", to: "member", list: "daily", prefixes: ["mday-"], name_ar: "التقرير اليومي للعضو (10 الصبح)", name_en: "Member's daily report (10:00)",
+    about_ar: "الساعة 10 الصبح بتوقيت القاهرة: الفرص والأخبار الجديدة اللي تطابق منتجات العضو وقطاعه ومنطقته (في حدود باقته)، والطلبات اللي وصلته واللي لسه مستنية رده. مفيش جديد = مفيش إيميل.",
+    about_en: "10:00 Cairo time: the new opportunities and news matching the member's products, sector and region (within his plan), and the requests he received and those still waiting for his answer. Nothing new = no e-mail.",
+    sample_ar: "تقريرك اليومي من منصة صنع في مصر — ‹n› جديد / Your daily report", sample_en: "تقريرك اليومي من منصة صنع في مصر — ‹n› جديد / Your daily report" }),
   T({ key: "deadline_reminder", group: "digest", to: "member", list: "digest", prefixes: ["dl-"], name_ar: "تذكير بآخر موعد", name_en: "Deadline reminder",
     about_ar: "تذكير قبل آخر موعد بـ7 أيام وبيوم لعنصر بيتابعه العضو.", about_en: "A reminder 7 days and 1 day before the deadline of a followed item.",
     sample_ar: "باقي 7 أيام على آخر موعد / 7 days to the deadline: ‹title›", sample_en: "باقي 7 أيام على آخر موعد / 7 days to the deadline: ‹title›" }),
@@ -221,6 +249,10 @@ export const TEMPLATES = Object.freeze([
   T({ key: "bassem_morning_email", group: "bassem", to: "member", list: "bassem", prefixes: ["bm-"], name_ar: "صباح الخير من باسم (إيميل)", name_en: "Bassem's morning e-mail",
     about_ar: "رسالة باسم اليومية لباقات الشركاء — بالإيميل لحد ما الواتساب يشتغل.", about_en: "Bassem's daily note for partner plans — by e-mail until WhatsApp is live.",
     sample_ar: "صباح الخير يا ‹name› ☀️ — باسم من منصة صنع في مصر / Good morning from Bassem", sample_en: "صباح الخير يا ‹name› ☀️ — باسم من منصة صنع في مصر / Good morning from Bassem" }),
+  T({ key: "partner_daily_report", group: "bassem", to: "member", list: "daily", prefixes: ["pday-"], name_ar: "تقرير باسم اليومي (PDF)", name_en: "Bassem's daily report (PDF)",
+    about_ar: "لأعضاء باقات الشركاء، الساعة 10 الصبح: التقرير اليومي ومعاه ملف PDF بكل التفاصيل — الفرص، الطلبات المطابقة، الأخبار، ونشاط حسابه.",
+    about_en: "For partner plans, at 10:00: the daily report with a PDF holding every detail — opportunities, matching requests, news and the account's activity.",
+    sample_ar: "تقرير باسم اليومي — ‹day› / Bassem's daily report", sample_en: "تقرير باسم اليومي — ‹day› / Bassem's daily report" }),
   T({ key: "bassem_call_email", group: "bassem", to: "member", list: "bassem", prefixes: ["bc-"], name_ar: "باسم جاهز للمكالمة (إيميل)", name_en: "Bassem call link e-mail",
     about_ar: "رابط مكالمة الفيديو مع باسم في الميعاد اللي العضو اختاره.", about_en: "The video call link with Bassem at the time the member chose.",
     sample_ar: "أنا جاهز يا ‹name› 👋 — نتكلم فيديو؟ / Bassem is ready for your call", sample_en: "أنا جاهز يا ‹name› 👋 — نتكلم فيديو؟ / Bassem is ready for your call" }),
@@ -584,7 +616,7 @@ export async function deliver(env, msg) {
   let res;
   try { res = r.provider === "resend" ? await viaResend(r.key, m) : r.provider === "brevo" ? await viaBrevo(r.key, m) : r.provider === "cloudflare" ? await viaBinding(env, m) : { sent: false, provider: "", error: "email not configured" }; }
   catch (e) { res = { sent: false, provider: r.provider, error: (r.provider || "email") + ": " + astr(e && e.message, 200) }; }
-  await logRow(env, { msg_id: msg.id, template: key, list: listOf(msg), to: tos[0], more, subject: m.subject, provider: res.provider || "", provider_id: res.id || "", status: res.sent ? "sent" : "failed", error: res.sent ? "" : res.error, ms: Date.now() - t0 });
+  await logRow(env, { msg_id: msg.id, template: key, list: listOf(msg), to: tos[0], more, subject: m.subject, provider: res.provider || "", provider_id: res.id || "", status: res.sent ? "sent" : "failed", error: res.sent ? "" : res.error, ms: Date.now() - t0, company: msg.company });
   return res;
 }
 
@@ -602,10 +634,23 @@ async function logRow(env, r, { once = false } = {}) {
       .bind(nowIso(), id, line(r.template, 60), line(r.list, 20), to ? await toHash(env, to) : "", (maskAddr(to) + (r.more > 0 ? ` +${r.more}` : "")).slice(0, 120), maskSubject(r.subject),
         line(r.provider, 20), astr(r.provider_id, 200), r.status, maskErr(r.error), Math.max(0, Math.round(r.ms) || 0)).run();
   } catch (e) { /* a missing table never fails a send */ }
+  if (r.status === "sent") await outboxRow(env, r);
+}
+/* 0015 mail_outbox: every e-mail that left, with its address, for the owner's daily report to the platform's own mailbox (daily-mail.js);
+   kept OUTBOX_DAYS. The subject is masked as in cc_mail_log; no body. Without the table nothing is written. */
+const OUTBOX_DAYS = 3;
+async function outboxRow(env, r) {
+  const db = dbOf(env), to = line(r.to, 254).toLowerCase(); if (!db || !to) return;
+  try {
+    const ms = Date.now(), day = iso(ms + cairoOffsetMin(ms) * 60000).slice(0, 10);
+    await db.prepare("INSERT INTO mail_outbox (at, day, to_addr, more, company, template, subject) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(iso(ms), day, to, Math.max(0, Math.round(r.more) || 0), cleanName(r.company), line(r.template, 60), maskSubject(r.subject)).run();
+  } catch (e) { /* no 0015 table: nothing kept */ }
 }
 /* cron (acc.js ccCron → CC.email.emailCron): retention 180 days */
 export async function emailCron(env, nowMs = Date.now()) {
   const db = dbOf(env); if (!db) return { purged: 0 };
+  try { await db.prepare("DELETE FROM mail_outbox WHERE at < ?").bind(iso(nowMs - OUTBOX_DAYS * 86400000)).run(); } catch (e) { /* no 0015 table */ }
   try { const r = await db.prepare("DELETE FROM cc_mail_log WHERE at < ?").bind(iso(nowMs - LIM.logDays * 86400000)).run(); return { purged: (r && r.meta && r.meta.changes) || 0 }; }
   catch (e) { return { purged: 0, error: "store_off" }; }
 }
