@@ -2324,12 +2324,33 @@ def cmd_refs(a):
     return 0
 
 
+def _official_page_contacts(text):
+    """html_contacts of a published page under the owner's rule of 2026-11-28 (as scan_page does): a directory profile's
+    official values (data/facx.js element 10) are allowed only inside its own <!--official:KEY--> block and in the same
+    page's JSON-LD; everywhere else, and on any other page, they count like any contact"""
+    keys = set(OFFICIAL_BLOCK_RX.findall(text)) if "<!--official:" in text else set()
+    if len(keys) != 1 or next(iter(keys)) not in OFFICIAL:
+        return html_contacts(text)
+    v = OFFICIAL[next(iter(keys))]
+    off = {"keys": set(v["keys"]), "emails": set(v["emails"])}
+    found = []
+    for bm in OFFICIAL_SPAN_RX.finditer(text):
+        found += _with_allow(off, html_contacts, bm.group(0))
+    text = OFFICIAL_SPAN_RX.sub(" ", text)
+    for block in JSONLD_RX.findall(text):
+        found += _contacts_except(block, off)
+    text = re.sub(r"<script[^>]+application/ld\+json[^>]*>[\s\S]*?</script>", " ", text, flags=re.I)
+    return found + html_contacts(text)
+
+
 def cmd_contacts(a):
     load_privacy_allow(a.privacy_allow)
+    if a.html:
+        load_official(a.official_from)
     rc = 0
     for f in a.files:
         text = read_text(f) if f != "-" else sys.stdin.read()
-        found = html_contacts(text) if a.html else contacts(text)
+        found = _official_page_contacts(text) if a.html else contacts(text)
         for c in sorted(set(found)):
             print(c)
             rc = 3
@@ -2386,6 +2407,8 @@ def main(argv=None):
     p.add_argument("--html", action="store_true", help="the files are HTML pages (visible text, attributes, links)")
     p.add_argument("--exit-code", action="store_true", help="exit 3 when something was found")
     p.add_argument("--privacy-allow", default=os.path.join(here, "privacy-allow.txt"))
+    p.add_argument("--official-from", default=repo,
+                   help="a tree with data/facx.js whose official company contacts are allowed in their own block (--html)")
     p.add_argument("files", nargs="+")
     a = ap.parse_args(argv)
     if a.cmd == "stage":
