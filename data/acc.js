@@ -245,7 +245,16 @@
     if (LOADING[f]) return LOADING[f];
     LOADING[f] = new Promise(function (res, rej) {
       var s = D.createElement("script"); s.src = "/data/" + f + ".js?v=" + (CFG.v[f] || "0"); s.async = false;
-      s.onload = function () { LOADED[f] = 1; res(); };
+      /* members-only opportunities (data/opp-full.js): the published copies of these files carry the teasers only — the team's full records
+         come from GET /api/me/opps before any of them is shown or edited (an edit saved over a teaser would blank its details) */
+      s.onload = function () {
+        if (!/^(oldtend|oldrfq|real|projects)$/.test(f)) { LOADED[f] = 1; res(); return; }
+        if (!W.MIGOPP || !MIGOPP.full) { delete LOADING[f]; rej(E("opp_full", T("ملف data/opp-full.js مش محمّل: التفاصيل الكاملة للمناقصات والطلبات مش متاحة للتعديل.", "data/opp-full.js is not loaded: the full tender / request records are not available for editing."))); return; }
+        MIGOPP.full(function (ok) {
+          if (!ok) { delete LOADING[f]; rej(E("opp_full", T("مش قادرين نقرا التفاصيل الكاملة من السيرفر (/api/me/opps) — جرّب تاني بعد شوية؛ ممنوع التعديل على نسخة ناقصة.", "The full records could not be read from the server (/api/me/opps) — try again shortly; editing a partial copy is not allowed."))); return; }
+          MIGOPP.patch(); LOADED[f] = 1; res();
+        });
+      };
       s.onerror = function () { delete LOADING[f]; rej(E("data_file", T("ملف بيانات الموقع مش متاح: ", "A site data file is not available: ") + f + ".js")); };
       D.head.appendChild(s);
     });

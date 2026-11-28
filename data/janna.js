@@ -2289,7 +2289,8 @@
   };
   var LOADS = {};
   function need(list, cb) {
-    var left = 0, fired = false, fin = function () { if (fired) return; fired = true; cb(); };
+    /* members-only opportunities (data/opp-full.js): a member's details go back into the data files loaded here, a visitor keeps the teasers */
+    var left = 0, fired = false, fin = function () { if (fired) return; fired = true; try { if (window.MIGOPP) MIGOPP.patch(); } catch (e) {} cb(); };
     list.forEach(function (k) {
       if (!DATA[k] || DATA[k]()) return;
       var sc = LOADS[k]; if (sc && sc.done) return;

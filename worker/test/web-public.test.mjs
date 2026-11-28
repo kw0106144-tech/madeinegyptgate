@@ -40,7 +40,13 @@ async function member(env, id, email, { staff = "", role = "user" } = {}) {
   const m = await env.DB.prepare("SELECT * FROM members WHERE id = ?").bind(id).first();
   return { m, token: (await issueSession(env, m)).token };
 }
-const lookup = (env, body) => api(env, "POST", "/api/janna/lookup", { body });
+/* members-only opportunities (owner 2026-11-28, src/opp-lock.js): these lookups are a Bassem call's webhook — its Anam session's label says
+   «madeinegyptgate-bassem-…» (Anam's GET /v1/sessions/<id> is mocked here) — so they get the full records; a visitor's teaser and the
+   member / plan rules are tested in opp-lock.test.mjs */
+const MEMBER_SID = "b0b0b0b0-0000-4000-8000-000000000001";
+const _fetch0 = globalThis.fetch;
+globalThis.fetch = async (u, init) => (String(u).startsWith("https://api.anam.ai/v1/sessions/") ? new Response(JSON.stringify({ clientLabel: "madeinegyptgate-bassem-ar" }), { status: 200, headers: { "Content-Type": "application/json" } }) : _fetch0(u, init));
+const lookup = (env, body) => api(Object.assign(env, { ANAM_API_KEY: env.ANAM_API_KEY || "anam-test-key" }), "POST", "/api/janna/lookup", { body, headers: { "X-Anam-Session-Id": MEMBER_SID } });
 const R = (type, url, title, snippet, extra = {}) => ({ type, url, title, snippet, date: "", official: false, aggregator: false, query: "", lang: "ar", ...extra });
 /* what the hunt / the search keep (src/web-leads.js recordLeads: the same capture as production — forLLM, masks) */
 async function seed(env) {

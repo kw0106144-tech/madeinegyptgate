@@ -24,6 +24,8 @@ on:
       - "data/real.js"
       - "data/videos.js"
       - "data/projects.js"
+      # the members-only split (worker/build-items.js puts its locked fields into items.json L for GET /api/me/opps)
+      - "tools/opp_split.js"
       # this pipeline
       - "deploy/ci/ci-worker.sh"
       - "deploy/ci/ci-lib.sh"

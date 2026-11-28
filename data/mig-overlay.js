@@ -278,6 +278,12 @@
       ek.forEach(function (k) { need[k] = 1; }); H.forEach(function (k) { need[String(k)] = 1; hidden[String(k)] = 1; });
       var idx = {};
       if (ek.length || H.length) for (i = 0; i < arr.length; i++) { if (!arr[i]) continue; var k0; try { k0 = d.key(arr[i]); } catch (x) { continue; } if (HAS.call(need, k0) && !HAS.call(idx, k0)) idx[k0] = i; }
+      /* members-only opportunities (owner 2026-11-28, tools/opp_split.js): the public copy of an award has no source link, so its key ends
+         «…|» — an edit keyed «title|date|<link>» (the Control Center reads the full record) still finds its row by title and date */
+      if (c === "award" && (ek.length || H.length)) {
+        var loose = {}; for (i = 0; i < arr.length; i++) { if (!arr[i] || arr[i].source_url) continue; var k1; try { k1 = d.key(arr[i]); } catch (x) { continue; } if (!HAS.call(loose, k1)) loose[k1] = i; }
+        Object.keys(need).forEach(function (k) { if (HAS.call(idx, k)) return; var p = String(k).split("|"); if (p.length < 3) return; var lk = p[0] + "|" + p[1] + "|"; if (HAS.call(loose, lk)) idx[k] = loose[lk]; });
+      }
       /* 1. edits */
       ek.forEach(function (k) {
         if (!HAS.call(idx, k) || !E[k] || typeof E[k] !== "object") return;
